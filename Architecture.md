@@ -52,7 +52,7 @@ isolated-vm model is retired).
 - Limits per job: CPU, memory, disk, wall-clock timeout. Set in the integration definition,
   capped by server config.
 - Network: public internet allowed; private/internal address space denied (RFC1918,
-  link-local, cloud metadata endpoints), enforced by a proxy in the job's netns.
+  link-local, cloud metadata endpoints), enforced by firewall rules in the job's netns.
   Replaces in-process safeFetch. An optional per-integration hostname allowlist can
   tighten egress on production deployments.
 - Runtime images: `node22` and `python3.12`. Python image includes GDAL, rasterio, xarray,
@@ -69,6 +69,8 @@ One contract, language-agnostic:
 - stdin: JSON `{ definition, secrets, previousState, webhookData?, params }`
 - stdout: JSON `{ data?: { [tableId]: rows[] }, rasters?: RasterArtifact[], state? }`
 - stderr: logs, captured and stored per run
+- `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
+  tabular extracts)
 - `/out` mount: raster artifacts (COGs) written here, referenced by path in `rasters[]`
 - Exit code nonzero = failed run; stderr tail becomes the error
 
@@ -85,21 +87,31 @@ Tabular plane:
 Raster plane:
 - COGs in a file-backed store: local filesystem by default (low-connectivity deployments),
   S3-compatible optional. Same layout either way.
-- Postgres catalog: layers → snapshots → bands, with footprints and metadata.
-  STAC-compatible representation exposed on the API.
-- Snapshots are immutable. New data is a new snapshot; promotion flips the layer's current
-  pointer. Tile and data URLs pin the snapshot, so caches never go stale.
+- Postgres catalog: layers → snapshots → bands, with footprints, timestamps, and
+  metadata. STAC-compatible representation exposed on the API.
+- Snapshots are immutable and carry a datetime or time range. Time-series layers retain
+  promoted snapshots as queryable history (current = latest); current-only layers prune
+  superseded snapshots. Tile and data URLs pin the snapshot, so caches never go stale.
 - Source files (GRIBs, raw tiles) are working data: short retention, configured per
   integration.
+
+## Harmonization
+
+- Rasters are stored in EPSG:4326; tiles are warped to web mercator at render time.
+- Bands declare units and nodata; values are stored in the declared units.
+- Timestamps are UTC. Time-step normalization is declared in the definition.
+- Tabular geometries are PostGIS, EPSG:4326.
 
 ## Integration library
 
 The durable deliverable: machine-readable definitions, independent of this application.
 
-Each integration: `{ id, name, source, protocol, auth/secrets, schedule, aoi, runtime,
-limits, egress, destinations, stateFields, code }`. Destinations are tabular schemas
-and/or raster layer declarations. Definitions are files in a versioned library directory;
-the app syncs them to the DB.
+Each integration: `{ id, name, source, protocol, secrets (names only), schedule, aoi,
+inputs, runtime, limits, egress, destinations, stateFields, validation, code }`.
+Destinations are tabular schemas and/or raster layer declarations. Inputs reference
+catalog layers or tables, so derived analytics (drought indices, exposure) are ordinary
+integrations. Definitions are files in a versioned library directory; the app syncs them
+to the DB. Secret values never appear in the library.
 
 ## Agent
 
@@ -117,6 +129,7 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 - REST API: documented query interface over tabular data and the raster catalog (the
   contractual "programmatic query interface").
 - Dashboard (React): pipeline health, run history/lineage, data browser, map view.
+  Follows web accessibility conventions.
 - Raster tiles: server renders PNG tiles from COGs via GDAL CLI (gdalwarp +
   color-relief), long-cache headers, snapshot-pinned URLs. Same approach as mWater's
   RasterTilesController.
@@ -128,7 +141,10 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 - DB-backed job queue. Scheduler enqueues per integration schedule; webhook receipts
   enqueue; agent test runs enqueue with priority.
 - Every run recorded: source, trigger, status, volume, duration, logs, artifacts.
-  This is the lineage/monitoring story (FUC-3/FUC-4).
+- Definitions declare validation rules (range checks, expected cadence); violations and
+  gaps flag the run, and freshness is measured against the declared cadence (FUC-3).
+- Rows and snapshots carry the producing run id; definitions are versioned, so each
+  datum traces to its source and transformation history (FUC-4).
 - Offline behavior: runs fail cleanly on lost connectivity and backfill on resume
   (state-driven incremental fetch, as today).
 
@@ -139,6 +155,12 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
   images or env of the server.
 - Jobs: gVisor isolation + egress policy as above. No PII in scope.
 - TLS terminated by the deployer's proxy; app speaks HTTP behind it.
+
+## Open-source compliance
+
+- Apache 2.0 throughout. CI runs license/SPDX scans and publishes an SBOM (OS-5).
+- Builds from a clean checkout with an open toolchain, verified in CI (OS-6).
+- Repository carries the security policy and DPG documentation (OS-9).
 
 ## Portability to mWater
 
