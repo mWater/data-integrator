@@ -71,6 +71,9 @@ One contract, language-agnostic:
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
   tabular extracts)
+- `/work` mount: persistent workspace, per integration (per session during design). Cache
+  semantics: may be wiped at any time, correctness never depends on it, quota part of job
+  limits. `previousState` remains the only authoritative incremental state.
 - `/out` mount: raster artifacts (COGs) written here, referenced by path in `rasters[]`
 - Exit code nonzero = failed run; stderr tail becomes the error
 
@@ -111,15 +114,21 @@ inputs, runtime, limits, egress, destinations, stateFields, validation, code }`.
 Destinations are tabular schemas and/or raster layer declarations. Inputs reference
 catalog layers or tables, so derived analytics (drought indices, exposure) are ordinary
 integrations. Definitions are files in a versioned library directory; the app syncs them
-to the DB. Secret values never appear in the library.
+to the DB. Secret values never appear in the library. Code is a single self-contained
+file; jobs that outgrow one file split into chained integrations via `inputs`, not
+modules.
 
 ## Agent
 
 Port of the mWater integrator agent loop (AI SDK tool calling):
-- Tools: fetch samples, read/write integration, manage destinations, `run_job` (async:
-  submit, poll status, stream logs), validate, finish.
+- Tools: fetch samples, read/write integration, `edit_code` (exact-string replace on the
+  code file), manage destinations, `run_job` (async: submit, poll status, stream logs),
+  validate, finish.
 - Test runs use a small AOI window to keep the design loop fast; jobs are minutes, not
   seconds, so tooling is async from day one.
+- Warm runs iterate against the `/work` cache. `finish` requires one successful cold run
+  of the current code (fresh workspace, null previousState), so a cache primed by
+  scratch code cannot fake a pass.
 - Model is a swappable provider (UAT OS-3): configured at deploy time, documented minimum
   capability profile, works with self-hostable open-weights models. Core ingest/query
   works with no model configured.
@@ -140,6 +149,8 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 
 - DB-backed job queue. Scheduler enqueues per integration schedule; webhook receipts
   enqueue; agent test runs enqueue with priority.
+- Runs are serialized per integration: never two concurrent runs (protects
+  `previousState` and `/work`).
 - Every run recorded: source, trigger, status, volume, duration, logs, artifacts.
 - Definitions declare validation rules (range checks, expected cadence); violations and
   gaps flag the run, and freshness is measured against the declared cadence (FUC-3).
