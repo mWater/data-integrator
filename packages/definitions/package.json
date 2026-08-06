@@ -1,0 +1,22 @@
+{
+  "name": "@data-integrator/definitions",
+  "version": "0.1.0",
+  "description": "Integration definition types: the machine-readable library format",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo 'types only, nothing to test yet'"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

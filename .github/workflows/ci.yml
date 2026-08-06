@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install podman and nftables
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman nftables
+
+      - name: Install gVisor (runsc)
+        run: |
+          URL=https://storage.googleapis.com/gvisor/releases/release/latest/x86_64
+          wget -q $URL/runsc $URL/runsc.sha512
+          sha512sum -c runsc.sha512
+          sudo mv runsc /usr/local/bin/runsc
+          sudo chmod a+rx /usr/local/bin/runsc
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # Runtime images are needed by the runtimes/* test suites.
+      # No layer caching yet; the python image build dominates (~5 min).
+      - name: Build runtime images
+        run: |
+          podman build -q -t localhost/integrator-runtime-python:dev runtimes/python
+          podman build -q -t localhost/integrator-runtime-node:dev runtimes/node
+
+      - name: Pull test images
+        run: |
+          podman pull -q docker.io/library/alpine:3.20
+          podman pull -q ghcr.io/osgeo/gdal:alpine-small-latest
+
+      - run: pnpm test

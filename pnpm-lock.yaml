@@ -8,6 +8,12 @@ importers:
 
   .: {}
 
+  packages/definitions:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/runner:
     devDependencies:
       '@types/node':
