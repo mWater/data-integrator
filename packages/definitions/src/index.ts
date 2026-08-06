@@ -3,8 +3,12 @@
  *
  * A definition is one file in the versioned integration library. It declares
  * everything about an integration except secret values: source, trigger, AOI,
- * inputs, runtime, limits, destinations, state shape, validation rules, and the
- * single self-contained code file implementing the run(ctx) entrypoint.
+ * inputs, runtime, limits, destinations, validation rules, and the single
+ * self-contained code file implementing the run(ctx) entrypoint.
+ *
+ * Definitions are templates: aoi, trigger, and limits are defaults that a
+ * deployment may override when installing an integration. There is no version
+ * field; the server derives definition versions from content.
  *
  * See Architecture.md. Types only for now; validation comes with the server.
  */
@@ -21,26 +25,22 @@ export interface IntegrationDefinition {
   name: string
   /** What the integration does and any caveats */
   description?: string
-  /** Provenance of the external source; documentation, not behavior */
-  source: SourceInfo
-  /** How runs are triggered */
+  /** Provenance of the external source; documentation, not behavior. Absent for derived integrations. */
+  source?: SourceInfo
+  /** How runs are triggered. Default; a deployment may override at install. */
   trigger: Trigger
   /** Names of secrets the code reads via ctx.secrets. Values live in the app DB, never here. */
   secrets?: string[]
-  /** Area of interest; ingestion and input extracts are clipped to it */
+  /** Area of interest clipping ingestion and input extracts. Default; a deployment may override at install. */
   aoi?: Aoi
   /** Platform data materialized read-only at /in, keyed by input id */
   inputs?: Record<string, InputRef>
   /** Runtime image the code runs in */
   runtime: RuntimeId
-  /** Resource limits for each run */
+  /** Resource limits for each run. Default; a deployment may override at install. */
   limits?: JobLimitsSpec
-  /** Optional hostname allowlist tightening the default public-only egress */
-  egress?: EgressSpec
   /** Tables and raster layers the integration writes to */
   destinations: Destination[]
-  /** Shape of the incremental state carried between runs (ctx.previousState) */
-  stateFields?: StateFieldSpec[]
   /** Data quality rules evaluated on results (FUC-3) */
   validation?: ValidationSpec
   /** Single self-contained file implementing the entrypoint */
@@ -77,9 +77,7 @@ export interface Trigger {
 /** Area of interest that ingestion and input extracts are clipped to. */
 export interface Aoi {
   /** [west, south, east, north], EPSG:4326 */
-  bbox?: [number, number, number, number]
-  /** GeoJSON Polygon or MultiPolygon, EPSG:4326. Takes precedence over bbox. */
-  geometry?: unknown
+  bbox: [number, number, number, number]
 }
 
 /** Per-run resource limits, capped by server configuration. */
@@ -92,22 +90,6 @@ export interface JobLimitsSpec {
   timeoutMs?: number
   /** Quota for the persistent /work workspace in MB */
   workDiskMb?: number
-}
-
-/** Optional tightening of the default public-only egress policy. */
-export interface EgressSpec {
-  /** Hostnames the job may reach; absent = all public internet */
-  allowHosts: string[]
-}
-
-/** One field of the incremental state carried between runs. */
-export interface StateFieldSpec {
-  /** Field name within the state object */
-  id: string
-  /** Value type of the field */
-  type: "text" | "number" | "boolean" | "datetime" | "json"
-  /** What the field tracks, e.g. "last fetched forecast date" */
-  description?: string
 }
 
 // ============================================================================
@@ -125,8 +107,6 @@ export interface RasterInputRef {
   layerId: string
   /** Which snapshots to materialize */
   select: SnapshotSelect
-  /** Band ids to include; absent = all */
-  bands?: string[]
 }
 
 /**
@@ -142,7 +122,7 @@ export interface TableInputRef {
   columns?: string[]
   /** Row filter applied before extraction */
   where?: FilterSpec
-  /** Extract file format; default gpkg */
+  /** Extract file format. Default depends on runtime: gpkg for python3.12, geojson for node22. */
   format?: "gpkg" | "geojson" | "csv"
 }
 
@@ -191,7 +171,7 @@ export interface ColumnSpec {
   name?: string
   /** Value type of the column */
   type: "text" | "number" | "boolean" | "date" | "datetime" | "geometry" | "enum" | "json"
-  /** Allowed values when type is "enum" */
+  /** Permitted codes when type is "enum": the harmonization target for source codings (FUC-2). Stored as text; out-of-vocabulary values flag the run. */
   enumValues?: { id: string; name: string }[]
   /** Measurement units, e.g. "mm/day" */
   units?: string
@@ -243,14 +223,16 @@ export interface BandRendering {
 export interface ValidationSpec {
   /** Expected data cadence for freshness monitoring, ISO-8601 duration (e.g. "P1D") */
   expectedCadence?: string
-  /** Range checks on result columns ("table.column") or bands ("layer.band") */
+  /** Range checks on result values */
   ranges?: RangeRule[]
 }
 
 /** Allowed value range for a column or band; violations flag the run. */
 export interface RangeRule {
-  /** "table.column" or "layer.band" */
-  target: string
+  /** Destination the rule applies to: a tableId or layerId */
+  destinationId: string
+  /** Column id (tables) or band id (raster layers) within the destination */
+  field: string
   /** Minimum allowed value */
   min?: number
   /** Maximum allowed value */

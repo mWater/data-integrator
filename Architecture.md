@@ -118,12 +118,13 @@ Raster plane:
 
 The durable deliverable: machine-readable definitions, independent of this application.
 
-Each integration: `{ id, name, source, protocol, secrets (names only), schedule, aoi,
-inputs, runtime, limits, egress, destinations, stateFields, validation, code }`.
-Destinations are tabular schemas and/or raster layer declarations. Inputs reference
-catalog layers or tables, so derived analytics (drought indices, exposure) are ordinary
-integrations. Definitions are files in a versioned library directory; the app syncs them
-to the DB. Secret values never appear in the library. Code is a single self-contained
+Each integration: `{ id, name, source, trigger, secrets (names only), aoi, inputs,
+runtime, limits, destinations, validation, code, contract }`. Destinations are tabular
+schemas and/or raster layer declarations. Inputs reference catalog layers or tables, so
+derived analytics (drought indices, exposure) are ordinary integrations. Definitions
+are templates: aoi, trigger, and limits are defaults a deployment may override at
+install. Definitions are files in a versioned library directory; the app syncs them to
+the DB. Secret values never appear in the library. Code is a single self-contained
 file; jobs that outgrow one file split into chained integrations via `inputs`, not
 modules.
 
