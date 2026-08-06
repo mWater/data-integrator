@@ -15,6 +15,7 @@ initial deployments in Angola and Madagascar.
 Design phase. No runnable code yet.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
+- [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
 
 ## License
 

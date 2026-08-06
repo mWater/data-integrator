@@ -55,11 +55,11 @@ isolated-vm model is retired).
   link-local, cloud metadata endpoints), enforced by firewall rules in the job's netns.
   Replaces in-process safeFetch. An optional per-integration hostname allowlist can
   tighten egress on production deployments.
-- Runtime images: `node22` and `python3.12`. Python image includes GDAL, rasterio, xarray,
-  cfgrib, numpy, pyproj, geopandas. Node image includes the harness reproducing the
-  existing mWater contract (fetch, parseCSV, console capture), so existing JS integrations
-  run unchanged.
-- JS is first-class, not legacy. Agent guidance: gridded/geospatial/large-file work is
+- Runtime images: `node22` and `python3.12`, standard unrestricted runtimes. Python
+  includes the geospatial stack (GDAL, rasterio, xarray, cfgrib, numpy, pyproj,
+  geopandas); Node has real fetch, fs, crypto, and streams. Libraries are a curated set
+  baked into each image, pinned by digest; no package installs at run time.
+- Both languages are first-class. Agent guidance: gridded/geospatial/large-file work is
   Python; API-to-rows glue is either.
 
 ## Job contract
@@ -70,12 +70,21 @@ One contract, language-agnostic:
 - stdout: JSON `{ data?: { [tableId]: rows[] }, rasters?: RasterArtifact[], state? }`
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
-  tabular extracts)
+  tabular extracts), resolved and materialized by the server at launch. Resolved
+  snapshot ids are recorded on the run for lineage and reproducibility.
 - `/work` mount: persistent workspace, per integration (per session during design). Cache
   semantics: may be wiped at any time, correctness never depends on it, quota part of job
   limits. `previousState` remains the only authoritative incremental state.
 - `/out` mount: raster artifacts (COGs) written here, referenced by path in `rasters[]`
 - Exit code nonzero = failed run; stderr tail becomes the error
+
+The harness in each image maps the payload onto a single entrypoint, so integration code
+is a plain module with no magic globals:
+
+- Node: `export default async function run({ secrets, previousState, webhookData, params })`
+- Python: `def run(ctx)` with the same fields
+
+The return value becomes stdout. The sandbox is the container, not the language.
 
 `RasterArtifact`: `{ layerId, bandId?, path, footprint, timestamp, metadata }`. The server
 validates tabular output against destination schemas and registers raster artifacts in the
@@ -191,6 +200,4 @@ Everything else is app-local: integration definition formats, destination adapte
 scheduling, and the agent chassis (mWater keeps AgentSessionController; tool set and
 prompts port with adaptation).
 
-Cutover test: mwater-server swaps executeScript() for the runner client, re-homes
-existing JS integrations onto the `node22` image, they pass unchanged, and isolated-vm
-is deleted.
+Cutover of existing mWater integrations: see mWater Migration.md.
