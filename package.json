@@ -1,0 +1,12 @@
+{
+  "name": "data-integrator",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  }
+}

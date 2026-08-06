@@ -12,10 +12,12 @@ initial deployments in Angola and Madagascar.
 
 ## Status
 
-Design phase. No runnable code yet.
+Early development. The sandboxed job runner works; server, runtimes, and UI are not
+yet started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
+- [packages/runner](packages/runner/) - podman + gVisor job executor (working, tested)
 
 ## License
 
