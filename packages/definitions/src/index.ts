@@ -122,8 +122,12 @@ export interface TableInputRef {
   columns?: string[]
   /** Row filter applied before extraction */
   where?: FilterSpec
-  /** Extract file format. Default depends on runtime: gpkg for python3.12, geojson for node22. */
-  format?: "gpkg" | "geojson" | "csv"
+  /**
+   * Extract file format. Default by runtime: gpkg for python3.12, json for node22.
+   * json is an array of row objects: dates as ISO strings, geometry columns as
+   * GeoJSON geometry objects.
+   */
+  format?: "gpkg" | "json" | "csv"
 }
 
 /** Snapshot selector: the current one, the latest N, or a time range. */

@@ -10,6 +10,7 @@ export const EGRESS_TABLE = "integrator_egress"
 const BLOCKED_V4 = "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10"
 const BLOCKED_V6 = "fc00::/7, fe80::/10"
 
+/** Renders the complete nftables ruleset; declare-delete-recreate makes it idempotent. */
 export function buildRuleset(): string {
   return `table inet ${EGRESS_TABLE}
 delete table inet ${EGRESS_TABLE}

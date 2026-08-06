@@ -9,6 +9,7 @@ import { JobResult, JobSpec, RunHooks, RunnerOptions } from "./types.js"
 
 const execFileP = promisify(execFile)
 
+/** Runner option defaults. */
 const DEFAULTS = {
   runscPath: "/usr/local/bin/runsc" as string | null,
   podmanPath: "podman",
@@ -18,6 +19,7 @@ const DEFAULTS = {
   stderrLimitBytes: 256 * 1024
 }
 
+/** Per-job limit defaults, used when JobSpec.limits omits a value. */
 const LIMIT_DEFAULTS = {
   cpus: 2,
   memoryMb: 2048,
@@ -35,8 +37,10 @@ const KEEPER_IMAGE = "docker.io/library/alpine:3.20"
  * integrations, queues, or destinations; those live in the server.
  */
 export class Runner {
+  /** Resolved options with defaults applied */
   private opts: Required<RunnerOptions>
 
+  /** Creates a runner; unspecified options fall back to DEFAULTS. */
   constructor(options?: RunnerOptions) {
     this.opts = { ...DEFAULTS, ...options } as Required<RunnerOptions>
   }
@@ -179,11 +183,13 @@ export class Runner {
     }
   }
 
+  /** Runs a podman command, returning trimmed stdout; throws on nonzero exit. */
   private async podman(args: string[]): Promise<string> {
     const { stdout } = await execFileP(this.opts.podmanPath, args)
     return stdout.trim()
   }
 
+  /** Runs a podman command, returning whether it exited zero. */
   private async podmanOk(args: string[]): Promise<boolean> {
     try {
       await execFileP(this.opts.podmanPath, args)
