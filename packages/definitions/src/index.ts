@@ -147,6 +147,61 @@ export type FilterSpec = {
 }[]
 
 // ============================================================================
+// Input manifest (what the server materialized at /in)
+// ============================================================================
+
+/**
+ * Contents of /in/manifest.json, written by the server at job launch when the
+ * definition declares inputs. Authoritative about paths; conventionally rasters
+ * land as /in/<inputId>/<timestamp>.tif and table extracts as /in/<inputId>.<ext>.
+ */
+export interface InManifest {
+  /** Materialized inputs keyed by input id, matching definition.inputs */
+  inputs: Record<string, InManifestInput>
+}
+
+/** One materialized input: raster snapshots or a table extract. */
+export type InManifestInput = RasterInManifestInput | TableInManifestInput
+
+/** Raster input as materialized: one COG file per selected snapshot. */
+export interface RasterInManifestInput {
+  /** Discriminator */
+  kind: "raster"
+  /** Catalog layer the snapshots came from */
+  layerId: string
+  /** Materialized snapshots, ascending by timestamp */
+  snapshots: InManifestSnapshot[]
+}
+
+/** One materialized catalog snapshot file. */
+export interface InManifestSnapshot {
+  /** Path relative to /in */
+  path: string
+  /** Catalog snapshot id, recorded on the run for lineage */
+  snapshotId: string
+  /** Observation time (or period start) of the snapshot */
+  timestamp: string
+  /** Period end when the snapshot covers a range */
+  timestampEnd?: string
+  /** Band ids in file band order (1-based index = position + 1) */
+  bands: string[]
+}
+
+/** Table input as materialized: a single extract file. */
+export interface TableInManifestInput {
+  /** Discriminator */
+  kind: "table"
+  /** Table the extract came from */
+  tableId: string
+  /** Path relative to /in */
+  path: string
+  /** Format the extract was written in */
+  format: "gpkg" | "json" | "csv"
+  /** Rows in the extract */
+  rowCount: number
+}
+
+// ============================================================================
 // Destinations
 // ============================================================================
 

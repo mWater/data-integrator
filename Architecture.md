@@ -70,8 +70,9 @@ One contract, language-agnostic:
 - stdout: JSON `{ data?: { [tableId]: rows[] }, rasters?: RasterArtifact[], state? }`
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
-  tabular extracts), resolved and materialized by the server at launch. Resolved
-  snapshot ids are recorded on the run for lineage and reproducibility.
+  tabular extracts), resolved and materialized by the server at launch and described to
+  the code by `/in/manifest.json`. Resolved snapshot ids are recorded on the run for
+  lineage and reproducibility.
 - `/work` mount: persistent workspace, per integration (per session during design). Cache
   semantics: may be wiped at any time, correctness never depends on it, quota part of job
   limits. `previousState` remains the only authoritative incremental state.
