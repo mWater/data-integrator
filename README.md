@@ -34,7 +34,8 @@ The project is complete when all of these exist.
 - **Integration library** *(format built)* - The machine-readable definition format and
   the definitions themselves for the target data sources (GloFAS, SPI, FPAR, DEMs,
   WorldPop, GHSL, HydroSHEDS, in-situ sensors). A standalone deliverable, independent
-  of the application.
+  of the application, including reusable skills (source and technique know-how) the
+  agent loads on demand.
 - **Database and migrations** - PostgreSQL/PostGIS schema and migration system:
   destination tables, raster catalog, integrations, runs, secrets, users.
 - **Web server and API** - Node/TypeScript server with local accounts, RBAC, and the
