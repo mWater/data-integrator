@@ -18,6 +18,8 @@ yet started.
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
 - [packages/runner](packages/runner/) - podman + gVisor job executor (working, tested)
+- [runtimes/](runtimes/) - node22 and python3.12 runtime images with job harnesses
+  (working, tested)
 
 ## License
 

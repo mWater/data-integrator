@@ -47,8 +47,8 @@ platform later.
 Integration code runs as sandboxed container jobs. No in-process execution (the
 isolated-vm model is retired).
 
-- Runtime: podman with gVisor (runsc). Rootless, non-root user in container, read-only
-  rootfs, tmpfs scratch, no capabilities.
+- Runtime: podman with gVisor (runsc). Rootless (container root maps to an unprivileged
+  host user), read-only rootfs, tmpfs scratch, no capabilities.
 - Limits per job: CPU, memory, disk, wall-clock timeout. Set in the integration definition,
   capped by server config.
 - Network: public internet allowed; private/internal address space denied (RFC1918,

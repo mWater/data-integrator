@@ -1,0 +1,16 @@
+# python3.12 runtime image: GDAL CLI + geospatial Python stack + harness.
+# Curated libraries only; integrations never install packages at run time.
+FROM ghcr.io/osgeo/gdal:ubuntu-small-latest
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3-pip libeccodes0 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+    numpy pandas xarray rasterio pyproj geopandas cfgrib requests
+
+# No USER: under rootless podman, container root is already an unprivileged host
+# user (userns), gVisor sandboxes above that, and mounts stay writable.
+COPY harness.py /harness/harness.py
+ENV HOME=/tmp
+ENTRYPOINT ["python3", "/harness/harness.py"]
