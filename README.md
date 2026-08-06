@@ -21,6 +21,46 @@ yet started.
 - [runtimes/](runtimes/) - node22 and python3.12 runtime images with job harnesses
   (working, tested)
 
+## Major pieces
+
+The project is complete when all of these exist.
+
+- **Sandbox job runner** *(built)* - Executes integration code in rootless podman +
+  gVisor containers with resource limits, mounts, and a public-only egress policy.
+  Payload-opaque, so it ports unchanged to other hosts.
+- **Runtime images** *(built)* - `node22` and `python3.12` images whose harnesses map
+  the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in, including
+  the geospatial stack in Python.
+- **Integration library** *(format built)* - The machine-readable definition format and
+  the definitions themselves for the target data sources (GloFAS, SPI, FPAR, DEMs,
+  WorldPop, GHSL, HydroSHEDS, in-situ sensors). A standalone deliverable, independent
+  of the application.
+- **Database and migrations** - PostgreSQL/PostGIS schema and migration system:
+  destination tables, raster catalog, integrations, runs, secrets, users.
+- **Web server and API** - Node/TypeScript server with local accounts, RBAC, and the
+  documented REST query interface over tabular data and the raster catalog. The
+  contractual programmatic access path; fully functional with no AI configured.
+- **Pipeline engine** - Scheduler and DB-backed job queue: triggers runs (cron,
+  webhook), materializes `/in`, registers rows and raster artifacts, and backfills
+  after connectivity gaps. Evaluates validation rules and records lineage and
+  freshness per run.
+- **Raster catalog and tile service** - Layers, snapshots, and bands over COGs in a
+  file or S3-compatible store, with immutable snapshot promotion and a STAC-compatible
+  API representation. PNG map tiles rendered from COGs via GDAL.
+- **Designer agent** - The agent loop (see Agent Harness.md) that designs, tests, and
+  maintains integrations: snippet and async job tools, steering, cold-run-gated
+  finish. Model provider is swappable, down to self-hosted open weights.
+- **Agent UI** - React design-session interface: conversation, definition and code
+  views, streaming job logs, run results.
+- **Dashboard UI** - Pipeline health, run history and lineage, data browser, and map
+  view. Follows web accessibility conventions.
+- **AI query assistant** - Plain-language questions answered through the documented
+  API, using the same swappable model provider. Optional: the platform works without
+  it.
+- **Deployment and compliance package** - Clean-room install path configured for the
+  pilot countries, plus the open-source evidence: SPDX/SBOM checks in CI, security
+  policy, documentation, and knowledge-transfer materials.
+
 ## License
 
 Apache 2.0
