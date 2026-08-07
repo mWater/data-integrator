@@ -242,10 +242,11 @@ migrations). Applies to the app schema only; data is definition-driven.
 ## Raster store
 
 Postgres never holds raster bytes; snapshots store paths relative to a store
-root. The root is a local directory by default or an S3-compatible bucket, same
-layout either way: `<layerId>/<snapshotId>.tif`. GDAL reads remote stores via
-/vsis3/. Snapshot files are immutable; deletion happens only through supersede
-cleanup.
+root, layout `<layerId>/<snapshotId>.tif`. The store code path is always a
+plain directory: local disk by default, and S3-compatible backends attach as a
+FUSE mount (rclone/s3fs, one systemd unit; ~zero overhead for COG reads in
+mWater production experience). No S3 SDK, no /vsis3/ credentials in GDAL.
+Snapshot files are immutable; deletion happens only through supersede cleanup.
 
 Rasters are not registered in PostGIS (no out-db raster table, unlike mWater):
 no query-time path computes over raster bytes. Raster-to-number crossings are

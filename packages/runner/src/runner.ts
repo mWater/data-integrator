@@ -84,7 +84,10 @@ export class Runner {
    * result channel; stderr streams to hooks and is kept as a capped tail.
    */
   async run(spec: JobSpec, hooks?: RunHooks): Promise<JobResult> {
-    const limits = { ...LIMIT_DEFAULTS, ...spec.limits }
+    const limits = {
+      ...LIMIT_DEFAULTS,
+      ...Object.fromEntries(Object.entries(spec.limits ?? {}).filter(([, v]) => v !== undefined))
+    }
     const name = `job-${randomUUID().slice(0, 8)}`
     const args = ["run", "--rm", "-i", "--name", name]
 

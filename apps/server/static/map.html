@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Data Integrator - Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    html, body, #map { height: 100%; margin: 0 }
+    #info {
+      position: absolute; top: 10px; left: 10px; z-index: 1;
+      background: rgba(255, 255, 255, 0.92); padding: 8px 12px; border-radius: 6px;
+      font: 13px system-ui, sans-serif; max-width: 320px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Loading layers...</div>
+  <div id="map"></div>
+  <script>
+    const map = new maplibregl.Map({
+      container: "map",
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "(c) OpenStreetMap contributors"
+          }
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }]
+      },
+      center: [47, -19],
+      zoom: 5
+    })
+
+    map.on("load", async () => {
+      const { layers } = await (await fetch("/layers")).json()
+      const withData = layers.filter(l => l.current_snapshot_id)
+      document.getElementById("info").innerHTML = withData.length
+        ? withData.map(l => `<b>${l.name}</b> (as of ${new Date(l.observed_at).toISOString().slice(0, 10)})`).join("<br>")
+        : "No layers with data yet"
+      for (const layer of withData) {
+        map.addSource(layer.id, {
+          type: "raster",
+          tiles: [`/tiles/${layer.id}/${layer.current_snapshot_id}/{z}/{x}/{y}.png`],
+          tileSize: 256
+        })
+        map.addLayer({ id: layer.id, type: "raster", source: layer.id, paint: { "raster-opacity": 0.8 } })
+        if (layer.footprint) {
+          const ring = layer.footprint.coordinates[0]
+          const lons = ring.map(p => p[0]), lats = ring.map(p => p[1])
+          map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 40 })
+        }
+      }
+    })
+  </script>
+</body>
+</html>

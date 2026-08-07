@@ -12,10 +12,11 @@ initial deployments in Angola and Madagascar.
 
 ## Status
 
-Early development. The job runner, runtime images, and definition format exist;
-the server has schema, migrations, install, and a working run executor (first
-integrations run end to end via CLI); scheduler, HTTP API, and UI are not
-started.
+Early development. The job runner, runtime images, and definition format exist.
+The server has schema, migrations, install, a working run executor, and the
+first slice of HTTP API (layer discovery + map tiles). The first real library
+integration (WorldPop) runs end to end via CLI and renders on a map page.
+Scheduler, auth, agent, and real UI are not started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
@@ -35,7 +36,7 @@ The project is complete when all of these exist.
 - **Runtime images** *(built)* - `node22` and `python3.12` images whose harnesses map
   the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in, including
   the geospatial stack in Python.
-- **Integration library** *(format built)* - The machine-readable definition format and
+- **Integration library** *(format + first definition)* - The machine-readable definition format and
   the definitions themselves for the target data sources (GloFAS, SPI, FPAR, DEMs,
   WorldPop, GHSL, HydroSHEDS, in-situ sensors). A standalone deliverable, independent
   of the application, including reusable skills (source and technique know-how) the
@@ -49,9 +50,9 @@ The project is complete when all of these exist.
   triggers runs (cron, webhook), materializes `/in`, registers rows and raster
   artifacts, and backfills after connectivity gaps. Evaluates validation rules and
   records lineage and freshness per run.
-- **Raster catalog and tile service** - Layers, snapshots, and bands over COGs in a
-  file or S3-compatible store, with immutable snapshot promotion and a STAC-compatible
-  API representation. PNG map tiles rendered from COGs via GDAL.
+- **Raster catalog and tile service** *(built except STAC)* - Layers, snapshots, and
+  bands over COGs in a file or S3-compatible store, with immutable snapshot promotion
+  and a STAC-compatible API representation. PNG map tiles rendered from COGs via GDAL.
 - **Designer agent** - The agent loop (see Agent Harness.md) that designs, tests, and
   maintains integrations: snippet and async job tools, steering, cold-run-gated
   finish. Model provider is swappable, down to self-hosted open weights.
