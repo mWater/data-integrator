@@ -25,7 +25,10 @@ Installed integrations: a synced library definition plus deployment overrides.
 ### runs
 
 One row per run. Doubles as the job queue: the scheduler inserts `queued` rows,
-workers claim with FOR UPDATE SKIP LOCKED. Runs are serialized per integration.
+workers claim with FOR UPDATE SKIP LOCKED. Partial unique indexes on
+integration_id enforce at most one `running` and one `queued` run per
+integration, so serialization and queue dedup are constraints, not worker
+discipline (the scheduler inserts with ON CONFLICT DO NOTHING).
 
 | column | type | notes |
 |---|---|---|
@@ -75,8 +78,8 @@ old snapshot `superseded` (file deleted asynchronously).
 |---|---|---|
 | id | uuid pk | |
 | layer_id | text fk | |
-| timestamp | timestamptz | |
-| timestamp_end | timestamptz null | |
+| observed_at | timestamptz | RasterArtifact.timestamp; named to avoid the type keyword |
+| observed_end | timestamptz null | RasterArtifact.timestampEnd |
 | footprint | geometry(Polygon, 4326) | |
 | path | text | relative to the raster store root |
 | bands | jsonb | band ids in file order |
@@ -92,8 +95,10 @@ Serialized sessions (messages + state), any server process resumes any session.
 | column | type | notes |
 |---|---|---|
 | id | uuid pk | |
-| kind | text | designer, assistant |
-| integration_id | text null | |
+| kind | text | designer, assistant, dashboard |
+| user_id | uuid fk null | who runs the session; per-user cost caps aggregate on this |
+| integration_id | text fk null | subject when kind is designer |
+| dashboard_id | text fk null | subject when kind is dashboard |
 | status | text | active, paused, finished |
 | messages | jsonb | |
 | client_state | jsonb | |
@@ -111,9 +116,21 @@ and agent sessions; viewer reads data and dashboards.
 | email | citext unique | |
 | password_hash | text | |
 | role | text | admin, editor, viewer |
+| disabled | boolean | offboarding without deleting attribution |
 | failed_logins | int | |
 | locked_until | timestamptz null | |
 | created_at, updated_at | timestamptz | |
+
+### auth_sessions
+
+Logged-in sessions; revocation is row deletion. Expired rows trimmed by cleanup.
+
+| column | type | notes |
+|---|---|---|
+| token_hash | text pk | hash of the session token, never the token itself |
+| user_id | uuid fk | |
+| expires_at | timestamptz | |
+| created_at | timestamptz | |
 
 ### secrets
 
@@ -130,7 +147,9 @@ and agent sessions; viewer reads data and dashboards.
 | name | text pk | |
 | applied_at | timestamptz | |
 
-Plus `dashboards` and `dashboard_versions`, specified in Dashboards.md.
+Plus `dashboards` and `dashboard_versions`, specified in Dashboards.md; a
+composite FK keeps `current_version` from pointing at a version that does not
+exist.
 
 ## data schema
 
@@ -185,3 +204,5 @@ authoritative.
   layers, tables, bands), keeping foreign keys and logs self-describing; uuid
   for server-generated rows (runs, snapshots, sessions, users).
 - All timestamps are timestamptz, UTC.
+- runs, webhook_events, and expired auth_sessions grow unbounded; a periodic
+  cleanup job trims them, retention configurable.

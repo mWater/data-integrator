@@ -44,7 +44,7 @@ test("expected tables exist in app schema", { skip: !AVAILABLE }, async () => {
   for (const expected of [
     "migrations", "integrations", "runs", "webhook_events",
     "raster_layers", "raster_snapshots", "agent_sessions",
-    "users", "secrets", "dashboards", "dashboard_versions"
+    "users", "auth_sessions", "secrets", "dashboards", "dashboard_versions"
   ]) {
     assert.ok(tables.includes(expected), `missing app.${expected}`)
   }
@@ -62,7 +62,7 @@ test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: 
      VALUES ('test-layer', 'test-int', 'Test', 'time-series', '[]')`
   )
   const snapshot = await pool.query(
-    `INSERT INTO app.raster_snapshots (layer_id, "timestamp", footprint, path, bands, run_id)
+    `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, path, bands, run_id)
      VALUES ('test-layer', now(), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326),
              'test-layer/s1.tif', '["pop"]', $1)
      RETURNING id`,
@@ -87,6 +87,35 @@ test("check constraints reject invalid enum values", { skip: !AVAILABLE }, async
     pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('test-int', 'bogus', 'queued')`),
     /check/i
   )
+})
+
+test("at most one running and one queued run per integration", { skip: !AVAILABLE }, async () => {
+  await pool.query(
+    `INSERT INTO app.integrations (id, definition, definition_hash) VALUES ('ser-int', '{}', 'h1')`
+  )
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'running')`)
+  await assert.rejects(
+    pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'manual', 'running')`),
+    /duplicate key/
+  )
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'queued')`)
+  await assert.rejects(
+    pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'queued')`),
+    /duplicate key/
+  )
+})
+
+test("dashboards.current_version cannot dangle", { skip: !AVAILABLE }, async () => {
+  await pool.query(`INSERT INTO app.dashboards (id, name) VALUES ('dash', 'Dash')`)
+  await assert.rejects(
+    pool.query(`UPDATE app.dashboards SET current_version = 1 WHERE id = 'dash'`),
+    /foreign key/
+  )
+  await pool.query(
+    `INSERT INTO app.dashboard_versions (dashboard_id, version, source, queries, kit_version, bundle)
+     VALUES ('dash', 1, '', '[]', 'v1', '')`
+  )
+  await pool.query(`UPDATE app.dashboards SET current_version = 1 WHERE id = 'dash'`)
 })
 
 test("emails are unique case-insensitively", { skip: !AVAILABLE }, async () => {

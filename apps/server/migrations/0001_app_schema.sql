@@ -35,6 +35,9 @@ CREATE TABLE app.runs (
 
 CREATE INDEX runs_integration_idx ON app.runs (integration_id, scheduled_at DESC);
 CREATE INDEX runs_queue_idx ON app.runs (scheduled_at) WHERE status = 'queued';
+-- Per-integration serialization as constraints, not worker discipline
+CREATE UNIQUE INDEX runs_one_running_idx ON app.runs (integration_id) WHERE status = 'running';
+CREATE UNIQUE INDEX runs_one_queued_idx ON app.runs (integration_id) WHERE status = 'queued';
 
 CREATE TABLE app.webhook_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,8 +62,8 @@ CREATE TABLE app.raster_layers (
 CREATE TABLE app.raster_snapshots (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   layer_id text NOT NULL REFERENCES app.raster_layers(id),
-  "timestamp" timestamptz NOT NULL,
-  timestamp_end timestamptz,
+  observed_at timestamptz NOT NULL,
+  observed_end timestamptz,
   footprint geometry(Polygon, 4326) NOT NULL,
   path text NOT NULL,
   bands jsonb NOT NULL,
@@ -70,34 +73,32 @@ CREATE TABLE app.raster_snapshots (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX raster_snapshots_layer_time_idx ON app.raster_snapshots (layer_id, "timestamp" DESC);
+CREATE INDEX raster_snapshots_layer_time_idx ON app.raster_snapshots (layer_id, observed_at DESC);
 
 ALTER TABLE app.raster_layers
   ADD CONSTRAINT raster_layers_current_snapshot_fk
   FOREIGN KEY (current_snapshot_id) REFERENCES app.raster_snapshots(id);
-
-CREATE TABLE app.agent_sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  kind text NOT NULL CHECK (kind IN ('designer', 'assistant', 'dashboard')),
-  integration_id text REFERENCES app.integrations(id),
-  status text NOT NULL CHECK (status IN ('active', 'paused', 'finished')),
-  messages jsonb NOT NULL DEFAULT '[]'::jsonb,
-  client_state jsonb,
-  usage jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
 
 CREATE TABLE app.users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email citext NOT NULL UNIQUE,
   password_hash text NOT NULL,
   role text NOT NULL CHECK (role IN ('admin', 'editor', 'viewer')),
+  disabled boolean NOT NULL DEFAULT false,
   failed_logins int NOT NULL DEFAULT 0,
   locked_until timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE app.auth_sessions (
+  token_hash text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES app.users(id),
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX auth_sessions_user_idx ON app.auth_sessions (user_id);
 
 CREATE TABLE app.secrets (
   name text PRIMARY KEY,
@@ -124,3 +125,23 @@ CREATE TABLE app.dashboard_versions (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (dashboard_id, version)
 );
+
+ALTER TABLE app.dashboards
+  ADD CONSTRAINT dashboards_current_version_fk
+  FOREIGN KEY (id, current_version) REFERENCES app.dashboard_versions(dashboard_id, version);
+
+CREATE TABLE app.agent_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind text NOT NULL CHECK (kind IN ('designer', 'assistant', 'dashboard')),
+  user_id uuid REFERENCES app.users(id),
+  integration_id text REFERENCES app.integrations(id),
+  dashboard_id text REFERENCES app.dashboards(id),
+  status text NOT NULL CHECK (status IN ('active', 'paused', 'finished')),
+  messages jsonb NOT NULL DEFAULT '[]'::jsonb,
+  client_state jsonb,
+  usage jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX agent_sessions_user_idx ON app.agent_sessions (user_id, created_at DESC);
