@@ -9,6 +9,17 @@ PostgreSQL 16 + PostGIS. Two schemas with a hard boundary:
 
 ## app schema
 
+### definition_revisions
+
+Content-addressed definition blobs, written on install and edit. Lineage from
+runs stays resolvable after definitions change, without relying on git history.
+
+| column | type | notes |
+|---|---|---|
+| hash | text pk | content hash of the definition |
+| definition | jsonb | |
+| created_at | timestamptz | |
+
 ### integrations
 
 Installed integrations: a synced library definition plus deployment overrides.
@@ -17,7 +28,7 @@ Installed integrations: a synced library definition plus deployment overrides.
 |---|---|---|
 | id | text pk | definition id (natural key; renames are new integrations) |
 | definition | jsonb | synced definition |
-| definition_hash | text | content hash; recorded on runs for lineage |
+| definition_hash | text fk | content hash into definition_revisions |
 | overrides | jsonb | deployment overrides: aoi, trigger, limits |
 | enabled | boolean | |
 | created_at, updated_at | timestamptz | |
@@ -28,7 +39,8 @@ One row per run. Doubles as the job queue: the scheduler inserts `queued` rows,
 workers claim with FOR UPDATE SKIP LOCKED. Partial unique indexes on
 integration_id enforce at most one `running` and one `queued` run per
 integration, so serialization and queue dedup are constraints, not worker
-discipline (the scheduler inserts with ON CONFLICT DO NOTHING).
+discipline (the scheduler inserts with ON CONFLICT DO NOTHING). Claim order is
+priority desc then scheduled_at; agent runs enqueue with elevated priority.
 
 | column | type | notes |
 |---|---|---|
@@ -36,8 +48,11 @@ discipline (the scheduler inserts with ON CONFLICT DO NOTHING).
 | integration_id | text fk | |
 | trigger | text | cron, webhook, manual, agent |
 | status | text | queued, running, succeeded, failed, timeout, skipped |
+| priority | int | queue claim order |
+| params | jsonb | manual/backfill parameters, passed to the job |
 | scheduled_at, started_at, finished_at | timestamptz | |
-| definition_hash | text | which version of the definition ran |
+| claimed_by, heartbeat_at | text, timestamptz | worker lease |
+| definition_hash | text fk | which definition revision ran |
 | inputs | jsonb | resolved snapshot ids, extract row counts (lineage) |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows written, artifacts, bytes, duration |
@@ -45,9 +60,25 @@ discipline (the scheduler inserts with ON CONFLICT DO NOTHING).
 | error | text | |
 | log | text | capped stderr tail (~256KB) |
 
+### Run commit and recovery
+
+- All Postgres effects of a run commit in one transaction: tabular apply,
+  snapshot inserts and promotions, webhook consumption, state_out, and the flip
+  to succeeded. A failed run commits nothing but its own run record.
+- Raster files land in the store before the commit, so failure leaves only
+  orphans. GC removes never-promoted files past an age threshold and failed
+  runs' /out output.
+- Workers heartbeat while running; a reaper marks runs with stale heartbeats
+  failed, releasing the one-running constraint. The next scheduler tick
+  re-enqueues naturally.
+- Backfill/reprocess is a manual run with params (e.g. a date range) and an
+  optional force-cold flag: wiped /work, null previousState.
+
 ### webhook_events
 
-Buffered webhook payloads, passed to the consuming run as webhookData.
+Buffered webhook payloads. A run receives all pending events batched, oldest
+first, as webhookData[]; events are marked consumed (run_id) in the success
+commit, so a failed run leaves them pending for the retry.
 
 | column | type | notes |
 |---|---|---|
@@ -81,12 +112,35 @@ old snapshot `superseded` (file deleted asynchronously).
 | observed_at | timestamptz | RasterArtifact.timestamp; named to avoid the type keyword |
 | observed_end | timestamptz null | RasterArtifact.timestampEnd |
 | footprint | geometry(Polygon, 4326) | |
+| crs | text | CRS of the file; source grids are preserved, never warped at ingest |
 | path | text | relative to the raster store root |
 | bands | jsonb | band ids in file order |
 | size_bytes | bigint | |
 | run_id | uuid | producing run (lineage) |
 | status | text | pending, promoted, superseded |
 | created_at | timestamptz | |
+
+### data_tables
+
+Single-writer registry for data-schema tables, and the API's source of column
+metadata (units, enum vocabularies).
+
+| column | type | notes |
+|---|---|---|
+| id | text pk | table name in the data schema; one writer per table |
+| integration_id | text fk | owning integration |
+| spec | jsonb | TableDestination spec |
+| created_at, updated_at | timestamptz | |
+
+### settings
+
+Deployer configuration: retention, cost caps, model provider, similar knobs.
+
+| column | type | notes |
+|---|---|---|
+| key | text pk | |
+| value | jsonb | |
+| updated_at | timestamptz | |
 
 ### agent_sessions
 
@@ -162,6 +216,7 @@ Column types:
 |---|---|
 | text, enum | text |
 | number | double precision |
+| integer | bigint |
 | boolean | boolean |
 | date | date |
 | datetime | timestamptz |
@@ -172,7 +227,8 @@ System columns on every table: `_id bigint generated always as identity` (pk) an
 `_run_id uuid` (per-row lineage, FUC-4).
 
 Actions: replace = build new table, swap in one transaction; append = insert;
-merge = upsert on a unique index over mergeColumns.
+merge = upsert on a unique index over mergeColumns. Replace resets `_id` and
+reapplies grants; row identity is not stable across replacements.
 
 Evolution is the destination adapter's job, never migrations: additive column
 changes apply automatically; type changes or removals rebuild the table.

@@ -53,8 +53,8 @@ isolated-vm model is retired).
   capped by server config.
 - Network: public internet allowed; private/internal address space denied (RFC1918,
   link-local, cloud metadata endpoints), enforced by firewall rules in the job's netns.
-  Replaces in-process safeFetch. An optional per-integration hostname allowlist can
-  tighten egress on production deployments.
+  Replaces in-process safeFetch. A hostname allowlist would require an egress proxy;
+  not designed, revisit if a deployment demands it.
 - Runtime images: `node22` and `python3.12`, standard unrestricted runtimes. Python
   includes the geospatial stack (GDAL, rasterio, xarray, cfgrib, numpy, pyproj,
   geopandas); Node has real fetch, fs, crypto, and streams. Libraries are a curated set
@@ -66,7 +66,8 @@ isolated-vm model is retired).
 
 One contract, language-agnostic:
 
-- stdin: JSON `{ definition, secrets, previousState, webhookData?, params }`
+- stdin: JSON `{ definition, secrets, previousState, webhookData?, params }`;
+  webhookData is all pending events, batched oldest first
 - stdout: JSON `{ data?: { [tableId]: rows[] }, rasters?: RasterArtifact[], state? }`
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
@@ -89,7 +90,7 @@ is a plain module with no magic globals:
 
 The return value becomes stdout. The sandbox is the container, not the language.
 
-`RasterArtifact`: `{ layerId, bandId?, path, footprint, timestamp, metadata }`. The server
+`RasterArtifact`: `{ layerId, path, timestamp, footprint?, crs?, metadata? }`. The server
 validates tabular output against destination schemas and registers raster artifacts in the
 catalog. Jobs never touch Postgres or the raster store directly.
 
@@ -112,7 +113,8 @@ Raster plane:
 
 ## Harmonization
 
-- Rasters are stored in EPSG:4326; tiles are warped to web mercator at render time.
+- Rasters keep their source grid and CRS (no resampling at ingest); the catalog
+  records CRS per snapshot. Tiles are warped to web mercator at render time.
 - Bands declare units and nodata; values are stored in the declared units.
 - Timestamps are UTC. Time-step normalization is declared in the definition.
 - Tabular geometries are PostGIS, EPSG:4326.
@@ -164,6 +166,9 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 
 - DB-backed job queue. Scheduler enqueues per integration schedule; webhook receipts
   enqueue; agent test runs enqueue with priority.
+- Derived integrations are scheduled like everything else; the server skips a run when
+  resolved inputs are unchanged since the last success, or unresolvable (flagged
+  skip). Definitions whose inputs intersect their own destinations are rejected.
 - Runs are serialized per integration: never two concurrent runs (protects
   `previousState` and `/work`).
 - Every run recorded: source, trigger, status, volume, duration, logs, artifacts.

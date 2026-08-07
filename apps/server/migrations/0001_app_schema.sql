@@ -6,10 +6,17 @@ CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE SCHEMA IF NOT EXISTS data;
 
+-- Content-addressed definition blobs: lineage from runs stays resolvable after edits
+CREATE TABLE app.definition_revisions (
+  hash text PRIMARY KEY,
+  definition jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE app.integrations (
   id text PRIMARY KEY,
   definition jsonb NOT NULL,
-  definition_hash text NOT NULL,
+  definition_hash text NOT NULL REFERENCES app.definition_revisions(hash),
   overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
   enabled boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -21,10 +28,14 @@ CREATE TABLE app.runs (
   integration_id text NOT NULL REFERENCES app.integrations(id),
   trigger text NOT NULL CHECK (trigger IN ('cron', 'webhook', 'manual', 'agent')),
   status text NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'skipped')),
+  priority int NOT NULL DEFAULT 0,
+  params jsonb,
   scheduled_at timestamptz NOT NULL DEFAULT now(),
   started_at timestamptz,
   finished_at timestamptz,
-  definition_hash text,
+  claimed_by text,
+  heartbeat_at timestamptz,
+  definition_hash text REFERENCES app.definition_revisions(hash),
   inputs jsonb,
   state_out jsonb,
   stats jsonb,
@@ -34,7 +45,7 @@ CREATE TABLE app.runs (
 );
 
 CREATE INDEX runs_integration_idx ON app.runs (integration_id, scheduled_at DESC);
-CREATE INDEX runs_queue_idx ON app.runs (scheduled_at) WHERE status = 'queued';
+CREATE INDEX runs_queue_idx ON app.runs (priority DESC, scheduled_at) WHERE status = 'queued';
 -- Per-integration serialization as constraints, not worker discipline
 CREATE UNIQUE INDEX runs_one_running_idx ON app.runs (integration_id) WHERE status = 'running';
 CREATE UNIQUE INDEX runs_one_queued_idx ON app.runs (integration_id) WHERE status = 'queued';
@@ -65,6 +76,7 @@ CREATE TABLE app.raster_snapshots (
   observed_at timestamptz NOT NULL,
   observed_end timestamptz,
   footprint geometry(Polygon, 4326) NOT NULL,
+  crs text NOT NULL DEFAULT 'EPSG:4326',
   path text NOT NULL,
   bands jsonb NOT NULL,
   size_bytes bigint,
@@ -78,6 +90,15 @@ CREATE INDEX raster_snapshots_layer_time_idx ON app.raster_snapshots (layer_id, 
 ALTER TABLE app.raster_layers
   ADD CONSTRAINT raster_layers_current_snapshot_fk
   FOREIGN KEY (current_snapshot_id) REFERENCES app.raster_snapshots(id);
+
+-- Single-writer registry for data-schema tables; also the API's column metadata source
+CREATE TABLE app.data_tables (
+  id text PRIMARY KEY,
+  integration_id text NOT NULL REFERENCES app.integrations(id),
+  spec jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TABLE app.users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -104,6 +125,12 @@ CREATE TABLE app.secrets (
   name text PRIMARY KEY,
   value bytea NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.settings (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 

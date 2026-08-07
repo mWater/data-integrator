@@ -42,15 +42,16 @@ test("expected tables exist in app schema", { skip: !AVAILABLE }, async () => {
   )
   const tables = result.rows.map(r => r.table_name)
   for (const expected of [
-    "migrations", "integrations", "runs", "webhook_events",
-    "raster_layers", "raster_snapshots", "agent_sessions",
-    "users", "auth_sessions", "secrets", "dashboards", "dashboard_versions"
+    "migrations", "definition_revisions", "integrations", "runs", "webhook_events",
+    "raster_layers", "raster_snapshots", "data_tables", "agent_sessions",
+    "users", "auth_sessions", "secrets", "settings", "dashboards", "dashboard_versions"
   ]) {
     assert.ok(tables.includes(expected), `missing app.${expected}`)
   }
 })
 
 test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: !AVAILABLE }, async () => {
+  await pool.query(`INSERT INTO app.definition_revisions (hash, definition) VALUES ('h1', '{}')`)
   await pool.query(
     `INSERT INTO app.integrations (id, definition, definition_hash) VALUES ('test-int', '{}', 'h1')`
   )
@@ -101,6 +102,18 @@ test("at most one running and one queued run per integration", { skip: !AVAILABL
   await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'queued')`)
   await assert.rejects(
     pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'queued')`),
+    /duplicate key/
+  )
+})
+
+test("data_tables enforces one writer per table", { skip: !AVAILABLE }, async () => {
+  await pool.query(
+    `INSERT INTO app.data_tables (id, integration_id, spec) VALUES ('water_points', 'test-int', '{}')`
+  )
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO app.data_tables (id, integration_id, spec) VALUES ('water_points', 'ser-int', '{}')`
+    ),
     /duplicate key/
   )
 })

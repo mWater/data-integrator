@@ -70,7 +70,7 @@ export interface SourceInfo {
 export interface Trigger {
   /** cron expression, UTC */
   cron?: string
-  /** Accept webhook payloads, buffered and passed as ctx.webhookData */
+  /** Accept webhook payloads, buffered and batched into ctx.webhookData (all pending events, oldest first) */
   webhook?: boolean
 }
 
@@ -228,8 +228,8 @@ export interface ColumnSpec {
   id: string
   /** Human-readable display name */
   name?: string
-  /** Value type of the column */
-  type: "text" | "number" | "boolean" | "date" | "datetime" | "geometry" | "enum" | "json"
+  /** Value type of the column; integer is exact (bigint), number is floating point */
+  type: "text" | "number" | "integer" | "boolean" | "date" | "datetime" | "geometry" | "enum" | "json"
   /** Permitted codes when type is "enum": the harmonization target for source codings (FUC-2). Stored as text; out-of-vocabulary values flag the run. */
   enumValues?: { id: string; name: string }[]
   /** Measurement units, e.g. "mm/day" */
@@ -324,6 +324,8 @@ export interface RasterArtifact {
   timestampEnd?: string
   /** [west, south, east, north], EPSG:4326; server derives from the file when absent */
   footprint?: [number, number, number, number]
+  /** CRS of the file, e.g. "EPSG:4326"; server derives from the file when absent */
+  crs?: string
   /** Free-form metadata stored on the snapshot */
   metadata?: Record<string, unknown>
 }
