@@ -47,5 +47,6 @@ jobs:
         run: |
           podman pull -q docker.io/library/alpine:3.20
           podman pull -q ghcr.io/osgeo/gdal:alpine-small-latest
+          podman pull -q docker.io/postgis/postgis:16-3.4
 
       - run: pnpm test

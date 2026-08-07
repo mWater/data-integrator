@@ -1,0 +1,126 @@
+-- App schema per Database.md. The app/data split is the security boundary:
+-- query roles never get grants on app.
+
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE SCHEMA IF NOT EXISTS data;
+
+CREATE TABLE app.integrations (
+  id text PRIMARY KEY,
+  definition jsonb NOT NULL,
+  definition_hash text NOT NULL,
+  overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
+  enabled boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  integration_id text NOT NULL REFERENCES app.integrations(id),
+  trigger text NOT NULL CHECK (trigger IN ('cron', 'webhook', 'manual', 'agent')),
+  status text NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'skipped')),
+  scheduled_at timestamptz NOT NULL DEFAULT now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  definition_hash text,
+  inputs jsonb,
+  state_out jsonb,
+  stats jsonb,
+  flags jsonb,
+  error text,
+  log text
+);
+
+CREATE INDEX runs_integration_idx ON app.runs (integration_id, scheduled_at DESC);
+CREATE INDEX runs_queue_idx ON app.runs (scheduled_at) WHERE status = 'queued';
+
+CREATE TABLE app.webhook_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  integration_id text NOT NULL REFERENCES app.integrations(id),
+  payload jsonb NOT NULL,
+  received_at timestamptz NOT NULL DEFAULT now(),
+  run_id uuid REFERENCES app.runs(id)
+);
+
+CREATE INDEX webhook_events_pending_idx ON app.webhook_events (integration_id, received_at)
+  WHERE run_id IS NULL;
+
+CREATE TABLE app.raster_layers (
+  id text PRIMARY KEY,
+  integration_id text NOT NULL REFERENCES app.integrations(id),
+  name text NOT NULL,
+  temporality text NOT NULL CHECK (temporality IN ('time-series', 'current-only')),
+  bands jsonb NOT NULL,
+  current_snapshot_id uuid
+);
+
+CREATE TABLE app.raster_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  layer_id text NOT NULL REFERENCES app.raster_layers(id),
+  "timestamp" timestamptz NOT NULL,
+  timestamp_end timestamptz,
+  footprint geometry(Polygon, 4326) NOT NULL,
+  path text NOT NULL,
+  bands jsonb NOT NULL,
+  size_bytes bigint,
+  run_id uuid NOT NULL REFERENCES app.runs(id),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'promoted', 'superseded')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX raster_snapshots_layer_time_idx ON app.raster_snapshots (layer_id, "timestamp" DESC);
+
+ALTER TABLE app.raster_layers
+  ADD CONSTRAINT raster_layers_current_snapshot_fk
+  FOREIGN KEY (current_snapshot_id) REFERENCES app.raster_snapshots(id);
+
+CREATE TABLE app.agent_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind text NOT NULL CHECK (kind IN ('designer', 'assistant', 'dashboard')),
+  integration_id text REFERENCES app.integrations(id),
+  status text NOT NULL CHECK (status IN ('active', 'paused', 'finished')),
+  messages jsonb NOT NULL DEFAULT '[]'::jsonb,
+  client_state jsonb,
+  usage jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email citext NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  role text NOT NULL CHECK (role IN ('admin', 'editor', 'viewer')),
+  failed_logins int NOT NULL DEFAULT 0,
+  locked_until timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.secrets (
+  name text PRIMARY KEY,
+  value bytea NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.dashboards (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  current_version int,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE app.dashboard_versions (
+  dashboard_id text NOT NULL REFERENCES app.dashboards(id),
+  version int NOT NULL,
+  source text NOT NULL,
+  queries jsonb NOT NULL,
+  kit_version text NOT NULL,
+  bundle text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (dashboard_id, version)
+);

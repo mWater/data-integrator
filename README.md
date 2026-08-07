@@ -12,8 +12,8 @@ initial deployments in Angola and Madagascar.
 
 ## Status
 
-Early development. The sandboxed job runner works; server, runtimes, and UI are not
-yet started.
+Early development. The job runner, runtime images, and definition format exist;
+the server is under way (schema and migrations); UI is not started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
@@ -57,6 +57,10 @@ The project is complete when all of these exist.
   views, streaming job logs, run results.
 - **Dashboard UI** - Pipeline health, run history and lineage, data browser, and map
   view. Follows web accessibility conventions.
+- **Analytical dashboards** - Agent-designed dashboards: React over frozen,
+  parameterized SQL, compiled once and rendered in a sandboxed iframe (see
+  Dashboards.md). Ship in the library like integrations; viewable with no AI
+  configured.
 - **AI query assistant** - Plain-language questions answered through the documented
   API, using the same swappable model provider. Optional: the platform works without
   it.

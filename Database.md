@@ -130,6 +130,8 @@ and agent sessions; viewer reads data and dashboards.
 | name | text pk | |
 | applied_at | timestamptz | |
 
+Plus `dashboards` and `dashboard_versions`, specified in Dashboards.md.
+
 ## data schema
 
 One table per TableDestination, named `tableId` verbatim (validated
