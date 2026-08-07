@@ -13,6 +13,9 @@ importers:
       '@data-integrator/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
+      '@data-integrator/runner':
+        specifier: workspace:*
+        version: link:../../packages/runner
       pg:
         specifier: ^8.13.0
         version: 8.22.0

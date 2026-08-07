@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@data-integrator/definitions": "workspace:*",
+    "@data-integrator/runner": "workspace:*",
     "pg": "^8.13.0"
   },
   "devDependencies": {

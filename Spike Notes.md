@@ -38,6 +38,12 @@ podman 4.9.3, gVisor release-20260727.0, nftables 1.0.9. All four risks cleared.
 
 ## Gotchas hit
 
+- Host resolv.conf pointing only at systemd-resolved's 127.0.0.53 stub (modern
+  Ubuntu default) leaves aardvark-dns with no reachable upstream in the rootless
+  netns: every lookup returns NXDOMAIN. The runner therefore passes explicit
+  `--dns` public resolvers to job containers (configurable). Symptom to
+  remember: by-IP connections work, all DNS fails, no rules involved.
+
 - `fwd` is a reserved nft keyword; do not name a chain that.
 - DNS on the *default* slirp network fails under runsc (resolv.conf points at slirp's
   10.0.2.3). Bridge network + aardvark makes this moot.

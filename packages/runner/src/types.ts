@@ -69,6 +69,12 @@ export interface RunnerOptions {
   network?: string
   /** "public-only" (default) blocks private/link-local egress; "open" skips rules. */
   egress?: "public-only" | "open"
+  /**
+   * DNS servers passed to job containers. Defaults to public resolvers: host
+   * resolv.conf is unreliable under the rootless netns (systemd-resolved stub
+   * is unreachable there, leaving aardvark-dns with no upstream).
+   */
+  dns?: string[]
   /** Cap on captured stdout bytes */
   stdoutLimitBytes?: number
   /** Cap on retained stderr bytes */

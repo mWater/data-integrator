@@ -16,7 +16,8 @@ const DEFAULTS = {
   network: "integrator-jobs",
   egress: "public-only" as const,
   stdoutLimitBytes: 10 * 1024 * 1024,
-  stderrLimitBytes: 256 * 1024
+  stderrLimitBytes: 256 * 1024,
+  dns: ["1.1.1.1", "9.9.9.9"]
 }
 
 /** Per-job limit defaults, used when JobSpec.limits omits a value. */
@@ -91,6 +92,9 @@ export class Runner {
       args.push("--runtime", this.opts.runscPath, "--runtime-flag=ignore-cgroups")
     }
     args.push(spec.network === false ? "--network=none" : `--network=${this.opts.network}`)
+    if (spec.network !== false) {
+      for (const server of this.opts.dns) args.push("--dns", server)
+    }
     args.push(
       "--cap-drop=ALL",
       "--security-opt=no-new-privileges",

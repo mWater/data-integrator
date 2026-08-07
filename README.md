@@ -13,7 +13,9 @@ initial deployments in Angola and Madagascar.
 ## Status
 
 Early development. The job runner, runtime images, and definition format exist;
-the server is under way (schema and migrations); UI is not started.
+the server has schema, migrations, install, and a working run executor (first
+integrations run end to end via CLI); scheduler, HTTP API, and UI are not
+started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
@@ -38,15 +40,15 @@ The project is complete when all of these exist.
   WorldPop, GHSL, HydroSHEDS, in-situ sensors). A standalone deliverable, independent
   of the application, including reusable skills (source and technique know-how) the
   agent loads on demand.
-- **Database and migrations** - PostgreSQL/PostGIS schema and migration system:
-  destination tables, raster catalog, integrations, runs, secrets, users.
+- **Database and migrations** *(built)* - PostgreSQL/PostGIS schema and migration
+  system: destination tables, raster catalog, integrations, runs, secrets, users.
 - **Web server and API** - Node/TypeScript server with local accounts, RBAC, and the
   documented REST query interface over tabular data and the raster catalog. The
   contractual programmatic access path; fully functional with no AI configured.
-- **Pipeline engine** - Scheduler and DB-backed job queue: triggers runs (cron,
-  webhook), materializes `/in`, registers rows and raster artifacts, and backfills
-  after connectivity gaps. Evaluates validation rules and records lineage and
-  freshness per run.
+- **Pipeline engine** *(executor built)* - Scheduler and DB-backed job queue:
+  triggers runs (cron, webhook), materializes `/in`, registers rows and raster
+  artifacts, and backfills after connectivity gaps. Evaluates validation rules and
+  records lineage and freshness per run.
 - **Raster catalog and tile service** - Layers, snapshots, and bands over COGs in a
   file or S3-compatible store, with immutable snapshot promotion and a STAC-compatible
   API representation. PNG map tiles rendered from COGs via GDAL.
