@@ -35,9 +35,16 @@ async function route(pool: pg.Pool, tiles: TileRenderer, req: IncomingMessage, r
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
               s.observed_at, s.observed_end, s.crs,
-              ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint
+              ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
+              COALESCE(sn.snapshots, '[]'::json) AS snapshots
        FROM app.raster_layers l
        LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(json_build_object(
+                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end
+                ) ORDER BY observed_at) AS snapshots
+         FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
+       ) sn ON true
        ORDER BY l.id`
     )
     res.writeHead(200, { "content-type": "application/json" })

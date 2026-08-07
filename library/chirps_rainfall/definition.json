@@ -1,0 +1,47 @@
+{
+  "id": "chirps_rainfall",
+  "name": "CHIRPS monthly rainfall (Africa, 0.05 deg)",
+  "description": "Monthly precipitation totals for Africa from CHIRPS v2.0 final monthly GeoTIFFs. Incremental: each run ingests months after the last ingested one, stopping when a month is not yet published. First run backfills; params.months_back overrides the default backfill of 12.",
+  "source": {
+    "name": "CHIRPS v2.0 Africa monthly",
+    "url": "https://www.chc.ucsb.edu/data/chirps",
+    "provider": "Climate Hazards Center, UC Santa Barbara",
+    "license": "CC-BY-4.0",
+    "documentation": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/README-CHIRPS.txt"
+  },
+  "trigger": { "cron": "0 6 5 * *" },
+  "runtime": "python3.12",
+  "limits": { "timeoutMs": 900000, "memoryMb": 2048 },
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "chirps_rainfall",
+      "name": "Rainfall (monthly)",
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "precip",
+          "name": "Precipitation",
+          "units": "mm/month",
+          "rendering": {
+            "resampling": "average",
+            "defaultRange": { "min": 0, "max": 600 },
+            "colorMap": [
+              { "value": 0, "color": "#ffffff00" },
+              { "value": 10, "color": "#f7fbff" },
+              { "value": 50, "color": "#c6dbef" },
+              { "value": 100, "color": "#9ecae1" },
+              { "value": 200, "color": "#6baed6" },
+              { "value": 300, "color": "#4292c6" },
+              { "value": 450, "color": "#2171b5" },
+              { "value": 600, "color": "#08519c" },
+              { "value": 800, "color": "#08306b" }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "code": "",
+  "contract": 2
+}

@@ -8,15 +8,18 @@
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
   <style>
     html, body, #map { height: 100%; margin: 0 }
-    #info {
+    #panel {
       position: absolute; top: 10px; left: 10px; z-index: 1;
       background: rgba(255, 255, 255, 0.92); padding: 8px 12px; border-radius: 6px;
       font: 13px system-ui, sans-serif; max-width: 320px;
     }
+    .layer { margin: 6px 0 }
+    .layer input[type=range] { width: 100%; margin: 4px 0 0 }
+    .when { color: #555; margin-left: 6px }
   </style>
 </head>
 <body>
-  <div id="info">Loading layers...</div>
+  <div id="panel">Loading layers...</div>
   <div id="map"></div>
   <script>
     const map = new maplibregl.Map({
@@ -37,25 +40,55 @@
       zoom: 5
     })
 
+    const tileUrl = (layerId, snapshotId) => `/tiles/${layerId}/${snapshotId}/{z}/{x}/{y}.png`
+
     map.on("load", async () => {
       const { layers } = await (await fetch("/layers")).json()
       const withData = layers.filter(l => l.current_snapshot_id)
-      document.getElementById("info").innerHTML = withData.length
-        ? withData.map(l => `<b>${l.name}</b> (as of ${new Date(l.observed_at).toISOString().slice(0, 10)})`).join("<br>")
-        : "No layers with data yet"
+      const panel = document.getElementById("panel")
+      panel.innerHTML = withData.length ? "" : "No layers with data yet"
+
+      const bounds = new maplibregl.LngLatBounds()
       for (const layer of withData) {
-        map.addSource(layer.id, {
-          type: "raster",
-          tiles: [`/tiles/${layer.id}/${layer.current_snapshot_id}/{z}/{x}/{y}.png`],
-          tileSize: 256
-        })
+        const snaps = layer.snapshots
+        let index = Math.max(0, snaps.findIndex(s => s.id === layer.current_snapshot_id))
+
+        map.addSource(layer.id, { type: "raster", tiles: [tileUrl(layer.id, snaps[index].id)], tileSize: 256 })
         map.addLayer({ id: layer.id, type: "raster", source: layer.id, paint: { "raster-opacity": 0.8 } })
         if (layer.footprint) {
-          const ring = layer.footprint.coordinates[0]
-          const lons = ring.map(p => p[0]), lats = ring.map(p => p[1])
-          map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 40 })
+          for (const p of layer.footprint.coordinates[0]) bounds.extend(p)
         }
+
+        const div = document.createElement("div")
+        div.className = "layer"
+        const label = document.createElement("label")
+        const toggle = document.createElement("input")
+        toggle.type = "checkbox"
+        toggle.checked = true
+        toggle.onchange = () => map.setLayoutProperty(layer.id, "visibility", toggle.checked ? "visible" : "none")
+        const when = document.createElement("span")
+        when.className = "when"
+        const setWhen = i => { when.textContent = snaps[i].observed_at.slice(0, snaps.length > 1 ? 7 : 10) }
+        setWhen(index)
+        label.append(toggle, ` ${layer.name}`)
+        div.append(label, when)
+
+        if (snaps.length > 1) {
+          const slider = document.createElement("input")
+          slider.type = "range"
+          slider.min = 0
+          slider.max = snaps.length - 1
+          slider.value = index
+          slider.oninput = () => {
+            index = Number(slider.value)
+            setWhen(index)
+            map.getSource(layer.id).setTiles([tileUrl(layer.id, snaps[index].id)])
+          }
+          div.append(slider)
+        }
+        panel.append(div)
       }
+      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40 })
     })
   </script>
 </body>
