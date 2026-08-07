@@ -258,7 +258,10 @@ authoritative.
 
 - IDs: text natural keys where identity comes from definitions (integrations,
   layers, tables, bands), keeping foreign keys and logs self-describing; uuid
-  for server-generated rows (runs, snapshots, sessions, users).
+  for server-generated rows (runs, snapshots, sessions, users). Definition ids
+  are published identifiers (referenced from other definitions, frozen SQL, and
+  URLs that no FK can reach), validated to `^[a-z][a-z0-9_]{0,62}$`; display
+  names carry rename pressure, and changing an id is creating a new identity.
 - All timestamps are timestamptz, UTC.
 - runs, webhook_events, and expired auth_sessions grow unbounded; a periodic
   cleanup job trims them, retention configurable.

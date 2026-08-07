@@ -19,7 +19,7 @@
 
 /** One integration in the library: source connection, processing code, and destinations. */
 export interface IntegrationDefinition {
-  /** Stable identifier, lowercase kebab or snake case */
+  /** Published identifier, snake_case (^[a-z][a-z0-9_]{0,62}$). Renaming is creating a new integration. */
   id: string
   /** Human-readable display name */
   name: string
@@ -212,7 +212,7 @@ export type Destination = TableDestination | RasterLayerDestination
 export interface TableDestination {
   /** Discriminator */
   kind: "table"
-  /** Destination table, created/managed by the server */
+  /** Destination table, created/managed by the server; snake_case, becomes the table name in the data schema */
   tableId: string
   /** How incoming rows are applied */
   action: "replace" | "append" | "merge"
@@ -240,7 +240,7 @@ export interface ColumnSpec {
 export interface RasterLayerDestination {
   /** Discriminator */
   kind: "raster"
-  /** Catalog layer to write snapshots into */
+  /** Catalog layer to write snapshots into; snake_case, appears in tile and API URLs */
   layerId: string
   /** Human-readable display name */
   name?: string
