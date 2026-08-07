@@ -4,21 +4,30 @@
  *   migrate                 Apply pending migrations.
  *   install <file>          Install/update an integration from a definition JSON file.
  *   run <integrationId>     Enqueue a manual run and execute it to completion.
+ *   agent <id> [sessionId]  Interactive designer session for one integration.
+ *   serve                   HTTP API and map page.
  */
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { hostname } from "node:os"
+import { createInterface } from "node:readline/promises"
 import { fileURLToPath } from "node:url"
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
+import { LanguageModel } from "ai"
 import { Runner } from "@data-integrator/runner"
 import { IntegrationDefinition } from "@data-integrator/definitions"
 import { createPool } from "./db.js"
 import { migrate } from "./migrations.js"
 import { installIntegration } from "./install.js"
-import { claimNextRun, executeRun } from "./executor.js"
+import { claimNextRun, executeRun, ExecutorDeps } from "./executor.js"
 import { RasterStore } from "./rasterStore.js"
 import { loadSecretKey } from "./secrets.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
+import { AgentSessionController } from "./agent/controller.js"
+import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
+import { AgentEvent } from "./agent/types.js"
 
 /** Directory holding the numbered .sql migration files. */
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -40,6 +49,44 @@ async function loadDefinition(target: string): Promise<IntegrationDefinition> {
     }
   }
   throw new Error(`No code.py or code.mjs in ${target}`)
+}
+
+/** Executor dependencies from environment configuration. */
+function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner): ExecutorDeps {
+  return {
+    pool,
+    runner,
+    store: new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store"),
+    workRoot: process.env.WORK_ROOT ?? "./work",
+    secretKey: process.env.INTEGRATOR_SECRET_KEY ? loadSecretKey() : null,
+    images: {
+      "python3.12": process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
+      node22: process.env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"
+    }
+  }
+}
+
+/** Agent model from environment: OpenRouter when its key is set, else Anthropic. */
+function buildModel(): LanguageModel | null {
+  const openrouterKey = process.env.OPENROUTER_API_KEY
+  if (openrouterKey) {
+    return createOpenRouter({ apiKey: openrouterKey })(process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-5")
+  }
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  if (anthropicKey) {
+    return createAnthropic({ apiKey: anthropicKey })(process.env.AGENT_MODEL ?? "claude-sonnet-5")
+  }
+  return null
+}
+
+/** Prints agent events as an indented console transcript. */
+function printAgentEvent(event: AgentEvent): void {
+  if (event.type === "assistant_text") console.log(`\n${event.text}\n`)
+  else if (event.type === "tool_start") {
+    const input = JSON.stringify(event.input) ?? ""
+    console.log(`  [${event.tool}] ${input.length > 120 ? input.slice(0, 120) + "..." : input}`)
+  } else if (event.type === "tool_end") console.log(`  [${event.tool}] -> ${event.summary.split("\n")[0]}`)
+  else if (event.type === "job_log") console.log(`    | ${event.line}`)
 }
 
 async function main(): Promise<number> {
@@ -87,24 +134,50 @@ async function main(): Promise<number> {
           console.error("Nothing claimable (already running?)")
           return 1
         }
-        await executeRun(
-          {
-            pool,
-            runner,
-            store: new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store"),
-            workRoot: process.env.WORK_ROOT ?? "./work",
-            secretKey: process.env.INTEGRATOR_SECRET_KEY ? loadSecretKey() : null,
-            images: {
-              "python3.12": process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
-              node22: process.env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"
-            }
-          },
-          run
-        )
+        await executeRun(buildDeps(pool, runner), run)
         const final = await pool.query("SELECT status, error, stats FROM app.runs WHERE id = $1", [run.id])
         const { status, error, stats } = final.rows[0]
         console.log(`Run ${run.id}: ${status}${error ? ` (${error})` : ""} ${stats ? JSON.stringify(stats) : ""}`)
         return status === "succeeded" ? 0 : 1
+      }
+      case "agent": {
+        const integrationId = process.argv[3]
+        const resumeSessionId = process.argv[4]
+        if (!integrationId) {
+          console.error("Usage: cli.js agent <integrationId> [sessionId]")
+          return 1
+        }
+        const model = buildModel()
+        if (!model) {
+          console.error("Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY (AGENT_MODEL overrides the default model)")
+          return 1
+        }
+        const runner = new Runner()
+        await runner.ensureReady()
+        const impl = new DesignerImplementation({ ...buildDeps(pool, runner), model })
+        const controller = new AgentSessionController(pool, impl)
+        const sessionId = resumeSessionId ?? (await controller.createSession(initialDesignerState(integrationId)))
+        console.log(`Designer session ${sessionId} for '${integrationId}'.`)
+        console.log(`Describe what to build. 'exit' leaves (resume with: cli.js agent ${integrationId} ${sessionId})`)
+
+        const rl = createInterface({ input: process.stdin, output: process.stdout })
+        try {
+          for (;;) {
+            const line = (await rl.question("> ")).trim()
+            if (!line || line === "exit") return 0
+            const stop = await controller.sendMessage(sessionId, line, printAgentEvent)
+            if (stop.reason === "finished") {
+              console.log("Session finished.")
+              return 0
+            }
+            if (stop.reason === "step_limit") {
+              console.log("Step limit reached; session paused.")
+              return 1
+            }
+          }
+        } finally {
+          rl.close()
+        }
       }
       case "serve": {
         const store = new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store")
@@ -116,7 +189,7 @@ async function main(): Promise<number> {
         return await new Promise<number>(() => {})
       }
       default:
-        console.error("Usage: cli.js migrate | install <file|dir> | run <integrationId> | serve")
+        console.error("Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent <integrationId> [sessionId] | serve")
         return 1
     }
   } finally {

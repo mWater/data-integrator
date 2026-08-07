@@ -89,6 +89,24 @@ test("snippet mode: prints go to stdout", { skip: !AVAILABLE }, async () => {
   assert.match(result.stdout, /libs ok hello/)
 }, { timeout: 120_000 })
 
+test("large results survive process exit (pipe buffer flush)", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      definition: {
+        code: `export default async function run() {
+  const rows = Array.from({ length: 5000 }, (_, i) => ({ site: "01646500", time: new Date(i * 60000).toISOString(), value: i }))
+  return { data: { readings: rows } }
+}`
+      }
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  const output = parseJobOutput<{ data: { readings: unknown[] } }>(result)
+  assert.equal(output.data.readings.length, 5000)
+}, { timeout: 120_000 })
+
 test("exception produces failed status with stack", { skip: !AVAILABLE }, async () => {
   const result = await runner.run({
     image: IMAGE,

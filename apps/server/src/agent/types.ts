@@ -1,0 +1,54 @@
+import { LanguageModel, ToolSet } from "ai"
+
+/** Event emitted by the controller while a session step runs. */
+export type AgentEvent =
+  /** Assistant produced user-facing text */
+  | { type: "assistant_text"; text: string }
+  /** A tool call is starting */
+  | { type: "tool_start"; tool: string; input: unknown }
+  /** A tool call completed; summary is a short prefix of its result */
+  | { type: "tool_end"; tool: string; summary: string }
+  /** One stderr line streamed from a sandboxed job */
+  | { type: "job_log"; line: string }
+
+/** Listener for agent events. */
+export type AgentEventListener = (event: AgentEvent) => void
+
+/** Result of executing one server tool. */
+export interface ToolOutcome<S> {
+  /** Text returned to the model as the tool result */
+  result: string
+  /** Updated client state, when the tool changed it */
+  state?: S
+  /** True when this tool ends the session (finish) */
+  finished?: boolean
+}
+
+/**
+ * One agent type (designer, assistant, dashboard): supplies the model, prompt,
+ * tool schemas, and tool execution. The controller owns the loop and storage.
+ */
+export interface AgentImplementation<S> {
+  /** Session kind stored in app.agent_sessions */
+  kind: "designer" | "assistant" | "dashboard"
+  /** Language model the loop calls */
+  model: LanguageModel
+  /** System prompt for the current client state */
+  system(state: S): string
+  /** Tool definitions; schemas only, execution goes through execute() */
+  tools(state: S): ToolSet
+  /** Executes one tool call against the current client state */
+  execute(tool: string, input: unknown, state: S, events: AgentEventListener): Promise<ToolOutcome<S>>
+  /** Hard cap on model calls per session */
+  maxSteps: number
+}
+
+/** Cumulative usage persisted with the session. */
+export interface SessionUsage {
+  /** Model calls made so far */
+  steps: number
+  /** Total input tokens */
+  inputTokens: number
+  /** Total output tokens */
+  outputTokens: number
+}

@@ -15,9 +15,13 @@
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.33",
     "@data-integrator/definitions": "workspace:*",
     "@data-integrator/runner": "workspace:*",
-    "pg": "^8.13.0"
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "ai": "^7.0.55",
+    "pg": "^8.13.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

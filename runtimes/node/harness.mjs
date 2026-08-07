@@ -62,7 +62,10 @@ async function main() {
     process.stdout.write = realWrite
   }
 
-  process.stdout.write(JSON.stringify(result ?? {}))
+  // process.exit discards unflushed pipe output, so await the write completion
+  await new Promise((resolve, reject) =>
+    process.stdout.write(JSON.stringify(result ?? {}), err => (err ? reject(err) : resolve()))
+  )
   return 0
 }
 

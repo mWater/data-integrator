@@ -80,12 +80,20 @@ function effectiveDefinition(definition: IntegrationDefinition, overrides: Recor
   return { ...definition, ...overrides }
 }
 
+/** Per-run execution options. */
+export interface RunOptions {
+  /** Cold run: wipe /work and pass null previousState (the certification gate) */
+  cold?: boolean
+  /** Receives each job stderr line as it streams */
+  onLogLine?: (line: string) => void
+}
+
 /**
  * Executes one claimed run to completion, implementing the commit protocol:
  * job first, files into the store next, then a single transaction for rows,
  * snapshot registration, webhook consumption, state, and the status flip.
  */
-export async function executeRun(deps: ExecutorDeps, run: RunRow): Promise<void> {
+export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOptions): Promise<void> {
   const heartbeat = setInterval(() => {
     deps.pool.query("UPDATE app.runs SET heartbeat_at = now() WHERE id = $1", [run.id]).catch(() => {})
   }, HEARTBEAT_MS)
@@ -108,12 +116,15 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow): Promise<void>
     const secrets = definition.secrets?.length
       ? await getSecrets(deps.pool, requireKey(deps), definition.secrets)
       : {}
-    const stateResult = await deps.pool.query(
-      `SELECT state_out FROM app.runs
-       WHERE integration_id = $1 AND status = 'succeeded' ORDER BY finished_at DESC LIMIT 1`,
-      [run.integration_id]
-    )
-    const previousState = stateResult.rows[0]?.state_out ?? null
+    let previousState: unknown = null
+    if (!opts?.cold) {
+      const stateResult = await deps.pool.query(
+        `SELECT state_out FROM app.runs
+         WHERE integration_id = $1 AND status = 'succeeded' ORDER BY finished_at DESC LIMIT 1`,
+        [run.integration_id]
+      )
+      previousState = stateResult.rows[0]?.state_out ?? null
+    }
     const webhookEvents = await deps.pool.query(
       `SELECT id, payload FROM app.webhook_events
        WHERE integration_id = $1 AND run_id IS NULL ORDER BY received_at`,
@@ -121,6 +132,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow): Promise<void>
     )
 
     const workDir = path.join(deps.workRoot, run.integration_id)
+    if (opts?.cold) await rm(workDir, { recursive: true, force: true })
     await mkdir(workDir, { recursive: true })
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
 
@@ -141,7 +153,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow): Promise<void>
           ? { cpus: definition.limits.cpus, memoryMb: definition.limits.memoryMb, timeoutMs: definition.limits.timeoutMs }
           : undefined
       },
-      { onStderrLine: line => logParts.push(line) }
+      {
+        onStderrLine: line => {
+          logParts.push(line)
+          opts?.onLogLine?.(line)
+        }
+      }
     )
     const log = logParts.join("\n").slice(-256 * 1024)
 

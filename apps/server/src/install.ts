@@ -7,6 +7,9 @@ import { ensureLayer } from "./catalog.js"
 /** Published-identifier rule for all definition-borne ids. */
 const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
 
+/** Permitted ColumnSpec types; definitions arrive as untyped JSON. */
+const COLUMN_TYPES = ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
+
 /** Stable content hash of a definition (keys sorted recursively). */
 export function definitionHash(definition: IntegrationDefinition): string {
   const canonical = (value: unknown): unknown => {
@@ -32,11 +35,21 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   for (const dest of definition.destinations) {
     if (dest.kind === "table") {
       if (badId(dest.tableId)) throw new Error(`Invalid tableId: ${dest.tableId}`)
+      if (!["replace", "append", "merge"].includes(dest.action)) {
+        throw new Error(`Invalid action "${dest.action}" in ${dest.tableId}: use replace, append, or merge`)
+      }
       for (const c of dest.columns) {
         if (badId(c.id)) throw new Error(`Invalid column id: ${c.id} in ${dest.tableId}`)
+        if (!COLUMN_TYPES.includes(c.type)) {
+          throw new Error(`Invalid column type "${c.type}" for ${dest.tableId}.${c.id}: use ${COLUMN_TYPES.join(", ")}`)
+        }
       }
-      if (dest.action === "merge" && !dest.mergeColumns?.length) {
-        throw new Error(`Merge destination ${dest.tableId} requires mergeColumns`)
+      if (dest.action === "merge") {
+        if (!dest.mergeColumns?.length) throw new Error(`Merge destination ${dest.tableId} requires mergeColumns`)
+        const columnIds = new Set(dest.columns.map(c => c.id))
+        for (const key of dest.mergeColumns) {
+          if (!columnIds.has(key)) throw new Error(`mergeColumns entry "${key}" is not a column of ${dest.tableId}`)
+        }
       }
     } else {
       if (badId(dest.layerId)) throw new Error(`Invalid layerId: ${dest.layerId}`)

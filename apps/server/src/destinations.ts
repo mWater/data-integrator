@@ -21,6 +21,8 @@ function pgType(spec: ColumnSpec): string {
       return "geometry(Geometry, 4326)"
     case "json":
       return "jsonb"
+    default:
+      throw new Error(`Unknown column type "${(spec as ColumnSpec).type}" for column ${spec.id}`)
   }
 }
 
