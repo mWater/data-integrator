@@ -75,7 +75,9 @@ One contract, language-agnostic:
   lineage and reproducibility.
 - `/work` mount: persistent workspace, per integration (per session during design). Cache
   semantics: may be wiped at any time, correctness never depends on it, quota part of job
-  limits. `previousState` remains the only authoritative incremental state.
+  limits. `previousState` remains the only authoritative incremental state. Workspaces
+  are never shared: data used by multiple integrations is ingested once as a catalog
+  layer and consumed via `inputs`.
 - `/out` mount: raster artifacts (COGs) written here, referenced by path in `rasters[]`
 - Exit code nonzero = failed run; stderr tail becomes the error
 
@@ -150,6 +152,8 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
   contractual "programmatic query interface").
 - Dashboard (React): pipeline health, run history/lineage, data browser, map view.
   Follows web accessibility conventions.
+- Analytical dashboards: agent-designed React over design-time-frozen SQL, rendered
+  in a sandboxed iframe. See Dashboards.md.
 - Raster tiles: server renders PNG tiles from COGs via GDAL CLI (gdalwarp +
   color-relief), long-cache headers, snapshot-pinned URLs. Same approach as mWater's
   RasterTilesController.

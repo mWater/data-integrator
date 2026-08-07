@@ -17,6 +17,8 @@ yet started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
+- [Database.md](Database.md) - Postgres schema, migrations, and raster store layout
+- [Dashboards.md](Dashboards.md) - agent-designed dashboards: React over frozen SQL
 - [packages/runner](packages/runner/) - podman + gVisor job executor (working, tested)
 - [runtimes/](runtimes/) - node22 and python3.12 runtime images with job harnesses
   (working, tested)
