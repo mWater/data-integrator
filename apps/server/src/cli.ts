@@ -27,6 +27,7 @@ import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
 import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
+import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
 
 /** Directory holding the numbered .sql migration files. */
@@ -182,9 +183,11 @@ async function main(): Promise<number> {
       case "serve": {
         const store = new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store")
         const tiles = new TileRenderer(store, process.env.TILE_CACHE_PATH ?? "./tile-cache")
+        const model = buildModel()
+        const agent = model ? new AgentService(pool, { ...buildDeps(pool, new Runner()), model }) : null
         const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles).listen(port, () => {
-          console.log(`Serving on http://127.0.0.1:${port}/map`)
+        createApiServer(pool, tiles, agent).listen(port, () => {
+          console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
         })
         return await new Promise<number>(() => {})
       }

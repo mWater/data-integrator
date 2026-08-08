@@ -152,6 +152,9 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 
 - REST API: documented query interface over tabular data and the raster catalog (the
   contractual "programmatic query interface").
+- UI delivery: React SPA (apps/ui) built to static files and served by the server
+  itself (same origin: no CORS, no second deploy target). Design sessions stream
+  over SSE; user messages are plain POSTs.
 - Dashboard (React): pipeline health, run history/lineage, data browser, map view.
   Follows web accessibility conventions.
 - Analytical dashboards: agent-designed React over design-time-frozen SQL, rendered

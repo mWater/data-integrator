@@ -13,14 +13,14 @@ initial deployments in Angola and Madagascar.
 ## Status
 
 Early development. The job runner, runtime images, and definition format exist.
-The server has schema, migrations, install, a working run executor, and the
-first slice of HTTP API (layer discovery + map tiles). The first real library
-integrations (WorldPop population, CHIRPS monthly rainfall) run end to end via
-CLI and render on a map page with a time slider for time-series layers. The
-designer agent chassis works via CLI (`agent <integrationId>`): session loop,
-snippet and run tools, cold-run-gated finish, sessions serialized to Postgres.
-Scheduler, auth, agent steering/compaction/governance, and real UI are not
-started.
+The server has schema, migrations, install, a working run executor, and an HTTP
+API: layer discovery, map tiles, and the designer session API (REST + SSE). The
+first real library integrations (WorldPop population, CHIRPS monthly rainfall)
+run end to end and render on a map page with a time slider for time-series
+layers. The designer agent works via CLI and via the React UI (apps/ui, served
+by the server): live design sessions with streaming tool calls and job logs,
+cold-run-gated finish, sessions serialized to Postgres. Scheduler, auth, agent
+steering/compaction/governance, and the ops dashboard are not started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
@@ -60,8 +60,8 @@ The project is complete when all of these exist.
 - **Designer agent** *(chassis + CLI)* - The agent loop (see Agent Harness.md) that
   designs, tests, and maintains integrations: snippet and async job tools, steering,
   cold-run-gated finish. Model provider is swappable, down to self-hosted open weights.
-- **Agent UI** - React design-session interface: conversation, definition and code
-  views, streaming job logs, run results.
+- **Agent UI** *(first slice)* - React design-session interface: conversation, definition
+  and code views, streaming job logs, run results.
 - **Dashboard UI** - Pipeline health, run history and lineage, data browser, and map
   view. Follows web accessibility conventions.
 - **Analytical dashboards** - Agent-designed dashboards: React over frozen,

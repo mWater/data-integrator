@@ -6,9 +6,11 @@ import { tool } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 import pg from "pg"
 import { z } from "zod"
+import { Runner } from "@data-integrator/runner"
 import { migrate } from "../src/migrations.js"
 import { AgentSessionController } from "../src/agent/controller.js"
 import { DesignerImplementation, DesignerState, initialDesignerState } from "../src/agent/designer.js"
+import { AgentService, SessionEvent } from "../src/agent/service.js"
 import { AgentImplementation, ToolOutcome } from "../src/agent/types.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
@@ -220,6 +222,66 @@ test("designer: finish is rejected without a cold run of the current definition"
   const stale = { ...state, coldRun: { definitionHash: "not-the-current-hash", runId: "r1" } }
   const staleRejected = await designer.execute("finish", { summary: "done" }, stale, noEvents)
   assert.equal(staleRejected.finished, undefined)
+})
+
+test("service: create, send, event fanout, and detail reporting", async () => {
+  const model = new MockLanguageModelV4({
+    doGenerate: [
+      {
+        content: [
+          {
+            type: "tool-call" as const,
+            toolCallId: "c1",
+            toolName: "edit_code",
+            input: JSON.stringify({ oldString: "", newString: "print('hi')" })
+          }
+        ],
+        finishReason: "tool-calls" as const,
+        usage: USAGE,
+        warnings: []
+      },
+      { content: [{ type: "text" as const, text: "Code is in place." }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
+    ]
+  })
+  const service = new AgentService(pool, {
+    pool,
+    runner: { ensureReady: async () => {} } as unknown as Runner,
+    store: null as never,
+    workRoot: "/nonexistent",
+    secretKey: null,
+    images: {},
+    model
+  })
+
+  const sessionId = await service.createSession("svc_demo")
+  await assert.rejects(() => service.createSession("Bad-Id"), /Invalid integration id/)
+
+  const events: SessionEvent[] = []
+  const stopped = new Promise<void>(resolve => {
+    service.subscribe(sessionId, event => {
+      events.push(event)
+      if (event.type === "stop" || event.type === "error") resolve()
+    })
+  })
+  await service.send(sessionId, "write hello world")
+  await stopped
+
+  assert.deepEqual(
+    events.map(e => e.type),
+    ["user_message", "tool_start", "tool_end", "assistant_text", "stop"]
+  )
+  assert.equal(events.at(-1)?.reason, "awaiting_user")
+
+  const detail = await service.getSession(sessionId)
+  assert.ok(detail)
+  assert.equal(detail.integrationId, "svc_demo")
+  assert.equal(detail.state.definition.code, "print('hi')")
+  assert.equal(detail.certified, false)
+  assert.equal(detail.running, false)
+  assert.equal(detail.messages.length, 4)
+
+  const list = await service.listSessions()
+  assert.ok(list.some(s => s.id === sessionId && s.integrationId === "svc_demo"))
 })
 
 test("designer: query_table rejects non-SELECT and runs read-only", async () => {

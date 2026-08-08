@@ -1,0 +1,160 @@
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
+import { getSession, sendMessage, SessionDetail, SessionEvent, subscribeEvents } from "./api.js"
+import { Transcript } from "./Transcript.js"
+import { StatePanel } from "./StatePanel.js"
+
+/** One live item rendered below the stored transcript while the loop runs. */
+export interface LiveItem {
+  /** Item kind mirrors event types */
+  kind: "user" | "assistant" | "tool"
+  /** Text for user/assistant items */
+  text?: string
+  /** Tool name for tool items */
+  tool?: string
+  /** Tool input preview */
+  input?: unknown
+  /** Result prefix once the tool ends */
+  summary?: string
+  /** Streamed job log lines for tool items */
+  logs: string[]
+  /** True while the tool is still executing */
+  open: boolean
+}
+
+/** Props for the session view. */
+interface SessionViewProps {
+  /** Session to display */
+  sessionId: string
+}
+
+/** One design session: transcript + live stream on the left, state panel on the right. */
+export function SessionView({ sessionId }: SessionViewProps) {
+  const [detail, setDetail] = useState<SessionDetail | null>(null)
+  const [live, setLive] = useState<LiveItem[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [input, setInput] = useState("")
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const refresh = useCallback(() => {
+    getSession(sessionId).then(d => {
+      setDetail(d)
+      setBusy(d.running)
+    }, err => setError(err.message))
+  }, [sessionId])
+
+  useEffect(() => {
+    refresh()
+    return subscribeEvents(sessionId, event => onEvent(event))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+
+  /** Folds one SSE event into the live item list. */
+  function onEvent(event: SessionEvent) {
+    if (event.type === "stop" || event.type === "error") {
+      setLive([])
+      setBusy(false)
+      if (event.type === "error") setError(event.message ?? "unknown error")
+      refresh()
+      return
+    }
+    setLive(items => {
+      const next = [...items]
+      if (event.type === "user_message") next.push({ kind: "user", text: event.text, logs: [], open: false })
+      else if (event.type === "assistant_text") next.push({ kind: "assistant", text: event.text, logs: [], open: false })
+      else if (event.type === "tool_start")
+        next.push({ kind: "tool", tool: event.tool, input: event.input, logs: [], open: true })
+      else if (event.type === "tool_end") {
+        const item = next.findLast(i => i.kind === "tool" && i.tool === event.tool && i.open)
+        if (item) {
+          item.open = false
+          item.summary = event.summary
+        }
+      } else if (event.type === "job_log") {
+        const item = next.findLast(i => i.kind === "tool" && i.open)
+        if (item) item.logs = [...item.logs.slice(-199), event.line ?? ""]
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [live, detail])
+
+  async function onSend(e: FormEvent) {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text || busy) return
+    setError(null)
+    setBusy(true)
+    setInput("")
+    try {
+      await sendMessage(sessionId, text)
+    } catch (err) {
+      setBusy(false)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  if (!detail) return <main className="session-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
+
+  const finished = detail.status === "finished"
+  return (
+    <main className="session-page">
+      <div className="conversation">
+        <div className="session-head">
+          <h1>{detail.integrationId}</h1>
+          <span className={`chip chip-${detail.status}`}>{busy ? "working…" : detail.status}</span>
+          {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
+        </div>
+        <div className="messages">
+          <Transcript messages={detail.messages} />
+          {live.map((item, i) => (
+            <LiveBlock key={i} item={item} />
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        {error && <div className="error">{error}</div>}
+        <form className="composer" onSubmit={onSend}>
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                e.currentTarget.form?.requestSubmit()
+              }
+            }}
+            placeholder={finished ? "Session finished" : busy ? "Working — steering lands after the current step" : "Describe what to build or change…"}
+            disabled={finished || busy}
+            rows={3}
+          />
+          <button type="submit" disabled={finished || busy || !input.trim()}>Send</button>
+        </form>
+      </div>
+      <StatePanel detail={detail} />
+    </main>
+  )
+}
+
+/** Props for a live block. */
+interface LiveBlockProps {
+  /** Item to render */
+  item: LiveItem
+}
+
+/** Renders one in-flight item: user echo, assistant text, or a running tool. */
+function LiveBlock({ item }: LiveBlockProps) {
+  if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
+  if (item.kind === "assistant") return <div className="msg msg-assistant">{item.text}</div>
+  return (
+    <div className={`tool ${item.open ? "tool-open" : ""}`}>
+      <div className="tool-head">
+        <span className="tool-name">{item.tool}</span>
+        {item.open ? <span className="spinner" /> : <span className="tool-summary">{item.summary}</span>}
+      </div>
+      {item.logs.length > 0 && <pre className="tool-logs">{item.logs.join("\n")}</pre>}
+    </div>
+  )
+}
