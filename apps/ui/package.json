@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json && vite build"
   },
   "dependencies": {
+    "cronstrue": "^3.24.0",
     "maplibre-gl": "^6.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react"
+import cronstrue from "cronstrue"
 import { createSession, IntegrationSummary, listIntegrations } from "./api.js"
 
 /** Human-readable trigger summary. */
 export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): string {
   const parts = []
-  if (trigger.cron) parts.push(`cron ${trigger.cron}`)
+  if (trigger.cron) parts.push(cronText(trigger.cron))
   if (trigger.webhook) parts.push("webhook")
   return parts.join(" + ") || "manual"
+}
+
+/** Cron expression in plain language; unparseable expressions stay raw. */
+function cronText(cron: string): string {
+  try {
+    return cronstrue.toString(cron, { use24HourTimeFormat: true })
+  } catch {
+    return `cron ${cron}`
+  }
 }
 
 /** Props for the integration list. */

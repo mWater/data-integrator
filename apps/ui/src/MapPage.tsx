@@ -8,7 +8,7 @@ const tileUrl = (layerId: string, snapshotId: string) => `/tiles/${layerId}/${sn
 
 /** Props for the map page. */
 interface MapPageProps {
-  /** When set, only this layer starts visible and the view fits to it */
+  /** When set, this layer starts visible and the view fits to it */
   focusLayerId: string | null
 }
 
@@ -22,7 +22,19 @@ interface LayerControl {
   index: number
 }
 
-/** Catalog layers on a MapLibre map with visibility toggles and a time slider. */
+/** Fits the view to a layer's footprint. */
+function fitTo(map: MapLibreMap, layer: MapLayer) {
+  if (!layer.footprint) return
+  const bounds = new LngLatBounds()
+  for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
+  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40 })
+}
+
+/**
+ * Catalog layers on a MapLibre map. All layers start hidden (except a focused
+ * one); the side panel is the picker, with a time slider for visible
+ * time-series layers.
+ */
 export function MapPage({ focusLayerId }: MapPageProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -51,11 +63,10 @@ export function MapPage({ focusLayerId }: MapPageProps) {
     map.on("load", async () => {
       const { layers } = await listLayers()
       const withData = layers.filter(l => l.current_snapshot_id)
-      const bounds = new LngLatBounds()
       const next: LayerControl[] = []
       for (const layer of withData) {
         const index = Math.max(0, layer.snapshots.findIndex(s => s.id === layer.current_snapshot_id))
-        const visible = focusLayerId === null || layer.id === focusLayerId
+        const visible = layer.id === focusLayerId
         map.addSource(layer.id, { type: "raster", tiles: [tileUrl(layer.id, layer.snapshots[index].id)], tileSize: 256 })
         map.addLayer({
           id: layer.id,
@@ -64,13 +75,10 @@ export function MapPage({ focusLayerId }: MapPageProps) {
           layout: { visibility: visible ? "visible" : "none" },
           paint: { "raster-opacity": 0.8 }
         })
-        if (layer.footprint && (focusLayerId === null || layer.id === focusLayerId)) {
-          for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
-        }
+        if (visible) fitTo(map, layer)
         next.push({ layer, visible, index })
       }
       setControls(next)
-      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40 })
     })
 
     return () => map.remove()
@@ -94,32 +102,52 @@ export function MapPage({ focusLayerId }: MapPageProps) {
     )
   }
 
+  /** Shows a layer and zooms to its footprint. */
+  function show(control: LayerControl) {
+    update(control.layer.id, { visible: true })
+    fitTo(mapRef.current!, control.layer)
+  }
+
   return (
     <main className="map-page">
+      <aside className="map-side">
+        <h2>Layers</h2>
+        {controls.length === 0 && <p className="dim">No layers with data yet</p>}
+        {controls.map(control => {
+          const { layer, visible, index } = control
+          return (
+            <div key={layer.id} className="layer">
+              <div className="layer-row">
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  onChange={e => update(layer.id, { visible: e.target.checked })}
+                />
+                <button type="button" className="layer-name" onClick={() => show(control)}>
+                  {layer.name}
+                </button>
+              </div>
+              {visible && (
+                <div className="layer-detail">
+                  <span className="when">
+                    {layer.snapshots[index].observed_at.slice(0, layer.snapshots.length > 1 ? 7 : 10)}
+                  </span>
+                  {layer.snapshots.length > 1 && (
+                    <input
+                      type="range"
+                      min={0}
+                      max={layer.snapshots.length - 1}
+                      value={index}
+                      onChange={e => update(layer.id, { index: Number(e.target.value) })}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </aside>
       <div ref={container} className="map-container" />
-      <div className="map-panel">
-        {controls.length === 0 && "No layers with data yet"}
-        {controls.map(({ layer, visible, index }) => (
-          <div key={layer.id} className="layer">
-            <label>
-              <input type="checkbox" checked={visible} onChange={e => update(layer.id, { visible: e.target.checked })} />{" "}
-              {layer.name}
-            </label>
-            <span className="when">
-              {layer.snapshots[index].observed_at.slice(0, layer.snapshots.length > 1 ? 7 : 10)}
-            </span>
-            {layer.snapshots.length > 1 && (
-              <input
-                type="range"
-                min={0}
-                max={layer.snapshots.length - 1}
-                value={index}
-                onChange={e => update(layer.id, { index: Number(e.target.value) })}
-              />
-            )}
-          </div>
-        ))}
-      </div>
     </main>
   )
 }

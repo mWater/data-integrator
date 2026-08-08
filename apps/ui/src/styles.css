@@ -75,16 +75,23 @@ button.linkish:hover { color: #fff }
 .chip-running, .chip-queued { background: #d6e8ff; color: #0b5394 }
 
 /* Map page */
-.map-page { flex: 1; position: relative; min-height: 0 }
-.map-container { position: absolute; inset: 0 }
-.map-panel {
-  position: absolute; top: 10px; left: 10px; z-index: 1;
-  background: rgba(255, 255, 255, 0.94); padding: 8px 12px; border-radius: 6px;
-  font-size: 13px; max-width: 320px;
+.map-page { flex: 1; display: flex; min-height: 0 }
+.map-side {
+  width: 280px; flex: none; overflow-y: auto; padding: 14px 16px;
+  border-right: 1px solid #e3e3e3; background: #fff; font-size: 13px;
 }
-.map-panel .layer { margin: 6px 0 }
-.map-panel input[type=range] { width: 100%; margin: 4px 0 0 }
-.map-panel .when { color: #555; margin-left: 6px }
+.map-side h2 { margin: 0 0 8px; font-size: 15px }
+.map-side .layer { margin: 8px 0 }
+.map-side .layer-row { display: flex; align-items: center; gap: 7px }
+.map-side .layer-name {
+  background: none; border: none; padding: 0; font-size: 13px; text-align: left;
+  color: #0b5394; cursor: pointer;
+}
+.map-side .layer-name:hover { text-decoration: underline }
+.map-side .layer-detail { margin: 2px 0 0 23px }
+.map-side input[type=range] { width: 100%; margin: 4px 0 0 }
+.map-side .when { color: #555 }
+.map-container { flex: 1; min-width: 0; position: relative }
 
 /* Data preview */
 .data-scroll { overflow-x: auto }
