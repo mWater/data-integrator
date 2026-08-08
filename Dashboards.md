@@ -23,7 +23,7 @@ Dashboard {
   source       // single React file composing the component kit
   queries      // { name, sql, params: ParamSpec[], maxRows? }[]
   kitVersion   // component kit the bundle is pinned to
-  bundle       // compiled JS, immutable per version
+  bundle       // compiled { js, css } pair, immutable per version
 }
 ```
 
@@ -61,6 +61,36 @@ Free-form JSX is allowed at the edges; the design-session prompt hard-steers to 
 Composing a documented kit is a far easier task than inventing UI, which is what keeps
 output acceptable on the weaker self-hosted models required by OS-3.
 
+## Source contract
+
+`source` is one TypeScript React file whose default export is the root component. The
+only legal imports are `react` and `@kit/ui`; the build fails on anything else, which
+makes "free-form JSX, kit-only surface" enforceable rather than aspirational.
+
+```tsx
+/** Props supplied by the kit shell when mounting the dashboard. */
+interface DashboardProps {
+  /** BCP 47 locale for number/date formatting and kit strings. */
+  locale: string
+  /** Resolved theme tokens (deployment branding). */
+  theme: ThemeTokens
+  /** Filter/UI state restored from the host URL, if any; shape is dashboard-defined. */
+  initialState?: unknown
+  /** Reports state changes so the host can persist them for deep links. */
+  onStateChange?: (state: unknown) => void
+}
+
+/** dashboard.tsx */
+export default function Dashboard(props: DashboardProps): JSX.Element
+```
+
+- Data arrives through kit hooks, not props: `useQuery(name, params)` returns
+  `{ data, loading, error }`, dedupes in-flight calls, and drops stale responses;
+  `useMeta()` exposes freshness for "data as of" displays. Both ride the postMessage
+  bridge underneath.
+- Filter state is ordinary React state wired to kit controls (`FilterBar` is
+  value/onChange); `initialState`/`onStateChange` make it deep-linkable.
+
 ## Query execution
 
 - `POST /dashboards/:id/queries/:name` with `{ params }`. Authorization is per
@@ -74,12 +104,24 @@ output acceptable on the weaker self-hosted models required by OS-3.
 
 ## Build and rendering
 
-- Design-time compile in the job runner (esbuild in the node22 image). The bundle is
-  the artifact; nothing is generated or compiled at view time.
-- View time: sandboxed iframe (opaque origin, no cookies) with a strict CSP. The host
-  page holds credentials and exposes a postMessage bridge: `dashboard.query(name,
-  params)` for data, `dashboard.meta` for freshness, and short-lived tile tokens
-  scoped to the referenced layers for maps (the one network path the iframe needs).
+- Design-time compile in the job runner (node22 image): esbuild with ESM output and
+  `react`/`@kit/ui` external, plus Tailwind JIT over the source. Output is a JS + CSS
+  pair, typically tens of KB, stored immutably per version. Deliberately not a single
+  self-contained HTML: that would duplicate the 1-2 MB kit runtime (React, kit
+  components, ECharts, MapLibre) into every dashboard and defeat caching.
+- The kit runtime ships as versioned immutable static assets (`/kit/:version/...`),
+  shared by all dashboards on that kit version, long-cache.
+- View time: the server renders a small frame document (never stored) containing an
+  import map that pins `react`/`@kit/ui` to the kit version's assets, the stylesheet
+  links, and the mount script, under a strict CSP (`default-src 'none'`; script,
+  style, connect, and img limited to same-origin kit, bundle, and tile paths).
+- The host app mounts `<iframe sandbox="allow-scripts" src=".../frame?token=...">`.
+  Without `allow-same-origin` the frame has an opaque origin and sends no cookies;
+  frame, bundle, and tile requests instead carry a short-lived dashboard-scoped token
+  minted by the host page (same mechanism as tile tokens).
+- postMessage bridge: stored-query calls and freshness metadata (surfaced in source as
+  `useQuery`/`useMeta`) and state-change events for deep links. The host page holds
+  the viewer's credentials; the bridge proxies nothing but these calls.
 - Net effect: generated code can never see the viewer's session or reach anything an
   editor did not freeze. This bounds the editor-can-XSS-viewer risk that code output
   introduces.
@@ -140,5 +182,6 @@ install and view them; authoring changes need a model or a React-literate mainta
 | source | text | React source |
 | queries | jsonb | named parameterized SQL |
 | kit_version | text | |
-| bundle | text | compiled JS, immutable |
+| bundle_js | text | compiled ESM, immutable |
+| bundle_css | text | Tailwind JIT output, immutable |
 | created_at | timestamptz | |
