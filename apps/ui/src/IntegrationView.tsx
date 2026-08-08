@@ -16,10 +16,10 @@ type Tab = "runs" | "data" | "definition" | "code"
 /** Poll cadence while a run is in flight. */
 const POLL_MS = 2500
 
-/** One installed integration: destinations, run history, data, definition, code. */
+/** One installed integration: data, run history, definition, code. */
 export function IntegrationView({ integrationId, canDesign }: IntegrationViewProps) {
   const [detail, setDetail] = useState<IntegrationDetail | null>(null)
-  const [tab, setTab] = useState<Tab>("runs")
+  const [picked, setPicked] = useState<Tab | null>(null)
   const [error, setError] = useState<string | null>(null)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -70,12 +70,13 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
 
   const { definition } = detail
   const tableIds = detail.destinations.filter(d => d.kind === "table").map(d => d.id)
+  // Data leads when there is data to show; raster-only integrations lead with runs
+  const tab = picked ?? (tableIds.length > 0 ? "data" : "runs")
   return (
     <main className="list-page wide">
       <div className="session-head">
         <h1>{definition.name}</h1>
         {detail.status === "draft" && <span className="chip chip-draft">draft</span>}
-        <span className="chip">{definition.runtime}</span>
         <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
         <span style={{ flex: 1 }} />
         {canDesign && (
@@ -103,8 +104,8 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
       </div>
 
       <div className="tabs">
-        {(["runs", ...(tableIds.length ? ["data" as const] : []), "definition", "code"] as Tab[]).map(t => (
-          <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setTab(t)}>
+        {([...(tableIds.length ? ["data" as const] : []), "runs", "definition", "code"] as Tab[]).map(t => (
+          <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setPicked(t)}>
             {t}
           </button>
         ))}
@@ -137,11 +138,139 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
           </table>
         ))}
       {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} />}
-      {tab === "definition" && (
-        <pre className="pane pane-block">{JSON.stringify({ ...definition, code: undefined }, null, 2)}</pre>
-      )}
+      {tab === "definition" && <DefinitionTab definition={definition} />}
       {tab === "code" && <pre className="pane pane-block pane-code">{definition.code}</pre>}
     </main>
+  )
+}
+
+/** Column of a table destination as the definition declares it. */
+interface ColumnSpec {
+  /** Column id (SQL name) */
+  id: string
+  /** Display name */
+  name?: string
+  /** Column type */
+  type: string
+  /** Units of measure */
+  units?: string
+  /** Values when type is enum */
+  enumValues?: { id: string; name?: string }[]
+}
+
+/** Table destination fields the definition tab renders. */
+interface TableDest {
+  /** Destination kind */
+  kind: "table"
+  /** Table id */
+  tableId: string
+  /** Load action */
+  action: string
+  /** Merge key columns */
+  mergeColumns?: string[]
+  /** Declared columns */
+  columns: ColumnSpec[]
+}
+
+/** Raster destination fields the definition tab renders. */
+interface RasterDest {
+  /** Destination kind */
+  kind: "raster"
+  /** Layer id */
+  layerId: string
+  /** Display name */
+  name?: string
+  /** time-series or current-only */
+  temporality: string
+  /** Declared bands */
+  bands: { id: string; name?: string; units?: string }[]
+}
+
+/** Props for the definition tab. */
+interface DefinitionTabProps {
+  /** Installed definition (loosely typed JSON) */
+  definition: Record<string, unknown>
+}
+
+/** Human-readable definition: description, source, schedule, and per-destination schemas. */
+function DefinitionTab({ definition }: DefinitionTabProps) {
+  const source = definition.source as { name?: string; url?: string; license?: string } | undefined
+  const destinations = (definition.destinations ?? []) as (TableDest | RasterDest)[]
+  return (
+    <div className="definition-tab">
+      {typeof definition.description === "string" && <p>{definition.description}</p>}
+      <dl className="facts">
+        {source?.name && (
+          <>
+            <dt>Source</dt>
+            <dd>
+              {source.url ? (
+                <a href={source.url} target="_blank" rel="noreferrer">{source.name}</a>
+              ) : (
+                source.name
+              )}
+              {source.license ? ` · ${source.license}` : ""}
+            </dd>
+          </>
+        )}
+        <dt>Schedule</dt>
+        <dd>{triggerLabel((definition.trigger ?? {}) as { cron?: string })}</dd>
+      </dl>
+      {destinations.map(dest =>
+        dest.kind === "table" ? (
+          <div key={dest.tableId} className="dest-def">
+            <h3>
+              {dest.tableId}{" "}
+              <span className="dim">
+                table · {dest.action}
+                {dest.mergeColumns ? ` on ${dest.mergeColumns.join(", ")}` : ""}
+              </span>
+            </h3>
+            <table className="sessions">
+              <thead>
+                <tr><th>Column</th><th>Type</th><th>Units</th></tr>
+              </thead>
+              <tbody>
+                {dest.columns.map(column => (
+                  <tr key={column.id}>
+                    <td>
+                      <b>{column.name ?? column.id}</b>
+                      {column.name && column.name !== column.id && <div className="dim">{column.id}</div>}
+                    </td>
+                    <td>
+                      {column.type}
+                      {column.type === "enum" && column.enumValues
+                        ? `: ${column.enumValues.map(v => v.name ?? v.id).join(", ")}`
+                        : ""}
+                    </td>
+                    <td>{column.units ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div key={dest.layerId} className="dest-def">
+            <h3>
+              {dest.name ?? dest.layerId} <span className="dim">raster · {dest.temporality}</span>
+            </h3>
+            <table className="sessions">
+              <thead>
+                <tr><th>Band</th><th>Units</th></tr>
+              </thead>
+              <tbody>
+                {dest.bands.map(band => (
+                  <tr key={band.id}>
+                    <td>{band.name ?? band.id}</td>
+                    <td>{band.units ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+    </div>
   )
 }
 

@@ -68,7 +68,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       ) : (
         <table className="sessions">
           <thead>
-            <tr><th>Integration</th><th>Runtime</th><th>Trigger</th><th>Last run</th></tr>
+            <tr><th>Integration</th><th>Trigger</th><th>Last run</th></tr>
           </thead>
           <tbody>
             {integrations.map(i => (
@@ -78,7 +78,6 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
                   {i.status === "draft" && <span className="chip chip-draft">draft</span>}
                   <div className="dim">{i.id}</div>
                 </td>
-                <td>{i.runtime}</td>
                 <td>{triggerLabel(i.trigger)}</td>
                 <td>
                   {i.lastRunStatus ? (

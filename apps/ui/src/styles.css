@@ -113,6 +113,14 @@ button.linkish:hover { color: #fff }
 .map-side .when { color: #555 }
 .map-container { flex: 1; min-width: 0; position: relative }
 
+/* Definition tab */
+.definition-tab { max-width: 780px }
+.definition-tab .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 0 0 16px }
+.definition-tab .facts dt { color: #6a737d }
+.definition-tab .facts dd { margin: 0 }
+.dest-def { margin: 18px 0 }
+.dest-def h3 { font-size: 14px; margin: 0 0 6px }
+
 /* Data preview */
 .data-scroll { overflow-x: auto }
 .data-table td, .data-table th { white-space: nowrap; font-size: 12.5px }
