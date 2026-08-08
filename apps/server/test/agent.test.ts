@@ -11,6 +11,7 @@ import { IntegrationDefinition } from "@data-integrator/definitions"
 import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
 import { getIntegration, listIntegrations } from "../src/integrations.js"
+import { listSources } from "../src/sources.js"
 import { AgentSessionController } from "../src/agent/controller.js"
 import { DesignerImplementation, DesignerState, errorSignature, initialDesignerState } from "../src/agent/designer.js"
 import { AgentService, SessionEvent } from "../src/agent/service.js"
@@ -536,6 +537,17 @@ test("integrations API: list and detail reflect an installed definition", async 
   assert.deepEqual(detail.destinations, [{ kind: "table", id: "api_demo_rows", count: 0 }])
 
   assert.equal(await getIntegration(pool, "nope"), null)
+})
+
+test("sources: the catalog lists destination tables of installed integrations", async () => {
+  const sources = await listSources(pool)
+  const table = sources.find(s => s.kind === "table" && s.id === "api_demo_rows")
+  assert.ok(table)
+  assert.equal(table.integrationId, "api_demo")
+  assert.equal(table.integrationName, "API Demo")
+  assert.equal(table.rows, 0) // table exists from install; nothing has run
+  assert.equal(table.columns, 1)
+  assert.equal(table.updatedAt, null)
 })
 
 test("integrations: design-session installs stay draft until promoted", async () => {

@@ -26,7 +26,8 @@ installed integrations are untouched until finish saves the certified
 definition, so editing a live integration is safe. Local accounts work:
 email + password (scrypt, lockout), cookie sessions, admin/editor/viewer roles
 enforced server-side, users managed via CLI. The UI covers the core operator
-loop: browse integrations, preview table data, run manually, view layers on the
+loop: browse the data catalog (tables and raster layers, the landing page),
+browse integrations, preview table data, run manually, view layers on the
 in-app map (time slider included), and design or edit integrations with the
 agent. Derived integrations work: declared
 inputs are materialized read-only at /in (catalog snapshots as COGs, table

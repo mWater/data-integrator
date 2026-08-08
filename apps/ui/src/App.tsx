@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getMe, logout, User } from "./api.js"
+import { DataSources } from "./DataSources.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
 import { Login } from "./Login.js"
@@ -15,6 +16,8 @@ interface Route {
   integrationId: string | null
   /** True on the sessions list page */
   sessions: boolean
+  /** True on the integrations list page */
+  integrations: boolean
   /** True on the map page */
   map: boolean
   /** Layer to focus when opening the map from an integration */
@@ -33,6 +36,7 @@ function parseHash(): Route {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
     sessions: hash === "#/sessions",
+    integrations: hash === "#/integrations",
     map: map !== null,
     mapLayerId: map?.[1] ?? null,
     mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
@@ -65,8 +69,8 @@ export function App() {
       <header className="topbar">
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
-          <a href="#/">Integrations</a>
-          <a href="#/sessions">Agent activity</a>
+          <a href="#/">Data</a>
+          <a href="#/integrations">Integrations</a>
           <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />
@@ -86,8 +90,10 @@ export function App() {
         <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
       ) : route.sessions ? (
         <SessionList />
-      ) : (
+      ) : route.integrations ? (
         <IntegrationList canDesign={canDesign} />
+      ) : (
+        <DataSources />
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations } from "./integrations.js"
+import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
@@ -306,6 +307,11 @@ async function route(
     // Snapshot-pinned URL: content never changes, cache hard
     res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
     res.end(png)
+    return
+  }
+
+  if (pathname === "/api/sources") {
+    json(res, 200, { sources: await listSources(pool) })
     return
   }
 

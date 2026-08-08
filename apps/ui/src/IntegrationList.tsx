@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import cronstrue from "cronstrue"
-import { createSession, IntegrationSummary, listIntegrations } from "./api.js"
+import { createSession, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
 
 /** Human-readable trigger summary. */
 export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): string {
@@ -28,10 +28,15 @@ interface IntegrationListProps {
 /** Landing page: installed integrations plus the new-integration flow. */
 export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
+  const [openSessions, setOpenSessions] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     listIntegrations().then(r => setIntegrations(r.integrations), err => setError(err.message))
+    listSessions().then(
+      r => setOpenSessions(r.sessions.filter(s => s.status !== "finished").length),
+      () => {}
+    )
   }, [])
 
   async function onCreate() {
@@ -50,6 +55,9 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       {canDesign && (
         <div className="new-session">
           <button onClick={onCreate}>New Integration</button>
+          <a className="dim-link" href="#/sessions">
+            Agent activity{openSessions > 0 ? ` (${openSessions} open)` : ""}
+          </a>
         </div>
       )}
       {error && <div className="error">{error}</div>}

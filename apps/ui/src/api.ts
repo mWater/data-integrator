@@ -253,6 +253,33 @@ export function listLayers(sessionId?: string): Promise<{ layers: MapLayer[] }> 
   return request(sessionId ? `/layers?session=${encodeURIComponent(sessionId)}` : "/layers")
 }
 
+/** One data source in the catalog: a destination table or a raster layer. */
+export interface DataSource {
+  /** Source kind */
+  kind: "table" | "raster"
+  /** tableId or layerId */
+  id: string
+  /** Display name */
+  name: string
+  /** Owning integration id */
+  integrationId: string
+  /** Owning integration display name */
+  integrationName: string
+  /** Row count (tables); null before first run */
+  rows: number | null
+  /** Declared column count (tables) */
+  columns: number | null
+  /** Promoted snapshot count (rasters) */
+  snapshots: number | null
+  /** Latest data time (ISO) */
+  updatedAt: string | null
+}
+
+/** Lists the data catalog (tables + raster layers), freshest first. */
+export function listSources(): Promise<{ sources: DataSource[] }> {
+  return request("/api/sources")
+}
+
 /** Lists installed integrations. */
 export function listIntegrations(): Promise<{ integrations: IntegrationSummary[] }> {
   return request("/api/integrations")

@@ -165,7 +165,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {detail.scratchLayers.length > 0 && <a href={`#/map?session=${detail.id}`}>Map preview</a>}
           <span className="spacer" />
           <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
-            {showDetails ? "Hide details" : "Details"}
+            {showDetails ? "Hide details" : "Show Details"}
           </button>
         </div>
         <div className="messages">
