@@ -6,6 +6,7 @@ import pg from "pg"
 import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
+import { getIntegration, listIntegrations } from "./integrations.js"
 
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
@@ -115,6 +116,19 @@ async function route(
     // Snapshot-pinned URL: content never changes, cache hard
     res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
     res.end(png)
+    return
+  }
+
+  if (url === "/api/integrations") {
+    json(res, 200, { integrations: await listIntegrations(pool) })
+    return
+  }
+
+  const integrationMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)$/)
+  if (integrationMatch) {
+    const detail = await getIntegration(pool, integrationMatch[1])
+    if (!detail) json(res, 404, { error: "unknown integration" })
+    else json(res, 200, detail)
     return
   }
 

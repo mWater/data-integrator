@@ -1,14 +1,32 @@
 import { useEffect, useState } from "react"
+import { IntegrationList } from "./IntegrationList.js"
+import { IntegrationView } from "./IntegrationView.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 
-/** Current location parsed from the hash: #/session/<id> or the list. */
-function parseHash(): { sessionId: string | null } {
-  const match = window.location.hash.match(/^#\/session\/([0-9a-f-]+)$/)
-  return { sessionId: match ? match[1] : null }
+/** Parsed hash route. */
+interface Route {
+  /** Design session id, when on a session page */
+  sessionId: string | null
+  /** Integration id, when on an integration page */
+  integrationId: string | null
+  /** True on the sessions list page */
+  sessions: boolean
 }
 
-/** Hash-routed app shell: session list or a single design session. */
+/** Current location parsed from the hash. */
+function parseHash(): Route {
+  const hash = window.location.hash
+  const session = hash.match(/^#\/session\/([0-9a-f-]+)$/)
+  const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
+  return {
+    sessionId: session ? session[1] : null,
+    integrationId: integration ? integration[1] : null,
+    sessions: hash === "#/sessions"
+  }
+}
+
+/** Hash-routed app shell: integrations (landing), sessions, and detail pages. */
 export function App() {
   const [route, setRoute] = useState(parseHash())
 
@@ -23,11 +41,20 @@ export function App() {
       <header className="topbar">
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
-          <a href="#/">Sessions</a>
+          <a href="#/">Integrations</a>
+          <a href="#/sessions">Sessions</a>
           <a href="/map" target="_blank" rel="noreferrer">Map</a>
         </nav>
       </header>
-      {route.sessionId ? <SessionView sessionId={route.sessionId} /> : <SessionList />}
+      {route.sessionId ? (
+        <SessionView sessionId={route.sessionId} />
+      ) : route.integrationId ? (
+        <IntegrationView integrationId={route.integrationId} />
+      ) : route.sessions ? (
+        <SessionList />
+      ) : (
+        <IntegrationList />
+      )}
     </div>
   )
 }

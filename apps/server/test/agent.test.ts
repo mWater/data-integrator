@@ -7,7 +7,10 @@ import { MockLanguageModelV4 } from "ai/test"
 import pg from "pg"
 import { z } from "zod"
 import { Runner } from "@data-integrator/runner"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 import { migrate } from "../src/migrations.js"
+import { installIntegration } from "../src/install.js"
+import { getIntegration, listIntegrations } from "../src/integrations.js"
 import { AgentSessionController } from "../src/agent/controller.js"
 import { DesignerImplementation, DesignerState, initialDesignerState } from "../src/agent/designer.js"
 import { AgentService, SessionEvent } from "../src/agent/service.js"
@@ -282,6 +285,37 @@ test("service: create, send, event fanout, and detail reporting", async () => {
 
   const list = await service.listSessions()
   assert.ok(list.some(s => s.id === sessionId && s.integrationId === "svc_demo"))
+})
+
+test("integrations API: list and detail reflect an installed definition", async () => {
+  const definition: IntegrationDefinition = {
+    id: "api_demo",
+    name: "API Demo",
+    trigger: { cron: "0 0 * * *" },
+    runtime: "node22",
+    destinations: [
+      { kind: "table", tableId: "api_demo_rows", action: "replace", columns: [{ id: "v", type: "number" }] }
+    ],
+    code: "export default async function run() { return {} }",
+    contract: 2
+  }
+  await installIntegration(pool, definition)
+
+  const list = await listIntegrations(pool)
+  const summary = list.find(i => i.id === "api_demo")
+  assert.ok(summary)
+  assert.equal(summary.name, "API Demo")
+  assert.equal(summary.destinations, 1)
+  assert.equal(summary.lastRunStatus, null)
+
+  const detail = await getIntegration(pool, "api_demo")
+  assert.ok(detail)
+  assert.equal(detail.definition.name, "API Demo")
+  assert.equal(detail.runs.length, 0)
+  // ensureTable ran at install, so the destination exists with zero rows
+  assert.deepEqual(detail.destinations, [{ kind: "table", id: "api_demo_rows", count: 0 }])
+
+  assert.equal(await getIntegration(pool, "nope"), null)
 })
 
 test("designer: query_table rejects non-SELECT and runs read-only", async () => {

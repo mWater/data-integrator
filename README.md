@@ -14,7 +14,8 @@ initial deployments in Angola and Madagascar.
 
 Early development. The job runner, runtime images, and definition format exist.
 The server has schema, migrations, install, a working run executor, and an HTTP
-API: layer discovery, map tiles, and the designer session API (REST + SSE). The
+API: layer discovery, map tiles, integrations browse, and the designer session
+API (REST + SSE). The
 first real library integrations (WorldPop population, CHIRPS monthly rainfall)
 run end to end and render on a map page with a time slider for time-series
 layers. The designer agent works via CLI and via the React UI (apps/ui, served

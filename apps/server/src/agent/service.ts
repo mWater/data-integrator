@@ -67,10 +67,17 @@ export class AgentService {
     this.controller = new AgentSessionController(pool, new DesignerImplementation(deps))
   }
 
-  /** Creates a new designer session for an integration id. */
+  /**
+   * Creates a new designer session for an integration id. When the integration
+   * is already installed, the session starts from its installed definition so
+   * the agent edits rather than re-derives.
+   */
   async createSession(integrationId: string): Promise<string> {
     if (!ID_PATTERN.test(integrationId)) throw new Error(`Invalid integration id: ${integrationId}`)
-    return await this.controller.createSession(initialDesignerState(integrationId))
+    const state = initialDesignerState(integrationId)
+    const installed = await this.pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
+    if (installed.rows.length > 0) state.definition = installed.rows[0].definition
+    return await this.controller.createSession(state)
   }
 
   /** Lists designer sessions, newest first. */

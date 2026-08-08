@@ -94,12 +94,88 @@ export interface SessionEvent {
   message?: string
 }
 
+/** Summary row from GET /api/integrations. */
+export interface IntegrationSummary {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: string
+  /** Runtime image id */
+  runtime: string
+  /** Trigger spec */
+  trigger: { cron?: string; webhook?: boolean }
+  /** Number of declared destinations */
+  destinations: number
+  /** Whether the scheduler considers it */
+  enabled: boolean
+  /** Status of the most recent run */
+  lastRunStatus: string | null
+  /** Time of the most recent run (ISO) */
+  lastRunAt: string | null
+}
+
+/** One run in an integration's history. */
+export interface RunSummary {
+  /** Run id */
+  id: string
+  /** What triggered it */
+  trigger: string
+  /** Terminal or current status */
+  status: string
+  /** Start time (ISO) */
+  startedAt: string | null
+  /** Finish time (ISO) */
+  finishedAt: string | null
+  /** Row/snapshot stats recorded on success */
+  stats: { rows?: Record<string, number>; snapshots?: number; durationMs?: number } | null
+  /** Error message on failure */
+  error: string | null
+}
+
+/** Per-destination stored-data stats. */
+export interface DestinationStats {
+  /** Destination kind */
+  kind: "table" | "raster"
+  /** tableId or layerId */
+  id: string
+  /** Row or snapshot count; null before the first run */
+  count: number | null
+}
+
+/** Full detail from GET /api/integrations/:id. */
+export interface IntegrationDetail {
+  /** Integration id */
+  id: string
+  /** Installed definition */
+  definition: Definition
+  /** Deployment overrides */
+  overrides: unknown
+  /** Whether the scheduler considers it */
+  enabled: boolean
+  /** Install/update time (ISO) */
+  updatedAt: string
+  /** Recent runs, newest first */
+  runs: RunSummary[]
+  /** Stored-data stats per destination */
+  destinations: DestinationStats[]
+}
+
 /** Fetches JSON, throwing on HTTP errors with the server's message. */
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
   return body as T
+}
+
+/** Lists installed integrations. */
+export function listIntegrations(): Promise<{ integrations: IntegrationSummary[] }> {
+  return request("/api/integrations")
+}
+
+/** Fetches one integration's detail. */
+export function getIntegration(id: string): Promise<IntegrationDetail> {
+  return request(`/api/integrations/${id}`)
 }
 
 /** Lists designer sessions. */

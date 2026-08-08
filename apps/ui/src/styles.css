@@ -46,6 +46,19 @@ table.sessions th, table.sessions td { text-align: left; padding: 10px 14px; bor
 table.sessions tbody tr { cursor: pointer }
 table.sessions tbody tr:hover { background: #f0f6fc }
 
+.dim { color: #6a737d; font-size: 12.5px }
+.list-page.wide { max-width: 980px }
+.dest-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 }
+.dest-card {
+  background: #fff; border: 1px solid #e3e7ea; border-radius: 8px;
+  padding: 10px 16px; min-width: 160px;
+}
+.pane-block { background: #fff; border: 1px solid #e3e7ea; border-radius: 8px; max-height: 480px }
+.pane-block.pane-code { background: #21262c }
+.chip-succeeded { background: #d9efd9; color: #216e21 }
+.chip-failed, .chip-timeout { background: #fdecea; color: #b3261e }
+.chip-running, .chip-queued { background: #d6e8ff; color: #0b5394 }
+
 /* Session view */
 .session-page { flex: 1; display: flex; min-height: 0 }
 .conversation { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px }
