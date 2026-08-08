@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import { getMe, logout, User } from "./api.js"
+import { DashboardList } from "./DashboardList.js"
+import { DashboardView } from "./DashboardView.js"
 import { DataSources } from "./DataSources.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
@@ -18,6 +20,10 @@ interface Route {
   sessions: boolean
   /** True on the integrations list page */
   integrations: boolean
+  /** True on the dashboards list page */
+  dashboards: boolean
+  /** Dashboard id, when on a dashboard viewer page */
+  dashboardId: string | null
   /** True on the map page */
   map: boolean
   /** Layer to focus when opening the map from an integration */
@@ -31,12 +37,15 @@ function parseHash(): Route {
   const [hash, query] = window.location.hash.split("?")
   const session = hash.match(/^#\/session\/([0-9a-f-]+)$/)
   const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
+  const dashboard = hash.match(/^#\/dashboard\/([a-z][a-z0-9_-]*)$/)
   const map = hash.match(/^#\/map(?:\/([a-z][a-z0-9_]*))?$/)
   return {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
     sessions: hash === "#/sessions",
     integrations: hash === "#/integrations",
+    dashboards: hash === "#/dashboards",
+    dashboardId: dashboard ? dashboard[1] : null,
     map: map !== null,
     mapLayerId: map?.[1] ?? null,
     mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
@@ -71,6 +80,7 @@ export function App() {
         <nav>
           <a href="#/">Data</a>
           <a href="#/integrations">Integrations</a>
+          <a href="#/dashboards">Dashboards</a>
           <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />
@@ -88,6 +98,10 @@ export function App() {
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
       ) : route.map ? (
         <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
+      ) : route.dashboardId ? (
+        <DashboardView dashboardId={route.dashboardId} />
+      ) : route.dashboards ? (
+        <DashboardList canDesign={canDesign} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (

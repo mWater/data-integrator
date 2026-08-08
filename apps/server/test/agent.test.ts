@@ -415,7 +415,7 @@ test("service: create, send, event fanout, and detail reporting", async () => {
       { content: [{ type: "text" as const, text: "Code is in place." }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
     ]
   })
-  const service = new AgentService(pool, {
+  const service = AgentService.forDesigner(pool, {
     pool,
     runner: { ensureReady: async () => {} } as unknown as Runner,
     store: null as never,

@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json && vite build"
   },
   "dependencies": {
+    "@data-integrator/kit": "workspace:*",
     "cronstrue": "^3.24.0",
     "dompurify": "^3.4.13",
     "maplibre-gl": "^6.2.0",

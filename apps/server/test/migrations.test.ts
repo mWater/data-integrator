@@ -125,8 +125,8 @@ test("dashboards.current_version cannot dangle", { skip: !AVAILABLE }, async () 
     /foreign key/
   )
   await pool.query(
-    `INSERT INTO app.dashboard_versions (dashboard_id, version, source, queries, kit_version, bundle)
-     VALUES ('dash', 1, '', '[]', 'v1', '')`
+    `INSERT INTO app.dashboard_versions (dashboard_id, version, source, queries, kit_version, bundle_js, bundle_css)
+     VALUES ('dash', 1, '', '[]', 'v1', '', '')`
   )
   await pool.query(`UPDATE app.dashboards SET current_version = 1 WHERE id = 'dash'`)
 })

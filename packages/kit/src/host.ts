@@ -1,0 +1,135 @@
+/**
+ * Host-side frame mounting: builds the sandboxed srcdoc iframe for a compiled
+ * dashboard and services its bridge requests with the host's credentials.
+ * Imported by the app UI (never by dashboard code).
+ */
+
+import type { FrameInit, FrameMessage, HostMessage, Row } from "./bridge.js"
+
+/** Host callbacks that service frame requests using the viewer's session. */
+export interface FrameHandlers {
+  /** Executes a stored query by name with typed parameter values. */
+  runQuery(name: string, params: Record<string, unknown>): Promise<Row[]>
+  /** Fetches raster tile bytes for a catalog layer. */
+  fetchTile(layerId: string, z: number, x: number, y: number): Promise<ArrayBuffer>
+  /** Called when the frame reports a runtime error. */
+  onError?(message: string, stack?: string): void
+  /** Called when the dashboard reports UI state for deep links. */
+  onStateChange?(state: unknown): void
+}
+
+/** Options for mounting a dashboard frame. */
+export interface DashboardFrameOptions {
+  /** Element the iframe is appended to; the iframe fills it. */
+  container: HTMLElement
+  /** Compiled dashboard ESM (bundle_js). */
+  bundleJs: string
+  /** Compiled dashboard stylesheet (bundle_css). */
+  bundleCss: string
+  /** Absolute base path of the kit runtime assets, e.g. "/kit/1". */
+  kitBase: string
+  /** Resolved init payload sent on handshake. */
+  init: FrameInit
+  /** Request handlers. */
+  handlers: FrameHandlers
+}
+
+/** A mounted dashboard frame. */
+export interface DashboardFrame {
+  /** The sandboxed iframe element. */
+  iframe: HTMLIFrameElement
+  /** Detaches listeners and removes the iframe. */
+  destroy(): void
+}
+
+function escapeInlineScript(js: string): string {
+  return js.replace(/<\/script/gi, "<\\/script")
+}
+
+function frameHtml(opts: DashboardFrameOptions): string {
+  const origin = window.location.origin
+  const base = origin + opts.kitBase
+  const importMap = JSON.stringify({
+    imports: {
+      react: `${base}/react.js`,
+      "react/jsx-runtime": `${base}/jsx-runtime.js`,
+      "react-dom/client": `${base}/react-dom-client.js`,
+      "@kit/ui": `${base}/kit.js`
+    }
+  })
+  const csp = [
+    "default-src 'none'",
+    `script-src ${origin} 'unsafe-inline' blob:`,
+    "worker-src blob:",
+    `style-src ${origin} 'unsafe-inline'`,
+    "img-src data: blob:",
+    "connect-src 'none'"
+  ].join("; ")
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<script type="importmap">${importMap}</script>
+<link rel="stylesheet" href="${base}/kit.css">
+<style>${opts.bundleCss}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">${escapeInlineScript(opts.bundleJs)}</script>
+</body>
+</html>`
+}
+
+/** Mounts a compiled dashboard in a sandboxed iframe and services its bridge. */
+export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame {
+  const iframe = document.createElement("iframe")
+  iframe.setAttribute("sandbox", "allow-scripts")
+  iframe.style.width = "100%"
+  iframe.style.height = "100%"
+  iframe.style.border = "0"
+  iframe.srcdoc = frameHtml(opts)
+
+  const post = (msg: HostMessage, transfer?: Transferable[]) => {
+    iframe.contentWindow?.postMessage(msg, "*", transfer ?? [])
+  }
+
+  const onMessage = (event: MessageEvent) => {
+    if (event.source !== iframe.contentWindow) return
+    const msg = event.data as FrameMessage
+    if (!msg || typeof msg !== "object") return
+    switch (msg.type) {
+      case "di:ready":
+        post({ type: "di:init", init: opts.init })
+        break
+      case "di:query":
+        opts.handlers.runQuery(msg.name, msg.params).then(
+          (rows) => post({ type: "di:query-result", id: msg.id, ok: true, rows }),
+          (err: Error) => post({ type: "di:query-result", id: msg.id, ok: false, error: err.message })
+        )
+        break
+      case "di:tile":
+        opts.handlers.fetchTile(msg.layerId, msg.z, msg.x, msg.y).then(
+          (data) => post({ type: "di:tile-result", id: msg.id, ok: true, data }, [data]),
+          (err: Error) => post({ type: "di:tile-result", id: msg.id, ok: false, error: err.message })
+        )
+        break
+      case "di:error":
+        opts.handlers.onError?.(msg.message, msg.stack)
+        break
+      case "di:state":
+        opts.handlers.onStateChange?.(msg.state)
+        break
+    }
+  }
+
+  window.addEventListener("message", onMessage)
+  opts.container.appendChild(iframe)
+  return {
+    iframe,
+    destroy() {
+      window.removeEventListener("message", onMessage)
+      iframe.remove()
+    }
+  }
+}

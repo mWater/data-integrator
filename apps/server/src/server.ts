@@ -1,6 +1,7 @@
 import { createServer, Server, IncomingMessage, ServerResponse } from "node:http"
 import { createReadStream } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
+import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
@@ -12,6 +13,14 @@ import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
+import {
+  canViewDashboard,
+  executeDashboardQuery,
+  getDashboard,
+  listDashboards,
+  saveDashboard
+} from "./dashboards/service.js"
+import { DashboardQuery, executeStoredQuery } from "./dashboards/queries.js"
 import {
   authenticate,
   AuthUser,
@@ -27,6 +36,16 @@ import {
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
 
+/** Kit runtime assets directory (@data-integrator/kit/assets). */
+const KIT_ASSETS = path.join(
+  path.dirname(createRequire(import.meta.url).resolve("@data-integrator/kit")),
+  "..",
+  "assets"
+)
+
+/** Matches /kit/:version/:file — the public, immutable kit runtime assets. */
+const KIT_PATH = /^\/kit\/[a-z0-9.-]+\/([a-z0-9-]+\.(?:js|css))$/
+
 /** Built UI directory served as the SPA (overridable for dev layouts). */
 const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "ui", "dist")
 
@@ -34,7 +53,7 @@ const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "u
 const TILE_PATH = /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
-const SESSION_PATH = /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop)?$/
+const SESSION_PATH = /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*)?$/
 
 /** Content types for served static files. */
 const MIME: Record<string, string> = {
@@ -69,11 +88,12 @@ export function createApiServer(
   tiles: TileRenderer,
   agent: AgentService | null = null,
   runs: RunService | null = null,
-  store: RasterStore | null = null
+  store: RasterStore | null = null,
+  dashboardAgent: AgentService | null = null
 ): Server {
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -121,12 +141,33 @@ async function route(
   agent: AgentService | null,
   runs: RunService | null,
   store: RasterStore | null,
+  dashboardAgent: AgentService | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
   const url = req.url ?? "/"
   const [pathname, search] = url.split("?")
   const searchParams = new URLSearchParams(search ?? "")
+
+  // Kit runtime assets are public open-source code; versioned URLs cache hard
+  const kitMatch = pathname.match(KIT_PATH)
+  if (kitMatch && req.method === "GET") {
+    const file = path.join(KIT_ASSETS, kitMatch[1])
+    try {
+      await stat(file)
+    } catch {
+      json(res, 404, { error: "no such kit asset" })
+      return
+    }
+    res.writeHead(200, {
+      "content-type": kitMatch[1].endsWith(".css") ? "text/css" : "text/javascript",
+      "cache-control": "public, max-age=31536000, immutable",
+      // Module scripts fetch with CORS from the opaque-origin dashboard frame
+      "access-control-allow-origin": "*"
+    })
+    createReadStream(file).pipe(res)
+    return
+  }
 
   // The API contract is public documentation (no data)
   if (pathname === "/api/openapi.json") {
@@ -355,8 +396,63 @@ async function route(
     return
   }
 
+  if (pathname === "/api/dashboards") {
+    if (req.method === "POST") {
+      if (user.role === "viewer") {
+        json(res, 403, { error: "Viewers cannot save dashboards" })
+        return
+      }
+      const body = await readJsonBody(req)
+      const result = await saveDashboard(pool, {
+        id: String(body.id ?? ""),
+        name: String(body.name ?? ""),
+        source: String(body.source ?? ""),
+        queries: (body.queries ?? []) as never
+      })
+      if (result.ok) json(res, 201, { version: result.version })
+      else json(res, 400, { errors: result.errors })
+    } else {
+      json(res, 200, { dashboards: await listDashboards(pool) })
+    }
+    return
+  }
+
+  const dashboardMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)$/)
+  if (dashboardMatch) {
+    if (!canViewDashboard(user, dashboardMatch[1])) {
+      json(res, 403, { error: "no access to this dashboard" })
+      return
+    }
+    const detail = await getDashboard(pool, dashboardMatch[1])
+    if (!detail) json(res, 404, { error: "unknown dashboard" })
+    else json(res, 200, detail)
+    return
+  }
+
+  const dashboardQueryMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/queries\/([a-z][a-z0-9_]*)$/)
+  if (dashboardQueryMatch && req.method === "POST") {
+    if (!canViewDashboard(user, dashboardQueryMatch[1])) {
+      json(res, 403, { error: "no access to this dashboard" })
+      return
+    }
+    const body = await readJsonBody(req)
+    try {
+      const rows = await executeDashboardQuery(
+        pool,
+        dashboardQueryMatch[1],
+        dashboardQueryMatch[2],
+        (body.params ?? {}) as Record<string, unknown>
+      )
+      if (rows === null) json(res, 404, { error: "unknown dashboard or query" })
+      else json(res, 200, { rows })
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
+    return
+  }
+
   if (pathname.startsWith("/api/sessions")) {
-    await routeSessions(agent, user, req, res, url)
+    await routeSessions(pool, agent, dashboardAgent, user, req, res, url)
     return
   }
 
@@ -374,7 +470,9 @@ async function route(
 
 /** Handles the /api/sessions routes; design actions need editor or admin. */
 async function routeSessions(
+  pool: pg.Pool,
   agent: AgentService | null,
+  dashboardAgent: AgentService | null,
   user: AuthUser,
   req: IncomingMessage,
   res: ServerResponse,
@@ -384,19 +482,36 @@ async function routeSessions(
     json(res, 403, { error: "Viewers cannot run design sessions" })
     return
   }
-  if (!agent) {
+  if (!agent && !dashboardAgent) {
     json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
     return
+  }
+
+  /** Service owning a stored session, resolved by its kind column. */
+  const serviceFor = async (sessionId: string): Promise<AgentService | null> => {
+    const row = await pool.query("SELECT kind FROM app.agent_sessions WHERE id = $1", [sessionId])
+    if (row.rows.length === 0) return null
+    return row.rows[0].kind === "dashboard" ? dashboardAgent : agent
   }
 
   if (url === "/api/sessions") {
     if (req.method === "POST") {
       const body = await readJsonBody(req)
-      const integrationId = body.integrationId == null || body.integrationId === "" ? undefined : String(body.integrationId)
-      const sessionId = await agent.createSession(integrationId)
+      const kind = body.kind === "dashboard" ? "dashboard" : "designer"
+      const service = kind === "dashboard" ? dashboardAgent : agent
+      if (!service) {
+        json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+        return
+      }
+      const bindId = kind === "dashboard" ? body.dashboardId : body.integrationId
+      const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId))
       json(res, 201, { sessionId })
     } else {
-      json(res, 200, { sessions: await agent.listSessions() })
+      const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions()])
+      const sessions = lists
+        .flatMap(l => l ?? [])
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      json(res, 200, { sessions })
     }
     return
   }
@@ -407,11 +522,36 @@ async function routeSessions(
     return
   }
   const [, sessionId, sub] = match
+  const owner = await serviceFor(sessionId)
+  if (!owner) {
+    json(res, 404, { error: "unknown session" })
+    return
+  }
+  const agentService = owner
 
   if (!sub && req.method === "GET") {
-    const detail = await agent.getSession(sessionId)
+    const detail = await agentService.getSession(sessionId)
     if (!detail) json(res, 404, { error: "unknown session" })
     else json(res, 200, detail)
+    return
+  }
+
+  // Draft stored-query execution for the design-session preview
+  const queryName = sub?.startsWith("/queries/") ? sub.slice("/queries/".length) : null
+  if (queryName && req.method === "POST") {
+    const detail = await agentService.getSession(sessionId)
+    const state = detail?.state as { queries?: DashboardQuery[] } | undefined
+    const query = state?.queries?.find(q => q.name === queryName)
+    if (!query) {
+      json(res, 404, { error: "unknown draft query" })
+      return
+    }
+    const body = await readJsonBody(req)
+    try {
+      json(res, 200, { rows: await executeStoredQuery(pool, query, (body.params ?? {}) as Record<string, unknown>) })
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
     return
   }
 
@@ -423,7 +563,7 @@ async function routeSessions(
       return
     }
     try {
-      await agent.send(sessionId, text)
+      await agentService.send(sessionId, text)
       json(res, 202, { accepted: true })
     } catch (err) {
       json(res, 409, { error: err instanceof Error ? err.message : String(err) })
@@ -432,7 +572,7 @@ async function routeSessions(
   }
 
   if (sub === "/stop" && req.method === "POST") {
-    json(res, 202, { stopping: agent.stop(sessionId) })
+    json(res, 202, { stopping: agentService.stop(sessionId) })
     return
   }
 
@@ -444,7 +584,7 @@ async function routeSessions(
     })
     res.write(": connected\n\n")
     const heartbeat = setInterval(() => res.write(": ping\n\n"), SSE_HEARTBEAT_MS)
-    const unsubscribe = agent.subscribe(sessionId, event => {
+    const unsubscribe = agentService.subscribe(sessionId, event => {
       res.write(`data: ${JSON.stringify(event)}\n\n`)
     })
     req.on("close", () => {

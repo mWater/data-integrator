@@ -1,0 +1,4 @@
+/* Kit stylesheet entry: Tailwind (preflight + utilities used by kit components).
+   Dashboard bundles compile their own utilities against the same theme; this
+   file carries the base layer so dashboards never duplicate preflight. */
+@import "tailwindcss";

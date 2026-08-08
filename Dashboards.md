@@ -40,9 +40,9 @@ Dashboard {
 The sanctioned UI surface, audited for accessibility once so generated dashboards do
 not each carry their own WCAG risk:
 
-- Layout primitives, stat tile, chart (one chart library, Apache-2.0-friendly; ECharts
-  is the leading candidate), table, filter bar (wires control state to query params),
-  markdown, map (MapLibre over the tile service).
+- Layout primitives, stat tile, chart (ECharts, Apache 2.0), table, filter bar (wires
+  control state to query params), markdown, map (MapLibre over the tile service, tile
+  bytes proxied through the bridge).
 - Theme tokens for color and typography, so dashboards are brandable without forking
   the kit.
 - Versioned; bundles pin the version. Upgrades are recompiles, usually agent-driven.
@@ -104,24 +104,29 @@ export default function Dashboard(props: DashboardProps): JSX.Element
 
 ## Build and rendering
 
-- Design-time compile in the job runner (node22 image): esbuild with ESM output and
-  `react`/`@kit/ui` external, plus Tailwind JIT over the source. Output is a JS + CSS
-  pair, typically tens of KB, stored immutably per version. Deliberately not a single
-  self-contained HTML: that would duplicate the 1-2 MB kit runtime (React, kit
-  components, ECharts, MapLibre) into every dashboard and defeat caching.
+- Design-time compile in the server process: esbuild API (ESM output, `react`/`@kit/ui`
+  external), tsc against the kit types, and Tailwind JIT. Rebuilds are ~100ms, which
+  keeps the design loop tight. The sandbox is not needed here: compile, typecheck, and
+  Tailwind parse the source but never execute it; only execution of generated code (in
+  the browser iframe) is isolated. Output is a JS + CSS pair, typically tens of KB,
+  stored immutably per version. Deliberately not a single self-contained HTML: that
+  would duplicate the 1-2 MB kit runtime (React, kit components, ECharts, MapLibre)
+  into every dashboard and defeat caching.
 - The kit runtime ships as versioned immutable static assets (`/kit/:version/...`),
-  shared by all dashboards on that kit version, long-cache.
-- View time: the server renders a small frame document (never stored) containing an
-  import map that pins `react`/`@kit/ui` to the kit version's assets, the stylesheet
-  links, and the mount script, under a strict CSP (`default-src 'none'`; script,
-  style, connect, and img limited to same-origin kit, bundle, and tile paths).
-- The host app mounts `<iframe sandbox="allow-scripts" src=".../frame?token=...">`.
-  Without `allow-same-origin` the frame has an opaque origin and sends no cookies;
-  frame, bundle, and tile requests instead carry a short-lived dashboard-scoped token
-  minted by the host page (same mechanism as tile tokens).
-- postMessage bridge: stored-query calls and freshness metadata (surfaced in source as
-  `useQuery`/`useMeta`) and state-change events for deep links. The host page holds
-  the viewer's credentials; the bridge proxies nothing but these calls.
+  public (it is the app's own open-source code), shared by all dashboards on that kit
+  version, long-cache.
+- Mounting: the host page (the authenticated SPA) fetches the version's bundle and
+  builds an `iframe srcdoc`: an import map pinning `react`/`@kit/ui` to the kit
+  assets, the bundle JS and CSS inlined, `sandbox="allow-scripts"`. Without
+  `allow-same-origin` the frame has an opaque origin and no cookies; it makes no
+  credentialed request at all.
+- Everything crosses the postMessage bridge: stored-query calls and freshness metadata
+  (surfaced in source as `useQuery`/`useMeta`), map tile bytes (a MapLibre custom
+  protocol in the kit requests them from the host), runtime error reports, and
+  state-change events for deep links. The host executes these with the viewer's
+  session against per-dashboard-authorized endpoints; the bridge proxies nothing else.
+- No token mechanism in v0: the host page is always the app itself. Short-lived scoped
+  tokens return when a frame must fetch directly (external embeds, share links).
 - Net effect: generated code can never see the viewer's session or reach anything an
   editor did not freeze. This bounds the editor-can-XSS-viewer risk that code output
   introduces.
@@ -130,12 +135,20 @@ export default function Dashboard(props: DashboardProps): JSX.Element
 
 One more AgentImplementation on the harness (`agent_sessions.kind = 'dashboard'`):
 
-- Tools: read data-table and catalog schemas, run design-time sample queries, edit
-  source and queries, build, preview, finish.
-- `finish` gate, mirroring the integration cold-run gate: the bundle compiles,
-  typechecks against the kit, and passes a headless render test against real query
-  results. A weak model writing broken React becomes a design-loop iteration, not a
-  viewer-facing failure.
+- Tools: `get_dashboard`, `write_source`, `edit_source` (exact-string replace),
+  `set_queries`, `sample_query`, `ask_user`, `finish`. Table schemas are injected into
+  the system prompt. There is no separate build tool: every source or query mutation
+  rebuilds automatically and returns compile/typecheck errors in the tool result,
+  halving the round trips per iteration.
+- The design session shows the draft dashboard live beside the chat. Draft state lives
+  in session client_state (scratch pattern: finish is the save); the preview reloads
+  when a tool result changes the build.
+- Runtime errors in the preview cross the bridge: steered into a running loop, or
+  attached to the next user message when the loop is paused (never auto-resuming it,
+  so a broken build cannot burn tokens unattended).
+- `finish` gate: the bundle compiles, typechecks against the kit, and the preview has
+  reported no runtime error since the last build. A headless render test is deferred
+  to the library-install path, where no human watches a preview.
 
 ## Access control
 

@@ -270,7 +270,7 @@ async function main(): Promise<number> {
         await runner.ensureReady()
         const deps = { ...buildDeps(pool, runner), model }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
-        const service = new AgentService(pool, deps)
+        const service = AgentService.forDesigner(pool, deps)
 
         // Dispatch on the target's shape: session uuid resumes, integration id
         // edits, nothing starts a new integration the agent will name
@@ -334,10 +334,11 @@ async function main(): Promise<number> {
         const deps = buildDeps(pool, new Runner())
         const tiles = new TileRenderer(deps.store, process.env.TILE_CACHE_PATH ?? "./tile-cache")
         const model = buildModel()
-        const agent = model ? new AgentService(pool, { ...deps, model }) : null
+        const agent = model ? AgentService.forDesigner(pool, { ...deps, model }) : null
+        const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
         const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles, agent, runService, deps.store).listen(port, () => {
+        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent).listen(port, () => {
           console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
         })
         return await new Promise<number>(() => {})

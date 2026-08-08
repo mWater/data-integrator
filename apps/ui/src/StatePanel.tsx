@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { SessionDetail } from "./api.js"
+import { DashboardAgentState, DesignerState, SessionDetail } from "./api.js"
 
 /** Panel tabs. */
 type Tab = "definition" | "code" | "status"
@@ -13,7 +13,9 @@ interface StatePanelProps {
 /** Right-hand panel: draft definition, code, and run/usage status. */
 export function StatePanel({ detail }: StatePanelProps) {
   const [tab, setTab] = useState<Tab>("definition")
-  const { definition } = detail.state
+  if (detail.kind === "dashboard") return <DashboardStatePanel state={detail.state as DashboardAgentState} />
+  const state = detail.state as DesignerState
+  const { definition } = state
   const { code, ...rest } = definition
 
   return (
@@ -33,11 +35,11 @@ export function StatePanel({ detail }: StatePanelProps) {
             <dt>Status</dt>
             <dd>{detail.status}</dd>
             <dt>Certified</dt>
-            <dd>{detail.certified ? `yes (cold run ${detail.state.coldRun?.runId.slice(0, 8)})` : "no"}</dd>
+            <dd>{detail.certified ? `yes (cold run ${state.coldRun?.runId.slice(0, 8)})` : "no"}</dd>
             <dt>Last run</dt>
             <dd>
-              {detail.state.lastRun
-                ? `${detail.state.lastRun.cold ? "cold" : "warm"} ${detail.state.lastRun.status}`
+              {state.lastRun
+                ? `${state.lastRun.cold ? "cold" : "warm"} ${state.lastRun.status}`
                 : "none"}
             </dd>
             {detail.scratchLayers.length > 0 && (
@@ -60,6 +62,33 @@ export function StatePanel({ detail }: StatePanelProps) {
             </dd>
           </dl>
         </div>
+      )}
+    </aside>
+  )
+}
+
+/** Props for the dashboard variant of the panel. */
+interface DashboardStatePanelProps {
+  /** Dashboard session state */
+  state: DashboardAgentState
+}
+
+/** Dashboard drawer: draft source and stored queries. */
+function DashboardStatePanel({ state }: DashboardStatePanelProps) {
+  const [tab, setTab] = useState<"source" | "queries">("source")
+  return (
+    <aside className="state-panel">
+      <div className="tabs">
+        {(["source", "queries"] as const).map(t => (
+          <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setTab(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === "source" ? (
+        <pre className="pane pane-code">{state.source || "(no source yet)"}</pre>
+      ) : (
+        <pre className="pane">{state.queries.length === 0 ? "(no queries yet)" : JSON.stringify(state.queries, null, 2)}</pre>
       )}
     </aside>
   )

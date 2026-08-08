@@ -70,6 +70,15 @@ table.sessions tbody tr:hover { background: #f0f6fc }
 .dim { color: #6a737d; font-size: 12.5px }
 
 /* Login */
+.dashboard-page { flex: 1; min-height: 0; display: flex }
+.dashboard-frame { flex: 1; min-height: 0 }
+.dashboard-frame iframe { display: block }
+
+.preview-panel { flex: 1.2; min-width: 0; display: flex; border-left: 1px solid #e3e7ea; background: #fff }
+.preview-panel .dashboard-frame { flex: 1 }
+.preview-empty { margin: auto; color: #6a737d; font-size: 13.5px; max-width: 260px; text-align: center }
+@media (max-width: 1100px) { .preview-panel { display: none } }
+
 .login-page { display: flex; align-items: center; justify-content: center; height: 100% }
 .login-card {
   display: flex; flex-direction: column; gap: 12px; width: 320px;

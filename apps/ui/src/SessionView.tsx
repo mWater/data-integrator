@@ -1,6 +1,16 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { activityLabel } from "./activity.js"
-import { getSession, sendMessage, SessionDetail, SessionEvent, stopSession, subscribeEvents } from "./api.js"
+import {
+  DashboardAgentState,
+  execSessionQuery,
+  getSession,
+  sendMessage,
+  SessionDetail,
+  SessionEvent,
+  stopSession,
+  subscribeEvents
+} from "./api.js"
+import { DashboardFrame } from "./DashboardFrame.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
@@ -70,10 +80,13 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
+  const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const kindRef = useRef<string | null>(null)
 
   const refresh = useCallback(() => {
     getSession(sessionId).then(d => {
+      kindRef.current = d.kind
       setDetail(d)
       setBusy(d.running)
     }, err => setError(err.message))
@@ -111,6 +124,9 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           item.open = false
           item.summary = event.summary
         }
+        // Dashboard sessions: state (draft, build) changes with tool results,
+        // so refetch to keep the live preview current mid-loop
+        if (kindRef.current === "dashboard") refresh()
       } else if (event.type === "job_log") {
         const item = next.findLast(i => i.kind === "tool" && i.open)
         if (item) item.logs = [...item.logs.slice(-199), event.line ?? ""]
@@ -129,8 +145,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     const wasBusy = busy
     setBusy(true)
     setInput("")
+    // Preview runtime errors ride along with the next message so the agent
+    // hears about crashes without the user pasting them
+    let outgoing = text
+    if (previewErrors.length > 0) {
+      outgoing = `[The dashboard preview reported runtime errors since the last build:]\n${previewErrors.join("\n")}\n\n${text}`
+      setPreviewErrors([])
+    }
     try {
-      await sendMessage(sessionId, text)
+      await sendMessage(sessionId, outgoing)
     } catch (err) {
       if (!wasBusy) setBusy(false)
       setError(err instanceof Error ? err.message : String(err))
@@ -156,11 +179,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 
   const finished = detail.status === "finished"
   const question = !busy && canDesign && detail.status === "paused" ? pendingQuestion(detail) : null
+  const isDashboard = detail.kind === "dashboard"
+  const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
+  const build = dashState?.build && dashState.build.ok ? dashState.build : null
   return (
     <main className="session-page">
       <div className="conversation">
         <div className="session-head">
-          <h1>{detail.integrationId ?? liveId ?? "New integration"}</h1>
+          <h1>{detail.integrationId ?? liveId ?? (isDashboard ? "New dashboard" : "New integration")}</h1>
+          {isDashboard && dashState?.saved && (
+            <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
+          )}
           {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
           {detail.scratchLayers.length > 0 && <a href={`#/map?session=${detail.id}`}>Map preview</a>}
           <span className="spacer" />
@@ -181,6 +210,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           <div ref={bottomRef} />
         </div>
         {question && <QuestionCard question={question} onAnswer={text => void send(text)} />}
+        {previewErrors.length > 0 && (
+          <div className="error">
+            Preview error: {previewErrors[previewErrors.length - 1]} (attached to your next message)
+          </div>
+        )}
         {error && <div className="error">{error}</div>}
         {!error && !busy && detail.error && (
           <div className="error">The agent hit an error and stopped: {detail.error} — send a message to retry.</div>
@@ -216,6 +250,25 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           )}
         </form>
       </div>
+      {isDashboard && (
+        <div className="preview-panel">
+          {build ? (
+            <DashboardFrame
+              key={build.rev}
+              dashboardId={detail.integrationId ?? "draft"}
+              bundleJs={build.bundleJs ?? ""}
+              bundleCss={build.bundleCss ?? ""}
+              kitVersion="1"
+              runQuery={(name, params) => execSessionQuery(sessionId, name, params)}
+              onError={message =>
+                setPreviewErrors(errors => (errors.includes(message) ? errors : [...errors.slice(-4), message]))
+              }
+            />
+          ) : (
+            <div className="preview-empty">The dashboard preview appears here after the first successful build.</div>
+          )}
+        </div>
+      )}
       {showDetails && (
         <>
           <div className="drawer-backdrop" onClick={() => setShowDetails(false)} />

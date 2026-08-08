@@ -1,0 +1,368 @@
+import pg from "pg"
+import { LanguageModel, ToolSet, tool } from "ai"
+import { z } from "zod"
+import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
+import { buildDashboard } from "../dashboards/build.js"
+import { DashboardQuery, executeStoredQuery, validateQueries } from "../dashboards/queries.js"
+import { saveDashboard } from "../dashboards/service.js"
+import { listTables } from "../queryApi.js"
+
+/** Build outcome carried in client state; the preview mounts bundleJs/bundleCss. */
+export interface DashboardBuild {
+  /** Monotonic build counter; the UI reloads the preview when it changes */
+  rev: number
+  /** True when the source compiled and typechecked */
+  ok: boolean
+  /** Compile/typecheck errors when not ok */
+  errors: string[]
+  /** Compiled ESM for the preview frame */
+  bundleJs?: string
+  /** Compiled stylesheet for the preview frame */
+  bundleCss?: string
+}
+
+/** Client state of a dashboard design session. */
+export interface DashboardAgentState {
+  /** Bound dashboard id; empty until finish names it */
+  dashboardId: string
+  /** Draft display name */
+  name: string
+  /** Draft React source (single file, default export) */
+  source: string
+  /** Draft stored queries */
+  queries: DashboardQuery[]
+  /** Latest build outcome; null before the first write_source */
+  build: DashboardBuild | null
+  /** Saved version, once finish succeeded */
+  saved: { version: number } | null
+  /** Data-table schema block injected into the system prompt */
+  schemas: string
+}
+
+/** Everything the dashboard agent needs. */
+export interface DashboardDeps {
+  /** Database pool */
+  pool: pg.Pool
+  /** Language model for the session loop */
+  model: LanguageModel
+}
+
+/** Fresh state for a new dashboard session; schemas are captured at creation. */
+export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Promise<DashboardAgentState> {
+  const tables = await listTables(pool)
+  const schemas =
+    tables.length === 0
+      ? "(no data tables exist yet)"
+      : tables
+          .map(
+            (t) =>
+              `${t.tableId}: ${t.columns.map((c) => `${c.id} ${c.type}${c.units ? ` (${c.units})` : ""}`).join(", ")}`
+          )
+          .join("\n")
+  const state: DashboardAgentState = {
+    dashboardId,
+    name: "",
+    source: "",
+    queries: [],
+    build: null,
+    saved: null,
+    schemas
+  }
+  if (dashboardId !== "") {
+    const existing = await pool.query(
+      `SELECT d.name, v.source, v.queries FROM app.dashboards d
+       JOIN app.dashboard_versions v ON v.dashboard_id = d.id AND v.version = d.current_version
+       WHERE d.id = $1`,
+      [dashboardId]
+    )
+    if (existing.rows.length > 0) {
+      state.name = existing.rows[0].name
+      state.source = existing.rows[0].source
+      state.queries = existing.rows[0].queries
+    }
+  }
+  return state
+}
+
+/** System prompt: kit surface, source and query contracts, and the workflow. */
+const SYSTEM = `You are the dashboard designer for the Data Integrator platform. You design one
+analytical dashboard per session: a single React source file over a fixed component kit,
+plus named parameterized SQL queries frozen with the dashboard. Viewers never send SQL;
+they execute your stored queries with typed parameter values.
+
+# Source contract
+One TypeScript React file. Default export is the root component, receiving
+{locale, theme, initialState?, onStateChange?}. The ONLY legal imports are "react" and
+"@kit/ui"; anything else fails the build. Free-form JSX is allowed, but prefer the kit.
+
+# @kit/ui surface
+- <Page title subtitle? controls?>: page scaffold; put a <FilterBar> in controls.
+- <Grid columns={2|3|4}>: responsive card grid. <Card title? wide?>: content surface.
+- <StatTile label value detail? status?>: one headline number (use for single values).
+- <Chart type="line|area|bar|pie" data x series labels? stacked? height? format?>:
+  data is rows; x names the category column; series names value columns (colors follow
+  series order automatically; max ~8). One value axis by design - for two scales use
+  two charts. Pie takes exactly one series column and few slices.
+- <DataTable data columns? caption? height?>: accessible table view of rows.
+- <FilterBar>, <Select label options value onChange allLabel?>,
+  <MultiSelect label options value onChange>, <DateRange label from to onChange>:
+  plain value/onChange controls; wire their state into useQuery params.
+- <MarkdownBlock>: narrative text. <MapView layers center zoom height?>: raster
+  catalog layers (layerId), tiles proxied by the host.
+- useQuery(name, params?) -> {data, loading, error}: executes a stored query.
+- useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
+- useTheme(), useLocale(): resolved tokens and locale.
+
+# Query contract
+Each query: {name (snake_case), sql, params: [{name, type: text|number|integer|boolean|
+date|datetime, required?}], maxRows?}. The SQL references params POSITIONALLY: $1 is
+params[0], $2 is params[1]. Optional filters use the idiom:
+  WHERE ($1::text IS NULL OR region = $1)
+and the component passes null for "all". Queries run read-only against the data schema
+(plain table names, no schema prefix), statement timeout 15s, row-capped: aggregate in
+SQL rather than shipping raw rows. Cast dates for display (to_char) or chart buckets in
+SQL. Numeric aggregates: cast round(...) results to ::float8 so JSON carries numbers.
+
+# Data tables
+{{SCHEMAS}}
+
+# Workflow
+1. Explore the data with sample_query (real SQL, 50-row cap) to learn shapes and ranges.
+2. Propose the dashboard plan in plain text (sections, charts, filters) and confirm
+   with ask_user before building, unless the request already pins it down.
+3. set_queries for the data; write_source for the React file. Every write_source /
+   edit_source rebuilds automatically and returns compile/typecheck errors - fix them
+   before moving on. The user sees a live preview beside the chat after each
+   successful build; they may report runtime errors from it.
+4. finish({id, name}) saves the dashboard (id is permanent, snake_case/kebab-case).
+   It is rejected while the latest build has errors.
+
+Chart guidance: pick the form by the data's job (trend = line/area, comparison = bar,
+single value = StatTile, composition with few parts = pie, detail = DataTable). Series
+colors are assigned by order and must keep their meaning across filters. Give every
+multi-series chart labels; keep grids and axes recessive (the kit does this).
+
+Rules: never fabricate data; if a query returns nothing, say so and ask. Whenever a
+choice is not forced (which metric, which period, which breakdown), ask_user rather
+than guessing. Plain text with no tool calls also pauses the session. Your plain text
+renders as markdown.`
+
+/**
+ * The dashboard designer agent: explore data, freeze queries, write kit-based
+ * React source with automatic builds, finish behind the clean-build gate.
+ */
+export class DashboardImplementation implements AgentImplementation<DashboardAgentState> {
+  /** Session kind for storage */
+  readonly kind = "dashboard" as const
+  /** Language model for the loop */
+  readonly model: LanguageModel
+  /** Hard cap on model calls per session */
+  readonly maxSteps = 100
+
+  private deps: DashboardDeps
+
+  /** Creates the implementation over a pool and model. */
+  constructor(deps: DashboardDeps) {
+    this.deps = deps
+    this.model = deps.model
+  }
+
+  /** System prompt with the session's table schemas substituted in. */
+  system(state: DashboardAgentState): string {
+    return SYSTEM.replace("{{SCHEMAS}}", state.schemas)
+  }
+
+  /** Tool schemas; execution is in execute(). */
+  tools(): ToolSet {
+    return {
+      get_dashboard: tool({
+        description: "Read the current draft: name, queries, and source.",
+        inputSchema: z.object({})
+      }),
+      write_source: tool({
+        description:
+          "Replace the entire React source file and rebuild. Returns build errors, or OK with the new build revision (the user's preview reloads).",
+        inputSchema: z.object({
+          source: z.string().describe("Complete source file text")
+        })
+      }),
+      edit_source: tool({
+        description:
+          "Edit the source by exact-string replacement and rebuild. oldString must occur exactly once. Pass an empty oldString only when the source is still empty.",
+        inputSchema: z.object({
+          oldString: z.string().describe("Exact text to replace; empty only for initially empty source"),
+          newString: z.string().describe("Replacement text")
+        })
+      }),
+      set_queries: tool({
+        description:
+          "Replace the stored query list. Each query's SQL binds its params positionally ($1 = params[0]).",
+        inputSchema: z.object({
+          queries: z
+            .array(
+              z.object({
+                name: z.string().describe("snake_case name useQuery() references"),
+                sql: z.string().describe("Single SELECT or WITH statement"),
+                params: z
+                  .array(
+                    z.object({
+                      name: z.string().describe("Parameter name"),
+                      type: z
+                        .enum(["text", "number", "integer", "boolean", "date", "datetime"])
+                        .describe("Value type"),
+                      required: z.boolean().optional().describe("Reject null/absent values")
+                    })
+                  )
+                  .describe("Declared parameters in positional order"),
+                maxRows: z.number().int().positive().optional().describe("Row cap for this query")
+              })
+            )
+            .describe("The complete query list (replaces the previous one)")
+        })
+      }),
+      sample_query: tool({
+        description:
+          "Run one exploratory read-only SELECT against the data schema (50-row cap). Inline literal values rather than parameters.",
+        inputSchema: z.object({
+          sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
+        })
+      }),
+      ask_user: tool({
+        description:
+          "Ask the user a question with selectable options and pause until they answer. Use it to confirm the plan and for any unforced choice (metric, period, breakdown, layout).",
+        inputSchema: z.object({
+          question: z.string().describe("The question, markdown allowed; include the context needed to choose"),
+          options: z.array(z.string()).min(2).max(5).describe("Short answer choices (2-5)")
+        })
+      }),
+      finish: tool({
+        description:
+          "Save the dashboard and end the session. Rejected while the latest build has errors. The id is permanent; re-finishing an existing dashboard saves a new version.",
+        inputSchema: z.object({
+          id: z.string().describe("Dashboard id: lowercase letters/digits/_/-, starting with a letter"),
+          name: z.string().describe("Display name"),
+          summary: z.string().describe("One-paragraph summary of the dashboard")
+        })
+      })
+    }
+  }
+
+  /** Executes one tool call. */
+  async execute(
+    name: string,
+    input: unknown,
+    state: DashboardAgentState,
+    events: AgentEventListener,
+    sessionId: string
+  ): Promise<ToolOutcome<DashboardAgentState>> {
+    void events
+    const args = (input ?? {}) as Record<string, unknown>
+    switch (name) {
+      case "get_dashboard":
+        return {
+          result: JSON.stringify({ name: state.name, dashboardId: state.dashboardId, queries: state.queries, source: state.source }, null, 2)
+        }
+      case "write_source":
+        return await this.setSource(state, String(args.source ?? ""))
+      case "edit_source":
+        return await this.editSource(state, String(args.oldString ?? ""), String(args.newString ?? ""))
+      case "set_queries":
+        return this.setQueries(state, args.queries as DashboardQuery[])
+      case "sample_query":
+        return await this.sampleQuery(String(args.sql ?? ""))
+      case "ask_user":
+        return this.askUser(args)
+      case "finish":
+        return await this.finish(state, args, sessionId)
+      default:
+        return { result: `Unknown tool ${name}` }
+    }
+  }
+
+  /** Replaces the source and rebuilds. */
+  private async setSource(state: DashboardAgentState, source: string): Promise<ToolOutcome<DashboardAgentState>> {
+    if (source.trim() === "") return { result: "Source must not be empty" }
+    return await this.rebuild({ ...state, source })
+  }
+
+  /** Exact-string edit, then rebuild. */
+  private async editSource(
+    state: DashboardAgentState,
+    oldString: string,
+    newString: string
+  ): Promise<ToolOutcome<DashboardAgentState>> {
+    if (oldString === "") {
+      if (state.source !== "") return { result: "Source is not empty; pass the exact text to replace" }
+      return await this.rebuild({ ...state, source: newString })
+    }
+    const first = state.source.indexOf(oldString)
+    if (first === -1) return { result: "oldString not found in the source" }
+    if (state.source.indexOf(oldString, first + 1) !== -1)
+      return { result: "oldString occurs more than once; include more surrounding context" }
+    const source = state.source.replace(oldString, newString)
+    return await this.rebuild({ ...state, source })
+  }
+
+  /** Builds the current source and folds the outcome into state. */
+  private async rebuild(state: DashboardAgentState): Promise<ToolOutcome<DashboardAgentState>> {
+    const built = await buildDashboard(state.source)
+    const rev = (state.build?.rev ?? 0) + 1
+    const build: DashboardBuild = built.ok
+      ? { rev, ok: true, errors: [], bundleJs: built.bundleJs, bundleCss: built.bundleCss }
+      : { rev, ok: false, errors: built.errors }
+    const next = { ...state, build }
+    if (!built.ok) return { result: `Build failed:\n${built.errors.join("\n")}`, state: next }
+    return { result: `Built OK (rev ${rev}). The preview has reloaded.`, state: next }
+  }
+
+  /** Replaces the stored query list after shape validation. */
+  private setQueries(state: DashboardAgentState, queries: DashboardQuery[]): ToolOutcome<DashboardAgentState> {
+    if (!Array.isArray(queries)) return { result: "queries must be an array" }
+    const errors = validateQueries(queries)
+    if (errors.length > 0) return { result: `Invalid queries:\n${errors.join("\n")}` }
+    return { result: `Stored ${queries.length} quer${queries.length === 1 ? "y" : "ies"}.`, state: { ...state, queries } }
+  }
+
+  /** Runs one exploratory query under the sql_engine role. */
+  private async sampleQuery(sql: string): Promise<ToolOutcome<DashboardAgentState>> {
+    if (sql.trim() === "") return { result: "sql is required" }
+    try {
+      const rows = await executeStoredQuery(
+        this.deps.pool,
+        { name: "sample", sql, params: [], maxRows: 50 },
+        {}
+      )
+      return { result: rows.length === 0 ? "(no rows)" : JSON.stringify(rows, null, 1) }
+    } catch (err) {
+      return { result: `Query failed: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
+  /** Pauses the session with a structured question. */
+  private askUser(args: Record<string, unknown>): ToolOutcome<DashboardAgentState> {
+    const options = Array.isArray(args.options) ? args.options : []
+    if (options.length < 2 || options.length > 5) return { result: "Provide 2-5 options" }
+    return { result: "Waiting for the user's answer.", pause: true }
+  }
+
+  /** Clean-build gate, then saves a version and binds the session. */
+  private async finish(
+    state: DashboardAgentState,
+    args: Record<string, unknown>,
+    sessionId: string
+  ): Promise<ToolOutcome<DashboardAgentState>> {
+    if (!state.build?.ok) {
+      return { result: "finish rejected: the latest build has errors (or nothing was built yet)" }
+    }
+    const id = state.dashboardId || String(args.id ?? "")
+    const name = String(args.name ?? "").trim() || state.name || id
+    const saved = await saveDashboard(this.deps.pool, { id, name, source: state.source, queries: state.queries })
+    if (!saved.ok) return { result: `Save failed:\n${saved.errors.join("\n")}` }
+    await this.deps.pool.query("UPDATE app.agent_sessions SET dashboard_id = $2 WHERE id = $1", [sessionId, id])
+    return {
+      result: `Saved dashboard "${id}" version ${saved.version}.`,
+      state: { ...state, dashboardId: id, name, saved: { version: saved.version! } },
+      finished: true
+    }
+  }
+}

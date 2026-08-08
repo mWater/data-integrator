@@ -2,6 +2,8 @@
 export interface SessionSummary {
   /** Session id */
   id: string
+  /** Session kind: designer or dashboard */
+  kind: "designer" | "dashboard"
   /** Session status: active, paused, or finished */
   status: string
   /** Integration id of the draft; null until the agent names a new integration */
@@ -38,12 +40,42 @@ export interface DesignerState {
   lastRun: { runId: string; status: string; cold: boolean } | null
 }
 
+/** Build outcome inside a dashboard session's client state. */
+export interface DashboardBuild {
+  /** Monotonic build counter; the preview remounts when it changes */
+  rev: number
+  /** True when the source compiled and typechecked */
+  ok: boolean
+  /** Compile/typecheck errors when not ok */
+  errors: string[]
+  /** Compiled ESM for the preview frame */
+  bundleJs?: string
+  /** Compiled stylesheet for the preview frame */
+  bundleCss?: string
+}
+
+/** Dashboard-session client state mirrored from the server. */
+export interface DashboardAgentState {
+  /** Bound dashboard id; empty until finish names it */
+  dashboardId: string
+  /** Draft display name */
+  name: string
+  /** Draft React source */
+  source: string
+  /** Draft stored queries */
+  queries: DashboardQuery[]
+  /** Latest build outcome; null before the first write_source */
+  build: DashboardBuild | null
+  /** Saved version once finish succeeded */
+  saved: { version: number } | null
+}
+
 /** Full session detail from GET /api/sessions/:id. */
 export interface SessionDetail extends SessionSummary {
   /** Serialized model messages (the transcript) */
   messages: TranscriptMessage[]
-  /** Designer client state */
-  state: DesignerState
+  /** Per-kind client state */
+  state: DesignerState | DashboardAgentState
   /** Cumulative usage counters */
   usage: { steps: number; inputTokens: number; outputTokens: number } | null
   /** True when the current definition passed a cold run */
@@ -317,6 +349,32 @@ export function createSession(integrationId?: string): Promise<{ sessionId: stri
   })
 }
 
+/** Creates a dashboard design session; with an id it edits that dashboard. */
+export function createDashboardSession(dashboardId?: string): Promise<{ sessionId: string }> {
+  return request("/api/sessions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind: "dashboard", ...(dashboardId ? { dashboardId } : {}) })
+  })
+}
+
+/** Executes a draft stored query of a dashboard session (design preview). */
+export async function execSessionQuery(
+  sessionId: string,
+  queryName: string,
+  params: Record<string, unknown>
+): Promise<Record<string, unknown>[]> {
+  const result = await request<{ rows: Record<string, unknown>[] }>(
+    `/api/sessions/${sessionId}/queries/${queryName}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ params })
+    }
+  )
+  return result.rows
+}
+
 /** Fetches one session's detail. */
 export function getSession(sessionId: string): Promise<SessionDetail> {
   return request(`/api/sessions/${sessionId}`)
@@ -341,4 +399,77 @@ export function subscribeEvents(sessionId: string, onEvent: (event: SessionEvent
   const source = new EventSource(`/api/sessions/${sessionId}/events`)
   source.onmessage = message => onEvent(JSON.parse(message.data))
   return () => source.close()
+}
+
+/** One declared parameter of a stored dashboard query. */
+export interface DashboardQueryParam {
+  /** Parameter name */
+  name: string
+  /** Value type the server validates against */
+  type: string
+  /** Whether null/absent values are rejected */
+  required?: boolean
+}
+
+/** One stored query of a dashboard version. */
+export interface DashboardQuery {
+  /** Name useQuery() calls reference */
+  name: string
+  /** The frozen SQL */
+  sql: string
+  /** Declared parameters in positional order */
+  params: DashboardQueryParam[]
+}
+
+/** Summary row from GET /api/dashboards. */
+export interface DashboardSummary {
+  /** Dashboard id */
+  id: string
+  /** Display name */
+  name: string
+  /** Current version number */
+  currentVersion: number | null
+  /** Last update time (ISO) */
+  updatedAt: string
+}
+
+/** Full detail from GET /api/dashboards/:id. */
+export interface DashboardDetail extends DashboardSummary {
+  /** React source of the current version */
+  source: string
+  /** Stored queries of the current version */
+  queries: DashboardQuery[]
+  /** Kit version the bundle is pinned to */
+  kitVersion: string
+  /** Compiled ESM bundle */
+  bundleJs: string
+  /** Compiled stylesheet */
+  bundleCss: string
+}
+
+/** Lists dashboards, newest first. */
+export function listDashboards(): Promise<{ dashboards: DashboardSummary[] }> {
+  return request("/api/dashboards")
+}
+
+/** Fetches one dashboard at its current version. */
+export function getDashboard(id: string): Promise<DashboardDetail> {
+  return request(`/api/dashboards/${id}`)
+}
+
+/** Executes a stored dashboard query with named parameter values. */
+export async function execDashboardQuery(
+  dashboardId: string,
+  queryName: string,
+  params: Record<string, unknown>
+): Promise<Record<string, unknown>[]> {
+  const result = await request<{ rows: Record<string, unknown>[] }>(
+    `/api/dashboards/${dashboardId}/queries/${queryName}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ params })
+    }
+  )
+  return result.rows
 }

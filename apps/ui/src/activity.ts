@@ -5,7 +5,12 @@ const LABELS: Record<string, [string, string]> = {
   get_definition: ["Reading the design", "Read the design"],
   edit_code: ["Editing code", "Edited code"],
   query_table: ["Checking data", "Checked data"],
-  finish: ["Saving the integration", "Saved the integration"]
+  finish: ["Saving", "Saved"],
+  get_dashboard: ["Reading the draft", "Read the draft"],
+  write_source: ["Writing the dashboard", "Wrote the dashboard"],
+  edit_source: ["Editing the dashboard", "Edited the dashboard"],
+  set_queries: ["Updating queries", "Updated queries"],
+  sample_query: ["Exploring data", "Explored data"]
 }
 
 /** Human-readable label for a tool call; raw tool names stay out of the UI. */

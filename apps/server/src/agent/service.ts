@@ -1,6 +1,8 @@
 import pg from "pg"
 import { AgentSessionController } from "./controller.js"
+import { AgentImplementation } from "./types.js"
 import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState } from "./designer.js"
+import { DashboardAgentState, DashboardDeps, DashboardImplementation, initialDashboardState } from "./dashboard.js"
 import { ID_PATTERN, definitionHash } from "../install.js"
 
 /** One event delivered to SSE subscribers; AgentEvents plus lifecycle. */
@@ -13,9 +15,11 @@ export type SessionListener = (event: SessionEvent) => void
 export interface SessionSummary {
   /** Session id */
   id: string
+  /** Session kind: designer or dashboard */
+  kind: string
   /** Session status: active, paused, or finished */
   status: string
-  /** Integration id of the draft; null until the agent names a new integration */
+  /** Bound artifact id (integration or dashboard); null until the agent names one */
   integrationId: string | null
   /** First user message, as a label for sessions not yet named */
   firstMessage: string | null
@@ -29,18 +33,36 @@ export interface SessionSummary {
 export interface SessionDetail extends SessionSummary {
   /** Serialized model messages (the transcript) */
   messages: unknown[]
-  /** Designer client state (draft definition, runs, certification) */
-  state: DesignerState
+  /** Per-kind client state (designer draft, or dashboard draft) */
+  state: unknown
   /** Cumulative usage counters */
   usage: unknown
-  /** True when the current definition hash passed a cold run */
+  /** True when the current definition hash passed a cold run (designer only) */
   certified: boolean
   /** True while a loop is executing in this process */
   running: boolean
   /** Error that stopped the last loop, if it crashed (cleared on the next step) */
   error: string | null
-  /** Scratch preview layers with data, for map links during design */
+  /** Scratch preview layers with data, for map links during design (designer only) */
   scratchLayers: { id: string; name: string }[]
+}
+
+/** Per-kind behavior the shared service delegates to. */
+interface KindAdapter<S> {
+  /** Session kind stored in agent_sessions.kind */
+  kind: string
+  /** Implementation driving the loop */
+  implementation: AgentImplementation<S>
+  /** SQL expression over agent_sessions yielding the bound artifact id */
+  bindIdSql: string
+  /** Initial client state; bindId is an integration or dashboard id to start from */
+  initialState(bindId?: string): Promise<S>
+  /** Bound artifact id from client state */
+  bindId(state: S): string | null
+  /** Kind-specific detail fields merged into SessionDetail */
+  detailExtras(sessionId: string, state: S): Promise<Partial<SessionDetail>>
+  /** One-time process preparation before the first loop */
+  ensureReady(): Promise<void>
 }
 
 /** Per-session live bookkeeping. */
@@ -56,54 +78,95 @@ interface Channel {
 }
 
 /**
- * Runs designer sessions inside the server process: creates sessions, executes
- * the loop on user messages, and fans events out to SSE subscribers. Sessions
- * themselves stay semi-stateless in Postgres; this holds only live plumbing.
+ * Runs agent sessions of one kind inside the server process: creates sessions,
+ * executes the loop on user messages, and fans events out to SSE subscribers.
+ * Sessions themselves stay semi-stateless in Postgres; this holds only live
+ * plumbing. Construct via forDesigner() / forDashboard().
  */
-export class AgentService {
+export class AgentService<S = unknown> {
   private pool: pg.Pool
-  private deps: DesignerDeps
-  private controller: AgentSessionController<DesignerState>
+  private adapter: KindAdapter<S>
+  private controller: AgentSessionController<S>
   private channels = new Map<string, Channel>()
   private ready: Promise<void> | null = null
 
-  /** Creates the service over designer deps (model included). */
-  constructor(pool: pg.Pool, deps: DesignerDeps) {
+  /** Creates the service over a kind adapter. */
+  private constructor(pool: pg.Pool, adapter: KindAdapter<S>) {
     this.pool = pool
-    this.deps = deps
-    this.controller = new AgentSessionController(pool, new DesignerImplementation(deps))
+    this.adapter = adapter
+    this.controller = new AgentSessionController(pool, adapter.implementation)
+  }
+
+  /** The designer service: sessions design integrations through the job runner. */
+  static forDesigner(pool: pg.Pool, deps: DesignerDeps): AgentService<DesignerState> {
+    return new AgentService<DesignerState>(pool, {
+      kind: "designer",
+      implementation: new DesignerImplementation(deps),
+      bindIdSql: "NULLIF(client_state->'definition'->>'id', '')",
+      initialState: async (integrationId?: string) => {
+        if (!integrationId) return initialDesignerState()
+        if (!ID_PATTERN.test(integrationId)) throw new Error(`Invalid integration id: ${integrationId}`)
+        const state = initialDesignerState(integrationId)
+        const installed = await pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
+        if (installed.rows.length > 0) state.definition = installed.rows[0].definition
+        return state
+      },
+      bindId: state => state.definition?.id || null,
+      detailExtras: async (sessionId, state) => {
+        const scratchLayers = await pool.query(
+          "SELECT id, name FROM app.raster_layers WHERE session_id = $1 AND current_snapshot_id IS NOT NULL ORDER BY id",
+          [sessionId]
+        )
+        return {
+          certified: state.coldRun != null && state.coldRun.definitionHash === definitionHash(state.definition),
+          scratchLayers: scratchLayers.rows
+        }
+      },
+      ensureReady: () => deps.runner.ensureReady()
+    })
+  }
+
+  /** The dashboard service: sessions design dashboards, no job runner involved. */
+  static forDashboard(pool: pg.Pool, deps: DashboardDeps): AgentService<DashboardAgentState> {
+    return new AgentService<DashboardAgentState>(pool, {
+      kind: "dashboard",
+      implementation: new DashboardImplementation(deps),
+      bindIdSql: "NULLIF(client_state->>'dashboardId', '')",
+      initialState: (dashboardId?: string) => initialDashboardState(pool, dashboardId ?? ""),
+      bindId: state => state.dashboardId || null,
+      detailExtras: async () => ({}),
+      ensureReady: async () => {}
+    })
+  }
+
+  /** Session kind this service runs. */
+  get kind(): string {
+    return this.adapter.kind
   }
 
   /**
-   * Creates a new designer session. Without an integration id the draft starts
-   * unbound and the agent names it in its first write_definition. With one,
-   * and when that integration is already installed, the session starts from
-   * its installed definition so the agent edits rather than re-derives.
+   * Creates a new session, optionally bound to an existing artifact id so the
+   * agent edits rather than re-derives.
    */
-  async createSession(integrationId?: string): Promise<string> {
-    if (integrationId == null || integrationId === "") {
-      return await this.controller.createSession(initialDesignerState())
-    }
-    if (!ID_PATTERN.test(integrationId)) throw new Error(`Invalid integration id: ${integrationId}`)
-    const state = initialDesignerState(integrationId)
-    const installed = await this.pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
-    if (installed.rows.length > 0) state.definition = installed.rows[0].definition
-    return await this.controller.createSession(state)
+  async createSession(bindId?: string): Promise<string> {
+    return await this.controller.createSession(await this.adapter.initialState(bindId))
   }
 
-  /** Lists designer sessions, newest first. */
+  /** Lists this kind's sessions, newest first. */
   async listSessions(): Promise<SessionSummary[]> {
     const result = await this.pool.query(
-      `SELECT id, status, NULLIF(client_state->'definition'->>'id', '') AS integration_id,
+      `SELECT id, status, ${this.adapter.bindIdSql} AS bind_id,
               (SELECT left(msg->>'content', 120) FROM jsonb_array_elements(messages) msg
                WHERE msg->>'role' = 'user' LIMIT 1) AS first_message,
               COALESCE((usage->>'steps')::int, 0) AS steps, updated_at
-       FROM app.agent_sessions WHERE kind = 'designer' ORDER BY updated_at DESC LIMIT 100`
+       FROM app.agent_sessions WHERE kind = $1 ORDER BY updated_at DESC LIMIT 100`,
+      [this.adapter.kind]
     )
     return result.rows.map(r => ({
       id: r.id,
+      kind: this.adapter.kind,
       status: r.status,
-      integrationId: r.integration_id,
+      integrationId: r.bind_id,
       firstMessage: r.first_message,
       steps: r.steps,
       updatedAt: r.updated_at.toISOString()
@@ -114,31 +177,30 @@ export class AgentService {
   async getSession(sessionId: string): Promise<SessionDetail | null> {
     const result = await this.pool.query(
       `SELECT id, status, messages, client_state, usage, error, updated_at
-       FROM app.agent_sessions WHERE id = $1 AND kind = 'designer'`,
-      [sessionId]
+       FROM app.agent_sessions WHERE id = $1 AND kind = $2`,
+      [sessionId, this.adapter.kind]
     )
     if (result.rows.length === 0) return null
     const row = result.rows[0]
-    const state = row.client_state as DesignerState
-    const scratchLayers = await this.pool.query(
-      "SELECT id, name FROM app.raster_layers WHERE session_id = $1 AND current_snapshot_id IS NOT NULL ORDER BY id",
-      [sessionId]
-    )
+    const state = row.client_state as S
     const firstUser = (row.messages as { role: string; content: unknown }[]).find(m => m.role === "user")
+    const extras = await this.adapter.detailExtras(sessionId, state)
     return {
       id: row.id,
+      kind: this.adapter.kind,
       status: row.status,
-      integrationId: state.definition?.id || null,
+      integrationId: this.adapter.bindId(state),
       firstMessage: typeof firstUser?.content === "string" ? firstUser.content.slice(0, 120) : null,
       steps: (row.usage?.steps as number) ?? 0,
       updatedAt: row.updated_at.toISOString(),
       messages: row.messages,
       state,
       usage: row.usage,
-      certified: state.coldRun != null && state.coldRun.definitionHash === definitionHash(state.definition),
+      certified: false,
       running: this.channel(sessionId).running,
       error: row.error ?? null,
-      scratchLayers: scratchLayers.rows
+      scratchLayers: [],
+      ...extras
     }
   }
 
@@ -235,9 +297,9 @@ export class AgentService {
       })
   }
 
-  /** Prepares the job runner once per process (network, keeper, egress). */
+  /** One-time per-process preparation (e.g. the designer's job runner). */
   private ensureRunner(): Promise<void> {
-    this.ready ??= this.deps.runner.ensureReady()
+    this.ready ??= this.adapter.ensureReady()
     return this.ready
   }
 

@@ -36,8 +36,11 @@ Tracked at the level of what is left, not what exists; see README status and the
 - AI query assistant (FUC-5): plain-language queries answered through the
   query API, same swappable provider as the designer. The API and OpenAPI
   contract it needs are built.
-- Analytical dashboards per Dashboards.md (agent-designed React over frozen
-  SQL, sandboxed iframe, library-distributed).
+- Analytical dashboards: core built per Dashboards.md (kit v0, in-server build,
+  sql_engine execution, viewer + side-by-side design session UI, dashboard
+  agent). Remaining: live-fire the agent with a real model, library
+  distribution of dashboards, headless render test for the install path,
+  MapView exercised against a real raster layer, ThemeTokens branding.
 - STAC-compatible representation of the raster catalog.
 - UI odds and ends: token management page, admin user management page, remove
   the redundant static /map page, code-split the maplibre chunk.
