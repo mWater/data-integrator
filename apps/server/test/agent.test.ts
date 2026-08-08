@@ -12,7 +12,7 @@ import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
 import { getIntegration, listIntegrations } from "../src/integrations.js"
 import { AgentSessionController } from "../src/agent/controller.js"
-import { DesignerImplementation, DesignerState, initialDesignerState } from "../src/agent/designer.js"
+import { DesignerImplementation, DesignerState, errorSignature, initialDesignerState } from "../src/agent/designer.js"
 import { AgentService, SessionEvent } from "../src/agent/service.js"
 import { AgentImplementation, ToolOutcome } from "../src/agent/types.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
@@ -120,6 +120,70 @@ test("controller: a finishing tool ends the session", async () => {
   const row = (await pool.query("SELECT status FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
   assert.equal(row.status, "finished")
   await assert.rejects(() => controller.sendMessage(sessionId, "more"), /finished/)
+})
+
+test("controller: a pausing tool stops the loop as awaiting_user", async () => {
+  const model = new MockLanguageModelV4({
+    doGenerate: [
+      {
+        content: [{ type: "tool-call" as const, toolCallId: "c1", toolName: "echo", input: JSON.stringify({ text: "x" }) }],
+        finishReason: "tool-calls" as const,
+        usage: USAGE,
+        warnings: []
+      },
+      { content: [{ type: "text" as const, text: "must not run" }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
+    ]
+  })
+  const impl: AgentImplementation<EchoState> = {
+    kind: "designer",
+    model,
+    maxSteps: 10,
+    system: () => "t",
+    tools: () => ({ echo: tool({ description: "e", inputSchema: z.object({ text: z.string() }) }) }),
+    execute: async () => ({ result: "stopping for guidance", pause: true })
+  }
+  const controller = new AgentSessionController(pool, impl)
+  const sessionId = await controller.createSession({ count: 0 })
+  const stop = await controller.sendMessage(sessionId, "go")
+
+  assert.equal(stop.reason, "awaiting_user")
+  const row = (await pool.query("SELECT status, usage FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(row.status, "paused")
+  assert.equal(row.usage.steps, 1)
+})
+
+test("controller: a loop crash persists the session as paused with the error", async () => {
+  const broken = new MockLanguageModelV4({
+    doGenerate: () => {
+      throw new Error("provider exploded")
+    }
+  })
+  const controller = new AgentSessionController(pool, echoImplementation(broken))
+  const sessionId = await controller.createSession({ count: 0 })
+  await assert.rejects(() => controller.sendMessage(sessionId, "go"), /provider exploded/)
+
+  const row = (await pool.query("SELECT status, error, messages FROM app.agent_sessions WHERE id = $1", [sessionId]))
+    .rows[0]
+  assert.equal(row.status, "paused")
+  assert.match(row.error, /provider exploded/)
+  // The triggering user message is preserved, so a later send resumes with context
+  assert.equal(row.messages.at(-1).role, "user")
+
+  const working = new MockLanguageModelV4({
+    doGenerate: [
+      { content: [{ type: "text" as const, text: "back" }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
+    ]
+  })
+  await new AgentSessionController(pool, echoImplementation(working)).sendMessage(sessionId, "again")
+  const cleared = (await pool.query("SELECT error FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(cleared.error, null)
+})
+
+test("designer: error signatures ignore tmp path noise", () => {
+  const a = errorSignature("gdalinfo failed: /tmp/job-out-AbC123/pop.tif missing")
+  const b = errorSignature("gdalinfo failed: /tmp/job-out-Zz9xYy/pop.tif missing")
+  assert.equal(a, b)
+  assert.notEqual(a, errorSignature("something else entirely"))
 })
 
 /** Designer with dummy deps for tools that touch neither runner nor DB. */

@@ -18,6 +18,8 @@ export interface DesignerState {
   coldRun: { definitionHash: string; runId: string } | null
   /** Most recent test run, for status display */
   lastRun: { runId: string; status: string; cold: boolean } | null
+  /** Consecutive failed runs sharing one error signature (thrash guard); absent on older sessions */
+  failStreak?: { signature: string; count: number } | null
 }
 
 /** Everything the designer needs: executor deps plus the model. */
@@ -46,9 +48,21 @@ export function initialDesignerState(integrationId = ""): DesignerState {
       contract: 2
     },
     coldRun: null,
-    lastRun: null
+    lastRun: null,
+    failStreak: null
   }
 }
+
+/** Failed runs count as "the same" when their errors match after path noise is stripped. */
+export function errorSignature(error: string): string {
+  return error.replace(/\/tmp\/[A-Za-z0-9_-]+/g, "/tmp/*").slice(0, 300)
+}
+
+/** Identical failures before the agent is told to stop and ask the user. */
+const FAIL_STREAK_WARN = 3
+
+/** Identical failures before the session is force-paused. */
+const FAIL_STREAK_PAUSE = 5
 
 /** System prompt: definition format, code contract, and the design workflow. */
 const SYSTEM = `You are the integration designer for the Data Integrator platform. You design and
@@ -78,8 +92,8 @@ ctx.params, ctx.in_dir, ctx.work_dir, ctx.out_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
 params, inDir, workDir, outDir}).
 Return: {data?: {tableId: [row objects matching declared columns]}, rasters?: [{layerId,
-path (file in /out), timestamp, timestampEnd?, footprint? [w,s,e,n], crs?, metadata?}],
-state?: any}. Geometry columns take GeoJSON; raster files should be COGs.
+path (relative to /out, e.g. "pop_2023.tif"), timestamp, timestampEnd?, footprint?
+[w,s,e,n], crs?, metadata?}], state?: any}. Geometry columns take GeoJSON; raster files should be COGs.
 /work persists between runs of this integration; treat it as a cache, never as the source
 of truth. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
@@ -104,15 +118,22 @@ this integration's own destinations.
 0. If the draft id is empty, choose one (short snake_case derived from the request)
    and save an initial definition with write_definition before anything else; the
    sandbox tools are rejected until the draft has an id.
-1. Explore the source with run_snippet (network is live; print what you learn).
-2. write_definition for everything except code; edit_code for the code.
-3. Iterate with run_integration (warm: /work cache makes retries fast).
-4. When it works, run_integration with cold=true (fresh /work, null previousState).
-5. finish. It is rejected unless the current code passed a cold run unchanged.
+1. Explore candidate sources with run_snippet (network is live; print what you learn).
+2. Propose a plan and wait for confirmation: in plain text, tell the user the data
+   source you chose (name and URL), what will be ingested at what cadence, the
+   destination tables/layers, key assumptions, and any open questions - then stop
+   calling tools so the session pauses for their reply. Do not build until the user
+   confirms. Skip this only when the user's request already pins down all of these;
+   re-confirm whenever you later change source or scope.
+3. write_definition for everything except code; edit_code for the code.
+4. Iterate with run_integration (warm: /work cache makes retries fast).
+5. When it works, run_integration with cold=true (fresh /work, null previousState).
+6. finish. It is rejected unless the current code passed a cold run unchanged.
 
 Rules: never fabricate data. Reference secrets by name only. Prefer incremental state
-over re-downloading. When the source or requirements are ambiguous, stop calling tools
-and ask the user in plain text.`
+over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
+year, aggregation), ask the user rather than guessing. Plain text with no tool calls
+pauses the session for the user's reply; use it for questions at any point.`
 
 /**
  * The designer agent: tools to explore a source, shape the draft definition,
@@ -387,16 +408,37 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     if (stats) parts.push(`stats: ${JSON.stringify(stats)}`)
     if (error) parts.push(`error: ${error}`)
     if (log) parts.push(`log tail:\n${String(log).slice(-4000)}`)
+
+    let failStreak = state.failStreak ?? null
+    let pause = false
     if (status === "succeeded") {
+      failStreak = null
       parts.push("Inspect results with query_table (tables) or the stats above (snapshots).")
+    } else {
+      const signature = errorSignature(String(error ?? "unknown"))
+      failStreak =
+        failStreak && failStreak.signature === signature
+          ? { signature, count: failStreak.count + 1 }
+          : { signature, count: 1 }
+      if (failStreak.count >= FAIL_STREAK_PAUSE) {
+        pause = true
+        parts.push(
+          `${failStreak.count} consecutive runs failed with the same error; the session is now paused for user guidance.`
+        )
+      } else if (failStreak.count >= FAIL_STREAK_WARN) {
+        parts.push(
+          `${failStreak.count} consecutive runs have failed with the same error. Stop retrying variations: explain the problem to the user in plain text and ask how to proceed.`
+        )
+      }
     }
 
     const next: DesignerState = {
       ...state,
       lastRun: { runId, status, cold },
-      coldRun: cold && status === "succeeded" ? { definitionHash: hash, runId } : state.coldRun
+      coldRun: cold && status === "succeeded" ? { definitionHash: hash, runId } : state.coldRun,
+      failStreak
     }
-    return { result: parts.join("\n"), state: next }
+    return { result: parts.join("\n"), state: next, pause: pause || undefined }
   }
 
   /** One read-only SELECT over the data schema, capped at 50 rows. */

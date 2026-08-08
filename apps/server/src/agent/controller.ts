@@ -71,8 +71,23 @@ export class AgentSessionController<S> {
     return (await this.load(sessionId)).state
   }
 
-  /** Steps until the model stops, a tool finishes the session, or the cap hits. */
+  /**
+   * Steps until the model stops, a tool finishes or pauses the session, or the
+   * cap hits. A loop crash (model/provider failure) persists the session as
+   * paused with the error recorded, so it stays resumable from the UI.
+   */
   private async runLoop(sessionId: string, session: SessionData<S>, events?: AgentEventListener): Promise<SessionStop> {
+    try {
+      return await this.runSteps(sessionId, session, events)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      await this.save(sessionId, "paused", session, message).catch(() => {})
+      throw err
+    }
+  }
+
+  /** The step loop proper; any throw is handled by runLoop. */
+  private async runSteps(sessionId: string, session: SessionData<S>, events?: AgentEventListener): Promise<SessionStop> {
     const emit: AgentEventListener = events ?? (() => {})
     for (;;) {
       if (session.usage.steps >= this.impl.maxSteps) {
@@ -99,6 +114,7 @@ export class AgentSessionController<S> {
 
       const content: ToolResultPart[] = []
       let finished = false
+      let paused = false
       for (const call of result.toolCalls) {
         emit({ type: "tool_start", tool: call.toolName, input: call.input })
         let outcome: ToolOutcome<S>
@@ -109,6 +125,7 @@ export class AgentSessionController<S> {
         }
         if (outcome.state !== undefined) session.state = outcome.state
         if (outcome.finished) finished = true
+        if (outcome.pause) paused = true
         const value = truncate(outcome.result)
         emit({ type: "tool_end", tool: call.toolName, summary: value.slice(0, 200) })
         content.push({
@@ -120,8 +137,9 @@ export class AgentSessionController<S> {
       }
       session.messages.push({ role: "tool", content })
 
-      await this.save(sessionId, finished ? "finished" : "active", session)
+      await this.save(sessionId, finished ? "finished" : paused ? "paused" : "active", session)
       if (finished) return { sessionId, reason: "finished", text: null }
+      if (paused) return { sessionId, reason: "awaiting_user", text: null }
     }
   }
 
@@ -141,13 +159,20 @@ export class AgentSessionController<S> {
     }
   }
 
-  /** Serializes the session back to its row. */
-  private async save(sessionId: string, status: string, session: SessionData<S>): Promise<void> {
+  /** Serializes the session back to its row; error is cleared unless given. */
+  private async save(sessionId: string, status: string, session: SessionData<S>, error?: string): Promise<void> {
     await this.pool.query(
       `UPDATE app.agent_sessions
-       SET status = $2, messages = $3, client_state = $4, usage = $5, updated_at = now()
+       SET status = $2, messages = $3, client_state = $4, usage = $5, error = $6, updated_at = now()
        WHERE id = $1`,
-      [sessionId, status, JSON.stringify(session.messages), JSON.stringify(session.state), JSON.stringify(session.usage)]
+      [
+        sessionId,
+        status,
+        JSON.stringify(session.messages),
+        JSON.stringify(session.state),
+        JSON.stringify(session.usage),
+        error ?? null
+      ]
     )
   }
 }

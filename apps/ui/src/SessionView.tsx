@@ -112,7 +112,6 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       <div className="conversation">
         <div className="session-head">
           <h1>{detail.integrationId ?? liveId ?? "New integration"}</h1>
-          <span className={`chip chip-${detail.status}`}>{busy ? "working…" : detail.status}</span>
           {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
         </div>
         <div className="messages">
@@ -120,9 +119,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {live.map((item, i) => (
             <LiveBlock key={i} item={item} />
           ))}
+          {busy && !live.some(i => i.kind === "tool" && i.open) && (
+            <div className="thinking">
+              <span className="spinner" />
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
         {error && <div className="error">{error}</div>}
+        {!error && !busy && detail.error && (
+          <div className="error">The agent hit an error and stopped: {detail.error} — send a message to retry.</div>
+        )}
         <form className="composer" onSubmit={onSend}>
           <textarea
             value={input}

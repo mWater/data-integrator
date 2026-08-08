@@ -29,6 +29,7 @@ body {
 .chip-paused { background: #fff3cd; color: #7a5d00 }
 .chip-finished { background: #d9efd9; color: #216e21 }
 .chip-certified { background: #216e21; color: #fff }
+.thinking { padding: 8px 2px }
 .chip-draft { background: #eee2f7; color: #5b2d82; margin-left: 8px }
 
 /* Session list */

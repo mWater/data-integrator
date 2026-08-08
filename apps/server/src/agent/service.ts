@@ -37,6 +37,8 @@ export interface SessionDetail extends SessionSummary {
   certified: boolean
   /** True while a loop is executing in this process */
   running: boolean
+  /** Error that stopped the last loop, if it crashed (cleared on the next step) */
+  error: string | null
 }
 
 /** Per-session live bookkeeping. */
@@ -105,7 +107,7 @@ export class AgentService {
   /** Full session detail, or null when the id is unknown. */
   async getSession(sessionId: string): Promise<SessionDetail | null> {
     const result = await this.pool.query(
-      `SELECT id, status, messages, client_state, usage, updated_at
+      `SELECT id, status, messages, client_state, usage, error, updated_at
        FROM app.agent_sessions WHERE id = $1 AND kind = 'designer'`,
       [sessionId]
     )
@@ -124,7 +126,8 @@ export class AgentService {
       state,
       usage: row.usage,
       certified: state.coldRun != null && state.coldRun.definitionHash === definitionHash(state.definition),
-      running: this.channel(sessionId).running
+      running: this.channel(sessionId).running,
+      error: row.error ?? null
     }
   }
 

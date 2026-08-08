@@ -24,6 +24,8 @@ export interface ToolOutcome<S> {
   state?: S
   /** True when this tool ends the session (finish) */
   finished?: boolean
+  /** True to pause the session after this step for user input (e.g. thrash guard) */
+  pause?: boolean
 }
 
 /**

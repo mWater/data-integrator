@@ -50,6 +50,8 @@ export interface SessionDetail extends SessionSummary {
   certified: boolean
   /** True while the loop is executing server-side */
   running: boolean
+  /** Error that stopped the last loop, if it crashed (cleared on the next step) */
+  error: string | null
 }
 
 /** One content part of a stored model message. */

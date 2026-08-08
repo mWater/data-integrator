@@ -158,6 +158,7 @@ Serialized sessions (messages + state), any server process resumes any session.
 | messages | jsonb | |
 | client_state | jsonb | |
 | usage | jsonb | tokens, cost, llm calls |
+| error | text null | what crashed the last loop (model/provider failure); cleared on the next step |
 | created_at, updated_at | timestamptz | |
 
 ### users

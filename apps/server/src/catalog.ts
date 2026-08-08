@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { randomUUID } from "node:crypto"
+import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
 import { RasterArtifact, RasterLayerDestination } from "@data-integrator/definitions"
@@ -62,6 +63,20 @@ export async function ensureLayer(
 }
 
 /**
+ * Resolves a declared artifact path against the job's out directory. Accepts
+ * the absolute container spelling (/out/x.tif) as well as the contractual
+ * relative one; rejects anything escaping the directory.
+ */
+export function resolveArtifactPath(outDir: string, declared: string): string {
+  const relative = declared.replace(/^\/out\//, "")
+  const file = path.resolve(outDir, relative)
+  if (!file.startsWith(path.resolve(outDir) + path.sep)) {
+    throw new Error(`Declared raster path escapes /out: ${declared}`)
+  }
+  return file
+}
+
+/**
  * Stores one artifact file (before the commit transaction; failures leave only
  * GC-able orphans) and returns the values needed to register it.
  */
@@ -71,7 +86,16 @@ export async function storeArtifact(
   artifact: RasterArtifact,
   bandIds: string[]
 ): Promise<{ snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[] }> {
-  const file = path.join(outDir, artifact.path)
+  const file = resolveArtifactPath(outDir, artifact.path)
+  const present = await stat(file).then(s => s.isFile(), () => false)
+  if (!present) {
+    const listing = await readdir(outDir, { recursive: true }).catch(() => [] as string[])
+    throw new Error(
+      `Declared raster "${artifact.path}" not found in /out. ` +
+        `/out contains: ${listing.length > 0 ? listing.join(", ") : "(nothing)"}. ` +
+        `Write the file to /out and declare its path relative to /out.`
+    )
+  }
   const info = await rasterInfo(file, artifact)
   const snapshotId = randomUUID()
   const relPath = `${artifact.layerId}/${snapshotId}.tif`
