@@ -42,13 +42,28 @@ Everything is environment variables; only `DATABASE_URL` is required.
 | `TILE_CACHE_PATH` | `./tile-cache` | rendered tile cache |
 | `PORT` | `8080` | HTTP port |
 | `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the designer agent; without one the platform runs with the session API disabled |
-| `AGENT_MODEL` | `anthropic/claude-sonnet-5` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override |
+| `AGENT_MODEL` | `anthropic/claude-sonnet-5` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |
 | `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets; `openssl rand -base64 32`. Only needed once definitions declare secrets |
 | `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/integrator-runtime-{python,node}:dev` | runtime image overrides |
 
 ```sh
 export DATABASE_URL=postgres://postgres:changeme@127.0.0.1:15432/postgres
 ```
+
+### Choosing a model
+
+`AGENT_MODEL` takes any OpenRouter model id. Guidance from running the same
+design task across models (2026-08):
+
+- `anthropic/claude-sonnet-5` (default): the most careful engineering; in our
+  tests the only model that handled source nodata sentinels unprompted. Prompt
+  caching is applied automatically, cutting long-session cost roughly 4x.
+- `openai/gpt-5.6-terra`: the value pick. Near-parity agentic quality at
+  3-5x less than cached Sonnet on long sessions; fast.
+- `openai/gpt-5.6-luna`: fine for simple table integrations at trivial cost,
+  but weak long-context recall makes it risky for long raster sessions.
+- `google/gemini-3.6-flash`: not recommended; costs more than Terra, uses
+  about twice the tokens per task, and produced weaker code in our tests.
 
 ## Initialize and create the first user
 
@@ -90,7 +105,8 @@ In the UI: New Integration on the landing page, then describe what to build.
 From a terminal instead:
 
 ```sh
-node apps/server/dist/cli.js agent my_integration
+node apps/server/dist/cli.js agent                    # new integration
+node apps/server/dist/cli.js agent chirps_rainfall    # edit an installed one
 ```
 
 The agent explores the source with sandboxed snippets, writes the definition
