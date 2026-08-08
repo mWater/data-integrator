@@ -43,6 +43,7 @@ Everything is environment variables; only `DATABASE_URL` is required.
 | `PORT` | `8080` | HTTP port |
 | `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the designer agent; without one the platform runs with the session API disabled |
 | `AGENT_MODEL` | `anthropic/claude-sonnet-5` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |
+| `AGENT_EFFORT` | (model default) | reasoning effort for OpenRouter models: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets; `openssl rand -base64 32`. Only needed once definitions declare secrets |
 | `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/integrator-runtime-{python,node}:dev` | runtime image overrides |
 
@@ -60,6 +61,10 @@ design task across models (2026-08):
   caching is applied automatically, cutting long-session cost roughly 4x.
 - `openai/gpt-5.6-terra`: the value pick. Near-parity agentic quality at
   3-5x less than cached Sonnet on long sessions; fast.
+- `openai/gpt-5.6-sol`: wrote the strongest code in our tests (retry policies,
+  sentinel handling) and debugged a live 503, but skipped the plan-confirmation
+  step in every session, so the user loses their checkpoint. If used, leave
+  `AGENT_EFFORT` unset or `medium`; `high` cost 6x for no visible gain.
 - `openai/gpt-5.6-luna`: fine for simple table integrations at trivial cost,
   but weak long-context recall makes it risky for long raster sessions.
 - `google/gemini-3.6-flash`: not recommended; costs more than Terra, uses

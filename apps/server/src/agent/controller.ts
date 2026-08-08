@@ -5,6 +5,13 @@ import { AgentEventListener, AgentImplementation, SessionUsage, ToolOutcome } fr
 /** Cap on a single tool result returned to the model. */
 const TOOL_RESULT_MAX = 16_000
 
+/**
+ * Output cap per model call (reasoning included). Steps emit tool calls and
+ * short prose, so this is ample; it also bounds per-step spend, which
+ * providers pre-authorize against remaining credit at the full cap.
+ */
+const OUTPUT_TOKENS_MAX = 16_000
+
 /** Why a session run stopped. */
 export type StopReason = "finished" | "awaiting_user" | "step_limit" | "stopped"
 
@@ -130,7 +137,8 @@ export class AgentSessionController<S> {
         model: this.impl.model,
         system: this.impl.system(session.state),
         messages: session.messages,
-        tools: this.impl.tools(session.state)
+        tools: this.impl.tools(session.state),
+        maxOutputTokens: OUTPUT_TOKENS_MAX
       })
       session.usage.steps++
       session.usage.inputTokens += result.usage.inputTokens ?? 0
