@@ -26,7 +26,7 @@ import { loadSecretKey } from "./secrets.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
 import { randomBytes } from "node:crypto"
-import { createUser, setPassword } from "./auth.js"
+import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
@@ -185,6 +185,18 @@ async function main(): Promise<number> {
           }
           return 0
         }
+        if (sub === "token" && email) {
+          const name = process.argv[5] ?? `cli-${new Date().toISOString().slice(0, 10)}`
+          const found = await pool.query("SELECT id FROM app.users WHERE email = $1", [email])
+          if (found.rows.length === 0) {
+            console.error(`No user ${email}`)
+            return 1
+          }
+          const bearer = await createApiToken(pool, found.rows[0].id, name)
+          console.log(`Token '${name}' for ${email} (shown once):`)
+          console.log(bearer)
+          return 0
+        }
         if ((sub === "disable" || sub === "enable") && email) {
           const result = await pool.query("UPDATE app.users SET disabled = $2, updated_at = now() WHERE email = $1", [
             email,
@@ -197,7 +209,9 @@ async function main(): Promise<number> {
           console.log(`${sub === "disable" ? "Disabled" : "Enabled"} ${email}`)
           return 0
         }
-        console.error("Usage: cli.js user add <email> [role] | passwd <email> | list | disable <email> | enable <email>")
+        console.error(
+          "Usage: cli.js user add <email> [role] | passwd <email> | list | token <email> [name] | disable <email> | enable <email>"
+        )
         return 1
       }
       case "agent": {
@@ -246,7 +260,7 @@ async function main(): Promise<number> {
         const agent = model ? new AgentService(pool, { ...deps, model }) : null
         const runService = new RunService(deps)
         const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles, agent, runService).listen(port, () => {
+        createApiServer(pool, tiles, agent, runService, deps.store).listen(port, () => {
           console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
         })
         return await new Promise<number>(() => {})

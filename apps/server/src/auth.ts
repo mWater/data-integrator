@@ -137,3 +137,71 @@ export async function getSessionUser(pool: pg.Pool, token: string): Promise<Auth
 export async function deleteAuthSession(pool: pg.Pool, token: string): Promise<void> {
   await pool.query("DELETE FROM app.auth_sessions WHERE token_hash = $1", [tokenHash(token)])
 }
+
+/** One personal access token as listed to its owner (never the secret). */
+export interface ApiTokenInfo {
+  /** Row id: the stored hash (safe to expose; it cannot be inverted) */
+  id: string
+  /** Owner-chosen label */
+  name: string
+  /** Mint time (ISO) */
+  createdAt: string
+  /** Last authenticated use (ISO), null if never used */
+  lastUsedAt: string | null
+  /** Expiry (ISO), null for no expiry */
+  expiresAt: string | null
+}
+
+/**
+ * Mints a personal access token for a user and returns the bearer secret
+ * (shown once). The token inherits the user's role at every use.
+ */
+export async function createApiToken(
+  pool: pg.Pool,
+  userId: string,
+  name: string,
+  expiresDays?: number
+): Promise<string> {
+  const token = `dit_${randomBytes(32).toString("base64url")}`
+  await pool.query(
+    `INSERT INTO app.api_tokens (token_hash, user_id, name, expires_at)
+     VALUES ($1, $2, $3, CASE WHEN $4::int IS NULL THEN NULL ELSE now() + make_interval(days => $4::int) END)`,
+    [tokenHash(token), userId, name, expiresDays ?? null]
+  )
+  return token
+}
+
+/** Lists a user's tokens, newest first. */
+export async function listApiTokens(pool: pg.Pool, userId: string): Promise<ApiTokenInfo[]> {
+  const result = await pool.query(
+    `SELECT token_hash, name, created_at, last_used_at, expires_at
+     FROM app.api_tokens WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]
+  )
+  return result.rows.map(row => ({
+    id: row.token_hash,
+    name: row.name,
+    createdAt: row.created_at.toISOString(),
+    lastUsedAt: row.last_used_at ? row.last_used_at.toISOString() : null,
+    expiresAt: row.expires_at ? row.expires_at.toISOString() : null
+  }))
+}
+
+/** Revokes one of a user's tokens by its id; returns whether one was removed. */
+export async function revokeApiToken(pool: pg.Pool, userId: string, id: string): Promise<boolean> {
+  const result = await pool.query("DELETE FROM app.api_tokens WHERE token_hash = $1 AND user_id = $2", [id, userId])
+  return (result.rowCount ?? 0) > 0
+}
+
+/** Resolves a bearer token to its live user (stamping last_used_at), or null. */
+export async function getTokenUser(pool: pg.Pool, token: string): Promise<AuthUser | null> {
+  const result = await pool.query(
+    `UPDATE app.api_tokens t SET last_used_at = now()
+     FROM app.users u
+     WHERE t.token_hash = $1 AND u.id = t.user_id AND NOT u.disabled
+       AND (t.expires_at IS NULL OR t.expires_at > now())
+     RETURNING u.id, u.email, u.role`,
+    [tokenHash(token)]
+  )
+  return result.rows[0] ?? null
+}

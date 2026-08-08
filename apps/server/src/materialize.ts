@@ -152,8 +152,13 @@ async function materializeTable(
       "-nln", inputId
     ])
   } else {
+    const dateColumns = new Set(columns.filter(c => c.isDate).map(c => c.name))
     const selectList = selected
-      .map(name => (geometryColumns.has(name) ? `ST_AsGeoJSON("${name}")::json AS "${name}"` : `"${name}"`))
+      .map(name => {
+        if (geometryColumns.has(name)) return `ST_AsGeoJSON("${name}")::json AS "${name}"`
+        if (dateColumns.has(name)) return `"${name}"::text AS "${name}"`
+        return `"${name}"`
+      })
       .join(", ")
     const rows = await deps.pool.query(
       `SELECT ${selectList} FROM data."${ref.tableId}"${whereSql ? ` WHERE ${whereSql}` : ""} ORDER BY 1`,
@@ -166,28 +171,34 @@ async function materializeTable(
 }
 
 /** One column of a data table as the extractor sees it. */
-interface ColumnInfo {
+export interface ColumnInfo {
   /** Column name */
   name: string
   /** True for PostGIS geometry columns (serialized as GeoJSON in json/csv) */
   isGeometry: boolean
+  /** True for bare-date columns (read as text, or the driver timezone-shifts them) */
+  isDate: boolean
 }
 
 /** Columns of a data-schema table; empty when the table does not exist. */
-async function tableColumns(pool: pg.Pool, tableId: string): Promise<ColumnInfo[]> {
+export async function tableColumns(pool: pg.Pool, tableId: string): Promise<ColumnInfo[]> {
   const result = await pool.query(
     `SELECT column_name, udt_name FROM information_schema.columns
      WHERE table_schema = 'data' AND table_name = $1 ORDER BY ordinal_position`,
     [tableId]
   )
-  return result.rows.map(row => ({ name: row.column_name, isGeometry: row.udt_name === "geometry" }))
+  return result.rows.map(row => ({
+    name: row.column_name,
+    isGeometry: row.udt_name === "geometry",
+    isDate: row.udt_name === "date"
+  }))
 }
 
 /**
  * Builds the WHERE clause twice: parameterized (for pool queries) and as
  * safe literals (for ogr2ogr, which cannot take bound parameters).
  */
-function buildWhere(
+export function buildWhere(
   where: FilterSpec,
   columns: ColumnInfo[]
 ): { whereSql: string; params: unknown[]; whereLiteral: string } {

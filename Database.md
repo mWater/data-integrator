@@ -186,6 +186,20 @@ Logged-in sessions; revocation is row deletion. Expired rows trimmed by cleanup.
 | expires_at | timestamptz | |
 | created_at | timestamptz | |
 
+### api_tokens
+
+Personal access tokens for the programmatic API (migration 0002). Bearer secret
+shown once at mint; the token inherits its user's role at every use.
+
+| column | type | notes |
+|---|---|---|
+| token_hash | text pk | sha256 of the bearer secret |
+| user_id | uuid fk | |
+| name | text | owner-chosen label |
+| created_at | timestamptz | |
+| last_used_at | timestamptz | audit trail; stamped on every authentication |
+| expires_at | timestamptz | null = no expiry |
+
 ### secrets
 
 | column | type | notes |

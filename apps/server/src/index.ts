@@ -5,6 +5,14 @@ export { ensureTable, applyRows } from "./destinations.js"
 export { ensureLayer, storeArtifact, registerSnapshot } from "./catalog.js"
 export { RasterStore } from "./rasterStore.js"
 export { loadSecretKey, encryptSecret, decryptSecret, setSecret, getSecrets } from "./secrets.js"
+export {
+  hashPassword, verifyPassword, createUser, setPassword, authenticate,
+  createAuthSession, getSessionUser, deleteAuthSession,
+  createApiToken, listApiTokens, revokeApiToken, getTokenUser
+} from "./auth.js"
+export type { ApiTokenInfo, AuthResult, AuthUser } from "./auth.js"
+export { listTables, queryRows, rowsToCsv, rowsToGeoJson, parseRowsQuery } from "./queryApi.js"
+export type { RowsQuery, RowsResult, TableInfo } from "./queryApi.js"
 export { materializeInputs } from "./materialize.js"
 export type { MaterializeDeps } from "./materialize.js"
 export { claimNextRun, executeRun, reapStaleRuns } from "./executor.js"

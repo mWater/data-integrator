@@ -1,0 +1,146 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Data Integrator API",
+    "version": "0.1.0",
+    "description": "Query interface over the harmonized dataset: tabular destinations and the raster catalog. Authenticate with a session cookie (UI) or a personal access token (Authorization: Bearer dit_...). Data access works with no AI configured."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": { "type": "http", "scheme": "bearer", "description": "Personal access token (dit_...)" },
+      "cookie": { "type": "apiKey", "in": "cookie", "name": "di_session" }
+    },
+    "schemas": {
+      "Filter": {
+        "type": "array",
+        "description": "Conjunction of column comparisons; the same vocabulary definitions use for inputs.",
+        "items": {
+          "type": "object",
+          "required": ["column", "op", "value"],
+          "properties": {
+            "column": { "type": "string" },
+            "op": { "type": "string", "enum": ["=", "!=", ">", ">=", "<", "<=", "in"] },
+            "value": { "description": "Comparison value; an array for op=in" }
+          }
+        }
+      },
+      "ColumnSpec": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"] },
+          "units": { "type": "string" },
+          "enumValues": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    }
+  },
+  "security": [{ "bearer": [] }, { "cookie": [] }],
+  "paths": {
+    "/api/login": {
+      "post": {
+        "summary": "Sign in with email and password; sets the session cookie",
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": { "email": { "type": "string" }, "password": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Signed in" }, "401": { "description": "Bad credentials or locked" } }
+      }
+    },
+    "/api/tokens": {
+      "get": { "summary": "List your personal access tokens (never the secrets)", "responses": { "200": { "description": "Token list" } } },
+      "post": {
+        "summary": "Mint a personal access token; the secret is returned once",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": { "name": { "type": "string" }, "expiresDays": { "type": "integer" } }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "{ token }" } }
+      }
+    },
+    "/api/tokens/{id}": {
+      "delete": {
+        "summary": "Revoke one of your tokens",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Revoked" }, "404": { "description": "No such token" } }
+      }
+    },
+    "/api/tables": {
+      "get": {
+        "summary": "List queryable tables with their declared column schemas",
+        "responses": { "200": { "description": "{ tables: [{ tableId, integrationId, columns: ColumnSpec[] }] }" } }
+      }
+    },
+    "/api/tables/{tableId}/rows": {
+      "get": {
+        "summary": "Filtered read over one table",
+        "parameters": [
+          { "name": "tableId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "where", "in": "query", "description": "URL-encoded JSON Filter", "schema": { "type": "string" } },
+          { "name": "columns", "in": "query", "description": "Comma-separated column ids", "schema": { "type": "string" } },
+          { "name": "order", "in": "query", "description": "column or column.desc", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 1000, "maximum": 10000 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["json", "csv", "geojson"], "default": "json" } }
+        ],
+        "responses": {
+          "200": { "description": "{ columns, rows } | CSV text | GeoJSON FeatureCollection" },
+          "400": { "description": "Bad filter, column, or order" },
+          "404": { "description": "Unknown table" }
+        }
+      }
+    },
+    "/api/layers": {
+      "get": {
+        "summary": "Raster catalog: layers with band metadata and promoted snapshots",
+        "responses": { "200": { "description": "{ layers: [...] }" } }
+      }
+    },
+    "/api/snapshots/{id}/download": {
+      "get": {
+        "summary": "Download one snapshot as its Cloud-Optimized GeoTIFF",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "image/tiff attachment" }, "404": { "description": "Unknown snapshot" } }
+      }
+    },
+    "/tiles/{layerId}/{snapshotId}/{z}/{x}/{y}.png": {
+      "get": {
+        "summary": "Rendered PNG map tile, snapshot-pinned and immutable",
+        "parameters": [
+          { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "z", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "x", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "y", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "PNG tile" } }
+      }
+    },
+    "/api/integrations": {
+      "get": { "summary": "List installed integrations with last-run status", "responses": { "200": { "description": "{ integrations }" } } }
+    },
+    "/api/integrations/{id}/run": {
+      "post": {
+        "summary": "Start a manual run (editor or admin)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "202": { "description": "{ runId }" }, "409": { "description": "Already queued or running" } }
+      }
+    }
+  }
+}

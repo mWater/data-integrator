@@ -1,4 +1,5 @@
 import { createServer, Server, IncomingMessage, ServerResponse } from "node:http"
+import { createReadStream } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -8,7 +9,19 @@ import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations } from "./integrations.js"
 import { RunService } from "./runService.js"
-import { authenticate, AuthUser, createAuthSession, deleteAuthSession, getSessionUser } from "./auth.js"
+import { RasterStore } from "./rasterStore.js"
+import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
+import {
+  authenticate,
+  AuthUser,
+  createApiToken,
+  createAuthSession,
+  deleteAuthSession,
+  getSessionUser,
+  getTokenUser,
+  listApiTokens,
+  revokeApiToken
+} from "./auth.js"
 
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
@@ -54,11 +67,12 @@ export function createApiServer(
   pool: pg.Pool,
   tiles: TileRenderer,
   agent: AgentService | null = null,
-  runs: RunService | null = null
+  runs: RunService | null = null,
+  store: RasterStore | null = null
 ): Server {
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, req, res)
+      await route(pool, tiles, agent, runs, store, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -105,12 +119,23 @@ async function route(
   tiles: TileRenderer,
   agent: AgentService | null,
   runs: RunService | null,
+  store: RasterStore | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
   const url = req.url ?? "/"
+  const [pathname, search] = url.split("?")
+  const searchParams = new URLSearchParams(search ?? "")
 
-  if (url === "/api/login" && req.method === "POST") {
+  // The API contract is public documentation (no data)
+  if (pathname === "/api/openapi.json") {
+    const spec = await readFile(path.join(STATIC_DIR, "openapi.json"))
+    res.writeHead(200, { "content-type": "application/json" })
+    res.end(spec)
+    return
+  }
+
+  if (pathname === "/api/login" && req.method === "POST") {
     const body = await readJsonBody(req)
     const result = await authenticate(pool, String(body.email ?? ""), String(body.password ?? ""))
     if (!result.ok) {
@@ -123,17 +148,23 @@ async function route(
     return
   }
 
+  // Bearer tokens (programmatic API) take precedence over the session cookie
+  const authHeader = req.headers.authorization
+  let user: AuthUser | null = null
+  if (authHeader?.startsWith("Bearer ")) {
+    user = await getTokenUser(pool, authHeader.slice(7))
+  }
   const token = cookieToken(req)
-  const user = token ? await getSessionUser(pool, token) : null
+  if (!user && token) user = await getSessionUser(pool, token)
 
-  if (url === "/api/logout" && req.method === "POST") {
+  if (pathname === "/api/logout" && req.method === "POST") {
     if (token) await deleteAuthSession(pool, token)
     res.setHeader("set-cookie", sessionCookie(null, req))
     json(res, 200, { ok: true })
     return
   }
 
-  if (url === "/api/me") {
+  if (pathname === "/api/me") {
     if (!user) json(res, 401, { error: "not signed in" })
     else json(res, 200, { user: { email: user.email, role: user.role } })
     return
@@ -141,20 +172,97 @@ async function route(
 
   // Everything below is either the static shell (public) or data (auth required)
   if (!user) {
-    if (req.method === "GET" && url === "/map") {
+    if (req.method === "GET" && pathname === "/map") {
       const html = await readFile(path.join(STATIC_DIR, "map.html"))
       res.writeHead(200, { "content-type": "text/html" })
       res.end(html)
       return
     }
-    if (req.method === "GET" && !url.startsWith("/api") && url !== "/layers" && !TILE_PATH.test(url)) {
+    if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
       if (await serveUi(url, res)) return
     }
     json(res, 401, { error: "authentication required" })
     return
   }
 
-  if (url === "/layers") {
+  if (pathname === "/api/tokens") {
+    if (req.method === "POST") {
+      const body = await readJsonBody(req)
+      const name = String(body.name ?? "").trim()
+      if (!name) {
+        json(res, 400, { error: "name is required" })
+        return
+      }
+      const expiresDays = body.expiresDays === undefined ? undefined : Number(body.expiresDays)
+      const bearer = await createApiToken(pool, user.id, name, expiresDays)
+      json(res, 201, { token: bearer, note: "Shown once; store it now" })
+    } else {
+      json(res, 200, { tokens: await listApiTokens(pool, user.id) })
+    }
+    return
+  }
+
+  const tokenMatch = pathname.match(/^\/api\/tokens\/([0-9a-f]{64})$/)
+  if (tokenMatch && req.method === "DELETE") {
+    if (await revokeApiToken(pool, user.id, tokenMatch[1])) json(res, 200, { ok: true })
+    else json(res, 404, { error: "no such token" })
+    return
+  }
+
+  if (pathname === "/api/tables") {
+    json(res, 200, { tables: await listTables(pool) })
+    return
+  }
+
+  const queryMatch = pathname.match(/^\/api\/tables\/([a-z][a-z0-9_]*)\/rows$/)
+  if (queryMatch) {
+    let result
+    try {
+      result = await queryRows(pool, queryMatch[1], parseRowsQuery(searchParams))
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    if (!result) {
+      json(res, 404, { error: "unknown table" })
+      return
+    }
+    const format = searchParams.get("format") ?? "json"
+    if (format === "csv") {
+      res.writeHead(200, { "content-type": "text/csv" })
+      res.end(rowsToCsv(result))
+    } else if (format === "geojson") {
+      try {
+        json(res, 200, rowsToGeoJson(result))
+      } catch (err) {
+        json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      }
+    } else {
+      json(res, 200, { columns: result.columns, rows: result.rows })
+    }
+    return
+  }
+
+  const downloadMatch = pathname.match(/^\/api\/snapshots\/([0-9a-f-]+)\/download$/)
+  if (downloadMatch && store) {
+    const snapshot = await pool.query(
+      "SELECT layer_id, path FROM app.raster_snapshots WHERE id = $1 AND status <> 'pending'",
+      [downloadMatch[1]]
+    )
+    if (snapshot.rows.length === 0) {
+      json(res, 404, { error: "unknown snapshot" })
+      return
+    }
+    const { layer_id, path: relPath } = snapshot.rows[0]
+    res.writeHead(200, {
+      "content-type": "image/tiff",
+      "content-disposition": `attachment; filename="${layer_id}_${downloadMatch[1]}.tif"`
+    })
+    createReadStream(store.absolute(relPath)).pipe(res)
+    return
+  }
+
+  if (pathname === "/layers" || pathname === "/api/layers") {
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
               s.observed_at, s.observed_end, s.crs,
@@ -174,7 +282,7 @@ async function route(
     return
   }
 
-  const tileMatch = url.match(TILE_PATH)
+  const tileMatch = pathname.match(TILE_PATH)
   if (tileMatch) {
     const [, layerId, snapshotId, z, x, y] = tileMatch
     const snapshot = await pool.query(
@@ -196,12 +304,12 @@ async function route(
     return
   }
 
-  if (url === "/api/integrations") {
+  if (pathname === "/api/integrations") {
     json(res, 200, { integrations: await listIntegrations(pool) })
     return
   }
 
-  const integrationMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)$/)
+  const integrationMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)$/)
   if (integrationMatch) {
     const detail = await getIntegration(pool, integrationMatch[1])
     if (!detail) json(res, 404, { error: "unknown integration" })
@@ -209,7 +317,7 @@ async function route(
     return
   }
 
-  const runMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
+  const runMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
   if (runMatch && req.method === "POST") {
     if (user.role === "viewer") {
       json(res, 403, { error: "Viewers cannot start runs" })
@@ -228,7 +336,7 @@ async function route(
     return
   }
 
-  const rowsMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/tables\/([a-z][a-z0-9_]*)\/rows$/)
+  const rowsMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/tables\/([a-z][a-z0-9_]*)\/rows$/)
   if (rowsMatch) {
     const preview = await getTableRows(pool, rowsMatch[1], rowsMatch[2])
     if (!preview) json(res, 404, { error: "no such destination table (or no data yet)" })
@@ -236,12 +344,12 @@ async function route(
     return
   }
 
-  if (url.startsWith("/api/sessions")) {
+  if (pathname.startsWith("/api/sessions")) {
     await routeSessions(agent, user, req, res, url)
     return
   }
 
-  if (url === "/map") {
+  if (pathname === "/map") {
     const html = await readFile(path.join(STATIC_DIR, "map.html"))
     res.writeHead(200, { "content-type": "text/html" })
     res.end(html)

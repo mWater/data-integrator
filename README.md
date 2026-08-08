@@ -29,11 +29,14 @@ agent. Derived integrations work: declared
 inputs are materialized read-only at /in (catalog snapshots as COGs, table
 extracts as gpkg/json/csv) with a manifest, and runs record snapshot-level
 lineage; the first derived library entry (population-weighted rainfall) builds
-on the CHIRPS and WorldPop layers. Scheduler, agent
-steering/compaction/governance, the query API, and the ops dashboard are not
+on the CHIRPS and WorldPop layers. The documented query API works (see
+API.md + /api/openapi.json): personal access tokens, filtered tabular reads in
+json/csv/geojson, raster catalog with COG downloads - fully functional with no
+AI configured. Scheduler and agent steering/compaction/governance are not
 started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
+- [API.md](API.md) - the documented query interface (tokens, tables, rasters)
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
 - [Database.md](Database.md) - Postgres schema, migrations, and raster store layout
 - [Dashboards.md](Dashboards.md) - agent-designed dashboards: React over frozen SQL
@@ -58,7 +61,7 @@ The project is complete when all of these exist.
   agent loads on demand.
 - **Database and migrations** *(built)* - PostgreSQL/PostGIS schema and migration
   system: destination tables, raster catalog, integrations, runs, secrets, users.
-- **Web server and API** *(accounts + browse built)* - Node/TypeScript server with local accounts, RBAC, and the
+- **Web server and API** *(built)* - Node/TypeScript server with local accounts, RBAC, and the
   documented REST query interface over tabular data and the raster catalog. The
   contractual programmatic access path; fully functional with no AI configured.
 - **Pipeline engine** *(executor + /in built)* - Scheduler and DB-backed job queue:
