@@ -4,7 +4,9 @@
  *   migrate                 Apply pending migrations.
  *   install <file>          Install/update an integration from a definition JSON file.
  *   run <integrationId>     Enqueue a manual run and execute it to completion.
- *   agent <id> [sessionId]  Interactive designer session for one integration.
+ *   agent [target]          Interactive designer session. No target starts a new
+ *                           integration; an integration id edits it; a session
+ *                           uuid resumes.
  *   serve                   HTTP API and map page.
  */
 import { readFile, stat } from "node:fs/promises"
@@ -28,7 +30,7 @@ import { createApiServer } from "./server.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
-import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
+import { DesignerImplementation } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
 import { RunService } from "./runService.js"
@@ -92,6 +94,42 @@ function printAgentEvent(event: AgentEvent): void {
     console.log(`  [${event.tool}] ${input.length > 120 ? input.slice(0, 120) + "..." : input}`)
   } else if (event.type === "tool_end") console.log(`  [${event.tool}] -> ${event.summary.split("\n")[0]}`)
   else if (event.type === "job_log") console.log(`    | ${event.line}`)
+  else if (event.type === "integration_bound") console.log(`  (integration named '${event.integrationId}')`)
+}
+
+/** A question the session is paused on, with its selectable options. */
+interface PendingQuestion {
+  /** Question text (markdown, printed raw) */
+  question: string
+  /** Answer choices, selectable by number */
+  options: string[]
+}
+
+/** Prints an ask_user question with numbered options. */
+function printQuestion(pending: PendingQuestion): void {
+  console.log(`\n${pending.question}`)
+  pending.options.forEach((option, i) => console.log(`  ${i + 1}. ${option}`))
+  console.log("(answer with a number or type your own reply)")
+}
+
+/**
+ * The unanswered ask_user question a resumed session is paused on, if any:
+ * the last assistant ask_user call with no user message after it.
+ */
+function pendingQuestionIn(messages: unknown[]): PendingQuestion | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i] as { role?: string; content?: unknown }
+    if (message.role === "user") return null
+    if (message.role !== "assistant" || !Array.isArray(message.content)) continue
+    for (const part of message.content as { type?: string; toolName?: string; input?: unknown }[]) {
+      if (part.type === "tool-call" && part.toolName === "ask_user") {
+        const input = part.input as { question?: string; options?: string[] }
+        return { question: input.question ?? "", options: input.options ?? [] }
+      }
+    }
+    return null
+  }
+  return null
 }
 
 async function main(): Promise<number> {
@@ -215,12 +253,7 @@ async function main(): Promise<number> {
         return 1
       }
       case "agent": {
-        const integrationId = process.argv[3]
-        const resumeSessionId = process.argv[4]
-        if (!integrationId) {
-          console.error("Usage: cli.js agent <integrationId> [sessionId]")
-          return 1
-        }
+        const target = process.argv[3]
         const model = buildModel()
         if (!model) {
           console.error("Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY (AGENT_MODEL overrides the default model)")
@@ -228,18 +261,54 @@ async function main(): Promise<number> {
         }
         const runner = new Runner()
         await runner.ensureReady()
-        const impl = new DesignerImplementation({ ...buildDeps(pool, runner), model })
-        const controller = new AgentSessionController(pool, impl)
-        const sessionId = resumeSessionId ?? (await controller.createSession(initialDesignerState(integrationId)))
-        console.log(`Designer session ${sessionId} for '${integrationId}'.`)
-        console.log(`Describe what to build. 'exit' leaves (resume with: cli.js agent ${integrationId} ${sessionId})`)
+        const deps = { ...buildDeps(pool, runner), model }
+        const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
+        const service = new AgentService(pool, deps)
+
+        // Dispatch on the target's shape: session uuid resumes, integration id
+        // edits, nothing starts a new integration the agent will name
+        const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        let sessionId: string
+        let pending: PendingQuestion | null = null
+        if (target && UUID.test(target)) {
+          sessionId = target
+          const detail = await service.getSession(sessionId)
+          if (!detail) {
+            console.error(`No session ${sessionId}`)
+            return 1
+          }
+          console.log(`Resuming session ${sessionId}${detail.integrationId ? ` ('${detail.integrationId}')` : ""}.`)
+          pending = pendingQuestionIn(detail.messages)
+          if (pending) printQuestion(pending)
+        } else {
+          sessionId = await service.createSession(target)
+          console.log(target ? `Editing '${target}'; session ${sessionId}.` : `New integration; session ${sessionId}.`)
+        }
+        console.log(`Describe what to build. 'exit' leaves (resume with: cli.js agent ${sessionId})`)
+
+        const printEvent = (event: AgentEvent): void => {
+          if (event.type === "tool_start" && event.tool === "ask_user") {
+            const input = event.input as { question?: string; options?: string[] }
+            pending = { question: input.question ?? "", options: input.options ?? [] }
+            return
+          }
+          if (event.type === "tool_end" && event.tool === "ask_user") return
+          printAgentEvent(event)
+        }
 
         const rl = createInterface({ input: process.stdin, output: process.stdout })
         try {
           for (;;) {
-            const line = (await rl.question("> ")).trim()
+            // Piped stdin ends by closing readline; treat that as a clean exit
+            const line = await rl.question("> ").then(l => l.trim(), () => "exit")
             if (!line || line === "exit") return 0
-            const stop = await controller.sendMessage(sessionId, line, printAgentEvent)
+            let text = line
+            if (pending) {
+              const n = Number(line)
+              if (Number.isInteger(n) && n >= 1 && n <= pending.options.length) text = pending.options[n - 1]
+              pending = null
+            }
+            const stop = await controller.sendMessage(sessionId, text, printEvent)
             if (stop.reason === "finished") {
               console.log("Session finished.")
               return 0
@@ -248,6 +317,7 @@ async function main(): Promise<number> {
               console.log("Step limit reached; session paused.")
               return 1
             }
+            if (pending) printQuestion(pending)
           }
         } finally {
           rl.close()
@@ -266,7 +336,7 @@ async function main(): Promise<number> {
         return await new Promise<number>(() => {})
       }
       default:
-        console.error("Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent <integrationId> [sessionId] | serve")
+        console.error("Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | serve")
         return 1
     }
   } finally {
