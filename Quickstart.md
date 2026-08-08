@@ -61,10 +61,14 @@ design task across models (2026-08):
   caching is applied automatically, cutting long-session cost roughly 4x.
 - `openai/gpt-5.6-terra`: the value pick. Near-parity agentic quality at
   3-5x less than cached Sonnet on long sessions; fast.
-- `openai/gpt-5.6-sol`: wrote the strongest code in our tests (retry policies,
-  sentinel handling) and debugged a live 503, but skipped the plan-confirmation
-  step in every session, so the user loses their checkpoint. If used, leave
-  `AGENT_EFFORT` unset or `medium`; `high` cost 6x for no visible gain.
+- `openai/gpt-5.6-sol` with `AGENT_EFFORT=medium`: wrote the strongest code in
+  our tests (retry policies, sentinel handling, debugged a live 503) at about
+  half the cost of cached Sonnet. `high` effort cost 6x medium for no visible
+  gain.
+- `z-ai/glm-5.2`: the open-weights route when self-hosting the model matters.
+  Fully workflow-compliant and thorough in our test, but billed well above its
+  list price (hidden reasoning tokens), landing near Sonnet cost with twice the
+  steps.
 - `openai/gpt-5.6-luna`: fine for simple table integrations at trivial cost,
   but weak long-context recall makes it risky for long raster sessions.
 - `google/gemini-3.6-flash`: not recommended; costs more than Terra, uses

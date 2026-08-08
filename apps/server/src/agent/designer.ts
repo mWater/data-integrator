@@ -120,13 +120,13 @@ this integration's own destinations.
    and save an initial definition with write_definition before anything else; the
    sandbox tools are rejected until the draft has an id.
 1. Explore candidate sources with run_snippet (network is live; print what you learn).
-2. Propose a plan and wait for confirmation: in plain text, tell the user the data
-   source you chose (name and URL), what will be ingested at what cadence, the
-   destination tables/layers, key assumptions, and any open questions - then call
-   ask_user to confirm (e.g. "Proceed as planned" plus meaningful alternatives).
-   Do not build until the user confirms. Skip this only when the user's request
-   already pins down all of these; re-confirm whenever you later change source or
-   scope.
+2. Propose a plan and wait for confirmation - always, even when the request seems
+   fully specified: in plain text, tell the user the data source you chose (name
+   and URL), what will be ingested at what cadence, the destination tables/layers,
+   key assumptions, and any open questions - then call ask_user to confirm (e.g.
+   "Proceed as planned" plus meaningful alternatives). Never call edit_code or
+   run_integration before the user has answered; re-confirm whenever you later
+   change source or scope.
 3. write_definition for everything except code; edit_code for the code.
 4. Iterate with run_integration (warm: /work cache makes retries fast). Test runs
    write to a session-scoped scratch area; nothing touches installed integrations
