@@ -459,7 +459,13 @@ async function serveUi(url: string, res: ServerResponse): Promise<boolean> {
 
   try {
     const content = await readFile(resolved)
-    res.writeHead(200, { "content-type": MIME[path.extname(resolved)] ?? "application/octet-stream" })
+    // Hashed assets cache forever; everything else (index.html) must revalidate,
+    // or browsers heuristically cache it and keep loading stale bundles
+    const immutable = resolved.includes(`${path.sep}assets${path.sep}`)
+    res.writeHead(200, {
+      "content-type": MIME[path.extname(resolved)] ?? "application/octet-stream",
+      "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache"
+    })
     res.end(content)
     return true
   } catch {

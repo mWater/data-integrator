@@ -31,7 +31,9 @@ body {
 .chip-certified { background: #216e21; color: #fff }
 .thinking { padding: 8px 2px; display: flex }
 
-/* Agent markdown */
+/* Agent markdown (rendered HTML: source newlines must not add space, so this
+   must beat .msg's pre-wrap) */
+.markdown, .msg.markdown { white-space: normal }
 .markdown p { margin: 0 0 8px }
 .markdown p:last-child, .markdown ul:last-child, .markdown ol:last-child { margin-bottom: 0 }
 .markdown ul, .markdown ol { margin: 0 0 8px; padding-left: 22px }
@@ -148,12 +150,12 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
   border: 1px solid #c9d6e4; background: #f4f8fc; border-radius: 8px;
   padding: 10px 12px; margin-top: 8px;
 }
-.question-options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px }
+.question-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px }
 .question-options button {
-  background: #fff; border: 1px solid #4a7cab; color: #14496f; border-radius: 6px;
-  padding: 6px 12px; cursor: pointer; font: inherit;
+  background: #fff; border: 1px solid #ccd6e0; color: #14324f; border-radius: 6px;
+  padding: 9px 12px; cursor: pointer; font: inherit; text-align: left; width: 100%;
 }
-.question-options button:hover { background: #e8f1f9 }
+.question-options button:hover { border-color: #4a7cab; background: #eef5fb }
 
 .composer { display: flex; gap: 8px; padding-top: 10px }
 .composer textarea {
