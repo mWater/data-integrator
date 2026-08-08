@@ -127,6 +127,12 @@ test("http: login sets cookie, data routes gate on it, viewer blocked from desig
   })
   assert.equal(design.status, 403)
 
+  const run = await fetch(`${base}/api/integrations/anything/run`, {
+    method: "POST",
+    headers: { cookie: cookieHeader }
+  })
+  assert.equal(run.status, 403)
+
   const logout = await fetch(`${base}/api/logout`, { method: "POST", headers: { cookie: cookieHeader } })
   assert.equal(logout.status, 200)
   const afterLogout = await fetch(`${base}/api/me`, { headers: { cookie: cookieHeader } })

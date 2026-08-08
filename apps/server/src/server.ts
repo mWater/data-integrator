@@ -6,7 +6,8 @@ import pg from "pg"
 import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
-import { getIntegration, listIntegrations } from "./integrations.js"
+import { getIntegration, getTableRows, listIntegrations } from "./integrations.js"
+import { RunService } from "./runService.js"
 import { authenticate, AuthUser, createAuthSession, deleteAuthSession, getSessionUser } from "./auth.js"
 
 /** Static assets directory (demo map page). */
@@ -43,14 +44,21 @@ const COOKIE_NAME = "di_session"
 const COOKIE_MAX_AGE = 30 * 24 * 3600
 
 /**
- * The HTTP API: layer discovery, snapshot-pinned tiles, designer session API
- * with SSE event streams, and the built SPA. Auth arrives with its own phase.
+ * The HTTP API: layer discovery, snapshot-pinned tiles, integrations browse
+ * with manual runs and table previews, designer session API with SSE event
+ * streams, and the built SPA.
  * @param agent - Session service; null when no model is configured
+ * @param runs - Manual-run service; null when the host has no job runner
  */
-export function createApiServer(pool: pg.Pool, tiles: TileRenderer, agent: AgentService | null = null): Server {
+export function createApiServer(
+  pool: pg.Pool,
+  tiles: TileRenderer,
+  agent: AgentService | null = null,
+  runs: RunService | null = null
+): Server {
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, req, res)
+      await route(pool, tiles, agent, runs, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -96,6 +104,7 @@ async function route(
   pool: pg.Pool,
   tiles: TileRenderer,
   agent: AgentService | null,
+  runs: RunService | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -197,6 +206,33 @@ async function route(
     const detail = await getIntegration(pool, integrationMatch[1])
     if (!detail) json(res, 404, { error: "unknown integration" })
     else json(res, 200, detail)
+    return
+  }
+
+  const runMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
+  if (runMatch && req.method === "POST") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot start runs" })
+      return
+    }
+    if (!runs) {
+      json(res, 503, { error: "No job runner configured on this server" })
+      return
+    }
+    try {
+      json(res, 202, { runId: await runs.start(runMatch[1]) })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      json(res, message.includes("already queued") ? 409 : message.includes("Unknown") ? 404 : 500, { error: message })
+    }
+    return
+  }
+
+  const rowsMatch = url.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/tables\/([a-z][a-z0-9_]*)\/rows$/)
+  if (rowsMatch) {
+    const preview = await getTableRows(pool, rowsMatch[1], rowsMatch[2])
+    if (!preview) json(res, 404, { error: "no such destination table (or no data yet)" })
+    else json(res, 200, preview)
     return
   }
 

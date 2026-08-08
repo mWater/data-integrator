@@ -73,6 +73,23 @@ button.linkish:hover { color: #fff }
 .chip-failed, .chip-timeout { background: #fdecea; color: #b3261e }
 .chip-running, .chip-queued { background: #d6e8ff; color: #0b5394 }
 
+/* Map page */
+.map-page { flex: 1; position: relative; min-height: 0 }
+.map-container { position: absolute; inset: 0 }
+.map-panel {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  background: rgba(255, 255, 255, 0.94); padding: 8px 12px; border-radius: 6px;
+  font-size: 13px; max-width: 320px;
+}
+.map-panel .layer { margin: 6px 0 }
+.map-panel input[type=range] { width: 100%; margin: 4px 0 0 }
+.map-panel .when { color: #555; margin-left: 6px }
+
+/* Data preview */
+.data-scroll { overflow-x: auto }
+.data-table td, .data-table th { white-space: nowrap; font-size: 12.5px }
+select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font: inherit; margin-bottom: 10px }
+
 /* Session view */
 .session-page { flex: 1; display: flex; min-height: 0 }
 .conversation { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px }

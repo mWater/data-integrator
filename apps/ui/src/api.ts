@@ -210,9 +210,53 @@ export function logout(): Promise<{ ok: boolean }> {
   return request("/api/logout", { method: "POST" })
 }
 
+/** One promoted snapshot of a layer (map time axis). */
+export interface LayerSnapshot {
+  /** Snapshot id (tile URLs pin to it) */
+  id: string
+  /** Observation time (ISO) */
+  observed_at: string
+}
+
+/** One catalog layer as /layers reports it. */
+export interface MapLayer {
+  /** Layer id */
+  id: string
+  /** Display name */
+  name: string
+  /** current-only or time-series */
+  temporality: string
+  /** Current snapshot id, null before first data */
+  current_snapshot_id: string | null
+  /** Observation time of the current snapshot (ISO) */
+  observed_at: string | null
+  /** Envelope of the current snapshot as GeoJSON */
+  footprint: { coordinates: number[][][] } | null
+  /** Promoted snapshots ascending by time */
+  snapshots: LayerSnapshot[]
+}
+
+/** Lists catalog layers with their snapshots. */
+export function listLayers(): Promise<{ layers: MapLayer[] }> {
+  return request("/layers")
+}
+
 /** Lists installed integrations. */
 export function listIntegrations(): Promise<{ integrations: IntegrationSummary[] }> {
   return request("/api/integrations")
+}
+
+/** Starts a manual run of an integration. */
+export function startRun(integrationId: string): Promise<{ runId: string }> {
+  return request(`/api/integrations/${integrationId}/run`, { method: "POST" })
+}
+
+/** Fetches the newest rows of a destination table. */
+export function getTableRows(
+  integrationId: string,
+  tableId: string
+): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
+  return request(`/api/integrations/${integrationId}/tables/${tableId}/rows`)
 }
 
 /** Fetches one integration's detail. */

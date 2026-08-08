@@ -22,7 +22,10 @@ layers. The designer agent works via CLI and via the React UI (apps/ui, served
 by the server): live design sessions with streaming tool calls and job logs,
 cold-run-gated finish, sessions serialized to Postgres. Local accounts work:
 email + password (scrypt, lockout), cookie sessions, admin/editor/viewer roles
-enforced server-side, users managed via CLI. Derived integrations work: declared
+enforced server-side, users managed via CLI. The UI covers the core operator
+loop: browse integrations, preview table data, run manually, view layers on the
+in-app map (time slider included), and design or edit integrations with the
+agent. Derived integrations work: declared
 inputs are materialized read-only at /in (catalog snapshots as COGs, table
 extracts as gpkg/json/csv) with a manifest, and runs record snapshot-level
 lineage; the first derived library entry (population-weighted rainfall) builds
@@ -70,8 +73,8 @@ The project is complete when all of these exist.
   cold-run-gated finish. Model provider is swappable, down to self-hosted open weights.
 - **Agent UI** *(first slice)* - React design-session interface: conversation, definition
   and code views, streaming job logs, run results.
-- **Dashboard UI** - Pipeline health, run history and lineage, data browser, and map
-  view. Follows web accessibility conventions.
+- **Dashboard UI** *(core flows built)* - Pipeline health, run history and lineage, data
+  browser, and map view. Follows web accessibility conventions.
 - **Analytical dashboards** - Agent-designed dashboards: React over frozen,
   parameterized SQL, compiled once and rendered in a sandboxed iframe (see
   Dashboards.md). Ship in the library like integrations; viewable with no AI

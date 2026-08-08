@@ -3,6 +3,7 @@ import { getMe, logout, User } from "./api.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
 import { Login } from "./Login.js"
+import { MapPage } from "./MapPage.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 
@@ -14,6 +15,10 @@ interface Route {
   integrationId: string | null
   /** True on the sessions list page */
   sessions: boolean
+  /** True on the map page */
+  map: boolean
+  /** Layer to focus when opening the map from an integration */
+  mapLayerId: string | null
 }
 
 /** Current location parsed from the hash. */
@@ -21,10 +26,13 @@ function parseHash(): Route {
   const hash = window.location.hash
   const session = hash.match(/^#\/session\/([0-9a-f-]+)$/)
   const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
+  const map = hash.match(/^#\/map(?:\/([a-z][a-z0-9_]*))?$/)
   return {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
-    sessions: hash === "#/sessions"
+    sessions: hash === "#/sessions",
+    map: map !== null,
+    mapLayerId: map?.[1] ?? null
   }
 }
 
@@ -56,7 +64,7 @@ export function App() {
         <nav>
           <a href="#/">Integrations</a>
           <a href="#/sessions">Sessions</a>
-          <a href="/map" target="_blank" rel="noreferrer">Map</a>
+          <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />
         <span className="user-email">{user.email}</span>
@@ -71,6 +79,8 @@ export function App() {
         <SessionView sessionId={route.sessionId} canDesign={canDesign} />
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
+      ) : route.map ? (
+        <MapPage focusLayerId={route.mapLayerId} />
       ) : route.sessions ? (
         <SessionList />
       ) : (

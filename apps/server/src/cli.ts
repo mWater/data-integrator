@@ -31,6 +31,7 @@ import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
+import { RunService } from "./runService.js"
 
 /** Directory holding the numbered .sql migration files. */
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -239,12 +240,13 @@ async function main(): Promise<number> {
         }
       }
       case "serve": {
-        const store = new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store")
-        const tiles = new TileRenderer(store, process.env.TILE_CACHE_PATH ?? "./tile-cache")
+        const deps = buildDeps(pool, new Runner())
+        const tiles = new TileRenderer(deps.store, process.env.TILE_CACHE_PATH ?? "./tile-cache")
         const model = buildModel()
-        const agent = model ? new AgentService(pool, { ...buildDeps(pool, new Runner()), model }) : null
+        const agent = model ? new AgentService(pool, { ...deps, model }) : null
+        const runService = new RunService(deps)
         const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles, agent).listen(port, () => {
+        createApiServer(pool, tiles, agent, runService).listen(port, () => {
           console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
         })
         return await new Promise<number>(() => {})

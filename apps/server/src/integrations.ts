@@ -149,6 +149,53 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
   }
 }
 
+/** A table preview: column names plus the most recent rows. */
+export interface TablePreview {
+  /** Column names in table order (system columns excluded) */
+  columns: string[]
+  /** Rows, newest first; geometry cells are GeoJSON objects */
+  rows: Record<string, unknown>[]
+}
+
+/**
+ * Returns the newest rows of one of an integration's destination tables, or
+ * null when the table is not a destination of that integration or not yet
+ * created.
+ */
+export async function getTableRows(
+  pool: pg.Pool,
+  integrationId: string,
+  tableId: string,
+  limit = 100
+): Promise<TablePreview | null> {
+  const owner = await pool.query(
+    `SELECT 1 FROM app.integrations
+     WHERE id = $1 AND definition->'destinations' @> $2::jsonb`,
+    [integrationId, JSON.stringify([{ kind: "table", tableId }])]
+  )
+  if (owner.rows.length === 0) return null
+
+  const columns = await pool.query(
+    `SELECT column_name, udt_name FROM information_schema.columns
+     WHERE table_schema = 'data' AND table_name = $1 ORDER BY ordinal_position`,
+    [tableId]
+  )
+  if (columns.rows.length === 0) return null
+  const names = columns.rows.map(r => r.column_name).filter(n => n !== "_id" && n !== "_run_id")
+  const selectList = columns.rows
+    .filter(r => names.includes(r.column_name))
+    .map(r => {
+      if (r.udt_name === "geometry") return `ST_AsGeoJSON("${r.column_name}")::json AS "${r.column_name}"`
+      // Bare dates as text, or the driver shifts them through the local timezone
+      if (r.udt_name === "date") return `"${r.column_name}"::text AS "${r.column_name}"`
+      return `"${r.column_name}"`
+    })
+    .join(", ")
+
+  const rows = await pool.query(`SELECT ${selectList} FROM data."${tableId}" ORDER BY _id DESC LIMIT $1`, [limit])
+  return { columns: names, rows: rows.rows }
+}
+
 /** Quotes an identifier (ids are slug-validated at install; quoting is belt-and-braces). */
 function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, "")}"`
