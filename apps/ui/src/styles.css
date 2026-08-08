@@ -164,6 +164,9 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
 .question-other button:disabled { opacity: 0.5; cursor: default }
 
 .composer { display: flex; gap: 8px; padding-top: 10px }
+.composer .stop { background: #fff; border: 1px solid #b3261e; color: #b3261e }
+.composer .stop:hover { background: #fdecea }
+.composer .stop:disabled { opacity: 0.6 }
 .composer textarea {
   flex: 1; resize: none; padding: 10px 12px; border: 1px solid #ccd2d8;
   border-radius: 8px; font: inherit;

@@ -6,7 +6,15 @@ import { AgentEventListener, AgentImplementation, SessionUsage, ToolOutcome } fr
 const TOOL_RESULT_MAX = 16_000
 
 /** Why a session run stopped. */
-export type StopReason = "finished" | "awaiting_user" | "step_limit"
+export type StopReason = "finished" | "awaiting_user" | "step_limit" | "stopped"
+
+/** Host hooks that influence a running loop between steps. */
+export interface LoopControls {
+  /** Returns and clears user messages queued while the loop runs (steering) */
+  drainSteering?: () => string[]
+  /** True when the user asked to stop; the loop pauses at the next boundary */
+  stopRequested?: () => boolean
+}
 
 /** Outcome of running a session until it stops. */
 export interface SessionStop {
@@ -52,18 +60,23 @@ export class AgentSessionController<S> {
   }
 
   /** Appends a user message and runs the loop until the session stops. */
-  async sendMessage(sessionId: string, text: string, events?: AgentEventListener): Promise<SessionStop> {
+  async sendMessage(
+    sessionId: string,
+    text: string,
+    events?: AgentEventListener,
+    controls?: LoopControls
+  ): Promise<SessionStop> {
     const session = await this.load(sessionId)
     if (session.status === "finished") throw new Error(`Session ${sessionId} is finished`)
     session.messages.push({ role: "user", content: text })
-    return await this.runLoop(sessionId, session, events)
+    return await this.runLoop(sessionId, session, events, controls)
   }
 
   /** Resumes an active session (e.g. after a crash) without a new user message. */
-  async resume(sessionId: string, events?: AgentEventListener): Promise<SessionStop> {
+  async resume(sessionId: string, events?: AgentEventListener, controls?: LoopControls): Promise<SessionStop> {
     const session = await this.load(sessionId)
     if (session.status !== "active") throw new Error(`Session ${sessionId} is ${session.status}, not active`)
-    return await this.runLoop(sessionId, session, events)
+    return await this.runLoop(sessionId, session, events, controls)
   }
 
   /** Current client state of a session. */
@@ -76,9 +89,14 @@ export class AgentSessionController<S> {
    * cap hits. A loop crash (model/provider failure) persists the session as
    * paused with the error recorded, so it stays resumable from the UI.
    */
-  private async runLoop(sessionId: string, session: SessionData<S>, events?: AgentEventListener): Promise<SessionStop> {
+  private async runLoop(
+    sessionId: string,
+    session: SessionData<S>,
+    events?: AgentEventListener,
+    controls?: LoopControls
+  ): Promise<SessionStop> {
     try {
-      return await this.runSteps(sessionId, session, events)
+      return await this.runSteps(sessionId, session, events, controls)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       await this.save(sessionId, "paused", session, message).catch(() => {})
@@ -87,9 +105,22 @@ export class AgentSessionController<S> {
   }
 
   /** The step loop proper; any throw is handled by runLoop. */
-  private async runSteps(sessionId: string, session: SessionData<S>, events?: AgentEventListener): Promise<SessionStop> {
+  private async runSteps(
+    sessionId: string,
+    session: SessionData<S>,
+    events?: AgentEventListener,
+    controls?: LoopControls
+  ): Promise<SessionStop> {
     const emit: AgentEventListener = events ?? (() => {})
     for (;;) {
+      // Steering typed while the loop ran lands here, before the next model call
+      for (const text of controls?.drainSteering?.() ?? []) {
+        session.messages.push({ role: "user", content: text })
+      }
+      if (controls?.stopRequested?.()) {
+        await this.save(sessionId, "paused", session)
+        return { sessionId, reason: "stopped", text: null }
+      }
       if (session.usage.steps >= this.impl.maxSteps) {
         await this.save(sessionId, "paused", session)
         return { sessionId, reason: "step_limit", text: null }
@@ -110,6 +141,22 @@ export class AgentSessionController<S> {
       if (result.toolCalls.length === 0) {
         await this.save(sessionId, "paused", session)
         return { sessionId, reason: "awaiting_user", text: result.text || null }
+      }
+
+      // Stop before executing tools: cancel them with synthetic results so the
+      // transcript stays a valid sequence and stop beats long-running work
+      if (controls?.stopRequested?.()) {
+        session.messages.push({
+          role: "tool",
+          content: result.toolCalls.map(call => ({
+            type: "tool-result" as const,
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            output: { type: "text" as const, value: "Cancelled: the user stopped the session before this ran." }
+          }))
+        })
+        await this.save(sessionId, "paused", session)
+        return { sessionId, reason: "stopped", text: null }
       }
 
       const content: ToolResultPart[] = []

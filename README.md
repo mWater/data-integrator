@@ -35,8 +35,9 @@ lineage; the first derived library entry (population-weighted rainfall) builds
 on the CHIRPS and WorldPop layers. The documented query API works (see
 API.md + /api/openapi.json): personal access tokens, filtered tabular reads in
 json/csv/geojson, raster catalog with COG downloads - fully functional with no
-AI configured. Scheduler and agent steering/compaction/governance are not
-started.
+AI configured. Sessions support mid-run steering (messages land at the next
+step boundary) and a graceful Stop. Scheduler, agent compaction, and cost
+governance are not started.
 
 - [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes
 - [Architecture.md](Architecture.md) - system design and core decisions

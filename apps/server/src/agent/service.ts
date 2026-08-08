@@ -49,6 +49,10 @@ interface Channel {
   listeners: Set<SessionListener>
   /** True while a controller loop is executing */
   running: boolean
+  /** Messages typed while running; injected at the next step boundary */
+  steering: string[]
+  /** True when the user asked the running loop to stop */
+  stopRequested: boolean
 }
 
 /**
@@ -153,21 +157,77 @@ export class AgentService {
   /**
    * Appends a user message and starts the loop, broadcasting events. Resolves
    * once the loop is launched; completion is signaled by a `stop` (or `error`)
-   * event. Throws immediately when the session is already running.
+   * event. When the session is already running, the message queues as steering
+   * and lands at the next step boundary.
    */
   async send(sessionId: string, text: string): Promise<void> {
     const channel = this.channel(sessionId)
-    if (channel.running) throw new Error("Session is already running")
-    channel.running = true
-    await this.ensureRunner()
-
     const broadcast: SessionListener = event => {
       for (const listener of channel.listeners) listener(event)
     }
+    if (channel.running) {
+      channel.steering.push(text)
+      broadcast({ type: "user_message", text })
+      return
+    }
+    channel.running = true
+    channel.stopRequested = false
+    await this.ensureRunner()
     broadcast({ type: "user_message", text })
 
     void this.controller
-      .sendMessage(sessionId, text, event => broadcast(event as SessionEvent))
+      .sendMessage(sessionId, text, event => broadcast(event as SessionEvent), {
+        drainSteering: () => channel.steering.splice(0),
+        stopRequested: () => channel.stopRequested
+      })
+      .then(stop => {
+        broadcast({ type: "stop", reason: stop.reason, text: stop.text })
+        channel.running = false
+        // Steering that missed the loop starts a fresh one, unless the user stopped
+        if (channel.steering.length > 0) {
+          const leftover = channel.steering.splice(0)
+          if (stop.reason !== "finished" && stop.reason !== "stopped") {
+            void this.startQueued(sessionId, leftover.join("\n\n"))
+          }
+        }
+      })
+      .catch(err => {
+        channel.running = false
+        channel.steering.length = 0
+        broadcast({ type: "error", message: err instanceof Error ? err.message : String(err) })
+      })
+  }
+
+  /**
+   * Requests a graceful stop of the running loop; it pauses at the next step
+   * boundary (an in-flight model call or sandbox job finishes first). Returns
+   * false when nothing is running.
+   */
+  stop(sessionId: string): boolean {
+    const channel = this.channel(sessionId)
+    if (!channel.running) return false
+    channel.stopRequested = true
+    return true
+  }
+
+  /** Relaunches the loop for steering that arrived after the previous loop ended. */
+  private async startQueued(sessionId: string, text: string): Promise<void> {
+    const channel = this.channel(sessionId)
+    if (channel.running) {
+      channel.steering.push(text)
+      return
+    }
+    // The user message event was already broadcast when the text was queued
+    channel.running = true
+    channel.stopRequested = false
+    const broadcast: SessionListener = event => {
+      for (const listener of channel.listeners) listener(event)
+    }
+    void this.controller
+      .sendMessage(sessionId, text, event => broadcast(event as SessionEvent), {
+        drainSteering: () => channel.steering.splice(0),
+        stopRequested: () => channel.stopRequested
+      })
       .then(stop => broadcast({ type: "stop", reason: stop.reason, text: stop.text }))
       .catch(err => broadcast({ type: "error", message: err instanceof Error ? err.message : String(err) }))
       .finally(() => {
@@ -185,7 +245,7 @@ export class AgentService {
   private channel(sessionId: string): Channel {
     let channel = this.channels.get(sessionId)
     if (!channel) {
-      channel = { listeners: new Set(), running: false }
+      channel = { listeners: new Set(), running: false, steering: [], stopRequested: false }
       this.channels.set(sessionId, channel)
     }
     return channel

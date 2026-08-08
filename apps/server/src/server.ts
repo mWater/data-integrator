@@ -33,7 +33,7 @@ const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "u
 const TILE_PATH = /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
-const SESSION_PATH = /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events)?$/
+const SESSION_PATH = /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop)?$/
 
 /** Content types for served static files. */
 const MIME: Record<string, string> = {
@@ -422,6 +422,11 @@ async function routeSessions(
     } catch (err) {
       json(res, 409, { error: err instanceof Error ? err.message : String(err) })
     }
+    return
+  }
+
+  if (sub === "/stop" && req.method === "POST") {
+    json(res, 202, { stopping: agent.stop(sessionId) })
     return
   }
 

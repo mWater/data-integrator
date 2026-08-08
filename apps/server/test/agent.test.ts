@@ -152,6 +152,84 @@ test("controller: a pausing tool stops the loop as awaiting_user", async () => {
   assert.equal(row.usage.steps, 1)
 })
 
+test("controller: steering lands at the next step boundary", async () => {
+  const model = new MockLanguageModelV4({
+    doGenerate: [
+      {
+        content: [{ type: "tool-call" as const, toolCallId: "c1", toolName: "echo", input: JSON.stringify({ text: "one" }) }],
+        finishReason: "tool-calls" as const,
+        usage: USAGE,
+        warnings: []
+      },
+      { content: [{ type: "text" as const, text: "done" }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
+    ]
+  })
+  const controller = new AgentSessionController(pool, echoImplementation(model))
+  const sessionId = await controller.createSession({ count: 0 })
+
+  let iteration = 0
+  await controller.sendMessage(sessionId, "go", undefined, {
+    drainSteering: () => (++iteration === 2 ? ["actually include units"] : [])
+  })
+
+  const row = (await pool.query("SELECT messages FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  const roles = row.messages.map((m: { role: string }) => m.role)
+  assert.deepEqual(roles, ["user", "assistant", "tool", "user", "assistant"])
+  assert.equal(row.messages[3].content, "actually include units")
+})
+
+test("controller: stop before tool execution cancels the calls", async () => {
+  const model = new MockLanguageModelV4({
+    doGenerate: [
+      {
+        content: [{ type: "tool-call" as const, toolCallId: "c1", toolName: "echo", input: JSON.stringify({ text: "x" }) }],
+        finishReason: "tool-calls" as const,
+        usage: USAGE,
+        warnings: []
+      }
+    ]
+  })
+  let executed = false
+  const impl: AgentImplementation<EchoState> = {
+    kind: "designer",
+    model,
+    maxSteps: 10,
+    system: () => "t",
+    tools: () => ({ echo: tool({ description: "e", inputSchema: z.object({ text: z.string() }) }) }),
+    execute: async () => {
+      executed = true
+      return { result: "ran" }
+    }
+  }
+  const controller = new AgentSessionController(pool, impl)
+  const sessionId = await controller.createSession({ count: 0 })
+
+  let checks = 0
+  const stop = await controller.sendMessage(sessionId, "go", undefined, {
+    stopRequested: () => ++checks > 1 // false at the iteration top, true before tools run
+  })
+
+  assert.equal(stop.reason, "stopped")
+  assert.equal(executed, false)
+  const row = (await pool.query("SELECT status, messages FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(row.status, "paused")
+  const last = row.messages.at(-1)
+  assert.equal(last.role, "tool")
+  assert.match(last.content[0].output.value, /Cancelled/)
+})
+
+test("controller: stop at the iteration top pauses without a model call", async () => {
+  const model = new MockLanguageModelV4({ doGenerate: [] })
+  const controller = new AgentSessionController(pool, echoImplementation(model))
+  const sessionId = await controller.createSession({ count: 0 })
+  const stop = await controller.sendMessage(sessionId, "go", undefined, { stopRequested: () => true })
+  assert.equal(stop.reason, "stopped")
+  const row = (await pool.query("SELECT status, usage, messages FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(row.status, "paused")
+  assert.equal(row.usage.steps, 0)
+  assert.equal(row.messages.at(-1).role, "user")
+})
+
 test("controller: a loop crash persists the session as paused with the error", async () => {
   const broken = new MockLanguageModelV4({
     doGenerate: () => {

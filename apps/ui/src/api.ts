@@ -295,7 +295,12 @@ export function getSession(sessionId: string): Promise<SessionDetail> {
   return request(`/api/sessions/${sessionId}`)
 }
 
-/** Sends a user message into a session. */
+/** Requests a graceful stop of a running session (lands at the next step boundary). */
+export function stopSession(sessionId: string): Promise<{ stopping: boolean }> {
+  return request(`/api/sessions/${sessionId}/stop`, { method: "POST" })
+}
+
+/** Sends a user message into a session; while running it queues as steering. */
 export function sendMessage(sessionId: string, text: string): Promise<{ accepted: boolean }> {
   return request(`/api/sessions/${sessionId}/messages`, {
     method: "POST",

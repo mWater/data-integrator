@@ -23,7 +23,8 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Designer agent
 
-- Steering (`steer`/`followUp`) so users can redirect mid-run from the composer.
+- Hard abort for Stop: kill the in-flight sandbox job and model call (stop
+  currently lands at the next step boundary, so a long run finishes first).
 - Token-budget compaction with structured summaries (design in Agent Harness.md).
 - Cost governance: per-session and per-user daily caps, global kill switch,
   configured by the deployer.

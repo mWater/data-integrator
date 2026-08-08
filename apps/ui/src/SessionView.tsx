@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { activityLabel } from "./activity.js"
-import { getSession, sendMessage, SessionDetail, SessionEvent, subscribeEvents } from "./api.js"
+import { getSession, sendMessage, SessionDetail, SessionEvent, stopSession, subscribeEvents } from "./api.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
@@ -66,6 +66,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [liveId, setLiveId] = useState<string | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
+  const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -92,6 +93,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     if (event.type === "stop" || event.type === "error") {
       setLive([])
       setBusy(false)
+      setStopping(false)
       if (event.type === "error") setError(event.message ?? "unknown error")
       refresh()
       return
@@ -121,14 +123,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   }, [live, detail])
 
   async function send(text: string) {
-    if (!text || busy) return
+    if (!text) return
     setError(null)
+    const wasBusy = busy
     setBusy(true)
     setInput("")
     try {
       await sendMessage(sessionId, text)
     } catch (err) {
-      setBusy(false)
+      if (!wasBusy) setBusy(false)
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -136,6 +139,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   function onSend(e: FormEvent) {
     e.preventDefault()
     void send(input.trim())
+  }
+
+  async function onStop() {
+    setStopping(true)
+    try {
+      await stopSession(sessionId)
+    } catch (err) {
+      setStopping(false)
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   if (!detail) return <main className="session-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
@@ -182,13 +195,19 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
                 : finished
                   ? "Session finished"
                   : busy
-                    ? "Working — steering lands after the current step"
+                    ? "Steer the agent — your message lands after the current step…"
                     : "Describe what to build or change…"
             }
-            disabled={!canDesign || finished || busy}
+            disabled={!canDesign || finished}
             rows={3}
           />
-          <button type="submit" disabled={!canDesign || finished || busy || !input.trim()}>Send</button>
+          {busy && input.trim() === "" ? (
+            <button type="button" className="stop" onClick={() => void onStop()} disabled={!canDesign || stopping}>
+              {stopping ? "Stopping…" : "Stop"}
+            </button>
+          ) : (
+            <button type="submit" disabled={!canDesign || finished || !input.trim()}>Send</button>
+          )}
         </form>
       </div>
       <StatePanel detail={detail} />
@@ -245,7 +264,7 @@ function QuestionCard({ question, onAnswer }: QuestionCardProps) {
               if (text.trim()) onAnswer(text.trim())
             }}
           >
-            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="Your answer…" />
+            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="Other…" />
             <button type="submit" disabled={!text.trim()}>Send</button>
           </form>
         ) : (
