@@ -160,12 +160,54 @@ export interface IntegrationDetail {
   destinations: DestinationStats[]
 }
 
-/** Fetches JSON, throwing on HTTP errors with the server's message. */
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+/** The signed-in user. */
+export interface User {
+  /** Login email */
+  email: string
+  /** Role: admin, editor, or viewer */
+  role: "admin" | "editor" | "viewer"
+}
+
+/**
+ * Fetches JSON, throwing on HTTP errors with the server's message. A 401 on a
+ * data route dispatches "auth:required" so the app can flip to the login screen.
+ */
+async function request<T>(url: string, init?: RequestInit, quiet401 = false): Promise<T> {
   const res = await fetch(url, init)
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
+  if (!res.ok) {
+    if (res.status === 401 && !quiet401) window.dispatchEvent(new Event("auth:required"))
+    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
+  }
   return body as T
+}
+
+/** The signed-in user, or null when not authenticated. */
+export async function getMe(): Promise<User | null> {
+  try {
+    return (await request<{ user: User }>("/api/me", undefined, true)).user
+  } catch {
+    return null
+  }
+}
+
+/** Signs in; the session rides an httpOnly cookie afterwards. */
+export async function login(email: string, password: string): Promise<User> {
+  const result = await request<{ user: User }>(
+    "/api/login",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password })
+    },
+    true
+  )
+  return result.user
+}
+
+/** Signs out and revokes the session. */
+export function logout(): Promise<{ ok: boolean }> {
+  return request("/api/logout", { method: "POST" })
 }
 
 /** Lists installed integrations. */

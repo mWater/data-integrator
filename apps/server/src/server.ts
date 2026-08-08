@@ -7,6 +7,7 @@ import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, listIntegrations } from "./integrations.js"
+import { authenticate, AuthUser, createAuthSession, deleteAuthSession, getSessionUser } from "./auth.js"
 
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
@@ -34,6 +35,12 @@ const MIME: Record<string, string> = {
 
 /** SSE heartbeat interval keeping idle connections open through proxies. */
 const SSE_HEARTBEAT_MS = 25_000
+
+/** Session cookie name. */
+const COOKIE_NAME = "di_session"
+
+/** Session cookie lifetime in seconds (mirrors the DB session expiry). */
+const COOKIE_MAX_AGE = 30 * 24 * 3600
 
 /**
  * The HTTP API: layer discovery, snapshot-pinned tiles, designer session API
@@ -67,6 +74,23 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
   return data ? JSON.parse(data) : {}
 }
 
+/** Reads the session token from the request cookies. */
+function cookieToken(req: IncomingMessage): string | null {
+  for (const part of (req.headers.cookie ?? "").split(";")) {
+    const [key, ...value] = part.trim().split("=")
+    if (key === COOKIE_NAME) return value.join("=")
+  }
+  return null
+}
+
+/** Set-Cookie value for a session token; null clears the cookie. */
+function sessionCookie(token: string | null, req: IncomingMessage): string {
+  const secure = req.headers["x-forwarded-proto"] === "https" ? "; Secure" : ""
+  const value = token ?? ""
+  const maxAge = token ? COOKIE_MAX_AGE : 0
+  return `${COOKIE_NAME}=${value}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`
+}
+
 /** Dispatches one request. */
 async function route(
   pool: pg.Pool,
@@ -76,6 +100,50 @@ async function route(
   res: ServerResponse
 ): Promise<void> {
   const url = req.url ?? "/"
+
+  if (url === "/api/login" && req.method === "POST") {
+    const body = await readJsonBody(req)
+    const result = await authenticate(pool, String(body.email ?? ""), String(body.password ?? ""))
+    if (!result.ok) {
+      json(res, 401, { error: result.reason === "locked" ? "Account locked; try again later" : "Invalid email or password" })
+      return
+    }
+    const token = await createAuthSession(pool, result.user.id)
+    res.setHeader("set-cookie", sessionCookie(token, req))
+    json(res, 200, { user: { email: result.user.email, role: result.user.role } })
+    return
+  }
+
+  const token = cookieToken(req)
+  const user = token ? await getSessionUser(pool, token) : null
+
+  if (url === "/api/logout" && req.method === "POST") {
+    if (token) await deleteAuthSession(pool, token)
+    res.setHeader("set-cookie", sessionCookie(null, req))
+    json(res, 200, { ok: true })
+    return
+  }
+
+  if (url === "/api/me") {
+    if (!user) json(res, 401, { error: "not signed in" })
+    else json(res, 200, { user: { email: user.email, role: user.role } })
+    return
+  }
+
+  // Everything below is either the static shell (public) or data (auth required)
+  if (!user) {
+    if (req.method === "GET" && url === "/map") {
+      const html = await readFile(path.join(STATIC_DIR, "map.html"))
+      res.writeHead(200, { "content-type": "text/html" })
+      res.end(html)
+      return
+    }
+    if (req.method === "GET" && !url.startsWith("/api") && url !== "/layers" && !TILE_PATH.test(url)) {
+      if (await serveUi(url, res)) return
+    }
+    json(res, 401, { error: "authentication required" })
+    return
+  }
 
   if (url === "/layers") {
     const result = await pool.query(
@@ -133,7 +201,7 @@ async function route(
   }
 
   if (url.startsWith("/api/sessions")) {
-    await routeSessions(agent, req, res, url)
+    await routeSessions(agent, user, req, res, url)
     return
   }
 
@@ -149,13 +217,18 @@ async function route(
   json(res, 404, { error: "not found" })
 }
 
-/** Handles the /api/sessions routes. */
+/** Handles the /api/sessions routes; design actions need editor or admin. */
 async function routeSessions(
   agent: AgentService | null,
+  user: AuthUser,
   req: IncomingMessage,
   res: ServerResponse,
   url: string
 ): Promise<void> {
+  if (req.method === "POST" && user.role === "viewer") {
+    json(res, 403, { error: "Viewers cannot run design sessions" })
+    return
+  }
   if (!agent) {
     json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
     return

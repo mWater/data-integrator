@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
+import { getMe, logout, User } from "./api.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
+import { Login } from "./Login.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 
@@ -26,16 +28,27 @@ function parseHash(): Route {
   }
 }
 
-/** Hash-routed app shell: integrations (landing), sessions, and detail pages. */
+/** Hash-routed app shell behind sign-in. */
 export function App() {
   const [route, setRoute] = useState(parseHash())
+  const [user, setUser] = useState<User | null | "loading">("loading")
 
   useEffect(() => {
+    getMe().then(setUser)
     const onChange = () => setRoute(parseHash())
+    const onAuthRequired = () => setUser(null)
     window.addEventListener("hashchange", onChange)
-    return () => window.removeEventListener("hashchange", onChange)
+    window.addEventListener("auth:required", onAuthRequired)
+    return () => {
+      window.removeEventListener("hashchange", onChange)
+      window.removeEventListener("auth:required", onAuthRequired)
+    }
   }, [])
 
+  if (user === "loading") return null
+  if (user === null) return <Login onLogin={setUser} />
+
+  const canDesign = user.role !== "viewer"
   return (
     <div className="app">
       <header className="topbar">
@@ -45,15 +58,23 @@ export function App() {
           <a href="#/sessions">Sessions</a>
           <a href="/map" target="_blank" rel="noreferrer">Map</a>
         </nav>
+        <span style={{ flex: 1 }} />
+        <span className="user-email">{user.email}</span>
+        <button
+          className="linkish"
+          onClick={() => logout().finally(() => setUser(null))}
+        >
+          Sign Out
+        </button>
       </header>
       {route.sessionId ? (
-        <SessionView sessionId={route.sessionId} />
+        <SessionView sessionId={route.sessionId} canDesign={canDesign} />
       ) : route.integrationId ? (
-        <IntegrationView integrationId={route.integrationId} />
+        <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
       ) : route.sessions ? (
         <SessionList />
       ) : (
-        <IntegrationList />
+        <IntegrationList canDesign={canDesign} />
       )}
     </div>
   )

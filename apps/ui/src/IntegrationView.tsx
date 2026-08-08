@@ -6,13 +6,15 @@ import { triggerLabel } from "./IntegrationList.js"
 interface IntegrationViewProps {
   /** Integration to display */
   integrationId: string
+  /** False for viewers: hides Design with Agent */
+  canDesign: boolean
 }
 
 /** Detail tabs. */
 type Tab = "runs" | "definition" | "code"
 
 /** One installed integration: destinations, run history, definition, code. */
-export function IntegrationView({ integrationId }: IntegrationViewProps) {
+export function IntegrationView({ integrationId, canDesign }: IntegrationViewProps) {
   const [detail, setDetail] = useState<IntegrationDetail | null>(null)
   const [tab, setTab] = useState<Tab>("runs")
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +43,7 @@ export function IntegrationView({ integrationId }: IntegrationViewProps) {
         <span className="chip">{definition.runtime}</span>
         <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
         <span style={{ flex: 1 }} />
-        <button onClick={onDesign}>Design with Agent</button>
+        {canDesign && <button onClick={onDesign}>Design with Agent</button>}
       </div>
       {error && <div className="error">{error}</div>}
 

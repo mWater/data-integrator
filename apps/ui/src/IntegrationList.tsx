@@ -9,8 +9,14 @@ export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): str
   return parts.join(" + ") || "manual"
 }
 
+/** Props for the integration list. */
+interface IntegrationListProps {
+  /** False for viewers: hides the new-integration flow */
+  canDesign: boolean
+}
+
 /** Landing page: installed integrations plus the new-integration flow. */
-export function IntegrationList() {
+export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
   const [newId, setNewId] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -33,16 +39,18 @@ export function IntegrationList() {
   return (
     <main className="list-page">
       <h1>Integrations</h1>
-      <form className="new-session" onSubmit={onCreate}>
-        <input
-          value={newId}
-          onChange={e => setNewId(e.target.value)}
-          placeholder="new integration id (snake_case)"
-          pattern="[a-z][a-z0-9_]*"
-          required
-        />
-        <button type="submit">New Integration</button>
-      </form>
+      {canDesign && (
+        <form className="new-session" onSubmit={onCreate}>
+          <input
+            value={newId}
+            onChange={e => setNewId(e.target.value)}
+            placeholder="new integration id (snake_case)"
+            pattern="[a-z][a-z0-9_]*"
+            required
+          />
+          <button type="submit">New Integration</button>
+        </form>
+      )}
       {error && <div className="error">{error}</div>}
       {integrations === null ? (
         <p>Loading…</p>

@@ -20,8 +20,11 @@ first real library integrations (WorldPop population, CHIRPS monthly rainfall)
 run end to end and render on a map page with a time slider for time-series
 layers. The designer agent works via CLI and via the React UI (apps/ui, served
 by the server): live design sessions with streaming tool calls and job logs,
-cold-run-gated finish, sessions serialized to Postgres. Scheduler, auth, agent
-steering/compaction/governance, and the ops dashboard are not started.
+cold-run-gated finish, sessions serialized to Postgres. Local accounts work:
+email + password (scrypt, lockout), cookie sessions, admin/editor/viewer roles
+enforced server-side, users managed via CLI. Scheduler, agent
+steering/compaction/governance, the query API, and the ops dashboard are not
+started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
@@ -48,7 +51,7 @@ The project is complete when all of these exist.
   agent loads on demand.
 - **Database and migrations** *(built)* - PostgreSQL/PostGIS schema and migration
   system: destination tables, raster catalog, integrations, runs, secrets, users.
-- **Web server and API** - Node/TypeScript server with local accounts, RBAC, and the
+- **Web server and API** *(accounts + browse built)* - Node/TypeScript server with local accounts, RBAC, and the
   documented REST query interface over tabular data and the raster catalog. The
   contractual programmatic access path; fully functional with no AI configured.
 - **Pipeline engine** *(executor built)* - Scheduler and DB-backed job queue:

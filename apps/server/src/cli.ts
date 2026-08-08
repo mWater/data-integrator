@@ -25,6 +25,8 @@ import { RasterStore } from "./rasterStore.js"
 import { loadSecretKey } from "./secrets.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
+import { randomBytes } from "node:crypto"
+import { createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation, initialDesignerState } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
@@ -140,6 +142,61 @@ async function main(): Promise<number> {
         const { status, error, stats } = final.rows[0]
         console.log(`Run ${run.id}: ${status}${error ? ` (${error})` : ""} ${stats ? JSON.stringify(stats) : ""}`)
         return status === "succeeded" ? 0 : 1
+      }
+      case "user": {
+        const sub = process.argv[3]
+        const email = process.argv[4]
+        if (sub === "add" && email) {
+          const role = process.argv[5] ?? "admin"
+          if (!["admin", "editor", "viewer"].includes(role)) {
+            console.error("Role must be admin, editor, or viewer")
+            return 1
+          }
+          const password = randomBytes(12).toString("base64url")
+          await createUser(pool, email, password, role as "admin" | "editor" | "viewer")
+          console.log(`Created ${email} (${role})`)
+          console.log(`Password (shown once): ${password}`)
+          console.log(`Change it with: echo 'newpassword' | cli.js user passwd ${email}`)
+          return 0
+        }
+        if (sub === "passwd" && email) {
+          const rl = createInterface({ input: process.stdin, output: process.stderr })
+          const password = (await rl.question("New password: ")).trim()
+          rl.close()
+          if (password.length < 8) {
+            console.error("Password must be at least 8 characters")
+            return 1
+          }
+          if (!(await setPassword(pool, email, password))) {
+            console.error(`No user ${email}`)
+            return 1
+          }
+          console.log(`Password updated for ${email}`)
+          return 0
+        }
+        if (sub === "list") {
+          const users = await pool.query(
+            "SELECT email, role, disabled, created_at FROM app.users ORDER BY created_at"
+          )
+          for (const u of users.rows) {
+            console.log(`${u.email}  ${u.role}${u.disabled ? "  (disabled)" : ""}`)
+          }
+          return 0
+        }
+        if ((sub === "disable" || sub === "enable") && email) {
+          const result = await pool.query("UPDATE app.users SET disabled = $2, updated_at = now() WHERE email = $1", [
+            email,
+            sub === "disable"
+          ])
+          if ((result.rowCount ?? 0) === 0) {
+            console.error(`No user ${email}`)
+            return 1
+          }
+          console.log(`${sub === "disable" ? "Disabled" : "Enabled"} ${email}`)
+          return 0
+        }
+        console.error("Usage: cli.js user add <email> [role] | passwd <email> | list | disable <email> | enable <email>")
+        return 1
       }
       case "agent": {
         const integrationId = process.argv[3]

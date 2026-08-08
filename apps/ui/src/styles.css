@@ -47,6 +47,20 @@ table.sessions tbody tr { cursor: pointer }
 table.sessions tbody tr:hover { background: #f0f6fc }
 
 .dim { color: #6a737d; font-size: 12.5px }
+
+/* Login */
+.login-page { display: flex; align-items: center; justify-content: center; height: 100% }
+.login-card {
+  display: flex; flex-direction: column; gap: 12px; width: 320px;
+  background: #fff; border: 1px solid #e3e7ea; border-radius: 10px; padding: 28px;
+}
+.login-card h1 { margin: 0 0 8px; font-size: 20px; text-align: center }
+.login-card input { padding: 9px 12px; border: 1px solid #ccd2d8; border-radius: 6px; font: inherit }
+.user-email { color: #c8d6e5; font-size: 13px }
+button.linkish {
+  background: none; color: #c8d6e5; padding: 0; font-size: 13px; text-decoration: underline;
+}
+button.linkish:hover { color: #fff }
 .list-page.wide { max-width: 980px }
 .dest-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 }
 .dest-card {

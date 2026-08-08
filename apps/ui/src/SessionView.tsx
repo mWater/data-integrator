@@ -25,10 +25,12 @@ export interface LiveItem {
 interface SessionViewProps {
   /** Session to display */
   sessionId: string
+  /** False for viewers: composer is read-only */
+  canDesign: boolean
 }
 
 /** One design session: transcript + live stream on the left, state panel on the right. */
-export function SessionView({ sessionId }: SessionViewProps) {
+export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -126,11 +128,19 @@ export function SessionView({ sessionId }: SessionViewProps) {
                 e.currentTarget.form?.requestSubmit()
               }
             }}
-            placeholder={finished ? "Session finished" : busy ? "Working — steering lands after the current step" : "Describe what to build or change…"}
-            disabled={finished || busy}
+            placeholder={
+              !canDesign
+                ? "Viewers can watch but not send"
+                : finished
+                  ? "Session finished"
+                  : busy
+                    ? "Working — steering lands after the current step"
+                    : "Describe what to build or change…"
+            }
+            disabled={!canDesign || finished || busy}
             rows={3}
           />
-          <button type="submit" disabled={finished || busy || !input.trim()}>Send</button>
+          <button type="submit" disabled={!canDesign || finished || busy || !input.trim()}>Send</button>
         </form>
       </div>
       <StatePanel detail={detail} />
