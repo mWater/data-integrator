@@ -63,7 +63,7 @@ export function App() {
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
           <a href="#/">Integrations</a>
-          <a href="#/sessions">Sessions</a>
+          <a href="#/sessions">Agent activity</a>
           <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />

@@ -381,7 +381,8 @@ async function routeSessions(
   if (url === "/api/sessions") {
     if (req.method === "POST") {
       const body = await readJsonBody(req)
-      const sessionId = await agent.createSession(String(body.integrationId ?? ""))
+      const integrationId = body.integrationId == null || body.integrationId === "" ? undefined : String(body.integrationId)
+      const sessionId = await agent.createSession(integrationId)
       json(res, 201, { sessionId })
     } else {
       json(res, 200, { sessions: await agent.listSessions() })

@@ -15,6 +15,8 @@ export interface IntegrationSummary {
   destinations: number
   /** Whether the scheduler considers it */
   enabled: boolean
+  /** Lifecycle: draft until a design session's cold run certifies it */
+  status: "draft" | "ready"
   /** Status of the most recent run, if any */
   lastRunStatus: string | null
   /** Finish (or start) time of the most recent run (ISO) */
@@ -59,6 +61,8 @@ export interface IntegrationDetail {
   overrides: unknown
   /** Whether the scheduler considers it */
   enabled: boolean
+  /** Lifecycle: draft until a design session's cold run certifies it */
+  status: "draft" | "ready"
   /** Install/update time (ISO) */
   updatedAt: string
   /** Recent runs, newest first */
@@ -73,7 +77,7 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
     `SELECT i.id, i.definition->>'name' AS name, i.definition->>'runtime' AS runtime,
             i.definition->'trigger' AS trigger,
             COALESCE(jsonb_array_length(i.definition->'destinations'), 0) AS destinations,
-            i.enabled, r.status AS last_status, COALESCE(r.finished_at, r.started_at) AS last_at
+            i.enabled, i.status, r.status AS last_status, COALESCE(r.finished_at, r.started_at) AS last_at
      FROM app.integrations i
      LEFT JOIN LATERAL (
        SELECT status, started_at, finished_at FROM app.runs
@@ -88,6 +92,7 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
     trigger: row.trigger ?? {},
     destinations: row.destinations,
     enabled: row.enabled,
+    status: row.status,
     lastRunStatus: row.last_status ?? null,
     lastRunAt: row.last_at ? row.last_at.toISOString() : null
   }))
@@ -96,11 +101,11 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
 /** Loads one integration with run history and destination stats, or null. */
 export async function getIntegration(pool: pg.Pool, id: string): Promise<IntegrationDetail | null> {
   const result = await pool.query(
-    "SELECT definition, overrides, enabled, updated_at FROM app.integrations WHERE id = $1",
+    "SELECT definition, overrides, enabled, status, updated_at FROM app.integrations WHERE id = $1",
     [id]
   )
   if (result.rows.length === 0) return null
-  const { definition, overrides, enabled, updated_at } = result.rows[0]
+  const { definition, overrides, enabled, status, updated_at } = result.rows[0]
 
   const runs = await pool.query(
     `SELECT id, trigger, status, started_at, finished_at, stats, error
@@ -135,6 +140,7 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
     definition,
     overrides,
     enabled,
+    status,
     updatedAt: updated_at.toISOString(),
     runs: runs.rows.map(row => ({
       id: row.id,

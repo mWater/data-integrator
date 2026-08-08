@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { createSession, IntegrationSummary, listIntegrations } from "./api.js"
 
 /** Human-readable trigger summary. */
@@ -18,18 +18,16 @@ interface IntegrationListProps {
 /** Landing page: installed integrations plus the new-integration flow. */
 export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
-  const [newId, setNewId] = useState("")
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     listIntegrations().then(r => setIntegrations(r.integrations), err => setError(err.message))
   }, [])
 
-  async function onCreate(e: FormEvent) {
-    e.preventDefault()
+  async function onCreate() {
     setError(null)
     try {
-      const { sessionId } = await createSession(newId.trim())
+      const { sessionId } = await createSession()
       window.location.hash = `#/session/${sessionId}`
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -40,22 +38,15 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
     <main className="list-page">
       <h1>Integrations</h1>
       {canDesign && (
-        <form className="new-session" onSubmit={onCreate}>
-          <input
-            value={newId}
-            onChange={e => setNewId(e.target.value)}
-            placeholder="new integration id (snake_case)"
-            pattern="[a-z][a-z0-9_]*"
-            required
-          />
-          <button type="submit">New Integration</button>
-        </form>
+        <div className="new-session">
+          <button onClick={onCreate}>New Integration</button>
+        </div>
       )}
       {error && <div className="error">{error}</div>}
       {integrations === null ? (
         <p>Loading…</p>
       ) : integrations.length === 0 ? (
-        <p>Nothing installed yet. Name an integration to start a design session.</p>
+        <p>Nothing installed yet. New Integration starts a design session; describe what to build there.</p>
       ) : (
         <table className="sessions">
           <thead>
@@ -66,6 +57,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
               <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
                 <td>
                   <b>{i.name}</b>
+                  {i.status === "draft" && <span className="chip chip-draft">draft</span>}
                   <div className="dim">{i.id}</div>
                 </td>
                 <td>{i.runtime}</td>

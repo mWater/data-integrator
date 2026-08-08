@@ -4,8 +4,10 @@ export interface SessionSummary {
   id: string
   /** Session status: active, paused, or finished */
   status: string
-  /** Integration id of the draft */
+  /** Integration id of the draft; null until the agent names a new integration */
   integrationId: string | null
+  /** First user message, as a label for sessions not yet named */
+  firstMessage: string | null
   /** Model calls made so far */
   steps: number
   /** Last update time (ISO) */
@@ -92,6 +94,8 @@ export interface SessionEvent {
   reason?: string
   /** Error message (error) */
   message?: string
+  /** Newly bound integration id (integration_bound) */
+  integrationId?: string
 }
 
 /** Summary row from GET /api/integrations. */
@@ -108,6 +112,8 @@ export interface IntegrationSummary {
   destinations: number
   /** Whether the scheduler considers it */
   enabled: boolean
+  /** Lifecycle: draft until a design session's cold run certifies it */
+  status: "draft" | "ready"
   /** Status of the most recent run */
   lastRunStatus: string | null
   /** Time of the most recent run (ISO) */
@@ -152,6 +158,8 @@ export interface IntegrationDetail {
   overrides: unknown
   /** Whether the scheduler considers it */
   enabled: boolean
+  /** Lifecycle: draft until a design session's cold run certifies it */
+  status: "draft" | "ready"
   /** Install/update time (ISO) */
   updatedAt: string
   /** Recent runs, newest first */
@@ -269,12 +277,12 @@ export function listSessions(): Promise<{ sessions: SessionSummary[] }> {
   return request("/api/sessions")
 }
 
-/** Creates a designer session for an integration id. */
-export function createSession(integrationId: string): Promise<{ sessionId: string }> {
+/** Creates a designer session; without an id the agent names the integration. */
+export function createSession(integrationId?: string): Promise<{ sessionId: string }> {
   return request("/api/sessions", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ integrationId })
+    body: JSON.stringify(integrationId ? { integrationId } : {})
   })
 }
 

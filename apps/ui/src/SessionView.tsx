@@ -32,6 +32,7 @@ interface SessionViewProps {
 /** One design session: transcript + live stream on the left, state panel on the right. */
 export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [detail, setDetail] = useState<SessionDetail | null>(null)
+  const [liveId, setLiveId] = useState<string | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,10 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 
   /** Folds one SSE event into the live item list. */
   function onEvent(event: SessionEvent) {
+    if (event.type === "integration_bound") {
+      setLiveId(event.integrationId ?? null)
+      return
+    }
     if (event.type === "stop" || event.type === "error") {
       setLive([])
       setBusy(false)
@@ -106,7 +111,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     <main className="session-page">
       <div className="conversation">
         <div className="session-head">
-          <h1>{detail.integrationId}</h1>
+          <h1>{detail.integrationId ?? liveId ?? "New integration"}</h1>
           <span className={`chip chip-${detail.status}`}>{busy ? "working…" : detail.status}</span>
           {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
         </div>

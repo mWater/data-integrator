@@ -286,7 +286,56 @@ test("service: create, send, event fanout, and detail reporting", async () => {
   assert.equal(detail.messages.length, 4)
 
   const list = await service.listSessions()
-  assert.ok(list.some(s => s.id === sessionId && s.integrationId === "svc_demo"))
+  const row = list.find(s => s.id === sessionId)
+  assert.equal(row?.integrationId, "svc_demo")
+  assert.equal(row?.firstMessage, "write hello world")
+
+  const unboundId = await service.createSession()
+  const unbound = await service.getSession(unboundId)
+  assert.equal(unbound?.integrationId, null)
+  assert.equal(unbound?.firstMessage, null)
+})
+
+test("designer: an unbound draft is named by the first write_definition", async () => {
+  const designer = bareDesigner()
+  const state = initialDesignerState()
+
+  const snippet = await designer.execute("run_snippet", { code: "print(1)" }, state, noEvents)
+  assert.match(snippet.result, /no integration id/)
+  const run = await designer.execute("run_integration", { cold: false }, state, noEvents)
+  assert.match(run.result, /no integration id/)
+
+  const defJson = (id: string) =>
+    JSON.stringify({ id, name: id, trigger: {}, runtime: "python3.12", destinations: [], code: "", contract: 2 })
+
+  const badId = await designer.execute("write_definition", { definitionJson: defJson("Bad-Id") }, state, noEvents)
+  assert.match(badId.result, /Invalid integration id/)
+  assert.equal(badId.state, undefined)
+
+  await installIntegration(pool, JSON.parse(defJson("name_taken")) as IntegrationDefinition)
+  const taken = await designer.execute("write_definition", { definitionJson: defJson("name_taken") }, state, noEvents)
+  assert.match(taken.result, /already installed/)
+  assert.equal(taken.state, undefined)
+
+  const events: SessionEvent[] = []
+  const bound = await designer.execute(
+    "write_definition",
+    { definitionJson: defJson("fresh_name") },
+    state,
+    e => events.push(e as SessionEvent)
+  )
+  assert.match(bound.result, /Validation: valid/)
+  assert.equal((bound.state as DesignerState).definition.id, "fresh_name")
+  assert.deepEqual(events, [{ type: "integration_bound", integrationId: "fresh_name" }])
+
+  // Once bound, the id is pinned like any other session
+  const renamed = await designer.execute(
+    "write_definition",
+    { definitionJson: defJson("other_name") },
+    bound.state as DesignerState,
+    noEvents
+  )
+  assert.equal((renamed.state as DesignerState).definition.id, "fresh_name")
 })
 
 test("integrations API: list and detail reflect an installed definition", async () => {
@@ -308,6 +357,7 @@ test("integrations API: list and detail reflect an installed definition", async 
   assert.ok(summary)
   assert.equal(summary.name, "API Demo")
   assert.equal(summary.destinations, 1)
+  assert.equal(summary.status, "ready")
   assert.equal(summary.lastRunStatus, null)
 
   const detail = await getIntegration(pool, "api_demo")
@@ -318,6 +368,29 @@ test("integrations API: list and detail reflect an installed definition", async 
   assert.deepEqual(detail.destinations, [{ kind: "table", id: "api_demo_rows", count: 0 }])
 
   assert.equal(await getIntegration(pool, "nope"), null)
+})
+
+test("integrations: design-session installs stay draft until promoted", async () => {
+  const definition: IntegrationDefinition = {
+    id: "draft_demo",
+    name: "Draft Demo",
+    trigger: {},
+    runtime: "node22",
+    destinations: [],
+    code: "export default async function run() { return {} }",
+    contract: 2
+  }
+  await installIntegration(pool, definition, {}, "draft")
+  assert.equal((await getIntegration(pool, "draft_demo"))?.status, "draft")
+  assert.equal((await listIntegrations(pool)).find(i => i.id === "draft_demo")?.status, "draft")
+
+  // What the designer does after a successful cold run
+  await pool.query("UPDATE app.integrations SET status = 'ready' WHERE id = $1", ["draft_demo"])
+  assert.equal((await getIntegration(pool, "draft_demo"))?.status, "ready")
+
+  // Editing a ready integration reinstalls it as a draft again
+  await installIntegration(pool, definition, {}, "draft")
+  assert.equal((await getIntegration(pool, "draft_demo"))?.status, "draft")
 })
 
 test("designer: query_table rejects non-SELECT and runs read-only", async () => {

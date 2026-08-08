@@ -6,7 +6,7 @@ import { z } from "zod"
 import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
 import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
-import { definitionHash, installIntegration, validateDefinition } from "../install.js"
+import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
 import { materializeInputs } from "../materialize.js"
 import { getSecrets } from "../secrets.js"
 
@@ -29,8 +29,12 @@ export interface DesignerDeps extends ExecutorDeps {
 /** Snippet resource limits: exploration jobs stay small and short. */
 const SNIPPET_LIMITS = { cpus: 2, memoryMb: 2048, timeoutMs: 180_000 }
 
-/** Fresh draft state for a new designer session. */
-export function initialDesignerState(integrationId: string): DesignerState {
+/**
+ * Fresh draft state for a new designer session. With no integrationId the
+ * draft starts unbound (empty id) and the agent names it on the first
+ * write_definition.
+ */
+export function initialDesignerState(integrationId = ""): DesignerState {
   return {
     definition: {
       id: integrationId,
@@ -52,7 +56,7 @@ repair one integration per session: a JSON definition plus one self-contained co
 that ingests external data into Postgres tables and/or the raster catalog.
 
 # Definition format (contract 2)
-Fields: id (fixed for this session), name, description?, source? {name, url?, provider?,
+Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
 license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north]},
 runtime ("python3.12" | "node22"), limits? {timeoutMs?, memoryMb?, cpus?},
@@ -97,6 +101,9 @@ counts). Read the manifest rather than guessing paths. Inputs must not reference
 this integration's own destinations.
 
 # Workflow
+0. If the draft id is empty, choose one (short snake_case derived from the request)
+   and save an initial definition with write_definition before anything else; the
+   sandbox tools are rejected until the draft has an id.
 1. Explore the source with run_snippet (network is live; print what you learn).
 2. write_definition for everything except code; edit_code for the code.
 3. Iterate with run_integration (warm: /work cache makes retries fast).
@@ -143,7 +150,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       }),
       write_definition: tool({
         description:
-          "Replace the draft definition with the given JSON. The code field is preserved from the current draft; use edit_code for code. The id cannot change.",
+          "Replace the draft definition with the given JSON. The code field is preserved from the current draft; use edit_code for code. When the draft has no id yet, the incoming id names the integration; after that the id cannot change.",
         inputSchema: z.object({
           definitionJson: z.string().describe("Complete definition as JSON text")
         })
@@ -198,7 +205,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       case "get_definition":
         return this.getDefinition(state, args.includeCode === true)
       case "write_definition":
-        return this.writeDefinition(state, String(args.definitionJson ?? ""))
+        return await this.writeDefinition(state, String(args.definitionJson ?? ""), events)
       case "edit_code":
         return this.editCode(state, String(args.oldString ?? ""), String(args.newString ?? ""))
       case "run_snippet":
@@ -222,15 +229,35 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     return { result: JSON.stringify(definition, null, 2) }
   }
 
-  /** Replaces the draft (code and id preserved); reports validation problems. */
-  private writeDefinition(state: DesignerState, definitionJson: string): ToolOutcome<DesignerState> {
+  /**
+   * Replaces the draft (code preserved); reports validation problems. An
+   * unbound draft takes its id from the incoming definition (checked against
+   * installed integrations); a bound draft keeps its id.
+   */
+  private async writeDefinition(
+    state: DesignerState,
+    definitionJson: string,
+    events: AgentEventListener
+  ): Promise<ToolOutcome<DesignerState>> {
     let incoming: IntegrationDefinition
     try {
       incoming = JSON.parse(definitionJson)
     } catch (err) {
       return { result: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}` }
     }
-    const definition = { ...incoming, id: state.definition.id, code: state.definition.code }
+    let id = state.definition.id
+    if (id === "") {
+      id = String(incoming.id ?? "")
+      if (!ID_PATTERN.test(id)) {
+        return { result: `Invalid integration id "${id}": lowercase snake_case starting with a letter` }
+      }
+      const taken = await this.deps.pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [id])
+      if (taken.rows.length > 0) {
+        return { result: `Integration id "${id}" is already installed; choose a different id` }
+      }
+      events({ type: "integration_bound", integrationId: id })
+    }
+    const definition = { ...incoming, id, code: state.definition.code }
     let validation = "valid"
     try {
       validateDefinition(definition)
@@ -266,6 +293,9 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     runtime: RuntimeId | undefined,
     events: AgentEventListener
   ): Promise<ToolOutcome<DesignerState>> {
+    if (state.definition.id === "") {
+      return { result: "The draft has no integration id yet; save one first with write_definition" }
+    }
     const effectiveRuntime = runtime ?? state.definition.runtime
     const image = this.deps.images[effectiveRuntime]
     if (!image) return { result: `No image configured for runtime ${effectiveRuntime}` }
@@ -314,12 +344,15 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     events: AgentEventListener
   ): Promise<ToolOutcome<DesignerState>> {
     const definition = state.definition
+    if (definition.id === "") {
+      return { result: "The draft has no integration id yet; save one first with write_definition" }
+    }
     try {
       validateDefinition(definition)
     } catch (err) {
       return { result: `Definition invalid: ${err instanceof Error ? err.message : String(err)}` }
     }
-    const { hash } = await installIntegration(this.deps.pool, definition)
+    const { hash } = await installIntegration(this.deps.pool, definition, {}, "draft")
 
     let runId: string
     try {
@@ -343,6 +376,13 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
 
     const final = await this.deps.pool.query("SELECT status, error, stats, log FROM app.runs WHERE id = $1", [runId])
     const { status, error, stats, log } = final.rows[0]
+    if (cold && status === "succeeded") {
+      // Certified: promote out of draft, unless something reinstalled meanwhile
+      await this.deps.pool.query(
+        "UPDATE app.integrations SET status = 'ready' WHERE id = $1 AND definition_hash = $2",
+        [definition.id, hash]
+      )
+    }
     const parts = [`${cold ? "Cold" : "Warm"} run ${status}.`]
     if (stats) parts.push(`stats: ${JSON.stringify(stats)}`)
     if (error) parts.push(`error: ${error}`)

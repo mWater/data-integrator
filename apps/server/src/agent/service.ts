@@ -1,10 +1,7 @@
 import pg from "pg"
 import { AgentSessionController } from "./controller.js"
 import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState } from "./designer.js"
-import { definitionHash } from "../install.js"
-
-/** Published-identifier rule (mirrors install.ts). */
-const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
+import { ID_PATTERN, definitionHash } from "../install.js"
 
 /** One event delivered to SSE subscribers; AgentEvents plus lifecycle. */
 export type SessionEvent = Record<string, unknown> & { type: string }
@@ -18,8 +15,10 @@ export interface SessionSummary {
   id: string
   /** Session status: active, paused, or finished */
   status: string
-  /** Integration id of the draft */
+  /** Integration id of the draft; null until the agent names a new integration */
   integrationId: string | null
+  /** First user message, as a label for sessions not yet named */
+  firstMessage: string | null
   /** Model calls made so far */
   steps: number
   /** Last update time (ISO) */
@@ -68,11 +67,15 @@ export class AgentService {
   }
 
   /**
-   * Creates a new designer session for an integration id. When the integration
-   * is already installed, the session starts from its installed definition so
-   * the agent edits rather than re-derives.
+   * Creates a new designer session. Without an integration id the draft starts
+   * unbound and the agent names it in its first write_definition. With one,
+   * and when that integration is already installed, the session starts from
+   * its installed definition so the agent edits rather than re-derives.
    */
-  async createSession(integrationId: string): Promise<string> {
+  async createSession(integrationId?: string): Promise<string> {
+    if (integrationId == null || integrationId === "") {
+      return await this.controller.createSession(initialDesignerState())
+    }
     if (!ID_PATTERN.test(integrationId)) throw new Error(`Invalid integration id: ${integrationId}`)
     const state = initialDesignerState(integrationId)
     const installed = await this.pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
@@ -83,7 +86,9 @@ export class AgentService {
   /** Lists designer sessions, newest first. */
   async listSessions(): Promise<SessionSummary[]> {
     const result = await this.pool.query(
-      `SELECT id, status, client_state->'definition'->>'id' AS integration_id,
+      `SELECT id, status, NULLIF(client_state->'definition'->>'id', '') AS integration_id,
+              (SELECT left(msg->>'content', 120) FROM jsonb_array_elements(messages) msg
+               WHERE msg->>'role' = 'user' LIMIT 1) AS first_message,
               COALESCE((usage->>'steps')::int, 0) AS steps, updated_at
        FROM app.agent_sessions WHERE kind = 'designer' ORDER BY updated_at DESC LIMIT 100`
     )
@@ -91,6 +96,7 @@ export class AgentService {
       id: r.id,
       status: r.status,
       integrationId: r.integration_id,
+      firstMessage: r.first_message,
       steps: r.steps,
       updatedAt: r.updated_at.toISOString()
     }))
@@ -106,10 +112,12 @@ export class AgentService {
     if (result.rows.length === 0) return null
     const row = result.rows[0]
     const state = row.client_state as DesignerState
+    const firstUser = (row.messages as { role: string; content: unknown }[]).find(m => m.role === "user")
     return {
       id: row.id,
       status: row.status,
-      integrationId: state.definition?.id ?? null,
+      integrationId: state.definition?.id || null,
+      firstMessage: typeof firstUser?.content === "string" ? firstUser.content.slice(0, 120) : null,
       steps: (row.usage?.steps as number) ?? 0,
       updatedAt: row.updated_at.toISOString(),
       messages: row.messages,

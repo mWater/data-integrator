@@ -10,6 +10,8 @@ export type AgentEvent =
   | { type: "tool_end"; tool: string; summary: string }
   /** One stderr line streamed from a sandboxed job */
   | { type: "job_log"; line: string }
+  /** An unbound draft took its integration id (first write_definition) */
+  | { type: "integration_bound"; integrationId: string }
 
 /** Listener for agent events. */
 export type AgentEventListener = (event: AgentEvent) => void

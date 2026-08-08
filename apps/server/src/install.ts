@@ -5,7 +5,7 @@ import { ensureTable } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
 
 /** Published-identifier rule for all definition-borne ids. */
-const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
+export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
 
 /** Permitted ColumnSpec types; definitions arrive as untyped JSON. */
 const COLUMN_TYPES = ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
@@ -66,15 +66,20 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   }
 }
 
+/** Lifecycle of an installed integration: draft until certified by a cold run. */
+export type IntegrationStatus = "draft" | "ready"
+
 /**
  * Installs or updates an integration: records the definition revision, upserts
  * the integration row, and ensures destination tables and layers exist with
- * this integration as their sole owner.
+ * this integration as their sole owner. Design-session installs pass "draft";
+ * the status flips to "ready" when a cold run passes.
  */
 export async function installIntegration(
   pool: pg.Pool,
   definition: IntegrationDefinition,
-  overrides: Record<string, unknown> = {}
+  overrides: Record<string, unknown> = {},
+  status: IntegrationStatus = "ready"
 ): Promise<{ hash: string }> {
   validateDefinition(definition)
   const hash = definitionHash(definition)
@@ -86,14 +91,15 @@ export async function installIntegration(
       [hash, JSON.stringify(definition)]
     )
     await client.query(
-      `INSERT INTO app.integrations (id, definition, definition_hash, overrides)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO app.integrations (id, definition, definition_hash, overrides, status)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (id) DO UPDATE SET
          definition = EXCLUDED.definition,
          definition_hash = EXCLUDED.definition_hash,
          overrides = EXCLUDED.overrides,
+         status = EXCLUDED.status,
          updated_at = now()`,
-      [definition.id, JSON.stringify(definition), hash, JSON.stringify(overrides)]
+      [definition.id, JSON.stringify(definition), hash, JSON.stringify(overrides), status]
     )
     for (const dest of definition.destinations) {
       if (dest.kind === "table") {

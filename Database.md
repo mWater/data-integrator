@@ -31,6 +31,7 @@ Installed integrations: a synced library definition plus deployment overrides.
 | definition_hash | text fk | content hash into definition_revisions |
 | overrides | jsonb | deployment overrides: aoi, trigger, limits |
 | enabled | boolean | |
+| status | text | `draft` (design-session install, uncertified) or `ready` (cold run passed, or library install) |
 | created_at, updated_at | timestamptz | |
 
 ### runs

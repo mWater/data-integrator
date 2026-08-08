@@ -74,6 +74,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
     <main className="list-page wide">
       <div className="session-head">
         <h1>{definition.name}</h1>
+        {detail.status === "draft" && <span className="chip chip-draft">draft</span>}
         <span className="chip">{definition.runtime}</span>
         <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
         <span style={{ flex: 1 }} />
