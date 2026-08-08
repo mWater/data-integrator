@@ -77,14 +77,35 @@ export function resolveArtifactPath(outDir: string, declared: string): string {
 }
 
 /**
+ * Ensures the raster_layers row for a session's scratch preview of a declared
+ * layer; owned by the session, invisible to the public layer list.
+ */
+export async function ensureScratchLayer(
+  client: pg.ClientBase,
+  sessionId: string,
+  layerRowId: string,
+  spec: RasterLayerDestination
+): Promise<void> {
+  await client.query(
+    `INSERT INTO app.raster_layers (id, integration_id, session_id, name, temporality, bands)
+     VALUES ($1, NULL, $2, $3, $4, $5)
+     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, temporality = EXCLUDED.temporality, bands = EXCLUDED.bands`,
+    [layerRowId, sessionId, spec.name ?? spec.layerId, spec.temporality, JSON.stringify(spec.bands)]
+  )
+}
+
+/**
  * Stores one artifact file (before the commit transaction; failures leave only
- * GC-able orphans) and returns the values needed to register it.
+ * GC-able orphans) and returns the values needed to register it. layerRowId is
+ * the raster_layers row the snapshot belongs to: the declared layerId for real
+ * runs, the session's scratch layer id for design runs.
  */
 export async function storeArtifact(
   store: RasterStore,
   outDir: string,
   artifact: RasterArtifact,
-  bandIds: string[]
+  bandIds: string[],
+  layerRowId: string = artifact.layerId
 ): Promise<{ snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[] }> {
   const file = resolveArtifactPath(outDir, artifact.path)
   const present = await stat(file).then(s => s.isFile(), () => false)
@@ -98,7 +119,7 @@ export async function storeArtifact(
   }
   const info = await rasterInfo(file, artifact)
   const snapshotId = randomUUID()
-  const relPath = `${artifact.layerId}/${snapshotId}.tif`
+  const relPath = `${layerRowId}/${snapshotId}.tif`
   await store.put(file, relPath)
   return { snapshotId, relPath, info, bandIds }
 }
@@ -114,7 +135,8 @@ export async function registerSnapshot(
   runId: string,
   artifact: RasterArtifact,
   stored: { snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[] },
-  temporality: "time-series" | "current-only"
+  temporality: "time-series" | "current-only",
+  layerRowId: string = artifact.layerId
 ): Promise<void> {
   await client.query(
     `INSERT INTO app.raster_snapshots
@@ -122,7 +144,7 @@ export async function registerSnapshot(
      VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, $9, 'promoted')`,
     [
       stored.snapshotId,
-      artifact.layerId,
+      layerRowId,
       artifact.timestamp,
       artifact.timestampEnd ?? null,
       JSON.stringify(stored.info.footprint),
@@ -136,7 +158,7 @@ export async function registerSnapshot(
     await client.query(
       `UPDATE app.raster_snapshots SET status = 'superseded'
        WHERE layer_id = $1 AND status = 'promoted' AND id <> $2`,
-      [artifact.layerId, stored.snapshotId]
+      [layerRowId, stored.snapshotId]
     )
   }
   await client.query(
@@ -145,6 +167,6 @@ export async function registerSnapshot(
        WHERE layer_id = $1 AND status = 'promoted'
        ORDER BY observed_at DESC, created_at DESC LIMIT 1
      ) WHERE id = $1`,
-    [artifact.layerId]
+    [layerRowId]
   )
 }

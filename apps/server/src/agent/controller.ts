@@ -119,7 +119,7 @@ export class AgentSessionController<S> {
         emit({ type: "tool_start", tool: call.toolName, input: call.input })
         let outcome: ToolOutcome<S>
         try {
-          outcome = await this.impl.execute(call.toolName, call.input, session.state, emit)
+          outcome = await this.impl.execute(call.toolName, call.input, session.state, emit, sessionId)
         } catch (err) {
           outcome = { result: `Tool error: ${err instanceof Error ? err.message : String(err)}` }
         }

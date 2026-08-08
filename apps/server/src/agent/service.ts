@@ -39,6 +39,8 @@ export interface SessionDetail extends SessionSummary {
   running: boolean
   /** Error that stopped the last loop, if it crashed (cleared on the next step) */
   error: string | null
+  /** Scratch preview layers with data, for map links during design */
+  scratchLayers: { id: string; name: string }[]
 }
 
 /** Per-session live bookkeeping. */
@@ -114,6 +116,10 @@ export class AgentService {
     if (result.rows.length === 0) return null
     const row = result.rows[0]
     const state = row.client_state as DesignerState
+    const scratchLayers = await this.pool.query(
+      "SELECT id, name FROM app.raster_layers WHERE session_id = $1 AND current_snapshot_id IS NOT NULL ORDER BY id",
+      [sessionId]
+    )
     const firstUser = (row.messages as { role: string; content: unknown }[]).find(m => m.role === "user")
     return {
       id: row.id,
@@ -127,7 +133,8 @@ export class AgentService {
       usage: row.usage,
       certified: state.coldRun != null && state.coldRun.definitionHash === definitionHash(state.definition),
       running: this.channel(sessionId).running,
-      error: row.error ?? null
+      error: row.error ?? null,
+      scratchLayers: scratchLayers.rows
     }
   }
 

@@ -40,6 +40,18 @@ export function StatePanel({ detail }: StatePanelProps) {
                 ? `${detail.state.lastRun.cold ? "cold" : "warm"} ${detail.state.lastRun.status}`
                 : "none"}
             </dd>
+            {detail.scratchLayers.length > 0 && (
+              <>
+                <dt>Preview layers</dt>
+                <dd>
+                  {detail.scratchLayers.map(layer => (
+                    <div key={layer.id}>
+                      <a href={`#/map/${layer.id}?session=${detail.id}`}>{layer.name}</a>
+                    </div>
+                  ))}
+                </dd>
+              </>
+            )}
             <dt>Model calls</dt>
             <dd>{detail.usage?.steps ?? 0}</dd>
             <dt>Tokens</dt>

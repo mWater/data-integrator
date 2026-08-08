@@ -4,10 +4,11 @@ import path from "node:path"
 import pg from "pg"
 import { Runner, parseJobOutput } from "@data-integrator/runner"
 import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
-import { applyRows } from "./destinations.js"
-import { storeArtifact, registerSnapshot } from "./catalog.js"
+import { applyRows, ensureTable } from "./destinations.js"
+import { ensureScratchLayer, storeArtifact, registerSnapshot } from "./catalog.js"
 import { materializeInputs } from "./materialize.js"
 import { RasterStore } from "./rasterStore.js"
+import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 
 /** Everything the executor needs from its host. */
@@ -31,7 +32,8 @@ const HEARTBEAT_MS = 15_000
 /** One row of app.runs the executor cares about. */
 interface RunRow {
   id: string
-  integration_id: string
+  /** Owning integration; null for session scratch runs */
+  integration_id: string | null
   params: unknown
 }
 
@@ -43,8 +45,9 @@ interface RunRow {
 export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<RunRow | null> {
   const client = await pool.connect()
   try {
+    // Scratch (session) runs are executed by the designer in-process, never claimed here
     const candidates = await client.query(
-      `SELECT id FROM app.runs WHERE status = 'queued' AND scheduled_at <= now()
+      `SELECT id FROM app.runs WHERE status = 'queued' AND scheduled_at <= now() AND integration_id IS NOT NULL
        ORDER BY priority DESC, scheduled_at LIMIT 10`
     )
     for (const candidate of candidates.rows) {
@@ -89,6 +92,18 @@ export interface RunOptions {
   cold?: boolean
   /** Receives each job stderr line as it streams */
   onLogLine?: (line: string) => void
+  /**
+   * Scratch mode: the run belongs to a design session. The given draft
+   * definition executes against the session's scratch area (draft schema,
+   * scratch preview layers, session /work); installed integrations are never
+   * consulted or touched.
+   */
+  scratch?: {
+    /** Owning design session */
+    sessionId: string
+    /** Draft definition to execute */
+    definition: IntegrationDefinition
+  }
 }
 
 /**
@@ -101,15 +116,23 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     deps.pool.query("UPDATE app.runs SET heartbeat_at = now() WHERE id = $1", [run.id]).catch(() => {})
   }, HEARTBEAT_MS)
 
+  const scratch = opts?.scratch ?? null
   let outDir: string | null = null
   let inDir: string | null = null
   try {
-    const integrationResult = await deps.pool.query(
-      "SELECT definition, definition_hash, overrides FROM app.integrations WHERE id = $1",
-      [run.integration_id]
-    )
-    const row = integrationResult.rows[0]
-    const definition = effectiveDefinition(row.definition, row.overrides)
+    let definition: IntegrationDefinition
+    let definitionHash: string | null = null
+    if (scratch) {
+      definition = scratch.definition
+    } else {
+      const integrationResult = await deps.pool.query(
+        "SELECT definition, definition_hash, overrides FROM app.integrations WHERE id = $1",
+        [run.integration_id]
+      )
+      const row = integrationResult.rows[0]
+      definition = effectiveDefinition(row.definition, row.overrides)
+      definitionHash = row.definition_hash
+    }
 
     let manifest = null
     if (definition.inputs && Object.keys(definition.inputs).length > 0) {
@@ -125,20 +148,30 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       : {}
     let previousState: unknown = null
     if (!opts?.cold) {
-      const stateResult = await deps.pool.query(
-        `SELECT state_out FROM app.runs
-         WHERE integration_id = $1 AND status = 'succeeded' ORDER BY finished_at DESC LIMIT 1`,
-        [run.integration_id]
-      )
+      const stateResult = scratch
+        ? await deps.pool.query(
+            `SELECT state_out FROM app.runs
+             WHERE session_id = $1 AND status = 'succeeded' ORDER BY finished_at DESC LIMIT 1`,
+            [scratch.sessionId]
+          )
+        : await deps.pool.query(
+            `SELECT state_out FROM app.runs
+             WHERE integration_id = $1 AND status = 'succeeded' ORDER BY finished_at DESC LIMIT 1`,
+            [run.integration_id]
+          )
       previousState = stateResult.rows[0]?.state_out ?? null
     }
-    const webhookEvents = await deps.pool.query(
-      `SELECT id, payload FROM app.webhook_events
-       WHERE integration_id = $1 AND run_id IS NULL ORDER BY received_at`,
-      [run.integration_id]
-    )
+    const webhookEvents = scratch
+      ? { rows: [] as { id: string; payload: unknown }[] }
+      : await deps.pool.query(
+          `SELECT id, payload FROM app.webhook_events
+           WHERE integration_id = $1 AND run_id IS NULL ORDER BY received_at`,
+          [run.integration_id]
+        )
 
-    const workDir = path.join(deps.workRoot, run.integration_id)
+    const workDir = scratch
+      ? scratchWorkDir(deps.workRoot, scratch.sessionId)
+      : path.join(deps.workRoot, run.integration_id!)
     if (opts?.cold) await rm(workDir, { recursive: true, force: true })
     await mkdir(workDir, { recursive: true })
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
@@ -178,6 +211,22 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     }
 
     const output = parseJobOutput<RunResult>(jobResult)
+    const schema = scratch ? draftSchema(scratch.sessionId) : "data"
+    const layerRowFor = (layerId: string) => (scratch ? scratchLayerId(scratch.sessionId, layerId) : layerId)
+
+    // Scratch destinations are provisioned lazily, on the first successful run
+    if (scratch) {
+      const client = await deps.pool.connect()
+      try {
+        await client.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`)
+        for (const dest of definition.destinations) {
+          if (dest.kind === "table") await ensureTable(client, dest, schema)
+          else await ensureScratchLayer(client, scratch.sessionId, layerRowFor(dest.layerId), dest)
+        }
+      } finally {
+        client.release()
+      }
+    }
 
     // Files into the store before the transaction; failures leave GC-able orphans
     const layerSpecs = new Map(
@@ -190,7 +239,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       storedArtifacts.push({
         artifact,
         layer,
-        stored: await storeArtifact(deps.store, outDir, artifact, layer.bands.map(b => b.id))
+        stored: await storeArtifact(
+          deps.store,
+          outDir,
+          artifact,
+          layer.bands.map(b => b.id),
+          layerRowFor(artifact.layerId)
+        )
       })
     }
 
@@ -204,10 +259,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       for (const [tableId, rows] of Object.entries(output.data ?? {})) {
         const spec = tableSpecs.get(tableId)
         if (!spec) throw new Error(`Rows for undeclared table ${tableId}`)
-        rowCounts[tableId] = await applyRows(client, spec, rows, run.id)
+        rowCounts[tableId] = await applyRows(client, spec, rows, run.id, schema)
       }
       for (const { artifact, layer, stored } of storedArtifacts) {
-        await registerSnapshot(client, run.id, artifact, stored, layer.temporality)
+        await registerSnapshot(client, run.id, artifact, stored, layer.temporality, layerRowFor(artifact.layerId))
       }
       if (webhookEvents.rows.length > 0) {
         await client.query("UPDATE app.webhook_events SET run_id = $1 WHERE id = ANY($2)", [
@@ -222,7 +277,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         [
           run.id,
           output.state !== undefined ? JSON.stringify(output.state) : null,
-          row.definition_hash,
+          definitionHash,
           JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
           log,
           manifest ? JSON.stringify(manifest) : null

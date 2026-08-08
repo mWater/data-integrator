@@ -10,6 +10,8 @@ const tileUrl = (layerId: string, snapshotId: string) => `/tiles/${layerId}/${sn
 interface MapPageProps {
   /** When set, this layer starts visible and the view fits to it */
   focusLayerId: string | null
+  /** When set, shows a design session's scratch preview layers instead of installed ones */
+  sessionId?: string | null
 }
 
 /** Per-layer UI state. */
@@ -35,7 +37,7 @@ function fitTo(map: MapLibreMap, layer: MapLayer) {
  * one); the side panel is the picker, with a time slider for visible
  * time-series layers.
  */
-export function MapPage({ focusLayerId }: MapPageProps) {
+export function MapPage({ focusLayerId, sessionId }: MapPageProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [controls, setControls] = useState<LayerControl[]>([])
@@ -61,7 +63,7 @@ export function MapPage({ focusLayerId }: MapPageProps) {
     mapRef.current = map
 
     map.on("load", async () => {
-      const { layers } = await listLayers()
+      const { layers } = await listLayers(sessionId ?? undefined)
       const withData = layers.filter(l => l.current_snapshot_id)
       const next: LayerControl[] = []
       for (const layer of withData) {
@@ -83,7 +85,7 @@ export function MapPage({ focusLayerId }: MapPageProps) {
 
     return () => map.remove()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusLayerId])
+  }, [focusLayerId, sessionId])
 
   /** Applies a control change to both React state and the map. */
   function update(id: string, change: Partial<LayerControl>) {

@@ -8,6 +8,7 @@ import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js
 import { ExecutorDeps, executeRun } from "../executor.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
 import { materializeInputs } from "../materialize.js"
+import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
 
 /** Client state of a designer session: the draft and its certification. */
@@ -126,9 +127,13 @@ this integration's own destinations.
    confirms. Skip this only when the user's request already pins down all of these;
    re-confirm whenever you later change source or scope.
 3. write_definition for everything except code; edit_code for the code.
-4. Iterate with run_integration (warm: /work cache makes retries fast).
+4. Iterate with run_integration (warm: /work cache makes retries fast). Test runs
+   write to a session-scoped scratch area; nothing touches installed integrations
+   or their data until finish. query_table reads your scratch tables by plain name.
 5. When it works, run_integration with cold=true (fresh /work, null previousState).
-6. finish. It is rejected unless the current code passed a cold run unchanged.
+6. finish saves: it installs the certified definition as the real integration and
+   discards the scratch area (the first production run then loads data). It is
+   rejected unless the current code passed a cold run unchanged.
 
 Rules: never fabricate data. Reference secrets by name only. Prefer incremental state
 over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
@@ -194,7 +199,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       }),
       run_integration: tool({
         description:
-          "Install the draft and execute a real run through the executor (rows and snapshots are committed). cold=true wipes /work and nulls previousState; a successful cold run certifies the current definition for finish.",
+          "Execute a real run of the draft through the executor, into this session's scratch area (scratch tables and preview layers; installed integrations are untouched). cold=true wipes /work and nulls previousState; a successful cold run certifies the current definition for finish.",
         inputSchema: z.object({
           cold: z.boolean().describe("Fresh workspace certification run")
         })
@@ -206,7 +211,8 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
         })
       }),
       finish: tool({
-        description: "End the session. Rejected unless the current definition passed a cold run unchanged.",
+        description:
+          "Save and end the session: installs the certified definition as the real integration and discards the scratch area. Rejected unless the current definition passed a cold run unchanged.",
         inputSchema: z.object({
           summary: z.string().describe("One-paragraph summary of what was built")
         })
@@ -219,7 +225,8 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     name: string,
     input: unknown,
     state: DesignerState,
-    events: AgentEventListener
+    events: AgentEventListener,
+    sessionId: string
   ): Promise<ToolOutcome<DesignerState>> {
     const args = (input ?? {}) as Record<string, unknown>
     switch (name) {
@@ -230,13 +237,13 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       case "edit_code":
         return this.editCode(state, String(args.oldString ?? ""), String(args.newString ?? ""))
       case "run_snippet":
-        return await this.runSnippet(state, String(args.code ?? ""), args.runtime as RuntimeId | undefined, events)
+        return await this.runSnippet(state, String(args.code ?? ""), args.runtime as RuntimeId | undefined, events, sessionId)
       case "run_integration":
-        return await this.runIntegration(state, args.cold === true, events)
+        return await this.runIntegration(state, args.cold === true, events, sessionId)
       case "query_table":
-        return await this.queryTable(String(args.sql ?? ""))
+        return await this.queryTable(String(args.sql ?? ""), sessionId)
       case "finish":
-        return this.finish(state, String(args.summary ?? ""))
+        return await this.finish(state, String(args.summary ?? ""), sessionId)
       default:
         return { result: `Unknown tool ${name}` }
     }
@@ -312,18 +319,16 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     state: DesignerState,
     code: string,
     runtime: RuntimeId | undefined,
-    events: AgentEventListener
+    events: AgentEventListener,
+    sessionId: string
   ): Promise<ToolOutcome<DesignerState>> {
-    if (state.definition.id === "") {
-      return { result: "The draft has no integration id yet; save one first with write_definition" }
-    }
     const effectiveRuntime = runtime ?? state.definition.runtime
     const image = this.deps.images[effectiveRuntime]
     if (!image) return { result: `No image configured for runtime ${effectiveRuntime}` }
     const secrets = await this.loadSecrets(state)
     if (typeof secrets === "string") return { result: secrets }
 
-    const workDir = path.join(this.deps.workRoot, state.definition.id)
+    const workDir = scratchWorkDir(this.deps.workRoot, sessionId)
     await mkdir(workDir, { recursive: true })
     const outDir = await mkdtemp(path.join(tmpdir(), "snippet-out-"))
     let inDir: string | undefined
@@ -358,11 +363,16 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     }
   }
 
-  /** Installs the draft and executes one real run; cold runs certify for finish. */
+  /**
+   * Executes one real run of the draft in the session's scratch area (draft
+   * schema tables, scratch preview layers). Installed integrations are never
+   * touched; cold runs certify for finish, which is what installs.
+   */
   private async runIntegration(
     state: DesignerState,
     cold: boolean,
-    events: AgentEventListener
+    events: AgentEventListener,
+    sessionId: string
   ): Promise<ToolOutcome<DesignerState>> {
     const definition = state.definition
     if (definition.id === "") {
@@ -373,18 +383,18 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     } catch (err) {
       return { result: `Definition invalid: ${err instanceof Error ? err.message : String(err)}` }
     }
-    const { hash } = await installIntegration(this.deps.pool, definition, {}, "draft")
+    const hash = definitionHash(definition)
 
     let runId: string
     try {
       const inserted = await this.deps.pool.query(
-        `INSERT INTO app.runs (integration_id, trigger, status) VALUES ($1, 'manual', 'queued') RETURNING id`,
-        [definition.id]
+        `INSERT INTO app.runs (session_id, trigger, status) VALUES ($1, 'agent', 'queued') RETURNING id`,
+        [sessionId]
       )
       runId = inserted.rows[0].id
     } catch (err) {
       if ((err as { code?: string }).code === "23505") {
-        return { result: "A run of this integration is already queued or running; wait for it to complete." }
+        return { result: "A run of this session is already queued or running; wait for it to complete." }
       }
       throw err
     }
@@ -393,17 +403,14 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
        WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params`,
       [runId]
     )
-    await executeRun(this.deps, claimed.rows[0], { cold, onLogLine: line => events({ type: "job_log", line }) })
+    await executeRun(this.deps, claimed.rows[0], {
+      cold,
+      scratch: { sessionId, definition },
+      onLogLine: line => events({ type: "job_log", line })
+    })
 
     const final = await this.deps.pool.query("SELECT status, error, stats, log FROM app.runs WHERE id = $1", [runId])
     const { status, error, stats, log } = final.rows[0]
-    if (cold && status === "succeeded") {
-      // Certified: promote out of draft, unless something reinstalled meanwhile
-      await this.deps.pool.query(
-        "UPDATE app.integrations SET status = 'ready' WHERE id = $1 AND definition_hash = $2",
-        [definition.id, hash]
-      )
-    }
     const parts = [`${cold ? "Cold" : "Warm"} run ${status}.`]
     if (stats) parts.push(`stats: ${JSON.stringify(stats)}`)
     if (error) parts.push(`error: ${error}`)
@@ -441,8 +448,11 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     return { result: parts.join("\n"), state: next, pause: pause || undefined }
   }
 
-  /** One read-only SELECT over the data schema, capped at 50 rows. */
-  private async queryTable(sql: string): Promise<ToolOutcome<DesignerState>> {
+  /**
+   * One read-only SELECT, capped at 50 rows. The session's scratch schema
+   * shadows data, so plain table names hit this session's test output first.
+   */
+  private async queryTable(sql: string, sessionId: string): Promise<ToolOutcome<DesignerState>> {
     const trimmed = sql.trim()
     if (!/^(select|with)\b/i.test(trimmed) || trimmed.includes(";")) {
       return { result: "Error: a single SELECT (or WITH...SELECT) statement is required" }
@@ -451,7 +461,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     try {
       await client.query("BEGIN TRANSACTION READ ONLY")
       await client.query("SET LOCAL statement_timeout = '15s'")
-      await client.query("SET LOCAL search_path = data")
+      await client.query(`SET LOCAL search_path = ${draftSchema(sessionId)}, data`)
       const result = await client.query(trimmed)
       const rows = result.rows.slice(0, 50)
       return { result: `${result.rowCount} rows (showing ${rows.length}):\n${JSON.stringify(rows)}` }
@@ -463,8 +473,13 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     }
   }
 
-  /** The cold-run gate: finish only with the current definition certified. */
-  private finish(state: DesignerState, summary: string): ToolOutcome<DesignerState> {
+  /**
+   * The save: behind the cold-run gate, installs the certified definition as
+   * the real integration (creating or updating its tables and layers) and
+   * discards the session's scratch area. The integration starts empty; its
+   * first production run loads data.
+   */
+  private async finish(state: DesignerState, summary: string, sessionId: string): Promise<ToolOutcome<DesignerState>> {
     const hash = definitionHash(state.definition)
     if (!state.coldRun || state.coldRun.definitionHash !== hash) {
       return {
@@ -472,7 +487,12 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
           "Rejected: finish requires a successful cold run of the current definition. Run run_integration with cold=true (again if you edited anything since)."
       }
     }
-    return { result: `Finished: ${summary}`, finished: true }
+    await installIntegration(this.deps.pool, state.definition)
+    await cleanupScratch(this.deps.pool, this.deps.store, this.deps.workRoot, sessionId)
+    return {
+      result: `Saved ${state.definition.id} as the installed integration (scratch area discarded; its first real run loads data). ${summary}`,
+      finished: true
+    }
   }
 
   /** Secret values for the draft's declared names, or an error message. */

@@ -51,10 +51,10 @@ function ident(name: string): string {
 }
 
 /** Builds the CREATE TABLE DDL plus index statements for a destination. */
-function tableDdl(tableName: string, spec: TableDestination): string[] {
+function tableDdl(schema: string, tableName: string, spec: TableDestination): string[] {
   const cols = spec.columns.map(c => `${ident(c.id)} ${pgType(c)}`).join(",\n  ")
   const statements = [
-    `CREATE TABLE data.${ident(tableName)} (
+    `CREATE TABLE ${ident(schema)}.${ident(tableName)} (
   _id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   _run_id uuid NOT NULL,
   ${cols}
@@ -63,14 +63,14 @@ function tableDdl(tableName: string, spec: TableDestination): string[] {
   for (const c of spec.columns) {
     if (c.type === "geometry") {
       statements.push(
-        `CREATE INDEX ${ident(`${tableName}_${c.id}_gist`)} ON data.${ident(tableName)} USING GIST (${ident(c.id)})`
+        `CREATE INDEX ${ident(`${tableName}_${c.id}_gist`)} ON ${ident(schema)}.${ident(tableName)} USING GIST (${ident(c.id)})`
       )
     }
   }
   if (spec.action === "merge") {
     const mergeCols = (spec.mergeColumns ?? []).map(ident).join(", ")
     statements.push(
-      `CREATE UNIQUE INDEX ${ident(`${tableName}_merge`)} ON data.${ident(tableName)} (${mergeCols})`
+      `CREATE UNIQUE INDEX ${ident(`${tableName}_merge`)} ON ${ident(schema)}.${ident(tableName)} (${mergeCols})`
     )
   }
   return statements
@@ -81,14 +81,14 @@ function tableDdl(tableName: string, spec: TableDestination): string[] {
  * columns) if present. Type changes and removals are rejected; those rebuild
  * via the replace action or a manual migration.
  */
-export async function ensureTable(client: pg.ClientBase, spec: TableDestination): Promise<void> {
+export async function ensureTable(client: pg.ClientBase, spec: TableDestination, schema = "data"): Promise<void> {
   const existing = await client.query(
     `SELECT column_name FROM information_schema.columns
-     WHERE table_schema = 'data' AND table_name = $1`,
-    [spec.tableId]
+     WHERE table_schema = $2 AND table_name = $1`,
+    [spec.tableId, schema]
   )
   if (existing.rows.length === 0) {
-    for (const statement of tableDdl(spec.tableId, spec)) {
+    for (const statement of tableDdl(schema, spec.tableId, spec)) {
       await client.query(statement)
     }
     return
@@ -96,7 +96,7 @@ export async function ensureTable(client: pg.ClientBase, spec: TableDestination)
   const have = new Set(existing.rows.map(r => r.column_name as string))
   for (const c of spec.columns) {
     if (!have.has(c.id)) {
-      await client.query(`ALTER TABLE data.${ident(spec.tableId)} ADD COLUMN ${ident(c.id)} ${pgType(c)}`)
+      await client.query(`ALTER TABLE ${ident(schema)}.${ident(spec.tableId)} ADD COLUMN ${ident(c.id)} ${pgType(c)}`)
     }
   }
 }
@@ -107,6 +107,7 @@ const CHUNK = 500
 /** Inserts rows in chunks, optionally with an ON CONFLICT clause. */
 async function insertRows(
   client: pg.ClientBase,
+  schema: string,
   tableName: string,
   spec: TableDestination,
   rows: Record<string, unknown>[],
@@ -128,7 +129,7 @@ async function insertRows(
       return `(${exprs.join(", ")})`
     })
     await client.query(
-      `INSERT INTO data.${ident(tableName)} (${colNames}) VALUES ${tuples.join(", ")}${onConflict}`,
+      `INSERT INTO ${ident(schema)}.${ident(tableName)} (${colNames}) VALUES ${tuples.join(", ")}${onConflict}`,
       params
     )
   }
@@ -143,25 +144,26 @@ export async function applyRows(
   client: pg.ClientBase,
   spec: TableDestination,
   rows: Record<string, unknown>[],
-  runId: string
+  runId: string,
+  schema = "data"
 ): Promise<number> {
   if (spec.action === "replace") {
     const tmp = `${spec.tableId}__new`
-    await client.query(`DROP TABLE IF EXISTS data.${ident(tmp)}`)
-    for (const statement of tableDdl(tmp, spec)) {
+    await client.query(`DROP TABLE IF EXISTS ${ident(schema)}.${ident(tmp)}`)
+    for (const statement of tableDdl(schema, tmp, spec)) {
       await client.query(statement)
     }
-    await insertRows(client, tmp, spec, rows, runId, "")
-    await client.query(`DROP TABLE IF EXISTS data.${ident(spec.tableId)}`)
-    await client.query(`ALTER TABLE data.${ident(tmp)} RENAME TO ${ident(spec.tableId)}`)
+    await insertRows(client, schema, tmp, spec, rows, runId, "")
+    await client.query(`DROP TABLE IF EXISTS ${ident(schema)}.${ident(spec.tableId)}`)
+    await client.query(`ALTER TABLE ${ident(schema)}.${ident(tmp)} RENAME TO ${ident(spec.tableId)}`)
     // Indexes keep tmp-based names; rename so the next replace does not collide
     const indexes = await client.query(
-      `SELECT indexname FROM pg_indexes WHERE schemaname = 'data' AND tablename = $1 AND indexname LIKE $2`,
-      [spec.tableId, `${tmp}%`]
+      `SELECT indexname FROM pg_indexes WHERE schemaname = $3 AND tablename = $1 AND indexname LIKE $2`,
+      [spec.tableId, `${tmp}%`, schema]
     )
     for (const row of indexes.rows) {
       const renamed = (row.indexname as string).replace(tmp, spec.tableId)
-      await client.query(`ALTER INDEX data.${ident(row.indexname)} RENAME TO ${ident(renamed)}`)
+      await client.query(`ALTER INDEX ${ident(schema)}.${ident(row.indexname)} RENAME TO ${ident(renamed)}`)
     }
     return rows.length
   }
@@ -171,10 +173,10 @@ export async function applyRows(
     const updates = ["_run_id", ...spec.columns.filter(c => !(spec.mergeColumns ?? []).includes(c.id)).map(c => c.id)]
       .map(c => `${ident(c)} = EXCLUDED.${ident(c)}`)
       .join(", ")
-    await insertRows(client, spec.tableId, spec, rows, runId, ` ON CONFLICT (${mergeCols}) DO UPDATE SET ${updates}`)
+    await insertRows(client, schema, spec.tableId, spec, rows, runId, ` ON CONFLICT (${mergeCols}) DO UPDATE SET ${updates}`)
     return rows.length
   }
 
-  await insertRows(client, spec.tableId, spec, rows, runId, "")
+  await insertRows(client, schema, spec.tableId, spec, rows, runId, "")
   return rows.length
 }

@@ -66,14 +66,14 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   }
 }
 
-/** Lifecycle of an installed integration: draft until certified by a cold run. */
+/** Lifecycle of an installed integration; design sessions only install certified definitions. */
 export type IntegrationStatus = "draft" | "ready"
 
 /**
  * Installs or updates an integration: records the definition revision, upserts
  * the integration row, and ensures destination tables and layers exist with
- * this integration as their sole owner. Design-session installs pass "draft";
- * the status flips to "ready" when a cold run passes.
+ * this integration as their sole owner. Design sessions run in a scratch area
+ * and call this only at finish, with a cold-run-certified definition.
  */
 export async function installIntegration(
   pool: pg.Pool,

@@ -46,7 +46,8 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | column | type | notes |
 |---|---|---|
 | id | uuid pk | |
-| integration_id | text fk | |
+| integration_id | text fk null | null for design-session scratch runs |
+| session_id | uuid fk null | owning design session for scratch runs (one of the two is set) |
 | trigger | text | cron, webhook, manual, agent |
 | status | text | queued, running, succeeded, failed, timeout, skipped |
 | priority | int | queue claim order |
@@ -93,12 +94,19 @@ commit, so a failed run leaves them pending for the retry.
 
 | column | type | notes |
 |---|---|---|
-| id | text pk | layerId from the definition |
-| integration_id | text fk | owning integration |
+| id | text pk | layerId from the definition; `draft_<session>_<layerId>` for scratch previews |
+| integration_id | text fk null | owning integration; null for session scratch layers |
+| session_id | uuid fk null | owning design session for scratch preview layers |
 | name | text | |
 | temporality | text | time-series, current-only |
 | bands | jsonb | BandSpec[] |
 | current_snapshot_id | uuid null | |
+
+Design sessions test-run into a scratch area: destination tables in a
+`draft_<session>` schema, preview layers owned by the session (excluded from
+the public layer list), /work keyed by session. finish installs the certified
+definition and discards the scratch area; installed integrations are never
+touched mid-design.
 
 ### raster_snapshots
 

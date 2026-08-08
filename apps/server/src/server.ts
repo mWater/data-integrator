@@ -263,6 +263,9 @@ async function route(
   }
 
   if (pathname === "/layers" || pathname === "/api/layers") {
+    // Default: installed layers only. ?session=<id> instead lists that design
+    // session's scratch preview layers.
+    const session = searchParams.get("session")
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
               s.observed_at, s.observed_end, s.crs,
@@ -276,7 +279,9 @@ async function route(
                 ) ORDER BY observed_at) AS snapshots
          FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
        ) sn ON true
-       ORDER BY l.id`
+       WHERE ${session ? "l.session_id = $1" : "l.session_id IS NULL"}
+       ORDER BY l.id`,
+      session ? [session] : []
     )
     json(res, 200, { layers: result.rows })
     return

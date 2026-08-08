@@ -20,7 +20,10 @@ first real library integrations (WorldPop population, CHIRPS monthly rainfall)
 run end to end and render on a map page with a time slider for time-series
 layers. The designer agent works via CLI and via the React UI (apps/ui, served
 by the server): live design sessions with streaming tool calls and job logs,
-cold-run-gated finish, sessions serialized to Postgres. Local accounts work:
+cold-run-gated finish, sessions serialized to Postgres. Design sessions run in
+a session-scoped scratch area (draft schema, preview layers with map tiles);
+installed integrations are untouched until finish saves the certified
+definition, so editing a live integration is safe. Local accounts work:
 email + password (scrypt, lockout), cookie sessions, admin/editor/viewer roles
 enforced server-side, users managed via CLI. The UI covers the core operator
 loop: browse integrations, preview table data, run manually, view layers on the

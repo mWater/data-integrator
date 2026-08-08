@@ -202,25 +202,28 @@ function bareDesigner(): DesignerImplementation {
 
 const noEvents = () => {}
 
+/** Session id for direct designer.execute calls (keys scratch areas). */
+const SID = "9f28c9a2-1111-4222-8333-444455556666"
+
 test("designer: edit_code exact-string semantics", async () => {
   const designer = bareDesigner()
   const state = initialDesignerState("demo")
 
-  const set = await designer.execute("edit_code", { oldString: "", newString: "a = 1\nb = 2\n" }, state, noEvents)
+  const set = await designer.execute("edit_code", { oldString: "", newString: "a = 1\nb = 2\n" }, state, noEvents, SID)
   assert.match(set.result, /Code updated/)
   const code = (set.state as DesignerState).definition.code
   assert.equal(code, "a = 1\nb = 2\n")
 
-  const reject = await designer.execute("edit_code", { oldString: "", newString: "x" }, set.state as DesignerState, noEvents)
+  const reject = await designer.execute("edit_code", { oldString: "", newString: "x" }, set.state as DesignerState, noEvents, SID)
   assert.match(reject.result, /oldString is required/)
 
-  const missing = await designer.execute("edit_code", { oldString: "zzz", newString: "x" }, set.state as DesignerState, noEvents)
+  const missing = await designer.execute("edit_code", { oldString: "zzz", newString: "x" }, set.state as DesignerState, noEvents, SID)
   assert.match(missing.result, /not found/)
 
-  const ambiguous = await designer.execute("edit_code", { oldString: "= ", newString: "x" }, set.state as DesignerState, noEvents)
+  const ambiguous = await designer.execute("edit_code", { oldString: "= ", newString: "x" }, set.state as DesignerState, noEvents, SID)
   assert.match(ambiguous.result, /occurs 2 times/)
 
-  const edit = await designer.execute("edit_code", { oldString: "b = 2", newString: "b = 3" }, set.state as DesignerState, noEvents)
+  const edit = await designer.execute("edit_code", { oldString: "b = 2", newString: "b = 3" }, set.state as DesignerState, noEvents, SID)
   assert.equal((edit.state as DesignerState).definition.code, "a = 1\nb = 3\n")
 })
 
@@ -252,7 +255,7 @@ test("designer: write_definition preserves id and code, reports validation", asy
   assert.equal(next.definition.id, "demo")
   assert.equal(next.definition.code, "keep me")
 
-  const invalid = await designer.execute("write_definition", { definitionJson: "{not json" }, state, noEvents)
+  const invalid = await designer.execute("write_definition", { definitionJson: "{not json" }, state, noEvents, SID)
   assert.match(invalid.result, /Invalid JSON/)
   assert.equal(invalid.state, undefined)
 
@@ -283,12 +286,12 @@ test("designer: finish is rejected without a cold run of the current definition"
   const designer = bareDesigner()
   const state = initialDesignerState("demo")
 
-  const rejected = await designer.execute("finish", { summary: "done" }, state, noEvents)
+  const rejected = await designer.execute("finish", { summary: "done" }, state, noEvents, SID)
   assert.equal(rejected.finished, undefined)
   assert.match(rejected.result, /cold run/)
 
   const stale = { ...state, coldRun: { definitionHash: "not-the-current-hash", runId: "r1" } }
-  const staleRejected = await designer.execute("finish", { summary: "done" }, stale, noEvents)
+  const staleRejected = await designer.execute("finish", { summary: "done" }, stale, noEvents, SID)
   assert.equal(staleRejected.finished, undefined)
 })
 
@@ -364,20 +367,20 @@ test("designer: an unbound draft is named by the first write_definition", async 
   const designer = bareDesigner()
   const state = initialDesignerState()
 
-  const snippet = await designer.execute("run_snippet", { code: "print(1)" }, state, noEvents)
-  assert.match(snippet.result, /no integration id/)
-  const run = await designer.execute("run_integration", { cold: false }, state, noEvents)
+  const snippet = await designer.execute("run_snippet", { code: "print(1)" }, state, noEvents, SID)
+  assert.match(snippet.result, /No image configured/)
+  const run = await designer.execute("run_integration", { cold: false }, state, noEvents, SID)
   assert.match(run.result, /no integration id/)
 
   const defJson = (id: string) =>
     JSON.stringify({ id, name: id, trigger: {}, runtime: "python3.12", destinations: [], code: "", contract: 2 })
 
-  const badId = await designer.execute("write_definition", { definitionJson: defJson("Bad-Id") }, state, noEvents)
+  const badId = await designer.execute("write_definition", { definitionJson: defJson("Bad-Id") }, state, noEvents, SID)
   assert.match(badId.result, /Invalid integration id/)
   assert.equal(badId.state, undefined)
 
   await installIntegration(pool, JSON.parse(defJson("name_taken")) as IntegrationDefinition)
-  const taken = await designer.execute("write_definition", { definitionJson: defJson("name_taken") }, state, noEvents)
+  const taken = await designer.execute("write_definition", { definitionJson: defJson("name_taken") }, state, noEvents, SID)
   assert.match(taken.result, /already installed/)
   assert.equal(taken.state, undefined)
 
@@ -386,7 +389,8 @@ test("designer: an unbound draft is named by the first write_definition", async 
     "write_definition",
     { definitionJson: defJson("fresh_name") },
     state,
-    e => events.push(e as SessionEvent)
+    e => events.push(e as SessionEvent),
+    SID
   )
   assert.match(bound.result, /Validation: valid/)
   assert.equal((bound.state as DesignerState).definition.id, "fresh_name")
@@ -459,10 +463,10 @@ test("integrations: design-session installs stay draft until promoted", async ()
 
 test("designer: query_table rejects non-SELECT and runs read-only", async () => {
   const designer = bareDesigner()
-  const bad = await designer.execute("query_table", { sql: "DELETE FROM data.x" }, initialDesignerState("demo"), noEvents)
+  const bad = await designer.execute("query_table", { sql: "DELETE FROM data.x" }, initialDesignerState("demo"), noEvents, SID)
   assert.match(bad.result, /SELECT/)
-  const stacked = await designer.execute("query_table", { sql: "SELECT 1; SELECT 2" }, initialDesignerState("demo"), noEvents)
+  const stacked = await designer.execute("query_table", { sql: "SELECT 1; SELECT 2" }, initialDesignerState("demo"), noEvents, SID)
   assert.match(stacked.result, /SELECT/)
-  const good = await designer.execute("query_table", { sql: "SELECT 1 AS one" }, initialDesignerState("demo"), noEvents)
+  const good = await designer.execute("query_table", { sql: "SELECT 1 AS one" }, initialDesignerState("demo"), noEvents, SID)
   assert.match(good.result, /"one":1/)
 })

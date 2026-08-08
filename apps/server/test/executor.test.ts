@@ -12,6 +12,7 @@ import { IntegrationDefinition } from "@data-integrator/definitions"
 import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "../src/executor.js"
+import { cleanupScratch, draftSchema, scratchLayerId } from "../src/scratch.js"
 import { RasterStore } from "../src/rasterStore.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
@@ -246,4 +247,55 @@ def run(ctx):
   const out = await pool.query("SELECT src_rows, snap_files FROM data.e2e_derived_rows")
   assert.equal(Number(out.rows[0].src_rows), srcCount)
   assert.equal(Number(out.rows[0].snap_files), 2)
+}, { timeout: 180_000 })
+
+test("scratch run: session schema, preview layer, no install, cleanup", { skip: !AVAILABLE }, async () => {
+  const session = await pool.query(
+    `INSERT INTO app.agent_sessions (kind, status, messages, client_state, usage)
+     VALUES ('designer', 'active', '[]', '{}', '{}') RETURNING id`
+  )
+  const sessionId = session.rows[0].id as string
+  const scratchDef: IntegrationDefinition = { ...DEFINITION, id: "e2e_scratch" }
+
+  const inserted = await pool.query(
+    `INSERT INTO app.runs (session_id, trigger, status) VALUES ($1, 'agent', 'queued') RETURNING id`,
+    [sessionId]
+  )
+  const runId = inserted.rows[0].id as string
+  // Workers never claim session runs; only the designer executes them
+  assert.equal(await claimNextRun(pool, "test-worker"), null)
+  await pool.query(
+    `UPDATE app.runs SET status = 'running', claimed_by = 'designer', heartbeat_at = now(), started_at = now() WHERE id = $1`,
+    [runId]
+  )
+  await executeRun(
+    deps,
+    { id: runId, integration_id: null, params: null },
+    { scratch: { sessionId, definition: scratchDef } }
+  )
+
+  const run = await pool.query("SELECT status, error, definition_hash FROM app.runs WHERE id = $1", [runId])
+  assert.equal(run.rows[0].status, "succeeded", run.rows[0].error ?? "")
+  assert.equal(run.rows[0].definition_hash, null)
+
+  // Nothing was installed; rows landed in the session's draft schema
+  assert.equal((await pool.query("SELECT 1 FROM app.integrations WHERE id = 'e2e_scratch'")).rows.length, 0)
+  const schema = draftSchema(sessionId)
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM ${schema}.e2e_rows`)).rows[0].n, 2)
+
+  // The preview layer is session-owned under a scratch id, coexisting with the real e2e_layer
+  const layers = await pool.query("SELECT id FROM app.raster_layers WHERE session_id = $1", [sessionId])
+  assert.equal(layers.rows.length, 1)
+  assert.equal(layers.rows[0].id, scratchLayerId(sessionId, "e2e_layer"))
+  const snapshot = await pool.query("SELECT path FROM app.raster_snapshots WHERE layer_id = $1", [layers.rows[0].id])
+  assert.equal(snapshot.rows.length, 1)
+  await access(deps.store.absolute(snapshot.rows[0].path))
+
+  await cleanupScratch(pool, deps.store, deps.workRoot, sessionId)
+  assert.equal(
+    (await pool.query("SELECT 1 FROM information_schema.schemata WHERE schema_name = $1", [schema])).rows.length,
+    0
+  )
+  assert.equal((await pool.query("SELECT 1 FROM app.raster_layers WHERE session_id = $1", [sessionId])).rows.length, 0)
+  await assert.rejects(() => access(deps.store.absolute(snapshot.rows[0].path)))
 }, { timeout: 180_000 })

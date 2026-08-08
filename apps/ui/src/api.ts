@@ -52,6 +52,8 @@ export interface SessionDetail extends SessionSummary {
   running: boolean
   /** Error that stopped the last loop, if it crashed (cleared on the next step) */
   error: string | null
+  /** Scratch preview layers with data, for map links during design */
+  scratchLayers: { id: string; name: string }[]
 }
 
 /** One content part of a stored model message. */
@@ -247,8 +249,8 @@ export interface MapLayer {
 }
 
 /** Lists catalog layers with their snapshots. */
-export function listLayers(): Promise<{ layers: MapLayer[] }> {
-  return request("/layers")
+export function listLayers(sessionId?: string): Promise<{ layers: MapLayer[] }> {
+  return request(sessionId ? `/layers?session=${encodeURIComponent(sessionId)}` : "/layers")
 }
 
 /** Lists installed integrations. */

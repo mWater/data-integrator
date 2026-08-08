@@ -16,7 +16,9 @@ Tracked at the level of what is left, not what exists; see README status and the
 - Validation rules: `validation` in definitions is typed but evaluated nowhere.
   Evaluate on run results, record flags on the run, surface in UI (FUC-3).
 - Retention/cleanup job: runs, webhook_events, expired auth_sessions, tile
-  cache; orphan GC for raster store files whose commit never landed.
+  cache; orphan GC for raster store files whose commit never landed; scratch
+  areas of abandoned design sessions (cleanupScratch on stale non-finished
+  sessions).
 - /work disk quota enforcement per integration.
 
 ## Designer agent

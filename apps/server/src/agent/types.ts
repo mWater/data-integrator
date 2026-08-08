@@ -42,7 +42,7 @@ export interface AgentImplementation<S> {
   /** Tool definitions; schemas only, execution goes through execute() */
   tools(state: S): ToolSet
   /** Executes one tool call against the current client state */
-  execute(tool: string, input: unknown, state: S, events: AgentEventListener): Promise<ToolOutcome<S>>
+  execute(tool: string, input: unknown, state: S, events: AgentEventListener, sessionId: string): Promise<ToolOutcome<S>>
   /** Hard cap on model calls per session */
   maxSteps: number
 }

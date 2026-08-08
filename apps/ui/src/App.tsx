@@ -19,11 +19,13 @@ interface Route {
   map: boolean
   /** Layer to focus when opening the map from an integration */
   mapLayerId: string | null
+  /** Design session whose scratch layers the map shows (?session=) */
+  mapSessionId: string | null
 }
 
 /** Current location parsed from the hash. */
 function parseHash(): Route {
-  const hash = window.location.hash
+  const [hash, query] = window.location.hash.split("?")
   const session = hash.match(/^#\/session\/([0-9a-f-]+)$/)
   const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
   const map = hash.match(/^#\/map(?:\/([a-z][a-z0-9_]*))?$/)
@@ -32,7 +34,8 @@ function parseHash(): Route {
     integrationId: integration ? integration[1] : null,
     sessions: hash === "#/sessions",
     map: map !== null,
-    mapLayerId: map?.[1] ?? null
+    mapLayerId: map?.[1] ?? null,
+    mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
   }
 }
 
@@ -80,7 +83,7 @@ export function App() {
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
       ) : route.map ? (
-        <MapPage focusLayerId={route.mapLayerId} />
+        <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
       ) : route.sessions ? (
         <SessionList />
       ) : (
