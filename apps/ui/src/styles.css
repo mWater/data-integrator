@@ -125,17 +125,14 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
 .msg-user { align-self: flex-end; background: #14324f; color: #fff }
 .msg-assistant { align-self: flex-start; background: #fff; border: 1px solid #e3e7ea }
 
-.tool {
-  align-self: stretch; background: #fbfcfd; border: 1px solid #e3e7ea;
-  border-left: 3px solid #7fa6c9; border-radius: 6px; padding: 6px 10px;
-  font-size: 13px; cursor: pointer;
+/* Tool calls as quiet activity lines; raw detail one click away */
+.activity-block { align-self: stretch }
+.activity {
+  display: flex; align-items: center; gap: 8px;
+  color: #97a1ab; font-size: 12.5px; padding: 1px 2px; cursor: pointer;
 }
-.tool-open { border-left-color: #e8a33d }
-.tool-head { display: flex; gap: 10px; align-items: baseline; min-width: 0 }
-.tool-name { font-family: ui-monospace, monospace; font-weight: 600; color: #14324f }
-.tool-summary {
-  color: #6a737d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
-}
+.activity:hover { color: #55606b }
+.activity .spinner { width: 10px; height: 10px }
 .tool-detail pre, .tool-logs {
   margin: 8px 0 2px; padding: 8px; background: #21262c; color: #d6dde4;
   border-radius: 6px; overflow-x: auto; font-size: 12px; max-height: 280px; overflow-y: auto;
@@ -156,6 +153,15 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
   padding: 9px 12px; cursor: pointer; font: inherit; text-align: left; width: 100%;
 }
 .question-options button:hover { border-color: #4a7cab; background: #eef5fb }
+.question-other-toggle { color: #55606b; font-style: italic }
+.question-other { display: flex; gap: 8px }
+.question-other input {
+  flex: 1; border: 1px solid #ccd6e0; border-radius: 6px; padding: 8px 10px; font: inherit;
+}
+.question-other button {
+  width: auto; background: #14324f; color: #fff; border: none;
+}
+.question-other button:disabled { opacity: 0.5; cursor: default }
 
 .composer { display: flex; gap: 8px; padding-top: 10px }
 .composer textarea {

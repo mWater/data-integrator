@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
+import { activityLabel } from "./activity.js"
 import { getSession, sendMessage, SessionDetail, SessionEvent, subscribeEvents } from "./api.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
@@ -149,7 +150,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
         </div>
         <div className="messages">
-          <Transcript messages={detail.messages} />
+          <Transcript messages={detail.messages} hideTrailingQuestion={question != null} />
           {live.map((item, i) => (
             <LiveBlock key={i} item={item} />
           ))}
@@ -160,16 +161,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           )}
           <div ref={bottomRef} />
         </div>
-        {question && (
-          <div className="question">
-            <Markdown text={question.question} />
-            <div className="question-options">
-              {question.options.map(option => (
-                <button key={option} onClick={() => void send(option)}>{option}</button>
-              ))}
-            </div>
-          </div>
-        )}
+        {question && <QuestionCard question={question} onAnswer={text => void send(text)} />}
         {error && <div className="error">{error}</div>}
         {!error && !busy && detail.error && (
           <div className="error">The agent hit an error and stopped: {detail.error} — send a message to retry.</div>
@@ -210,17 +202,56 @@ interface LiveBlockProps {
   item: LiveItem
 }
 
-/** Renders one in-flight item: user echo, assistant text, or a running tool. */
+/** Renders one in-flight item: user echo, assistant text, or a subtle activity line. */
 function LiveBlock({ item }: LiveBlockProps) {
   if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
   if (item.kind === "assistant") return <Markdown className="msg msg-assistant" text={item.text ?? ""} />
+  if (item.tool === "ask_user") return null // the question card is the rendering
   return (
-    <div className={`tool ${item.open ? "tool-open" : ""}`}>
-      <div className="tool-head">
-        <span className="tool-name">{item.tool}</span>
-        {item.open ? <span className="spinner" /> : <span className="tool-summary">{item.summary}</span>}
+    <div className="activity-block">
+      <div className="activity">
+        {activityLabel(item.tool, item.input, item.open)}
+        {item.open && <span className="spinner" />}
       </div>
-      {item.logs.length > 0 && <pre className="tool-logs">{item.logs.join("\n")}</pre>}
+      {item.open && item.logs.length > 0 && <pre className="tool-logs">{item.logs.join("\n")}</pre>}
+    </div>
+  )
+}
+
+/** Props for the pending-question card. */
+interface QuestionCardProps {
+  /** The unanswered question */
+  question: PendingQuestion
+  /** Sends the chosen or typed answer */
+  onAnswer: (text: string) => void
+}
+
+/** The pending question: option rows plus a client-side "Other" free-text answer. */
+function QuestionCard({ question, onAnswer }: QuestionCardProps) {
+  const [other, setOther] = useState(false)
+  const [text, setText] = useState("")
+  return (
+    <div className="question">
+      <Markdown text={question.question} />
+      <div className="question-options">
+        {question.options.map(option => (
+          <button key={option} onClick={() => onAnswer(option)}>{option}</button>
+        ))}
+        {other ? (
+          <form
+            className="question-other"
+            onSubmit={e => {
+              e.preventDefault()
+              if (text.trim()) onAnswer(text.trim())
+            }}
+          >
+            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="Your answer…" />
+            <button type="submit" disabled={!text.trim()}>Send</button>
+          </form>
+        ) : (
+          <button className="question-other-toggle" onClick={() => setOther(true)}>Other…</button>
+        )}
+      </div>
     </div>
   )
 }
