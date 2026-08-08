@@ -35,6 +35,7 @@ json/csv/geojson, raster catalog with COG downloads - fully functional with no
 AI configured. Scheduler and agent steering/compaction/governance are not
 started.
 
+- [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [API.md](API.md) - the documented query interface (tokens, tables, rasters)
 - [TODO.md](TODO.md) - remaining work, by area
