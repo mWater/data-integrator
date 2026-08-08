@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getMe, logout, User } from "./api.js"
+import { ThemePreference, useAppTheme } from "./theme.js"
 import { DashboardList } from "./DashboardList.js"
 import { DashboardView } from "./DashboardView.js"
 import { DataSources } from "./DataSources.js"
@@ -52,6 +53,44 @@ function parseHash(): Route {
   }
 }
 
+/** Cycle order for the theme toggle. */
+const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
+  light: "dark",
+  dark: "system",
+  system: "light"
+}
+
+/** Navbar theme toggle: cycles light, dark, system. */
+function ThemeToggle() {
+  const { preference, setPreference } = useAppTheme()
+  const label =
+    preference === "system" ? "Theme: system" : preference === "dark" ? "Theme: dark" : "Theme: light"
+  return (
+    <button
+      className="theme-toggle"
+      title={label}
+      aria-label={label}
+      onClick={() => setPreference(NEXT_PREFERENCE[preference])}
+    >
+      {preference === "light" ? (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="12" cy="12" r="4.5" />
+          <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" />
+        </svg>
+      ) : preference === "dark" ? (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+          <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />
+        </svg>
+      ) : (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <rect x="3" y="4" width="18" height="13" rx="2" />
+          <path d="M9 21h6M12 17v4" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 /** Hash-routed app shell behind sign-in. */
 export function App() {
   const [route, setRoute] = useState(parseHash())
@@ -84,6 +123,7 @@ export function App() {
           <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />
+        <ThemeToggle />
         <span className="user-email">{user.email}</span>
         <button
           className="linkish"

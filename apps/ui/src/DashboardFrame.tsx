@@ -5,8 +5,9 @@
 
 import { useEffect, useRef } from "react"
 import { mountDashboardFrame } from "@data-integrator/kit/host"
-import { lightTheme } from "@data-integrator/kit"
+import { darkTheme, lightTheme } from "@data-integrator/kit"
 import { execDashboardQuery, listLayers, listSources } from "./api.js"
+import { useAppTheme } from "./theme.js"
 
 /** Props for the dashboard frame host. */
 interface Props {
@@ -29,6 +30,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
   const container = useRef<HTMLDivElement>(null)
   const errorRef = useRef(onError)
   errorRef.current = onError
+  const { mode } = useAppTheme()
 
   useEffect(() => {
     if (!container.current) return
@@ -49,8 +51,6 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       for (const s of sources.sources) if (s.kind === "table") tables[s.id] = s.updatedAt
       if (destroyed || !container.current) return
 
-      // Light pinned until the app itself has a theme toggle; the dark token
-      // set is validated and ready when it does
       frame = mountDashboardFrame({
         container: container.current,
         bundleJs,
@@ -58,7 +58,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
         kitBase: `/kit/${kitVersion}`,
         init: {
           locale: navigator.language || "en",
-          theme: lightTheme,
+          theme: mode === "dark" ? darkTheme : lightTheme,
           meta: { tables }
         },
         handlers: {
@@ -80,7 +80,8 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       destroyed = true
       frame?.destroy()
     }
-  }, [dashboardId, bundleJs, bundleCss, kitVersion, runQuery])
+    // mode in deps: a theme change remounts the frame with the other token set
+  }, [dashboardId, bundleJs, bundleCss, kitVersion, runQuery, mode])
 
   return <div ref={container} className="dashboard-frame" />
 }
