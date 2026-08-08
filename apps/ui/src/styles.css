@@ -123,19 +123,30 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
   padding: 4px 10px; font-size: 12.5px; cursor: pointer;
 }
 .details-toggle:hover { border-color: #8a939c; color: #14324f }
+.drawer-backdrop { position: absolute; inset: 0; z-index: 4; background: rgba(20, 30, 40, 0.15) }
 .details-drawer {
   position: absolute; top: 0; right: 0; bottom: 0; width: min(520px, 85%);
   background: #fff; border-left: 1px solid #e3e7ea;
   box-shadow: -6px 0 18px rgba(0, 0, 0, 0.08); z-index: 5; display: flex;
 }
 .details-drawer .state-panel { width: 100%; border-left: 0 }
-.conversation {
-  flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px;
-  max-width: 920px; margin: 0 auto; width: 100%;
+.details-drawer .tabs { padding-right: 42px }
+.drawer-close {
+  position: absolute; top: 5px; right: 8px; z-index: 6; background: none; border: none;
+  font-size: 20px; line-height: 1; color: #556; cursor: pointer; padding: 6px 9px; border-radius: 6px;
+}
+.drawer-close:hover { background: #eef1f4; color: #14324f }
+.conversation { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px }
+/* Scroll container spans the page (scrollbar at the edge); content centers inside */
+.session-head, .composer, .question, .conversation > .error {
+  width: 100%; max-width: 920px; margin-left: auto; margin-right: auto;
 }
 .session-head { display: flex; align-items: center; gap: 12px }
 .session-head h1 { font-size: 18px; margin: 0 }
-.messages { flex: 1; overflow-y: auto; padding: 12px 4px; display: flex; flex-direction: column; gap: 10px }
+.messages {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 12px max(4px, calc((100% - 920px) / 2));
+}
 
 .msg { max-width: 72%; padding: 10px 14px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: break-word }
 .msg-user { align-self: flex-end; background: #14324f; color: #fff }

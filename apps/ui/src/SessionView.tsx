@@ -217,9 +217,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         </form>
       </div>
       {showDetails && (
-        <div className="details-drawer">
-          <StatePanel detail={detail} />
-        </div>
+        <>
+          <div className="drawer-backdrop" onClick={() => setShowDetails(false)} />
+          <div className="details-drawer">
+            <button className="drawer-close" onClick={() => setShowDetails(false)} aria-label="Close details">
+              ×
+            </button>
+            <StatePanel detail={detail} />
+          </div>
+        </>
       )}
     </main>
   )
