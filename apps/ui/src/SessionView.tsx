@@ -66,6 +66,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [liveId, setLiveId] = useState<string | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
@@ -161,6 +162,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         <div className="session-head">
           <h1>{detail.integrationId ?? liveId ?? "New integration"}</h1>
           {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
+          {detail.scratchLayers.length > 0 && <a href={`#/map?session=${detail.id}`}>Map preview</a>}
+          <span className="spacer" />
+          <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
+            {showDetails ? "Hide details" : "Details"}
+          </button>
         </div>
         <div className="messages">
           <Transcript messages={detail.messages} hideTrailingQuestion={question != null} />
@@ -210,7 +216,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           )}
         </form>
       </div>
-      <StatePanel detail={detail} />
+      {showDetails && (
+        <div className="details-drawer">
+          <StatePanel detail={detail} />
+        </div>
+      )}
     </main>
   )
 }

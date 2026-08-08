@@ -115,8 +115,24 @@ button.linkish:hover { color: #fff }
 select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font: inherit; margin-bottom: 10px }
 
 /* Session view */
-.session-page { flex: 1; display: flex; min-height: 0 }
-.conversation { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px }
+.session-page { flex: 1; display: flex; min-height: 0; position: relative }
+.session-head .spacer { flex: 1 }
+.session-head a { font-size: 13px }
+.details-toggle {
+  background: none; border: 1px solid #ccd2d8; color: #556; border-radius: 6px;
+  padding: 4px 10px; font-size: 12.5px; cursor: pointer;
+}
+.details-toggle:hover { border-color: #8a939c; color: #14324f }
+.details-drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(520px, 85%);
+  background: #fff; border-left: 1px solid #e3e7ea;
+  box-shadow: -6px 0 18px rgba(0, 0, 0, 0.08); z-index: 5; display: flex;
+}
+.details-drawer .state-panel { width: 100%; border-left: 0 }
+.conversation {
+  flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px;
+  max-width: 920px; margin: 0 auto; width: 100%;
+}
 .session-head { display: flex; align-items: center; gap: 12px }
 .session-head h1 { font-size: 18px; margin: 0 }
 .messages { flex: 1; overflow-y: auto; padding: 12px 4px; display: flex; flex-direction: column; gap: 10px }
@@ -190,6 +206,5 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
 .status-pane dd { margin: 0 }
 
 @media (max-width: 900px) {
-  .session-page { flex-direction: column }
-  .state-panel { width: auto; border-left: 0; border-top: 1px solid #e3e7ea; max-height: 45% }
+  .details-drawer { width: 100% }
 }
