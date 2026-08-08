@@ -37,6 +37,7 @@ started.
 
 - [Architecture.md](Architecture.md) - system design and core decisions
 - [API.md](API.md) - the documented query interface (tokens, tables, rasters)
+- [TODO.md](TODO.md) - remaining work, by area
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
 - [Database.md](Database.md) - Postgres schema, migrations, and raster store layout
 - [Dashboards.md](Dashboards.md) - agent-designed dashboards: React over frozen SQL
