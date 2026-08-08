@@ -77,7 +77,14 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner): Executo
 function buildModel(): LanguageModel | null {
   const openrouterKey = process.env.OPENROUTER_API_KEY
   if (openrouterKey) {
-    return createOpenRouter({ apiKey: openrouterKey })(process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-5")
+    const modelId = process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-5"
+    // Anthropic only caches prompts on an explicit directive (OpenAI and Gemini
+    // cache automatically); 1h TTL because sandbox jobs and user think-time
+    // routinely outlast the 5m default
+    const settings = modelId.startsWith("anthropic/")
+      ? { cache_control: { type: "ephemeral" as const, ttl: "1h" as const } }
+      : {}
+    return createOpenRouter({ apiKey: openrouterKey })(modelId, settings)
   }
   const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (anthropicKey) {
