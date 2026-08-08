@@ -179,6 +179,28 @@ test("controller: a loop crash persists the session as paused with the error", a
   assert.equal(cleared.error, null)
 })
 
+test("designer: ask_user pauses with valid options and rejects degenerate input", async () => {
+  const designer = bareDesigner()
+  const state = initialDesignerState("demo")
+
+  const asked = await designer.execute(
+    "ask_user",
+    { question: "Which dataset?", options: ["Constrained 100m", "Unconstrained 1km"] },
+    state,
+    noEvents,
+    SID
+  )
+  assert.equal(asked.pause, true)
+  assert.match(asked.result, /paused for the user/)
+
+  const tooFew = await designer.execute("ask_user", { question: "Q?", options: ["only one"] }, state, noEvents, SID)
+  assert.equal(tooFew.pause, undefined)
+  assert.match(tooFew.result, /at least two/)
+
+  const noQuestion = await designer.execute("ask_user", { options: ["a", "b"] }, state, noEvents, SID)
+  assert.match(noQuestion.result, /question is required/)
+})
+
 test("designer: error signatures ignore tmp path noise", () => {
   const a = errorSignature("gdalinfo failed: /tmp/job-out-AbC123/pop.tif missing")
   const b = errorSignature("gdalinfo failed: /tmp/job-out-Zz9xYy/pop.tif missing")

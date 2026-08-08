@@ -122,10 +122,11 @@ this integration's own destinations.
 1. Explore candidate sources with run_snippet (network is live; print what you learn).
 2. Propose a plan and wait for confirmation: in plain text, tell the user the data
    source you chose (name and URL), what will be ingested at what cadence, the
-   destination tables/layers, key assumptions, and any open questions - then stop
-   calling tools so the session pauses for their reply. Do not build until the user
-   confirms. Skip this only when the user's request already pins down all of these;
-   re-confirm whenever you later change source or scope.
+   destination tables/layers, key assumptions, and any open questions - then call
+   ask_user to confirm (e.g. "Proceed as planned" plus meaningful alternatives).
+   Do not build until the user confirms. Skip this only when the user's request
+   already pins down all of these; re-confirm whenever you later change source or
+   scope.
 3. write_definition for everything except code; edit_code for the code.
 4. Iterate with run_integration (warm: /work cache makes retries fast). Test runs
    write to a session-scoped scratch area; nothing touches installed integrations
@@ -137,8 +138,8 @@ this integration's own destinations.
 
 Rules: never fabricate data. Reference secrets by name only. Prefer incremental state
 over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
-year, aggregation), ask the user rather than guessing. Plain text with no tool calls
-pauses the session for the user's reply; use it for questions at any point.`
+year, aggregation), ask_user rather than guessing. Plain text with no tool calls also
+pauses the session, for open-ended questions. Your plain text renders as markdown.`
 
 /**
  * The designer agent: tools to explore a source, shape the draft definition,
@@ -210,6 +211,14 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
         })
       }),
+      ask_user: tool({
+        description:
+          "Ask the user a question with selectable options and pause until they answer. Use it to confirm the plan and for any unforced choice (source, dataset variant, resolution, cadence). The user may also reply free-form.",
+        inputSchema: z.object({
+          question: z.string().describe("The question, markdown allowed; include the context needed to choose"),
+          options: z.array(z.string()).min(2).max(5).describe("Short answer choices (2-5)")
+        })
+      }),
       finish: tool({
         description:
           "Save and end the session: installs the certified definition as the real integration and discards the scratch area. Rejected unless the current definition passed a cold run unchanged.",
@@ -242,6 +251,8 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
         return await this.runIntegration(state, args.cold === true, events, sessionId)
       case "query_table":
         return await this.queryTable(String(args.sql ?? ""), sessionId)
+      case "ask_user":
+        return this.askUser(args)
       case "finish":
         return await this.finish(state, String(args.summary ?? ""), sessionId)
       default:
@@ -471,6 +482,15 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       await client.query("ROLLBACK").catch(() => {})
       client.release()
     }
+  }
+
+  /** Presents a structured question and pauses the session for the answer. */
+  private askUser(args: Record<string, unknown>): ToolOutcome<DesignerState> {
+    const question = String(args.question ?? "").trim()
+    const options = Array.isArray(args.options) ? args.options.map(String).filter(o => o.trim() !== "").slice(0, 5) : []
+    if (question === "") return { result: "Error: question is required" }
+    if (options.length < 2) return { result: "Error: provide at least two options" }
+    return { result: "Question shown; the session is paused for the user's answer.", pause: true }
   }
 
   /**

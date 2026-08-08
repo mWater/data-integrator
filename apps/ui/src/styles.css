@@ -30,6 +30,19 @@ body {
 .chip-finished { background: #d9efd9; color: #216e21 }
 .chip-certified { background: #216e21; color: #fff }
 .thinking { padding: 8px 2px; display: flex }
+
+/* Agent markdown */
+.markdown p { margin: 0 0 8px }
+.markdown p:last-child, .markdown ul:last-child, .markdown ol:last-child { margin-bottom: 0 }
+.markdown ul, .markdown ol { margin: 0 0 8px; padding-left: 22px }
+.markdown li { margin: 2px 0 }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 { margin: 10px 0 6px; font-size: 1.05em }
+.markdown code { background: #eef1f4; padding: 1px 4px; border-radius: 4px; font-size: 0.92em }
+.markdown pre { background: #21262c; color: #d6dde4; padding: 8px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 0 0 8px }
+.markdown pre code { background: none; padding: 0; color: inherit }
+.markdown table { border-collapse: collapse; margin: 0 0 8px }
+.markdown th, .markdown td { border: 1px solid #d5dbe1; padding: 3px 8px; font-size: 0.95em }
+.markdown blockquote { margin: 0 0 8px; padding-left: 10px; border-left: 3px solid #d5dbe1; color: #555 }
 .chip-draft { background: #eee2f7; color: #5b2d82; margin-left: 8px }
 
 /* Session list */
@@ -130,6 +143,17 @@ select { padding: 6px 10px; border: 1px solid #ccd2d8; border-radius: 6px; font:
   border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; align-self: center;
 }
 @keyframes spin { to { transform: rotate(360deg) } }
+
+.question {
+  border: 1px solid #c9d6e4; background: #f4f8fc; border-radius: 8px;
+  padding: 10px 12px; margin-top: 8px;
+}
+.question-options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px }
+.question-options button {
+  background: #fff; border: 1px solid #4a7cab; color: #14496f; border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; font: inherit;
+}
+.question-options button:hover { background: #e8f1f9 }
 
 .composer { display: flex; gap: 8px; padding-top: 10px }
 .composer textarea {

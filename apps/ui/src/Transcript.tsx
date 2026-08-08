@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { MessagePart, TranscriptMessage } from "./api.js"
+import { Markdown } from "./Markdown.js"
 
 /** One rendered chat item derived from the stored transcript. */
 interface ChatItem {
@@ -68,6 +69,8 @@ export function Transcript({ messages }: TranscriptProps) {
       {toItems(messages).map((item, i) =>
         item.kind === "tool" ? (
           <ToolBlock key={i} item={item} />
+        ) : item.kind === "assistant" ? (
+          <Markdown key={i} className="msg msg-assistant" text={item.text ?? ""} />
         ) : (
           <div key={i} className={`msg msg-${item.kind}`}>{item.text}</div>
         )

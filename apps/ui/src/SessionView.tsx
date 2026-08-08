@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { getSession, sendMessage, SessionDetail, SessionEvent, subscribeEvents } from "./api.js"
+import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
 
@@ -19,6 +20,35 @@ export interface LiveItem {
   logs: string[]
   /** True while the tool is still executing */
   open: boolean
+}
+
+/** A structured question awaiting the user's answer. */
+interface PendingQuestion {
+  /** Question text (markdown) */
+  question: string
+  /** Selectable answers */
+  options: string[]
+}
+
+/**
+ * The unanswered ask_user question, if the transcript ends with one: the last
+ * ask_user tool call with no user message after it.
+ */
+function pendingQuestion(detail: SessionDetail): PendingQuestion | null {
+  let pending: PendingQuestion | null = null
+  for (const message of detail.messages) {
+    if (message.role === "user") pending = null
+    else if (message.role === "assistant" && typeof message.content !== "string") {
+      for (const part of message.content) {
+        if (part.type === "tool-call" && part.toolName === "ask_user") {
+          const input = part.input as { question?: unknown; options?: unknown[] } | undefined
+          const options = Array.isArray(input?.options) ? input.options.map(String) : []
+          if (input?.question && options.length >= 2) pending = { question: String(input.question), options }
+        }
+      }
+    }
+  }
+  return pending
 }
 
 /** Props for the session view. */
@@ -89,9 +119,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [live, detail])
 
-  async function onSend(e: FormEvent) {
-    e.preventDefault()
-    const text = input.trim()
+  async function send(text: string) {
     if (!text || busy) return
     setError(null)
     setBusy(true)
@@ -104,9 +132,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     }
   }
 
+  function onSend(e: FormEvent) {
+    e.preventDefault()
+    void send(input.trim())
+  }
+
   if (!detail) return <main className="session-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
 
   const finished = detail.status === "finished"
+  const question = !busy && canDesign && detail.status === "paused" ? pendingQuestion(detail) : null
   return (
     <main className="session-page">
       <div className="conversation">
@@ -126,6 +160,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           )}
           <div ref={bottomRef} />
         </div>
+        {question && (
+          <div className="question">
+            <Markdown text={question.question} />
+            <div className="question-options">
+              {question.options.map(option => (
+                <button key={option} onClick={() => void send(option)}>{option}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {error && <div className="error">{error}</div>}
         {!error && !busy && detail.error && (
           <div className="error">The agent hit an error and stopped: {detail.error} — send a message to retry.</div>
@@ -169,7 +213,7 @@ interface LiveBlockProps {
 /** Renders one in-flight item: user echo, assistant text, or a running tool. */
 function LiveBlock({ item }: LiveBlockProps) {
   if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
-  if (item.kind === "assistant") return <div className="msg msg-assistant">{item.text}</div>
+  if (item.kind === "assistant") return <Markdown className="msg msg-assistant" text={item.text ?? ""} />
   return (
     <div className={`tool ${item.open ? "tool-open" : ""}`}>
       <div className="tool-head">
