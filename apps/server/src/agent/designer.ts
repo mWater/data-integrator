@@ -7,6 +7,7 @@ import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
 import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
 import { definitionHash, installIntegration, validateDefinition } from "../install.js"
+import { materializeInputs } from "../materialize.js"
 import { getSecrets } from "../secrets.js"
 
 /** Client state of a designer session: the draft and its certification. */
@@ -82,6 +83,18 @@ first run); use it for incremental ingestion. print/console.log output goes to t
 Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, cfgrib, pyproj,
 requests. Node image: csv-parse, fast-xml-parser, date-fns. Jobs have public-internet
 egress only; private networks are blocked.
+
+# Inputs (derived integrations)
+An integration can consume platform data instead of (or as well as) external
+sources. Declare inputs keyed by an input id:
+- {kind: "raster", layerId, select: "current" | {latest: N} | {from: iso, to?: iso}}
+- {kind: "table", tableId, columns?, where? [{column, op: "="|"!="|">"|">="|"<"|"<="|"in",
+  value}], format? "gpkg"|"json"|"csv" (default gpkg on python, json on node)}
+The server materializes them under /in before each run and snippet: raster
+snapshots as /in/<inputId>/<timestamp>.tif, table extracts as /in/<inputId>.<ext>,
+described by /in/manifest.json (paths, snapshot ids, timestamps, band order, row
+counts). Read the manifest rather than guessing paths. Inputs must not reference
+this integration's own destinations.
 
 # Workflow
 1. Explore the source with run_snippet (network is live; print what you learn).
@@ -262,7 +275,12 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     const workDir = path.join(this.deps.workRoot, state.definition.id)
     await mkdir(workDir, { recursive: true })
     const outDir = await mkdtemp(path.join(tmpdir(), "snippet-out-"))
+    let inDir: string | undefined
     try {
+      if (state.definition.inputs && Object.keys(state.definition.inputs).length > 0) {
+        inDir = await mkdtemp(path.join(tmpdir(), "snippet-in-"))
+        await materializeInputs(this.deps, state.definition, inDir)
+      }
       const result = await this.deps.runner.run(
         {
           image,
@@ -274,7 +292,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
             previousState: null,
             params: {}
           },
-          mounts: { workDir, outDir },
+          mounts: { workDir, outDir, inDir },
           limits: SNIPPET_LIMITS
         },
         { onStderrLine: line => events({ type: "job_log", line }) }
@@ -285,6 +303,7 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
       return { result: parts.join("\n") }
     } finally {
       await rm(outDir, { recursive: true, force: true })
+      if (inDir) await rm(inDir, { recursive: true, force: true })
     }
   }
 

@@ -22,7 +22,11 @@ layers. The designer agent works via CLI and via the React UI (apps/ui, served
 by the server): live design sessions with streaming tool calls and job logs,
 cold-run-gated finish, sessions serialized to Postgres. Local accounts work:
 email + password (scrypt, lockout), cookie sessions, admin/editor/viewer roles
-enforced server-side, users managed via CLI. Scheduler, agent
+enforced server-side, users managed via CLI. Derived integrations work: declared
+inputs are materialized read-only at /in (catalog snapshots as COGs, table
+extracts as gpkg/json/csv) with a manifest, and runs record snapshot-level
+lineage; the first derived library entry (population-weighted rainfall) builds
+on the CHIRPS and WorldPop layers. Scheduler, agent
 steering/compaction/governance, the query API, and the ops dashboard are not
 started.
 
@@ -54,7 +58,7 @@ The project is complete when all of these exist.
 - **Web server and API** *(accounts + browse built)* - Node/TypeScript server with local accounts, RBAC, and the
   documented REST query interface over tabular data and the raster catalog. The
   contractual programmatic access path; fully functional with no AI configured.
-- **Pipeline engine** *(executor built)* - Scheduler and DB-backed job queue:
+- **Pipeline engine** *(executor + /in built)* - Scheduler and DB-backed job queue:
   triggers runs (cron, webhook), materializes `/in`, registers rows and raster
   artifacts, and backfills after connectivity gaps. Evaluates validation rules and
   records lineage and freshness per run.

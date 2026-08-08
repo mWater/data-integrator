@@ -129,6 +129,7 @@ function bareDesigner(): DesignerImplementation {
     runner: null as never,
     store: null as never,
     workRoot: "/nonexistent",
+    databaseUrl: db.url,
     secretKey: null,
     images: {},
     model: new MockLanguageModelV4({})
@@ -251,6 +252,7 @@ test("service: create, send, event fanout, and detail reporting", async () => {
     runner: { ensureReady: async () => {} } as unknown as Runner,
     store: null as never,
     workRoot: "/nonexistent",
+    databaseUrl: db.url,
     secretKey: null,
     images: {},
     model

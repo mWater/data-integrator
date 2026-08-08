@@ -59,6 +59,7 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner): Executo
   return {
     pool,
     runner,
+    databaseUrl: process.env.DATABASE_URL ?? "",
     store: new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store"),
     workRoot: process.env.WORK_ROOT ?? "./work",
     secretKey: process.env.INTEGRATOR_SECRET_KEY ? loadSecretKey() : null,

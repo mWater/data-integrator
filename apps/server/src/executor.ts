@@ -6,6 +6,7 @@ import { Runner, parseJobOutput } from "@data-integrator/runner"
 import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
 import { applyRows } from "./destinations.js"
 import { storeArtifact, registerSnapshot } from "./catalog.js"
+import { materializeInputs } from "./materialize.js"
 import { RasterStore } from "./rasterStore.js"
 import { getSecrets } from "./secrets.js"
 
@@ -20,6 +21,8 @@ export interface ExecutorDeps {
   secretKey: Buffer | null
   /** Runtime image per RuntimeId */
   images: Record<string, string>
+  /** Connection URL for tools that cannot use the pool (ogr2ogr extracts) */
+  databaseUrl: string
 }
 
 /** How often a running worker refreshes its lease. */
@@ -99,6 +102,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   }, HEARTBEAT_MS)
 
   let outDir: string | null = null
+  let inDir: string | null = null
   try {
     const integrationResult = await deps.pool.query(
       "SELECT definition, definition_hash, overrides FROM app.integrations WHERE id = $1",
@@ -106,8 +110,11 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     )
     const row = integrationResult.rows[0]
     const definition = effectiveDefinition(row.definition, row.overrides)
+
+    let manifest = null
     if (definition.inputs && Object.keys(definition.inputs).length > 0) {
-      throw new Error("Input materialization is not implemented yet")
+      inDir = await mkdtemp(path.join(tmpdir(), "job-in-"))
+      manifest = await materializeInputs(deps, definition, inDir)
     }
 
     const image = deps.images[definition.runtime]
@@ -148,7 +155,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           webhookData: webhookEvents.rows.length ? webhookEvents.rows.map(r => r.payload) : undefined,
           params: run.params ?? {}
         },
-        mounts: { workDir, outDir },
+        mounts: { workDir, outDir, inDir: inDir ?? undefined },
         limits: definition.limits
           ? { cpus: definition.limits.cpus, memoryMb: definition.limits.memoryMb, timeoutMs: definition.limits.timeoutMs }
           : undefined
@@ -210,14 +217,15 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       }
       await client.query(
         `UPDATE app.runs SET status = 'succeeded', finished_at = now(), state_out = $2,
-           definition_hash = $3, stats = $4, log = $5
+           definition_hash = $3, stats = $4, log = $5, inputs = $6
          WHERE id = $1`,
         [
           run.id,
           output.state !== undefined ? JSON.stringify(output.state) : null,
           row.definition_hash,
           JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
-          log
+          log,
+          manifest ? JSON.stringify(manifest) : null
         ]
       )
       await client.query("COMMIT")
@@ -235,6 +243,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   } finally {
     clearInterval(heartbeat)
     if (outDir) await rm(outDir, { recursive: true, force: true })
+    if (inDir) await rm(inDir, { recursive: true, force: true })
   }
 }
 

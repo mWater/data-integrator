@@ -106,7 +106,8 @@ before(async () => {
     store: new RasterStore(await mkdtemp(path.join(tmpdir(), "raster-store-"))),
     workRoot: await mkdtemp(path.join(tmpdir(), "work-root-")),
     secretKey: null,
-    images: { "python3.12": PY_IMAGE }
+    images: { "python3.12": PY_IMAGE },
+    databaseUrl: db.url
   }
 }, { timeout: 180_000 })
 
@@ -191,4 +192,58 @@ test("failing code marks the run failed with the traceback", { skip: !AVAILABLE 
   const result = await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [run!.id])
   assert.equal(result.rows[0].status, "failed")
   assert.match(result.rows[0].error, /kaboom/)
+}, { timeout: 180_000 })
+
+test("derived integration: /in materialization and lineage", { skip: !AVAILABLE }, async () => {
+  const derived: IntegrationDefinition = {
+    id: "e2e_derived",
+    name: "Derived",
+    trigger: {},
+    runtime: "python3.12",
+    inputs: {
+      src: { kind: "table", tableId: "e2e_rows", format: "json" },
+      snaps: { kind: "raster", layerId: "e2e_layer", select: { latest: 2 } }
+    },
+    destinations: [
+      {
+        kind: "table",
+        tableId: "e2e_derived_rows",
+        action: "replace",
+        columns: [
+          { id: "src_rows", type: "integer" },
+          { id: "snap_files", type: "integer" }
+        ]
+      }
+    ],
+    code: `
+import json, os
+
+def run(ctx):
+    manifest = json.load(open(f"{ctx.in_dir}/manifest.json"))
+    src = manifest["inputs"]["src"]
+    rows = json.load(open(f"{ctx.in_dir}/{src['path']}"))
+    snaps = manifest["inputs"]["snaps"]["snapshots"]
+    for s in snaps:
+        assert os.path.exists(f"{ctx.in_dir}/{s['path']}"), s["path"]
+    return {"data": {"e2e_derived_rows": [{"src_rows": len(rows), "snap_files": len(snaps)}]}}
+`,
+    contract: 2
+  }
+  await installIntegration(pool, derived)
+  const srcCount = Number((await pool.query("SELECT count(*) AS n FROM data.e2e_rows")).rows[0].n)
+
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_derived', 'manual', 'queued')`)
+  const run = await claimNextRun(pool, "test-worker")
+  assert.ok(run)
+  await executeRun(deps, run!)
+
+  const final = await pool.query("SELECT status, error, inputs FROM app.runs WHERE id = $1", [run!.id])
+  assert.equal(final.rows[0].status, "succeeded", final.rows[0].error ?? "")
+  // Lineage: the run records exactly which snapshots and extracts fed it
+  assert.equal(final.rows[0].inputs.inputs.snaps.snapshots.length, 2)
+  assert.equal(final.rows[0].inputs.inputs.src.rowCount, srcCount)
+
+  const out = await pool.query("SELECT src_rows, snap_files FROM data.e2e_derived_rows")
+  assert.equal(Number(out.rows[0].src_rows), srcCount)
+  assert.equal(Number(out.rows[0].snap_files), 2)
 }, { timeout: 180_000 })

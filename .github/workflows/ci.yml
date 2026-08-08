@@ -22,7 +22,7 @@ jobs:
       - name: Install podman and nftables
         run: |
           sudo apt-get update
-          sudo apt-get install -y podman nftables
+          sudo apt-get install -y podman nftables gdal-bin
 
       - name: Install gVisor (runsc)
         run: |
