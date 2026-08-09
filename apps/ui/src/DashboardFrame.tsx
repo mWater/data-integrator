@@ -21,12 +21,32 @@ interface Props {
   kitVersion: string
   /** Draft override: executes queries via this handler instead of the saved dashboard */
   runQuery?: (name: string, params: Record<string, unknown>) => Promise<Record<string, unknown>[]>
+  /** Draft override: fetches vector tiles via this handler instead of the saved dashboard */
+  fetchVectorTile?: (query: string, z: number, x: number, y: number, params: Record<string, unknown>) => Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error */
   onError?: (message: string, stack?: string) => void
 }
 
+/** Fetches one MVT tile from a tile endpoint, params bound via the query string. */
+export async function fetchTileBytes(
+  base: string,
+  query: string,
+  z: number,
+  x: number,
+  y: number,
+  params: Record<string, unknown>
+): Promise<ArrayBuffer> {
+  const search = Object.keys(params).length > 0 ? `?params=${encodeURIComponent(JSON.stringify(params))}` : ""
+  const res = await fetch(`${base}/tiles/${query}/${z}/${x}/${y}.mvt${search}`)
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    throw new Error(body?.error ?? `vector tile ${res.status}`)
+  }
+  return res.arrayBuffer()
+}
+
 /** Sandboxed dashboard iframe wired to the app's API. */
-export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, runQuery, onError }: Props) {
+export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, runQuery, fetchVectorTile, onError }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const errorRef = useRef(onError)
   errorRef.current = onError
@@ -63,6 +83,9 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
         },
         handlers: {
           runQuery: runQuery ?? ((name, params) => execDashboardQuery(dashboardId, name, params)),
+          fetchVectorTile:
+            fetchVectorTile ??
+            ((query, z, x, y, params) => fetchTileBytes(`/api/dashboards/${dashboardId}`, query, z, x, y, params)),
           fetchTile: async (layerId, z, x, y) => {
             const snapshot = snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
@@ -86,7 +109,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       frame?.destroy()
     }
     // mode in deps: a theme change remounts the frame with the other token set
-  }, [dashboardId, bundleJs, bundleCss, kitVersion, runQuery, mode])
+  }, [dashboardId, bundleJs, bundleCss, kitVersion, runQuery, fetchVectorTile, mode])
 
   return <div ref={container} className="dashboard-frame" />
 }

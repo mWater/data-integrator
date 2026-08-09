@@ -8,7 +8,7 @@
 
 import { useEffect, useRef } from "react"
 import * as maplibregl from "maplibre-gl"
-import { bridgeBasemap, bridgeTile } from "../bridge.js"
+import { bridgeBasemap, bridgeTile, bridgeVectorTile } from "../bridge.js"
 import { useTheme } from "../hooks.js"
 import type { ThemeTokens } from "../theme.js"
 
@@ -25,6 +25,15 @@ function registerProtocols(): void {
     const [, layerId, z, x, y] = /^di-tile:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url) ?? []
     if (!layerId) throw new Error(`bad tile url: ${params.url}`)
     const data = await bridgeTile(layerId, Number(z), Number(x), Number(y))
+    return { data }
+  })
+  // di-vtile://<queryName>/<z>/<x>/<y>?params=<urlencoded json>
+  maplibregl.addProtocol("di-vtile", async (params: maplibregl.RequestParameters) => {
+    const [, query, z, x, y, encoded] =
+      /^di-vtile:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)(?:\?params=(.*))?$/.exec(params.url) ?? []
+    if (!query) throw new Error(`bad vector tile url: ${params.url}`)
+    const values = encoded ? (JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>) : {}
+    const data = await bridgeVectorTile(query, Number(z), Number(x), Number(y), values)
     return { data }
   })
   // di-basemap://<path> — style JSON rewrites its internal URLs to this scheme
@@ -84,17 +93,83 @@ export interface MapLayer {
   opacity?: number
 }
 
+/** Data-driven color: distinct color per value of a feature attribute. */
+export interface CategoricalColorScale {
+  /** Discriminator. */
+  kind: "categorical"
+  /** Tile attribute matched against values. */
+  property: string
+  /** Attribute value to color pairs. */
+  values: { value: string | number; color: string }[]
+  /** Color for unmatched values; defaults to the layer's base color. */
+  otherwise?: string
+}
+
+/** Data-driven color: continuous ramp over a numeric feature attribute. */
+export interface RampColorScale {
+  /** Discriminator. */
+  kind: "ramp"
+  /** Numeric tile attribute the ramp interpolates over. */
+  property: string
+  /** Ramp stops in ascending value order; colors interpolate between them. */
+  stops: { value: number; color: string }[]
+}
+
+/** Data-driven color scale for a vector tile layer. */
+export type ColorScale = CategoricalColorScale | RampColorScale
+
+/** Data-driven circle radius over a numeric attribute (e.g. aggregated counts). */
+export interface RadiusScale {
+  /** Numeric tile attribute the radius interpolates over. */
+  property: string
+  /** Stops in ascending value order; radii (pixels) interpolate between them. */
+  stops: { value: number; radius: number }[]
+}
+
+/**
+ * One vector tile layer, drawn from a stored tile query. The server encodes
+ * MVT tiles per viewport tile, so layers scale to millions of features; only
+ * the visible tiles' bytes reach the browser.
+ */
+export interface VectorTileLayer {
+  /** Stored tile query name (a query saved with tile: true). */
+  query: string
+  /** Values for the query's declared parameters (the zoom param is server-bound). */
+  params?: Record<string, unknown>
+  /** Base color; defaults to a series slot by layer order. */
+  color?: string
+  /** Data-driven color; wins over color where it matches. */
+  colorBy?: ColorScale
+  /** Circle radius in pixels for point features (default 6). */
+  radius?: number
+  /** Data-driven circle radius; wins over radius. */
+  radiusBy?: RadiusScale
+  /** Polygon fill opacity (default 0.25). */
+  fillOpacity?: number
+  /** Tile attribute shown in a popup when a feature is clicked. */
+  popup?: string
+  /** Hide the layer below this zoom level. */
+  minzoom?: number
+  /** Hide the layer at and above this zoom level. */
+  maxzoom?: number
+}
+
 /** Props for the map view. */
 export interface MapViewProps {
   /** Raster catalog layers, drawn in order above the basemap. */
   layers?: MapLayer[]
-  /** GeoJSON overlays, drawn above raster layers. */
+  /** Vector tile layers (stored tile queries), drawn above raster layers. */
+  vector?: VectorTileLayer[]
+  /** GeoJSON overlays, drawn above vector and raster layers. */
   geojson?: GeoJsonOverlay[]
   /** Initial center as [longitude, latitude]; optional when fit is set. */
   center?: [number, number]
   /** Initial zoom level; optional when fit is set. */
   zoom?: number
-  /** Fit the viewport to the GeoJSON overlays instead of center/zoom. */
+  /**
+   * Fit the viewport to the GeoJSON overlays instead of center/zoom. Vector
+   * tile bounds are unknown client-side, so vector-only maps need center/zoom.
+   */
   fit?: boolean
   /** Pixel height of the map. */
   height?: number
@@ -135,6 +210,109 @@ function overlayBounds(overlays: GeoJsonOverlay[]): maplibregl.LngLatBounds | nu
   return bounds.isEmpty() ? null : bounds
 }
 
+/** Click popup + pointer cursor on the given layers, showing one property. */
+function wirePopup(map: maplibregl.Map, layerIds: string[], property: string): void {
+  for (const layerId of layerIds) {
+    map.on("click", layerId, (e) => {
+      const feature = e.features?.[0]
+      const value = feature?.properties?.[property]
+      if (value == null) return
+      new maplibregl.Popup({ closeButton: false })
+        .setLngLat(e.lngLat)
+        .setText(String(value))
+        .addTo(map)
+    })
+    map.on("mouseenter", layerId, () => {
+      map.getCanvas().style.cursor = "pointer"
+    })
+    map.on("mouseleave", layerId, () => {
+      map.getCanvas().style.cursor = ""
+    })
+  }
+}
+
+/** MapLibre color expression for a vector layer: scale if given, else base. */
+function colorExpression(layer: VectorTileLayer, fallback: string): unknown {
+  const base = layer.color ?? fallback
+  const scale = layer.colorBy
+  if (!scale) return base
+  if (scale.kind === "categorical") {
+    if (scale.values.length === 0) return scale.otherwise ?? base
+    const expr: unknown[] = ["match", ["get", scale.property]]
+    for (const entry of scale.values) expr.push(entry.value, entry.color)
+    expr.push(scale.otherwise ?? base)
+    return expr
+  }
+  const stops = [...scale.stops].sort((a, b) => a.value - b.value)
+  if (stops.length === 0) return base
+  if (stops.length === 1) return stops[0].color
+  const expr: unknown[] = ["interpolate", ["linear"], ["to-number", ["get", scale.property]]]
+  for (const stop of stops) expr.push(stop.value, stop.color)
+  return expr
+}
+
+/** MapLibre circle-radius expression: scale if given, else fixed radius. */
+function radiusExpression(layer: VectorTileLayer): unknown {
+  const scale = layer.radiusBy
+  if (!scale || scale.stops.length === 0) return layer.radius ?? 6
+  const stops = [...scale.stops].sort((a, b) => a.value - b.value)
+  if (stops.length === 1) return stops[0].radius
+  const expr: unknown[] = ["interpolate", ["linear"], ["to-number", ["get", scale.property]]]
+  for (const stop of stops) expr.push(stop.value, stop.radius)
+  return expr
+}
+
+function addVectorLayers(map: maplibregl.Map, vector: VectorTileLayer[], theme: ThemeTokens): void {
+  vector.forEach((layer, i) => {
+    const id = `di-vtile-${i}`
+    const params = encodeURIComponent(JSON.stringify(layer.params ?? {}))
+    map.addSource(id, {
+      type: "vector",
+      tiles: [`di-vtile://${layer.query}/{z}/{x}/{y}?params=${params}`]
+    })
+    const color = colorExpression(layer, theme.series[i % theme.series.length])
+    const zoomRange = {
+      ...(layer.minzoom != null ? { minzoom: layer.minzoom } : {}),
+      ...(layer.maxzoom != null ? { maxzoom: layer.maxzoom } : {})
+    }
+    // The server encodes each tile query's features under a layer named after
+    // the query, so source-layer is always the query name
+    map.addLayer({
+      id: `${id}-fill`,
+      type: "fill",
+      source: id,
+      "source-layer": layer.query,
+      ...zoomRange,
+      filter: ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]],
+      paint: { "fill-color": color as never, "fill-opacity": layer.fillOpacity ?? 0.25 }
+    })
+    map.addLayer({
+      id: `${id}-line`,
+      type: "line",
+      source: id,
+      "source-layer": layer.query,
+      ...zoomRange,
+      filter: ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon", "LineString", "MultiLineString"]]],
+      paint: { "line-color": color as never, "line-width": 2 }
+    })
+    map.addLayer({
+      id: `${id}-circle`,
+      type: "circle",
+      source: id,
+      "source-layer": layer.query,
+      ...zoomRange,
+      filter: ["in", ["geometry-type"], ["literal", ["Point", "MultiPoint"]]],
+      paint: {
+        "circle-color": color as never,
+        "circle-radius": radiusExpression(layer) as never,
+        "circle-stroke-color": theme.surface,
+        "circle-stroke-width": 1
+      }
+    })
+    if (layer.popup) wirePopup(map, [`${id}-circle`, `${id}-fill`], layer.popup)
+  })
+}
+
 function addOverlays(map: maplibregl.Map, overlays: GeoJsonOverlay[], theme: ThemeTokens): void {
   overlays.forEach((overlay, i) => {
     const id = `di-geojson-${i}`
@@ -169,31 +347,12 @@ function addOverlays(map: maplibregl.Map, overlays: GeoJsonOverlay[], theme: The
         "circle-stroke-width": 2
       }
     })
-    if (overlay.popup) {
-      const property = overlay.popup
-      for (const layerId of [`${id}-circle`, `${id}-fill`]) {
-        map.on("click", layerId, (e) => {
-          const feature = e.features?.[0]
-          const value = feature?.properties?.[property]
-          if (value == null) return
-          new maplibregl.Popup({ closeButton: false })
-            .setLngLat(e.lngLat)
-            .setText(String(value))
-            .addTo(map)
-        })
-        map.on("mouseenter", layerId, () => {
-          map.getCanvas().style.cursor = "pointer"
-        })
-        map.on("mouseleave", layerId, () => {
-          map.getCanvas().style.cursor = ""
-        })
-      }
-    }
+    if (overlay.popup) wirePopup(map, [`${id}-circle`, `${id}-fill`], overlay.popup)
   })
 }
 
-/** Interactive map: basemap, catalog raster layers, and GeoJSON overlays. */
-export function MapView({ layers, geojson, center, zoom, fit, height }: MapViewProps) {
+/** Interactive map: basemap, raster layers, vector tile layers, GeoJSON overlays. */
+export function MapView({ layers, vector, geojson, center, zoom, fit, height }: MapViewProps) {
   const theme = useTheme()
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
@@ -241,6 +400,7 @@ export function MapView({ layers, geojson, center, zoom, fit, height }: MapViewP
             paint: { "raster-opacity": layer.opacity ?? 0.85 }
           })
         }
+        if (vector) addVectorLayers(instance, vector, theme)
         if (geojson) addOverlays(instance, geojson, theme)
         if (fit && geojson) {
           const bounds = overlayBounds(geojson)
@@ -258,7 +418,7 @@ export function MapView({ layers, geojson, center, zoom, fit, height }: MapViewP
     }
     // Data/viewport changes rebuild the map; dashboards re-mount rather than mutate
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(layers), JSON.stringify(geojson), JSON.stringify(center), zoom, fit, theme.mode])
+  }, [JSON.stringify(layers), JSON.stringify(vector), JSON.stringify(geojson), JSON.stringify(center), zoom, fit, theme.mode])
 
   return <div ref={el} style={{ height: height ?? 380 }} />
 }

@@ -12,6 +12,14 @@ export interface FrameHandlers {
   runQuery(name: string, params: Record<string, unknown>): Promise<Row[]>
   /** Fetches raster tile bytes for a catalog layer. */
   fetchTile(layerId: string, z: number, x: number, y: number): Promise<ArrayBuffer>
+  /** Fetches vector tile bytes of a stored tile query. */
+  fetchVectorTile?(
+    query: string,
+    z: number,
+    x: number,
+    y: number,
+    params: Record<string, unknown>
+  ): Promise<ArrayBuffer>
   /** Fetches a basemap resource by relative path; absent means no basemap. */
   fetchBasemap?(path: string): Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error. */
@@ -117,6 +125,16 @@ export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame
           (data) => post({ type: "di:tile-result", id: msg.id, ok: true, data }, [data]),
           (err: Error) => post({ type: "di:tile-result", id: msg.id, ok: false, error: err.message })
         )
+        break
+      case "di:vtile":
+        if (opts.handlers.fetchVectorTile) {
+          opts.handlers.fetchVectorTile(msg.query, msg.z, msg.x, msg.y, msg.params).then(
+            (data) => post({ type: "di:vtile-result", id: msg.id, ok: true, data }, [data]),
+            (err: Error) => post({ type: "di:vtile-result", id: msg.id, ok: false, error: err.message })
+          )
+        } else {
+          post({ type: "di:vtile-result", id: msg.id, ok: false, error: "vector tiles unavailable" })
+        }
         break
       case "di:basemap":
         if (opts.handlers.fetchBasemap) {

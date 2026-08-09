@@ -31,6 +31,16 @@ Dashboard {
   Viewers execute stored queries by name with typed, bound parameter values. No SQL
   ever crosses the wire from a client. Dynamic filtering is expressed inside the stored
   SQL (`where $1::text is null or region = $1` idioms), taught by the design prompt.
+- A query marked `tile: true` is a tile query: it serves MVT vector tiles for map
+  layers instead of rows (`GET .../tiles/:name/:z/:x/:y.mvt`), the same frozen-SQL
+  wire protocol extended to large geodata. The SQL selects a geometry column named
+  `geom` (SRID 4326) plus a few scalar attributes; the server wraps it per tile with
+  an envelope filter (planned against the GIST index), `ST_AsMVTGeom` clipping, and
+  `ST_AsMVT` encoding under the query's name. Row caps do not apply — a 2 MB per-tile
+  byte cap does. The reserved parameter `zoom` (integer) is bound server-side to the
+  tile zoom so frozen SQL can express level of detail (grid-aggregate at low zoom,
+  raw features deep); the design prompt teaches the idiom. This is what makes
+  million-point layers viable: only the visible tiles' bytes reach the browser.
 - `ParamSpec` declares name and ColumnSpec type; the server validates and binds.
 - Editing creates a new version with a new bundle; superseded bundles stay valid for
   in-flight viewers (immutable, like raster snapshots).
@@ -42,8 +52,11 @@ not each carry their own WCAG risk:
 
 - Layout primitives, stat tile, chart (ECharts, Apache 2.0), table, filter bar (wires
   control state to query params), markdown, map (MapLibre: automatic basemap, catalog
-  raster layers, and GeoJSON overlays with fit-to-data and click popups; all bytes
-  proxied through the bridge).
+  raster layers, vector tile layers over stored tile queries with declarative
+  data-driven styling — categorical/ramp color scales and radius scales compiled to
+  MapLibre expressions, so generated dashboards stay on the audited surface — and
+  GeoJSON overlays with fit-to-data and click popups; all bytes proxied through the
+  bridge).
 - Basemap: the server proxies and disk-caches OpenFreeMap (explicitly free for
   commercial use, no key) at `/basemap/*`, rewriting style/TileJSON URLs to the
   frame's `di-basemap://` protocol. `BASEMAP_UPSTREAM` / `BASEMAP_STYLE_LIGHT` /
