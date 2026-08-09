@@ -5,7 +5,9 @@ import { promisify } from "node:util"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 import { migrate } from "../src/migrations.js"
+import { installIntegration } from "../src/install.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
@@ -42,7 +44,7 @@ test("expected tables exist in app schema", { skip: !AVAILABLE }, async () => {
   )
   const tables = result.rows.map(r => r.table_name)
   for (const expected of [
-    "migrations", "definition_revisions", "integrations", "runs", "webhook_events",
+    "migrations", "integration_versions", "integrations", "runs", "webhook_events",
     "raster_layers", "raster_snapshots", "data_tables", "agent_sessions",
     "users", "auth_sessions", "secrets", "settings", "dashboards", "dashboard_versions"
   ]) {
@@ -50,11 +52,27 @@ test("expected tables exist in app schema", { skip: !AVAILABLE }, async () => {
   }
 })
 
+/** Integration row plus its v1 archive row, committed together to satisfy the deferred FK. */
+async function insertIntegration(id: string): Promise<void> {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    await client.query(`INSERT INTO app.integrations (id, definition, version) VALUES ($1, '{}', 1)`, [id])
+    await client.query(
+      `INSERT INTO app.integration_versions (integration_id, version, definition) VALUES ($1, 1, '{}')`,
+      [id]
+    )
+    await client.query("COMMIT")
+  } catch (err) {
+    await client.query("ROLLBACK")
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
 test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: !AVAILABLE }, async () => {
-  await pool.query(`INSERT INTO app.definition_revisions (hash, definition) VALUES ('h1', '{}')`)
-  await pool.query(
-    `INSERT INTO app.integrations (id, definition, definition_hash) VALUES ('test-int', '{}', 'h1')`
-  )
+  await insertIntegration("test-int")
   const run = await pool.query(
     `INSERT INTO app.runs (integration_id, trigger, status) VALUES ('test-int', 'manual', 'succeeded') RETURNING id`
   )
@@ -90,10 +108,19 @@ test("check constraints reject invalid enum values", { skip: !AVAILABLE }, async
   )
 })
 
-test("at most one running and one queued run per integration", { skip: !AVAILABLE }, async () => {
-  await pool.query(
-    `INSERT INTO app.integrations (id, definition, definition_hash) VALUES ('ser-int', '{}', 'h1')`
+test("integrations.version cannot dangle", { skip: !AVAILABLE }, async () => {
+  await assert.rejects(
+    pool.query(`INSERT INTO app.integrations (id, definition, version) VALUES ('dangling-int', '{}', 1)`),
+    /foreign key/
   )
+  await assert.rejects(
+    pool.query(`UPDATE app.runs SET definition_version = 99 WHERE integration_id = 'test-int'`),
+    /foreign key/
+  )
+})
+
+test("at most one running and one queued run per integration", { skip: !AVAILABLE }, async () => {
+  await insertIntegration("ser-int")
   await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'cron', 'running')`)
   await assert.rejects(
     pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('ser-int', 'manual', 'running')`),
@@ -129,6 +156,39 @@ test("dashboards.current_version cannot dangle", { skip: !AVAILABLE }, async () 
      VALUES ('dash', 1, '', '[]', 'v1', '', '')`
   )
   await pool.query(`UPDATE app.dashboards SET current_version = 1 WHERE id = 'dash'`)
+})
+
+test("install versioning: bump on change, no-op on re-install, created_by recorded", { skip: !AVAILABLE }, async () => {
+  const definition: IntegrationDefinition = {
+    id: "ver_int",
+    name: "Versioning",
+    trigger: {},
+    runtime: "node22",
+    destinations: [
+      { kind: "table", tableId: "ver_rows", action: "replace", columns: [{ id: "name", type: "text" }] }
+    ],
+    code: "export default async function run() { return {} }",
+    contract: 2
+  }
+  const user = await pool.query(
+    `INSERT INTO app.users (email, password_hash, role) VALUES ('installer@example.org', 'x', 'editor') RETURNING id`
+  )
+  const userId = user.rows[0].id as string
+
+  assert.deepEqual(await installIntegration(pool, definition, {}, "ready", userId), { version: 1 })
+  // Same definition, different overrides: overrides update but no new version
+  assert.deepEqual(await installIntegration(pool, definition, { note: "resync" }), { version: 1 })
+  assert.deepEqual(await installIntegration(pool, { ...definition, name: "Versioning 2" }), { version: 2 })
+
+  const versions = await pool.query(
+    `SELECT version, created_by, definition->>'name' AS name FROM app.integration_versions
+     WHERE integration_id = 'ver_int' ORDER BY version`
+  )
+  assert.deepEqual(versions.rows, [
+    { version: 1, created_by: userId, name: "Versioning" },
+    { version: 2, created_by: null, name: "Versioning 2" }
+  ])
+  assert.equal((await pool.query(`SELECT version FROM app.integrations WHERE id = 'ver_int'`)).rows[0].version, 2)
 })
 
 test("emails are unique case-insensitively", { skip: !AVAILABLE }, async () => {

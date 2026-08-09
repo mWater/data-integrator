@@ -121,17 +121,17 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   let inDir: string | null = null
   try {
     let definition: IntegrationDefinition
-    let definitionHash: string | null = null
+    let definitionVersion: number | null = null
     if (scratch) {
       definition = scratch.definition
     } else {
       const integrationResult = await deps.pool.query(
-        "SELECT definition, definition_hash, overrides FROM app.integrations WHERE id = $1",
+        "SELECT definition, version, overrides FROM app.integrations WHERE id = $1",
         [run.integration_id]
       )
       const row = integrationResult.rows[0]
       definition = effectiveDefinition(row.definition, row.overrides)
-      definitionHash = row.definition_hash
+      definitionVersion = row.version
     }
 
     let manifest = null
@@ -272,12 +272,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       }
       await client.query(
         `UPDATE app.runs SET status = 'succeeded', finished_at = now(), state_out = $2,
-           definition_hash = $3, stats = $4, log = $5, inputs = $6
+           definition_version = $3, stats = $4, log = $5, inputs = $6
          WHERE id = $1`,
         [
           run.id,
           output.state !== undefined ? JSON.stringify(output.state) : null,
-          definitionHash,
+          definitionVersion,
           JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
           log,
           manifest ? JSON.stringify(manifest) : null

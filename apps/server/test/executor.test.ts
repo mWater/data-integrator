@@ -130,11 +130,11 @@ async function runOnce(): Promise<string> {
 test("first run: rows, snapshot, state, stats", { skip: !AVAILABLE }, async () => {
   await installIntegration(pool, DEFINITION)
   const runId = await runOnce()
-  const run = await pool.query("SELECT status, state_out, stats, definition_hash, error FROM app.runs WHERE id = $1", [runId])
+  const run = await pool.query("SELECT status, state_out, stats, definition_version, error FROM app.runs WHERE id = $1", [runId])
   assert.equal(run.rows[0].status, "succeeded", run.rows[0].error ?? "")
   assert.deepEqual(run.rows[0].state_out, { cursor: 1 })
   assert.equal(run.rows[0].stats.rows.e2e_rows, 2)
-  assert.ok(run.rows[0].definition_hash)
+  assert.equal(run.rows[0].definition_version, 1)
 
   const rows = await pool.query("SELECT site, value, _run_id FROM data.e2e_rows ORDER BY site")
   assert.equal(rows.rows.length, 2)
@@ -274,9 +274,9 @@ test("scratch run: session schema, preview layer, no install, cleanup", { skip: 
     { scratch: { sessionId, definition: scratchDef } }
   )
 
-  const run = await pool.query("SELECT status, error, definition_hash FROM app.runs WHERE id = $1", [runId])
+  const run = await pool.query("SELECT status, error, definition_version FROM app.runs WHERE id = $1", [runId])
   assert.equal(run.rows[0].status, "succeeded", run.rows[0].error ?? "")
-  assert.equal(run.rows[0].definition_hash, null)
+  assert.equal(run.rows[0].definition_version, null)
 
   // Nothing was installed; rows landed in the session's draft schema
   assert.equal((await pool.query("SELECT 1 FROM app.integrations WHERE id = 'e2e_scratch'")).rows.length, 0)
