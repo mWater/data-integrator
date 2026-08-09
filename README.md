@@ -46,8 +46,12 @@ editor. A deployment default AOI (Settings page, baked-in country list) scopes
 AOI-less integrations at run time, and runs record the AOI they executed with.
 Skills - source and technique know-how in library/skills/ - load into the
 designer on demand. Configuration is validated centrally at startup
-(.env.example documents every variable). Scheduler, agent compaction, and cost
-governance are not started.
+(.env.example documents every variable). The scheduler runs in serve: a cron
+tick enqueues runs for enabled integrations (dependency-free 5-field parser,
+UTC), workers drain the queue, and a reaper fails stale runs; schedules are
+editable in the UI as versioned definition changes, with a Pause toggle for
+the operational off-switch. Agent compaction and cost governance are not
+started.
 
 - [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes
 - [Architecture.md](Architecture.md) - system design and core decisions

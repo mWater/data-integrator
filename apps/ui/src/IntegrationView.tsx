@@ -10,6 +10,8 @@ import {
   IntegrationDetail,
   listCountries,
   setIntegrationAoi,
+  setIntegrationEnabled,
+  setIntegrationTrigger,
   startRun,
   VersionSummary
 } from "./api.js"
@@ -79,6 +81,16 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
     }
   }
 
+  async function onToggleEnabled() {
+    setError(null)
+    try {
+      await setIntegrationEnabled(integrationId, !detail!.enabled)
+      refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   if (!detail) return <main className="list-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
 
   const { definition } = detail
@@ -91,7 +103,13 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
         <h1>{definition.name}</h1>
         {detail.status === "draft" && <span className="chip chip-draft">draft</span>}
         <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
+        {!detail.enabled && <span className="chip chip-paused">paused</span>}
         <span style={{ flex: 1 }} />
+        {canDesign && (
+          <button onClick={onToggleEnabled} title="Paused integrations are skipped by the scheduler">
+            {detail.enabled ? "Pause" : "Resume"}
+          </button>
+        )}
         {canDesign && (
           <button onClick={onRun} disabled={running}>
             {running ? "Running…" : "Run Now"}
@@ -153,6 +171,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
       {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} />}
       {tab === "definition" && (
         <>
+          <ScheduleSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <DefinitionTab definition={definition} />
           <VersionsSection integrationId={integrationId} currentVersion={detail.version} />
@@ -166,6 +185,79 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
 /** Formats a bbox for display. */
 function formatBbox(bbox: [number, number, number, number]): string {
   return `[${bbox.map(v => v.toFixed(2)).join(", ")}]`
+}
+
+/** Props for the schedule section. */
+interface ScheduleSectionProps {
+  /** Integration detail (definition carries the trigger) */
+  detail: IntegrationDetail
+  /** False for viewers: read-only display */
+  canDesign: boolean
+  /** Refetches the detail after a change */
+  onChanged: () => void
+}
+
+/**
+ * The integration's schedule. Trigger is definition content: saving archives
+ * a new attributed version. Pausing is separate (the Pause button) and not a
+ * definition change.
+ */
+function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps) {
+  const trigger = (detail.definition.trigger ?? {}) as { cron?: string; webhook?: boolean }
+  const [cron, setCron] = useState(trigger.cron ?? "")
+  const [webhook, setWebhook] = useState(trigger.webhook === true)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function save() {
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await setIntegrationTrigger(detail.id, { cron: cron.trim() === "" ? null : cron.trim(), webhook })
+      setNotice(
+        result.version === detail.version ? "No change." : `Saved as version ${result.version}.`
+      )
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <div className="aoi-section">
+      <h3>Schedule</h3>
+      <p>
+        Current: <b>{triggerLabel(trigger)}</b>
+        {trigger.cron && <span className="dim"> (cron {trigger.cron})</span>}
+      </p>
+      {error && <div className="error">{error}</div>}
+      {canDesign && (
+        <div className="aoi-editor">
+          <div className="aoi-bbox">
+            <label>
+              cron (UTC; empty for manual only)
+              <input
+                type="text"
+                style={{ width: 220 }}
+                placeholder="0 6 5 * *"
+                value={cron}
+                onChange={e => setCron(e.target.value)}
+              />
+            </label>
+          </div>
+          <label>
+            <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> Accept webhook
+            events
+          </label>
+          <div className="aoi-actions">
+            <button onClick={save}>Save</button>
+            <span className="dim">Saving archives a new definition version. Pause instead to stop runs temporarily.</span>
+          </div>
+          {notice && <p className="dim">{notice}</p>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** Editor choices for the AOI section. */

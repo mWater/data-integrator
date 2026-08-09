@@ -589,3 +589,24 @@ export function installLibraryEntry(id: string, runNow: boolean): Promise<{ vers
     body: JSON.stringify({ runNow })
   })
 }
+
+/** Changes the schedule (definition content: archives a new version). */
+export function setIntegrationTrigger(
+  id: string,
+  trigger: { cron?: string | null; webhook?: boolean }
+): Promise<{ version: number; trigger: { cron?: string; webhook?: boolean } }> {
+  return request(`/api/integrations/${id}/trigger`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(trigger)
+  })
+}
+
+/** Enables or pauses scheduling (operational state, not versioned). */
+export function setIntegrationEnabled(id: string, enabled: boolean): Promise<{ enabled: boolean }> {
+  return request(`/api/integrations/${id}/enabled`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ enabled })
+  })
+}

@@ -249,3 +249,51 @@ test("AOI edits are versioned definition changes with attribution", async () => 
 
   assert.equal((await get("/api/integrations/nope/versions")).status, 404)
 })
+
+test("schedule and enabled are editable without the agent", async () => {
+  const admin = await createUser(pool, "sched-admin@example.org", "hunter2hunter2", "admin")
+  const adminBearer = await createApiToken(pool, admin.id, "sched-token")
+  const put = (pathname: string, body: unknown) =>
+    fetch(`${base}${pathname}`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${adminBearer}`, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    })
+
+  // Viewers cannot change either
+  const forbidden = await fetch(`${base}/api/integrations/q_src/trigger`, {
+    method: "PUT",
+    headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+    body: JSON.stringify({ cron: "0 6 * * *" })
+  })
+  assert.equal(forbidden.status, 403)
+
+  // Bad cron rejected with the parser's message
+  const bad = await put("/api/integrations/q_src/trigger", { cron: "not a cron" })
+  assert.equal(bad.status, 400)
+  assert.match((await bad.json()).error, /Cron|cron/)
+
+  // Valid schedule: a versioned definition edit
+  const set = await (await put("/api/integrations/q_src/trigger", { cron: "0 6 * * *", webhook: true })).json()
+  assert.deepEqual(set.trigger, { cron: "0 6 * * *", webhook: true })
+  let detail = await (await get("/api/integrations/q_src")).json()
+  assert.equal(detail.version, set.version)
+  assert.deepEqual(detail.definition.trigger, { cron: "0 6 * * *", webhook: true })
+
+  // Same schedule again is a no-op, not a new version
+  const again = await (await put("/api/integrations/q_src/trigger", { cron: "0 6 * * *", webhook: true })).json()
+  assert.equal(again.version, set.version)
+
+  // Back to manual-only
+  const manual = await (await put("/api/integrations/q_src/trigger", { cron: null })).json()
+  assert.deepEqual(manual.trigger, {})
+
+  // Enabled: a plain column flip, no version change
+  const versionBefore = (await (await get("/api/integrations/q_src")).json()).version
+  assert.deepEqual(await (await put("/api/integrations/q_src/enabled", { enabled: false })).json(), { enabled: false })
+  detail = await (await get("/api/integrations/q_src")).json()
+  assert.equal(detail.enabled, false)
+  assert.equal(detail.version, versionBefore)
+  assert.equal((await put("/api/integrations/q_src/enabled", { enabled: "nope" })).status, 400)
+  assert.equal((await put("/api/integrations/nope/enabled", { enabled: true })).status, 404)
+})

@@ -12,6 +12,7 @@ import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { installIntegration } from "./install.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
+import { parseCron } from "./cron.js"
 import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
@@ -474,6 +475,59 @@ async function route(
       runId = await runs.start(libraryInstallMatch[1]).catch(() => null)
     }
     json(res, 200, { version: result.version, runId })
+    return
+  }
+
+  // Schedule is definition content: changing it archives a new attributed version
+  const triggerMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/trigger$/)
+  if (triggerMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const row = await pool.query("SELECT definition, status FROM app.integrations WHERE id = $1", [triggerMatch[1]])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const trigger: { cron?: string; webhook?: boolean } = {}
+    try {
+      if (typeof body.cron === "string" && body.cron.trim() !== "") {
+        parseCron(body.cron)
+        trigger.cron = body.cron.trim()
+      } else if (body.cron !== undefined && body.cron !== null && body.cron !== "") {
+        throw new Error("cron must be a string or null")
+      }
+      if (body.webhook === true) trigger.webhook = true
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    const definition = { ...row.rows[0].definition, trigger }
+    const { version } = await installIntegration(pool, definition, row.rows[0].status, user.id)
+    json(res, 200, { version, trigger })
+    return
+  }
+
+  // Enabled is operational state, not spec: a plain column, not versioned
+  const enabledMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/enabled$/)
+  if (enabledMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const body = await readJsonBody(req)
+    if (typeof body.enabled !== "boolean") {
+      json(res, 400, { error: "enabled must be a boolean" })
+      return
+    }
+    const updated = await pool.query(
+      "UPDATE app.integrations SET enabled = $2, updated_at = now() WHERE id = $1 RETURNING enabled",
+      [enabledMatch[1], body.enabled]
+    )
+    if (updated.rows.length === 0) json(res, 404, { error: "unknown integration" })
+    else json(res, 200, { enabled: updated.rows[0].enabled })
     return
   }
 
