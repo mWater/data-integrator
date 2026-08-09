@@ -35,7 +35,7 @@ Installed integrations: a synced library definition plus deployment overrides.
 | id | text pk | definition id (natural key; renames are new integrations) |
 | definition | jsonb | synced definition |
 | version | int | current version; composite FK into integration_versions (deferred) keeps it from dangling |
-| overrides | jsonb | deployment overrides: aoi, trigger, limits |
+| overrides | jsonb | deployment overrides: trigger, limits (AOI is definition content, versioned) |
 | enabled | boolean | |
 | status | text | `draft` (design-session install, uncertified) or `ready` (cold run passed, or library install) |
 | created_at, updated_at | timestamptz | |
@@ -153,10 +153,10 @@ Deployment behavior administrators change at runtime through the UI (infra
 wiring stays in environment variables; see config.ts). Known keys:
 
 - `default_aoi`: `{bbox: [west, south, east, north], countries?: [ISO3...],
-  name?}`. Integrations whose effective definition has no `aoi` inherit it at
-  run time, so a deployment configured for one country scopes every library
-  install automatically. Resolution order: install override, then definition,
-  then this default.
+  name?}`. Definitions whose `aoi` is omitted inherit it at run time, so a
+  deployment configured for one country scopes every library install
+  automatically. The definition's tri-state wins otherwise: an explicit box
+  clips to it; explicit null means the source's full extent.
 
 Future: retention, cost caps, similar knobs.
 

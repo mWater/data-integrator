@@ -1,5 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { createSession, getIntegration, getTableRows, IntegrationDetail, startRun } from "./api.js"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  CountryBox,
+  createSession,
+  DefaultAoi,
+  getIntegration,
+  getIntegrationVersions,
+  getSettings,
+  getTableRows,
+  IntegrationDetail,
+  listCountries,
+  setIntegrationAoi,
+  startRun,
+  VersionSummary
+} from "./api.js"
 import { triggerLabel } from "./IntegrationList.js"
 
 /** Props for the integration detail view. */
@@ -138,9 +151,212 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
           </table>
         ))}
       {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} />}
-      {tab === "definition" && <DefinitionTab definition={definition} />}
+      {tab === "definition" && (
+        <>
+          <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
+          <DefinitionTab definition={definition} />
+          <VersionsSection integrationId={integrationId} currentVersion={detail.version} />
+        </>
+      )}
       {tab === "code" && <pre className="pane pane-block pane-code">{definition.code}</pre>}
     </main>
+  )
+}
+
+/** Formats a bbox for display. */
+function formatBbox(bbox: [number, number, number, number]): string {
+  return `[${bbox.map(v => v.toFixed(2)).join(", ")}]`
+}
+
+/** Editor choices for the AOI section. */
+type AoiChoice = "inherit" | "country" | "custom" | "full"
+
+/** Props for the AOI section. */
+interface AoiSectionProps {
+  /** Integration detail (definition carries the tri-state aoi) */
+  detail: IntegrationDetail
+  /** False for viewers: read-only display */
+  canDesign: boolean
+  /** Refetches the detail after a change */
+  onChanged: () => void
+}
+
+/**
+ * The integration's area of interest. AOI is definition content: saving a
+ * change archives a new attributed version, so the history explains why the
+ * ingested area changed.
+ */
+function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
+  const aoiPresent = "aoi" in detail.definition
+  const aoi = detail.definition.aoi as { bbox: [number, number, number, number]; countries?: string[] } | null
+
+  const [countries, setCountries] = useState<CountryBox[]>([])
+  const [defaultAoi, setDefaultAoi] = useState<DefaultAoi | null>(null)
+  const [choice, setChoice] = useState<AoiChoice>(!aoiPresent ? "inherit" : aoi === null ? "full" : "custom")
+  const [iso3, setIso3] = useState("")
+  const [custom, setCustom] = useState({ west: "", south: "", east: "", north: "" })
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    listCountries().then(r => setCountries(r.countries), () => {})
+    getSettings().then(r => setDefaultAoi(r.settings.default_aoi), () => {})
+  }, [])
+
+  const selected = useMemo(() => countries.find(c => c.iso3 === iso3) ?? null, [countries, iso3])
+  const countryNames = useMemo(() => {
+    const byIso3 = new Map(countries.map(c => [c.iso3, c.name]))
+    return (codes: string[] | undefined) => codes?.map(code => byIso3.get(code) ?? code).join(", ")
+  }, [countries])
+
+  const current =
+    !aoiPresent ? (
+      <>
+        Deployment default
+        {defaultAoi ? (
+          <span className="dim"> — {defaultAoi.name ?? "custom"} {formatBbox(defaultAoi.bbox)}</span>
+        ) : (
+          <span className="dim"> — none set, so the source's full extent</span>
+        )}
+      </>
+    ) : aoi === null ? (
+      <>Full source extent</>
+    ) : (
+      <>
+        {countryNames(aoi.countries) ?? "Custom box"} {formatBbox(aoi.bbox)}
+      </>
+    )
+
+  async function save() {
+    setError(null)
+    setNotice(null)
+    try {
+      let body: Parameters<typeof setIntegrationAoi>[1]
+      if (choice === "inherit" || choice === "full") body = { mode: choice }
+      else if (choice === "country") {
+        if (!selected) throw new Error("Pick a country first")
+        body = { mode: "box", aoi: { bbox: selected.bbox, countries: [selected.iso3] } }
+      } else {
+        const values = [custom.west, custom.south, custom.east, custom.north].map(Number)
+        if (values.some(v => !Number.isFinite(v)) || [custom.west, custom.south, custom.east, custom.north].some(v => v === "")) {
+          throw new Error("All four bbox values are required")
+        }
+        body = { mode: "box", aoi: { bbox: values as [number, number, number, number] } }
+      }
+      const { version } = await setIntegrationAoi(detail.id, body)
+      setNotice(version === detail.version ? "No change." : `Saved as version ${version}; future runs use it.`)
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <div className="aoi-section">
+      <h3>Area of interest</h3>
+      <p>
+        Current: <b>{current}</b>
+      </p>
+      {error && <div className="error">{error}</div>}
+      {canDesign && (
+        <div className="aoi-editor">
+          <div className="aoi-mode">
+            {(
+              [
+                ["inherit", "Deployment default"],
+                ["country", "Country"],
+                ["custom", "Custom bounding box"],
+                ["full", "Full source extent"]
+              ] as [AoiChoice, string][]
+            ).map(([value, label]) => (
+              <label key={value}>
+                <input type="radio" checked={choice === value} onChange={() => setChoice(value)} /> {label}
+              </label>
+            ))}
+          </div>
+          {choice === "country" && (
+            <select value={iso3} onChange={e => setIso3(e.target.value)}>
+              <option value="">Pick a country…</option>
+              {countries.map(c => (
+                <option key={c.iso3} value={c.iso3}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {choice === "custom" && (
+            <div className="aoi-bbox">
+              {(["west", "south", "east", "north"] as const).map(edge => (
+                <label key={edge}>
+                  {edge}
+                  <input
+                    type="number"
+                    step="any"
+                    value={custom[edge]}
+                    onChange={e => setCustom({ ...custom, [edge]: e.target.value })}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="aoi-actions">
+            <button onClick={save}>Save</button>
+            <span className="dim">Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.</span>
+          </div>
+          {notice && <p className="dim">{notice}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Props for the version history section. */
+interface VersionsSectionProps {
+  /** Integration whose history is shown */
+  integrationId: string
+  /** Current version; refetches when it advances */
+  currentVersion: number
+}
+
+/** Definition version history: who changed what, when. */
+function VersionsSection({ integrationId, currentVersion }: VersionsSectionProps) {
+  const [versions, setVersions] = useState<VersionSummary[] | null>(null)
+
+  useEffect(() => {
+    getIntegrationVersions(integrationId).then(r => setVersions(r.versions), () => setVersions([]))
+  }, [integrationId, currentVersion])
+
+  if (!versions || versions.length === 0) return null
+  return (
+    <div className="dest-def">
+      <h3>
+        Versions <span className="dim">definition history, newest first</span>
+      </h3>
+      <table className="sessions">
+        <thead>
+          <tr><th>Version</th><th>When</th><th>By</th><th>Area of interest</th></tr>
+        </thead>
+        <tbody>
+          {versions.map(v => (
+            <tr key={v.version}>
+              <td>
+                v{v.version}
+                {v.version === currentVersion && <span className="chip chip-certified" style={{ marginLeft: 8 }}>current</span>}
+              </td>
+              <td>{new Date(v.createdAt).toLocaleString()}</td>
+              <td>{v.createdBy ?? <span className="dim">system</span>}</td>
+              <td className="dim">
+                {v.aoiMode === "inherit"
+                  ? "deployment default"
+                  : v.aoiMode === "full"
+                    ? "full source extent"
+                    : `${v.aoi?.countries?.join(", ") ?? "custom"} ${v.aoi ? formatBbox(v.aoi.bbox) : ""}`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

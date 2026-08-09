@@ -337,3 +337,7 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface); color: var(--ink); cursor: pointer
 }
+
+/* Integration AOI section */
+.aoi-section { margin: 4px 0 16px }
+.aoi-section h3 { margin: 12px 0 6px }

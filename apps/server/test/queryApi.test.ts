@@ -194,3 +194,58 @@ test("settings: countries list, default AOI roundtrip, role enforcement", async 
   assert.equal(cleared.status, 200)
   assert.equal((await (await get("/api/settings")).json()).settings.default_aoi, null)
 })
+
+test("AOI edits are versioned definition changes with attribution", async () => {
+  // Viewers cannot change AOI
+  const forbidden = await fetch(`${base}/api/integrations/q_src/aoi`, {
+    method: "PUT",
+    headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+    body: JSON.stringify({ mode: "full" })
+  })
+  assert.equal(forbidden.status, 403)
+
+  const admin = await createUser(pool, "aoi-admin@example.org", "hunter2hunter2", "admin")
+  const adminBearer = await createApiToken(pool, admin.id, "aoi-token")
+  const put = (body: unknown) =>
+    fetch(`${base}/api/integrations/q_src/aoi`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${adminBearer}`, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    })
+
+  assert.equal((await put({ mode: "sideways" })).status, 400)
+  assert.equal((await put({ mode: "box", aoi: { bbox: [1, 2, 3] } })).status, 400)
+
+  // Explicit box -> v2; explicit full extent -> v3; back to inherit -> v4
+  const boxed = await (await put({ mode: "box", aoi: { bbox: [43.2, -25.6, 50.5, -12.0], countries: ["MDG"] } })).json()
+  assert.equal(boxed.version, 2)
+  let detail = await (await get("/api/integrations/q_src")).json()
+  assert.deepEqual(detail.definition.aoi, { bbox: [43.2, -25.6, 50.5, -12.0], countries: ["MDG"] })
+
+  assert.equal((await (await put({ mode: "full" })).json()).version, 3)
+  detail = await (await get("/api/integrations/q_src")).json()
+  assert.equal(detail.definition.aoi, null)
+
+  assert.equal((await (await put({ mode: "inherit" })).json()).version, 4)
+  detail = await (await get("/api/integrations/q_src")).json()
+  assert.equal("aoi" in detail.definition, false)
+
+  // Repeating the same state is a no-op, not a new version
+  assert.equal((await (await put({ mode: "inherit" })).json()).version, 4)
+
+  const history = await (await get("/api/integrations/q_src/versions")).json()
+  assert.deepEqual(
+    history.versions.map((v: { version: number; createdBy: string | null; aoiMode: string }) => [
+      v.version, v.createdBy, v.aoiMode
+    ]),
+    [
+      [4, "aoi-admin@example.org", "inherit"],
+      [3, "aoi-admin@example.org", "full"],
+      [2, "aoi-admin@example.org", "box"],
+      [1, null, "inherit"]
+    ]
+  )
+  assert.deepEqual(history.versions[2].aoi.countries, ["MDG"])
+
+  assert.equal((await get("/api/integrations/nope/versions")).status, 404)
+})

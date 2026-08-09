@@ -188,6 +188,8 @@ export interface DestinationStats {
 export interface IntegrationDetail {
   /** Integration id */
   id: string
+  /** Current definition version */
+  version: number
   /** Installed definition */
   definition: Definition
   /** Deployment overrides */
@@ -516,4 +518,40 @@ export function setDefaultAoi(aoi: DefaultAoi): Promise<{ default_aoi: DefaultAo
 /** Clears the deployment default AOI (admin only). */
 export function clearDefaultAoi(): Promise<{ default_aoi: null }> {
   return request("/api/settings/default_aoi", { method: "DELETE" })
+}
+
+/** How a definition version answers the area-of-interest question. */
+export type AoiMode = "inherit" | "full" | "box"
+
+/** One archived definition version. */
+export interface VersionSummary {
+  /** Version number, counting up from 1 */
+  version: number
+  /** Archive time (ISO) */
+  createdAt: string
+  /** Email of the installing user; null for CLI/library-sync installs */
+  createdBy: string | null
+  /** Display name in this version */
+  name: string
+  /** AOI tri-state in this version */
+  aoiMode: AoiMode
+  /** The explicit box, when aoiMode is "box" */
+  aoi: { bbox: [number, number, number, number]; countries?: string[] } | null
+}
+
+/** The integration's version history, newest first. */
+export function getIntegrationVersions(id: string): Promise<{ versions: VersionSummary[] }> {
+  return request(`/api/integrations/${id}/versions`)
+}
+
+/** Changes the integration's AOI, archiving a new definition version. */
+export function setIntegrationAoi(
+  id: string,
+  body: { mode: "inherit" | "full" } | { mode: "box"; aoi: { bbox: [number, number, number, number]; countries?: string[] } }
+): Promise<{ version: number }> {
+  return request(`/api/integrations/${id}/aoi`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
 }

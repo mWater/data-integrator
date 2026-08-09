@@ -3,6 +3,7 @@ import pg from "pg"
 import { IntegrationDefinition } from "@data-integrator/definitions"
 import { ensureTable } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
+import { parseAoi } from "./settings.js"
 
 /** Published-identifier rule for all definition-borne ids. */
 export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
@@ -32,6 +33,8 @@ export function definitionHash(definition: IntegrationDefinition): string {
 export function validateDefinition(definition: IntegrationDefinition): void {
   const badId = (id: string) => !ID_PATTERN.test(id)
   if (badId(definition.id)) throw new Error(`Invalid integration id: ${definition.id}`)
+  // Tri-state AOI: explicit boxes must be well-formed (null and absent are meaningful)
+  if (definition.aoi != null) parseAoi(definition.aoi)
   const inputIds = new Set(Object.keys(definition.inputs ?? {}))
   for (const inputId of inputIds) {
     if (badId(inputId)) throw new Error(`Invalid input id: ${inputId}`)

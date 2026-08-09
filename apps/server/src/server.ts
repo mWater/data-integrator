@@ -9,7 +9,8 @@ import pg from "pg"
 import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
-import { getIntegration, getTableRows, listIntegrations } from "./integrations.js"
+import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
+import { installIntegration } from "./install.js"
 import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
@@ -24,7 +25,7 @@ import {
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
-import { DEFAULT_AOI_KEY, getDefaultAoi, parseDefaultAoi, setSetting } from "./settings.js"
+import { DEFAULT_AOI_KEY, getDefaultAoi, parseAoi, parseDefaultAoi, setSetting } from "./settings.js"
 import {
   authenticate,
   AuthUser,
@@ -448,6 +449,45 @@ async function route(
     const detail = await getIntegration(pool, integrationMatch[1])
     if (!detail) json(res, 404, { error: "unknown integration" })
     else json(res, 200, detail)
+    return
+  }
+
+  const versionsMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/versions$/)
+  if (versionsMatch && req.method === "GET") {
+    const versions = await listIntegrationVersions(pool, versionsMatch[1])
+    if (versions.length === 0) json(res, 404, { error: "unknown integration" })
+    else json(res, 200, { versions })
+    return
+  }
+
+  // AOI is definition content: changing it archives a new attributed version
+  const aoiMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/aoi$/)
+  if (aoiMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const row = await pool.query("SELECT definition, overrides, status FROM app.integrations WHERE id = $1", [
+      aoiMatch[1]
+    ])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const definition = { ...row.rows[0].definition }
+    try {
+      const mode = String(body.mode ?? "")
+      if (mode === "inherit") delete definition.aoi
+      else if (mode === "full") definition.aoi = null
+      else if (mode === "box") definition.aoi = parseAoi(body.aoi)
+      else throw new Error('mode must be "inherit", "full", or "box"')
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    const { version } = await installIntegration(pool, definition, row.rows[0].overrides, row.rows[0].status, user.id)
+    json(res, 200, { version })
     return
   }
 

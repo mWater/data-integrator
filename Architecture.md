@@ -127,8 +127,11 @@ Each integration: `{ id, name, source, trigger, secrets (names only), aoi, input
 runtime, limits, destinations, validation, code, contract }`. Destinations are tabular
 schemas and/or raster layer declarations. Inputs reference catalog layers or tables, so
 derived analytics (drought indices, exposure) are ordinary integrations. Definitions
-are templates: aoi, trigger, and limits are defaults a deployment may override at
-install. Definitions are files in a versioned library directory; the app syncs them to
+are templates: trigger and limits are defaults a deployment may override at
+install. AOI is tri-state definition content, not an override: an explicit box
+clips to it, explicit null means the source's full extent, and omitting it
+inherits the deployment default AOI at run time — so changing the area is a
+definition edit that archives a new attributed version. Definitions are files in a versioned library directory; the app syncs them to
 the DB. Secret values never appear in the library. Code is a single self-contained
 file; jobs that outgrow one file split into chained integrations via `inputs`, not
 modules.

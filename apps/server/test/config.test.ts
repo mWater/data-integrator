@@ -65,3 +65,29 @@ test("parseDefaultAoi: rejects malformed values", () => {
   assert.throws(() => parseDefaultAoi({ bbox: [200, 0, 10, 5] }), /longitudes/)
   assert.throws(() => parseDefaultAoi({ bbox: [0, 0, 10, 5], countries: ["XXX"] }), /Unknown country/)
 })
+
+// resolveAoi: the executor's tri-state resolution
+import { resolveAoi } from "../src/executor.js"
+import { IntegrationDefinition } from "@data-integrator/definitions"
+
+const BASE = { id: "t", name: "T", trigger: {}, runtime: "node22", destinations: [], code: "", contract: 2 } as unknown as IntegrationDefinition
+const DEFAULT = { bbox: [11.7, -18.1, 24.1, -4.4] as [number, number, number, number], countries: ["AGO"] }
+
+test("resolveAoi: absent aoi inherits the deployment default", () => {
+  const resolved = resolveAoi(BASE, DEFAULT)
+  assert.deepEqual(resolved.aoi, { bbox: DEFAULT.bbox, countries: ["AGO"] })
+})
+
+test("resolveAoi: absent aoi with no default stays absent", () => {
+  assert.equal("aoi" in resolveAoi(BASE, null), false)
+})
+
+test("resolveAoi: explicit null strips to full extent even with a default", () => {
+  const resolved = resolveAoi({ ...BASE, aoi: null }, DEFAULT)
+  assert.equal("aoi" in resolved, false)
+})
+
+test("resolveAoi: explicit box wins over the default", () => {
+  const box = { bbox: [0, 0, 1, 1] as [number, number, number, number] }
+  assert.deepEqual(resolveAoi({ ...BASE, aoi: box }, DEFAULT).aoi, box)
+})

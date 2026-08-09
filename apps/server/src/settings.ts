@@ -47,11 +47,11 @@ export async function getDefaultAoi(pool: pg.Pool): Promise<DefaultAoi | null> {
 }
 
 /**
- * Validates a default-AOI value from the API. Returns the normalized value,
- * or throws with a user-facing message. Accepts west > east (antimeridian).
+ * Validates an AOI value. Returns the normalized value, or throws with a
+ * user-facing message. Accepts west > east (antimeridian).
  */
-export function parseDefaultAoi(body: unknown): DefaultAoi {
-  const raw = body as { bbox?: unknown; countries?: unknown; name?: unknown }
+export function parseAoi(body: unknown): Aoi {
+  const raw = body as { bbox?: unknown; countries?: unknown }
   const bbox = raw?.bbox
   if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(v => typeof v === "number" && Number.isFinite(v))) {
     throw new Error("bbox must be [west, south, east, north] numbers")
@@ -73,6 +73,13 @@ export function parseDefaultAoi(body: unknown): DefaultAoi {
     const unknown = countries.filter(c => !known.has(c))
     if (unknown.length > 0) throw new Error(`Unknown country codes: ${unknown.join(", ")}`)
   }
+  return { bbox: [west, south, east, north], ...(countries ? { countries } : {}) }
+}
+
+/** Validates a default-AOI setting value: an Aoi plus its display name. */
+export function parseDefaultAoi(body: unknown): DefaultAoi {
+  const aoi = parseAoi(body)
+  const raw = body as { name?: unknown }
   const name = raw.name !== undefined ? String(raw.name).slice(0, 200) : undefined
-  return { bbox: [west, south, east, north], ...(countries ? { countries } : {}), ...(name ? { name } : {}) }
+  return { ...aoi, ...(name ? { name } : {}) }
 }
