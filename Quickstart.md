@@ -119,6 +119,26 @@ Or click Run Now on the integration's page. `library/integrations/chirps_rainfal
 adds a time-series layer; `library/integrations/rainfall_stats` derives population-weighted
 rainfall from the other two (install and run those first).
 
+## Develop live (no rebuilds)
+
+Two terminals instead of the build-and-serve loop:
+
+```sh
+# 1: the API server from source, auto-restarting on change
+set -a; . ./.env; set +a          # or export DATABASE_URL etc.
+pnpm --filter @data-integrator/server dev
+
+# 2: the UI with hot reload, proxying /api and friends to :8080
+pnpm --filter @data-integrator/ui dev
+```
+
+Open the Vite URL it prints (usually http://localhost:5173): UI edits apply
+instantly, server edits restart the process. One caveat: the dev server runs
+with `apps/server` as its working directory, so the relative path defaults
+(`./library`, `./raster-store`, ...) resolve there — use absolute paths in
+your `.env` (including `LIBRARY_PATH`) when developing, or the Library page
+will come up empty.
+
 ## Design an integration with the agent
 
 In the UI: New Integration on the landing page, then describe what to build.

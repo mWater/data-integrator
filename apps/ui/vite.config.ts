@@ -11,7 +11,9 @@ export default defineConfig({
       "/api": API,
       "/layers": API,
       "/tiles": API,
-      "/map": API
+      "/map": API,
+      "/kit": API,
+      "/basemap": API
     }
   }
 })
