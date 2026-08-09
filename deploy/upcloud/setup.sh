@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# One-shot provisioning for a throwaway test server on a fresh Ubuntu 24.04 VM
+# (written for UpCloud, but nothing here is UpCloud-specific). Installs the full
+# stack from Quickstart.md, puts Caddy in front for HTTPS on <public-ip>.sslip.io,
+# and leaves the server running as a systemd service.
+#
+# Run as root:
+#   ADMIN_EMAIL=you@example.org ./setup.sh
+#
+# Configuration (environment variables):
+#   ADMIN_EMAIL          (required) first admin account; password is printed once at the end
+#   OPENROUTER_API_KEY   (optional) enables the designer agent
+#   ANTHROPIC_API_KEY    (optional) alternative agent provider
+#   REPO_URL             (optional) git URL to clone if /opt/data-integrator doesn't exist
+#                        yet; for a private repo, rsync your checkout there instead
+#   REPO_REF             (optional) branch/tag to clone, default main
+#   SETUP_FIREWALL       default 1; ufw allowing only 22/80/443 (the app itself
+#                        listens on all interfaces, so this keeps :8080 private)
+set -euo pipefail
+
+ADMIN_EMAIL=${ADMIN_EMAIL:?set ADMIN_EMAIL=you@example.org}
+REPO_REF=${REPO_REF:-main}
+SETUP_FIREWALL=${SETUP_FIREWALL:-1}
+APP_DIR=/opt/data-integrator
+APP_USER=integrator
+DATA_DIR=/var/lib/data-integrator
+ENV_FILE=/etc/data-integrator/env
+export DEBIAN_FRONTEND=noninteractive
+
+echo "==> Base packages"
+apt-get update -q
+apt-get install -qy curl git ca-certificates gnupg openssl gdal-bin \
+  podman uidmap slirp4netns passt nftables \
+  postgresql-16 postgresql-16-postgis-3
+
+echo "==> Node.js 22 + pnpm"
+if ! command -v node >/dev/null || [ "$(node -v | cut -d. -f1)" != "v22" ]; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt-get install -qy nodejs
+fi
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+corepack enable pnpm
+
+echo "==> gVisor (runsc)"
+if [ ! -x /usr/local/bin/runsc ]; then
+  arch=$(uname -m)
+  url=https://storage.googleapis.com/gvisor/releases/release/latest/${arch}
+  tmp=$(mktemp -d)
+  curl -fsSL -o "$tmp/runsc" "$url/runsc"
+  curl -fsSL -o "$tmp/runsc.sha512" "$url/runsc.sha512"
+  (cd "$tmp" && sha512sum -c runsc.sha512)
+  install -m 0755 "$tmp/runsc" /usr/local/bin/runsc
+  rm -rf "$tmp"
+fi
+
+echo "==> Caddy"
+if ! command -v caddy >/dev/null; then
+  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key |
+    gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt \
+    > /etc/apt/sources.list.d/caddy-stable.list
+  apt-get update -q
+  apt-get install -qy caddy
+fi
+
+echo "==> PostgreSQL database"
+systemctl enable --now postgresql
+DB_PASS=$(openssl rand -hex 16)
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='integrator'" | grep -q 1 ||
+  sudo -u postgres psql -c "CREATE USER integrator PASSWORD '${DB_PASS}'"
+sudo -u postgres psql -c "ALTER USER integrator PASSWORD '${DB_PASS}'"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='integrator'" | grep -q 1 ||
+  sudo -u postgres createdb -O integrator integrator
+sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis"
+
+echo "==> App user"
+id "$APP_USER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$APP_USER"
+APP_UID=$(id -u "$APP_USER")
+loginctl enable-linger "$APP_USER"
+
+echo "==> Source tree"
+if [ ! -d "$APP_DIR/.git" ]; then
+  if [ -n "${REPO_URL:-}" ]; then
+    git clone --branch "$REPO_REF" "$REPO_URL" "$APP_DIR"
+  else
+    echo "ERROR: $APP_DIR is not a git checkout and REPO_URL is not set." >&2
+    echo "Either set REPO_URL, or rsync a checkout to $APP_DIR first, e.g. from your machine:" >&2
+    echo "  rsync -a --exclude node_modules --exclude .git/hooks ./ root@<ip>:$APP_DIR/" >&2
+    exit 1
+  fi
+fi
+chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+
+as_app() {
+  sudo -H -u "$APP_USER" env XDG_RUNTIME_DIR="/run/user/$APP_UID" \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -c "cd $APP_DIR && $*"
+}
+
+echo "==> Build (pnpm + runtime images; this is the slow part)"
+as_app "pnpm install --frozen-lockfile"
+as_app "pnpm -r build"
+as_app "podman build -t localhost/integrator-runtime-python:dev runtimes/python/"
+as_app "podman build -t localhost/integrator-runtime-node:dev runtimes/node/"
+
+echo "==> Environment file"
+mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache} /etc/data-integrator
+chown -R "$APP_USER:$APP_USER" "$DATA_DIR"
+if [ ! -f "$ENV_FILE" ]; then
+  cat > "$ENV_FILE" <<EOF
+DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator
+PORT=8080
+RASTER_STORE_PATH=${DATA_DIR}/raster-store
+WORK_ROOT=${DATA_DIR}/work
+TILE_CACHE_PATH=${DATA_DIR}/tile-cache
+INTEGRATOR_SECRET_KEY=$(openssl rand -base64 32)
+EOF
+  [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" >> "$ENV_FILE"
+  [ -n "${ANTHROPIC_API_KEY:-}" ] && echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" >> "$ENV_FILE"
+else
+  # keep the existing file (and its secret key), but refresh the DB password we just set
+  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator|" "$ENV_FILE"
+fi
+chown root:"$APP_USER" "$ENV_FILE"
+chmod 640 "$ENV_FILE"
+
+echo "==> Migrate + admin user"
+run_cli() {
+  sudo -H -u "$APP_USER" env XDG_RUNTIME_DIR="/run/user/$APP_UID" \
+    bash -c "set -a; . $ENV_FILE; set +a; cd $APP_DIR && node apps/server/dist/cli.js $*"
+}
+run_cli migrate
+ADMIN_OUTPUT=$(run_cli user add "$ADMIN_EMAIL" admin 2>&1) || ADMIN_OUTPUT="(user add failed - probably already exists: $ADMIN_OUTPUT)"
+
+echo "==> systemd service"
+cat > /etc/systemd/system/data-integrator.service <<EOF
+[Unit]
+Description=Data Integrator test server
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=${APP_USER}
+EnvironmentFile=${ENV_FILE}
+Environment=XDG_RUNTIME_DIR=/run/user/${APP_UID}
+WorkingDirectory=${APP_DIR}
+ExecStart=/usr/bin/node apps/server/dist/cli.js serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable --now data-integrator
+
+echo "==> HTTPS via Caddy + sslip.io"
+PUBLIC_IP=$(curl -4fsS https://ifconfig.me || curl -4fsS https://api.ipify.org)
+HOST="${PUBLIC_IP}.sslip.io"
+cat > /etc/caddy/Caddyfile <<EOF
+${HOST} {
+	reverse_proxy 127.0.0.1:8080
+}
+EOF
+systemctl reload caddy || systemctl restart caddy
+
+if [ "$SETUP_FIREWALL" = "1" ]; then
+  echo "==> Firewall (22/80/443 only)"
+  apt-get install -qy ufw
+  ufw allow OpenSSH
+  ufw allow 80/tcp
+  ufw allow 443/tcp
+  ufw --force enable
+fi
+
+echo
+echo "============================================================"
+echo " Done. URL:  https://${HOST}"
+echo " (Let's Encrypt issuance takes ~30s on first request)"
+echo
+echo " Admin account:"
+echo "   ${ADMIN_OUTPUT}"
+echo
+echo " Service:  systemctl status data-integrator"
+echo " Logs:     journalctl -u data-integrator -f"
+echo "============================================================"
