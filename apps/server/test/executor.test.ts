@@ -130,11 +130,16 @@ async function runOnce(): Promise<string> {
 test("first run: rows, snapshot, state, stats", { skip: !AVAILABLE }, async () => {
   await installIntegration(pool, DEFINITION)
   const runId = await runOnce()
-  const run = await pool.query("SELECT status, state_out, stats, definition_version, error FROM app.runs WHERE id = $1", [runId])
+  const run = await pool.query(
+    "SELECT status, state_out, stats, definition_version, inputs, error FROM app.runs WHERE id = $1",
+    [runId]
+  )
   assert.equal(run.rows[0].status, "succeeded", run.rows[0].error ?? "")
   assert.deepEqual(run.rows[0].state_out, { cursor: 1 })
   assert.equal(run.rows[0].stats.rows.e2e_rows, 2)
   assert.equal(run.rows[0].definition_version, 1)
+  // No definition AOI and no deployment default: lineage records full extent
+  assert.equal(run.rows[0].inputs.aoi, null)
 
   const rows = await pool.query("SELECT site, value, _run_id FROM data.e2e_rows ORDER BY site")
   assert.equal(rows.rows.length, 2)

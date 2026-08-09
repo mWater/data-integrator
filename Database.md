@@ -61,7 +61,7 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | scheduled_at, started_at, finished_at | timestamptz | |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
 | definition_version | int fk | which definition version ran (composite FK with integration_id); null until success and for scratch runs |
-| inputs | jsonb | resolved snapshot ids, extract row counts (lineage) |
+| inputs | jsonb | lineage: `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows written, artifacts, bytes, duration |
 | flags | jsonb | validation violations, freshness |

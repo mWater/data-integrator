@@ -307,7 +307,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           definitionVersion,
           JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
           log,
-          manifest ? JSON.stringify(manifest) : null
+          // Lineage records the AOI the run actually executed with: the
+          // deployment default resolves at run time, so the definition alone
+          // cannot answer "what area did run X ingest"
+          JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null })
         ]
       )
       await client.query("COMMIT")
