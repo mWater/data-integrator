@@ -7,6 +7,7 @@
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
+ *   register-rasters        Backfill the out-db SQL mirror of promoted snapshots.
  *   serve                   HTTP API and map page.
  */
 import { readFile, stat } from "node:fs/promises"
@@ -29,6 +30,7 @@ import { createApiServer } from "./server.js"
 import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
 import { AppConfig, describeConfig, loadConfig } from "./config.js"
 import { startScheduler } from "./scheduler.js"
+import { registerMissingRasters } from "./rasterSql.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
@@ -341,6 +343,14 @@ async function main(): Promise<number> {
           rl.close()
         }
       }
+      case "register-rasters": {
+        // Backfill/repair the out-db SQL mirror of promoted snapshots
+        const store = new RasterStore(config.rasterStorePath)
+        const result = await registerMissingRasters(pool, rel => store.absolute(rel))
+        console.log(`Registered ${result.registered}, pruned ${result.pruned}`)
+        for (const failure of result.failures) console.error(`  failed: ${failure}`)
+        return result.failures.length > 0 ? 1 : 0
+      }
       case "serve": {
         const deps = buildDeps(pool, new Runner(), config)
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
@@ -380,7 +390,9 @@ async function main(): Promise<number> {
         return await new Promise<number>(() => {})
       }
       default:
-        console.error("Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | serve")
+        console.error(
+          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | register-rasters | serve"
+        )
         return 1
     }
   } finally {

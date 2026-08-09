@@ -226,7 +226,8 @@ ${index}`
         })
       }),
       query_table: tool({
-        description: "Run one read-only SELECT against the data schema (destination tables). Returns up to 50 rows as JSON.",
+        description:
+          "Run one read-only SELECT against the data schema (destination tables, and the rasters table: promoted snapshots of installed layers as out-db PostGIS rasters - ST_Value/ST_SummaryStats work for exploring an input layer's values; this draft's own test rasters are not in it). Returns up to 50 rows as JSON.",
         inputSchema: z.object({
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
         })
@@ -510,7 +511,8 @@ ${index}`
     try {
       await client.query("BEGIN TRANSACTION READ ONLY")
       await client.query("SET LOCAL statement_timeout = '15s'")
-      await client.query(`SET LOCAL search_path = ${draftSchema(sessionId)}, data`)
+      // public carries the PostGIS functions (ST_Value etc. for the rasters table)
+      await client.query(`SET LOCAL search_path = ${draftSchema(sessionId)}, data, public`)
       const result = await client.query(trimmed)
       const rows = result.rows.slice(0, 50)
       return { result: `${result.rowCount} rows (showing ${rows.length}):\n${JSON.stringify(rows)}` }
