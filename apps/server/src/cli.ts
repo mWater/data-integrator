@@ -278,7 +278,7 @@ async function main(): Promise<number> {
         }
         const runner = new Runner()
         await runner.ensureReady()
-        const deps = { ...buildDeps(pool, runner, config), model }
+        const deps = { ...buildDeps(pool, runner, config), model, skillsDir: path.join(config.libraryPath, "skills") }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
         const service = AgentService.forDesigner(pool, deps)
 
@@ -344,7 +344,9 @@ async function main(): Promise<number> {
         const deps = buildDeps(pool, new Runner(), config)
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
         const model = buildModel(config)
-        const agent = model ? AgentService.forDesigner(pool, { ...deps, model }) : null
+        const agent = model
+          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: path.join(config.libraryPath, "skills") })
+          : null
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))

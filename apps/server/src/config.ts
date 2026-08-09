@@ -24,6 +24,8 @@ export interface AppConfig {
   workRoot: string
   /** TILE_CACHE_PATH: rendered tile + basemap cache */
   tileCachePath: string
+  /** LIBRARY_PATH: integration library root (integrations/, skills/) */
+  libraryPath: string
   /** UI_DIST_PATH: built SPA directory; null uses the in-repo default */
   uiDistPath: string | null
   /** INTEGRATOR_SECRET_KEY parsed to 32 bytes; null when unset */
@@ -90,6 +92,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rasterStorePath: env.RASTER_STORE_PATH ?? "./raster-store",
     workRoot: env.WORK_ROOT ?? "./work",
     tileCachePath: env.TILE_CACHE_PATH ?? "./tile-cache",
+    libraryPath: env.LIBRARY_PATH ?? "./library",
     uiDistPath: env.UI_DIST_PATH ?? null,
     secretKey,
     runtimeImages: {

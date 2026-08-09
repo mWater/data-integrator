@@ -55,8 +55,9 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 - Remaining ToR sources: GloFAS, SPI, FPAR, DEM/FABDEM, GHSL, HydroSHEDS, SAR,
   in-situ sensors, UNICEF datasources.
-- Skills directory (`library/skills/`): reusable source and technique know-how
-  the agent loads on demand.
+- More skills (`library/skills/` is built: index in the designer prompt,
+  read_skill on demand): per-source know-how for the remaining ToR sources
+  as they are researched, whether or not a finished entry ships.
 - Angola pilot configuration (Madagascar is exercised; Angola AOI/overrides).
 
 ## Deployment and compliance (OS-1..9, deliverable 5)

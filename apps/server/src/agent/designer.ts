@@ -11,6 +11,7 @@ import { COUNTRIES } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
+import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
 
 /** Client state of a designer session: the draft and its certification. */
 export interface DesignerState {
@@ -28,6 +29,8 @@ export interface DesignerState {
 export interface DesignerDeps extends ExecutorDeps {
   /** Language model for the session loop */
   model: LanguageModel
+  /** library/skills directory; absent or missing on disk means no skills */
+  skillsDir?: string | null
 }
 
 /** Snippet resource limits: exploration jobs stay small and short. */
@@ -159,15 +162,28 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
 
   private deps: DesignerDeps
 
+  /** Skills index loaded once at construction; [] without a skills library. */
+  private skills: SkillSummary[]
+
   /** Creates the implementation over executor deps plus a model. */
   constructor(deps: DesignerDeps) {
     this.deps = deps
+    this.skills = deps.skillsDir ? loadSkillsIndex(deps.skillsDir) : []
     this.model = deps.model
   }
 
   /** System prompt (state-independent; authoritative state travels as tool results). */
   system(): string {
-    return SYSTEM
+    if (this.skills.length === 0) return SYSTEM
+    const index = this.skills.map(s => `- ${s.id}: ${s.description || s.name}`).join("\n")
+    return `${SYSTEM}
+
+# Skills
+Reusable know-how about sources and techniques, from the deployment's library.
+Before working against a source or problem one of these covers, call read_skill
+and follow it — hard-won facts about protocols, layouts, and quirks beat
+rediscovery:
+${index}`
   }
 
   /** Tool schemas; execution is in execute(). */
@@ -213,6 +229,13 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
         description: "Run one read-only SELECT against the data schema (destination tables). Returns up to 50 rows as JSON.",
         inputSchema: z.object({
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
+        })
+      }),
+      read_skill: tool({
+        description:
+          "Read the full text of a skill from the index in the system prompt: source and technique know-how (protocols, file layouts, quirks, working snippets). Read the relevant skill before designing against a source it covers.",
+        inputSchema: z.object({
+          id: z.string().describe("Skill id from the index")
         })
       }),
       lookup_country: tool({
@@ -262,6 +285,8 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
         return await this.runIntegration(state, args.cold === true, events, sessionId)
       case "query_table":
         return await this.queryTable(String(args.sql ?? ""), sessionId)
+      case "read_skill":
+        return this.readSkill(String(args.id ?? ""))
       case "lookup_country":
         return this.lookupCountry(String(args.query ?? ""))
       case "ask_user":
@@ -504,6 +529,16 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     if (question === "") return { result: "Error: question is required" }
     if (options.length < 2) return { result: "Error: provide at least two options" }
     return { result: "Question shown; the session is paused for the user's answer.", pause: true }
+  }
+
+  /** Serves one skill's full markdown from the library. */
+  private readSkill(id: string): ToolOutcome<DesignerState> {
+    if (this.skills.length === 0) return { result: "No skills library on this deployment" }
+    const text = this.deps.skillsDir ? readSkill(this.deps.skillsDir, id) : null
+    if (text === null) {
+      return { result: `No skill "${id}"; the index lists: ${this.skills.map(s => s.id).join(", ")}` }
+    }
+    return { result: text }
   }
 
   /**
