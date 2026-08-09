@@ -10,6 +10,7 @@ import { Login } from "./Login.js"
 import { MapPage } from "./MapPage.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
+import { Settings } from "./Settings.js"
 
 /** Parsed hash route. */
 interface Route {
@@ -25,6 +26,8 @@ interface Route {
   dashboards: boolean
   /** Dashboard id, when on a dashboard viewer page */
   dashboardId: string | null
+  /** True on the settings page */
+  settings: boolean
   /** True on the map page */
   map: boolean
   /** Layer to focus when opening the map from an integration */
@@ -47,6 +50,7 @@ function parseHash(): Route {
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
+    settings: hash === "#/settings",
     map: map !== null,
     mapLayerId: map?.[1] ?? null,
     mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
@@ -121,6 +125,7 @@ export function App() {
           <a href="#/integrations">Integrations</a>
           <a href="#/dashboards">Dashboards</a>
           <a href="#/map">Map</a>
+          <a href="#/settings">Settings</a>
         </nav>
         <span style={{ flex: 1 }} />
         <ThemeToggle />
@@ -142,6 +147,8 @@ export function App() {
         <DashboardView dashboardId={route.dashboardId} />
       ) : route.dashboards ? (
         <DashboardList canDesign={canDesign} />
+      ) : route.settings ? (
+        <Settings user={user} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (

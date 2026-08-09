@@ -55,6 +55,8 @@ export interface DestinationStats {
 export interface IntegrationDetail {
   /** Integration id */
   id: string
+  /** Current definition version */
+  version: number
   /** Installed definition */
   definition: IntegrationDefinition
   /** Deployment overrides applied at run time */
@@ -101,11 +103,11 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
 /** Loads one integration with run history and destination stats, or null. */
 export async function getIntegration(pool: pg.Pool, id: string): Promise<IntegrationDetail | null> {
   const result = await pool.query(
-    "SELECT definition, overrides, enabled, status, updated_at FROM app.integrations WHERE id = $1",
+    "SELECT version, definition, overrides, enabled, status, updated_at FROM app.integrations WHERE id = $1",
     [id]
   )
   if (result.rows.length === 0) return null
-  const { definition, overrides, enabled, status, updated_at } = result.rows[0]
+  const { version, definition, overrides, enabled, status, updated_at } = result.rows[0]
 
   const runs = await pool.query(
     `SELECT id, trigger, status, started_at, finished_at, stats, error
@@ -137,6 +139,7 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
 
   return {
     id,
+    version,
     definition,
     overrides,
     enabled,
@@ -153,6 +156,45 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
     })),
     destinations
   }
+}
+
+/** How a definition version answers the area-of-interest question. */
+export type AoiMode = "inherit" | "full" | "box"
+
+/** One archived definition version, for the integration's history view. */
+export interface VersionSummary {
+  /** Version number, counting up from 1 */
+  version: number
+  /** Archive time (ISO) */
+  createdAt: string
+  /** Email of the installing user; null for CLI/library-sync installs */
+  createdBy: string | null
+  /** Display name in this version */
+  name: string
+  /** AOI tri-state in this version */
+  aoiMode: AoiMode
+  /** The explicit box, when aoiMode is "box" */
+  aoi: { bbox: [number, number, number, number]; countries?: string[] } | null
+}
+
+/** The version history of an integration, newest first. */
+export async function listIntegrationVersions(pool: pg.Pool, id: string): Promise<VersionSummary[]> {
+  const result = await pool.query(
+    `SELECT v.version, v.created_at, u.email AS created_by, v.definition->>'name' AS name,
+            v.definition->'aoi' AS aoi, v.definition ? 'aoi' AS has_aoi
+     FROM app.integration_versions v
+     LEFT JOIN app.users u ON u.id = v.created_by
+     WHERE v.integration_id = $1 ORDER BY v.version DESC`,
+    [id]
+  )
+  return result.rows.map(row => ({
+    version: row.version,
+    createdAt: row.created_at.toISOString(),
+    createdBy: row.created_by ?? null,
+    name: row.name ?? id,
+    aoiMode: !row.has_aoi ? "inherit" : row.aoi === null ? "full" : "box",
+    aoi: row.has_aoi && row.aoi !== null ? row.aoi : null
+  }))
 }
 
 /** A table preview: column names plus the most recent rows. */

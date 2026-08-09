@@ -324,3 +324,20 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 @media (max-width: 900px) {
   .details-drawer { width: 100% }
 }
+
+/* Settings: default AOI editor */
+.aoi-editor { margin-top: 8px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start }
+.aoi-mode { display: flex; gap: 16px }
+.aoi-editor select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; min-width: 260px }
+.aoi-bbox { display: flex; gap: 10px }
+.aoi-bbox label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--ink-dim) }
+.aoi-bbox input { width: 90px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px }
+.aoi-actions { display: flex; gap: 12px; align-items: center }
+.aoi-actions button:not(.linkish) {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--ink); cursor: pointer
+}
+
+/* Integration AOI section */
+.aoi-section { margin: 4px 0 16px }
+.aoi-section h3 { margin: 12px 0 6px }

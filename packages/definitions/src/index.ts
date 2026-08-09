@@ -6,9 +6,10 @@
  * inputs, runtime, limits, destinations, validation rules, and the single
  * self-contained code file implementing the run(ctx) entrypoint.
  *
- * Definitions are templates: aoi, trigger, and limits are defaults that a
- * deployment may override when installing an integration. There is no version
- * field; the server derives definition versions from content.
+ * Definitions are templates: trigger and limits are defaults that a
+ * deployment may override when installing an integration; aoi is tri-state
+ * definition content (see its doc). There is no version field; the server
+ * assigns integration versions on install.
  *
  * See Architecture.md. Types only for now; validation comes with the server.
  */
@@ -31,8 +32,13 @@ export interface IntegrationDefinition {
   trigger: Trigger
   /** Names of secrets the code reads via ctx.secrets. Values live in the app DB, never here. */
   secrets?: string[]
-  /** Area of interest clipping ingestion and input extracts. Default; a deployment may override at install. */
-  aoi?: Aoi
+  /**
+   * Area of interest clipping ingestion and input extracts. Tri-state: an
+   * explicit Aoi clips to it; explicit null means the source's full extent;
+   * omitted inherits the deployment default at run time. Changing it is a
+   * definition edit and creates a new integration version.
+   */
+  aoi?: Aoi | null
   /** Platform data materialized read-only at /in, keyed by input id */
   inputs?: Record<string, InputRef>
   /** Runtime image the code runs in */
@@ -76,8 +82,10 @@ export interface Trigger {
 
 /** Area of interest that ingestion and input extracts are clipped to. */
 export interface Aoi {
-  /** [west, south, east, north], EPSG:4326 */
+  /** [west, south, east, north], EPSG:4326; west > east crosses the antimeridian */
   bbox: [number, number, number, number]
+  /** ISO 3166-1 alpha-3 codes covered by the box; a hint for sources keyed by country rather than extent */
+  countries?: string[]
 }
 
 /** Per-run resource limits, capped by server configuration. */

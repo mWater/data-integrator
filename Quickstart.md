@@ -32,7 +32,12 @@ podman build -t localhost/integrator-runtime-node:dev runtimes/node/
 
 ## Configure
 
-Everything is environment variables; only `DATABASE_URL` is required.
+Infrastructure wiring is environment variables; only `DATABASE_URL` is
+required. All variables are read and validated once at startup
+(`apps/server/src/config.ts`); `.env.example` at the repository root documents
+every one, and `node --env-file=.env` loads a local copy for development.
+Runtime behavior an administrator owns — like the deployment's default area of
+interest — lives in the Settings page, not the environment.
 
 | variable | default | purpose |
 |---|---|---|

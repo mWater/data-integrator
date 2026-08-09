@@ -188,6 +188,8 @@ export interface DestinationStats {
 export interface IntegrationDetail {
   /** Integration id */
   id: string
+  /** Current definition version */
+  version: number
   /** Installed definition */
   definition: Definition
   /** Deployment overrides */
@@ -472,4 +474,84 @@ export async function execDashboardQuery(
     }
   )
   return result.rows
+}
+
+/** One selectable country from the baked-in list (Natural Earth derived). */
+export interface CountryBox {
+  /** ISO 3166-1 alpha-3 */
+  iso3: string
+  /** Display name */
+  name: string
+  /** [west, south, east, north], EPSG:4326; west > east crosses the antimeridian */
+  bbox: [number, number, number, number]
+}
+
+/** Deployment default area of interest. */
+export interface DefaultAoi {
+  /** [west, south, east, north], EPSG:4326 */
+  bbox: [number, number, number, number]
+  /** ISO3 codes covered by the box, for country-keyed sources */
+  countries?: string[]
+  /** Display label of the selection (e.g. the country name) */
+  name?: string
+}
+
+/** The baked-in country list for AOI pickers. */
+export function listCountries(): Promise<{ countries: CountryBox[] }> {
+  return request("/api/countries")
+}
+
+/** Deployment settings. */
+export function getSettings(): Promise<{ settings: { default_aoi: DefaultAoi | null } }> {
+  return request("/api/settings")
+}
+
+/** Sets the deployment default AOI (admin only). */
+export function setDefaultAoi(aoi: DefaultAoi): Promise<{ default_aoi: DefaultAoi }> {
+  return request("/api/settings/default_aoi", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(aoi)
+  })
+}
+
+/** Clears the deployment default AOI (admin only). */
+export function clearDefaultAoi(): Promise<{ default_aoi: null }> {
+  return request("/api/settings/default_aoi", { method: "DELETE" })
+}
+
+/** How a definition version answers the area-of-interest question. */
+export type AoiMode = "inherit" | "full" | "box"
+
+/** One archived definition version. */
+export interface VersionSummary {
+  /** Version number, counting up from 1 */
+  version: number
+  /** Archive time (ISO) */
+  createdAt: string
+  /** Email of the installing user; null for CLI/library-sync installs */
+  createdBy: string | null
+  /** Display name in this version */
+  name: string
+  /** AOI tri-state in this version */
+  aoiMode: AoiMode
+  /** The explicit box, when aoiMode is "box" */
+  aoi: { bbox: [number, number, number, number]; countries?: string[] } | null
+}
+
+/** The integration's version history, newest first. */
+export function getIntegrationVersions(id: string): Promise<{ versions: VersionSummary[] }> {
+  return request(`/api/integrations/${id}/versions`)
+}
+
+/** Changes the integration's AOI, archiving a new definition version. */
+export function setIntegrationAoi(
+  id: string,
+  body: { mode: "inherit" | "full" } | { mode: "box"; aoi: { bbox: [number, number, number, number]; countries?: string[] } }
+): Promise<{ version: number }> {
+  return request(`/api/integrations/${id}/aoi`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
 }

@@ -9,7 +9,8 @@ import pg from "pg"
 import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
-import { getIntegration, getTableRows, listIntegrations } from "./integrations.js"
+import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
+import { installIntegration } from "./install.js"
 import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
@@ -23,6 +24,8 @@ import {
   saveDashboard
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTileQuery } from "./dashboards/queries.js"
+import { COUNTRIES } from "./countries.js"
+import { DEFAULT_AOI_KEY, getDefaultAoi, parseAoi, parseDefaultAoi, setSetting } from "./settings.js"
 import {
   authenticate,
   AuthUser,
@@ -48,8 +51,8 @@ const KIT_ASSETS = path.join(
 /** Matches /kit/:version/:file — the public, immutable kit runtime assets. */
 const KIT_PATH = /^\/kit\/[a-z0-9.-]+\/([a-z0-9][a-z0-9.-]*\.(?:js|mjs|cjs|css))$/
 
-/** Built UI directory served as the SPA (overridable for dev layouts). */
-const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "ui", "dist")
+/** Built UI directory served as the SPA (config.uiDistPath overrides for dev layouts). */
+const DEFAULT_UI_DIST = path.join(STATIC_DIR, "..", "..", "ui", "dist")
 
 /** Matches /tiles/:layerId/:snapshotId/:z/:x/:y.png */
 const TILE_PATH = /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/
@@ -109,11 +112,13 @@ export function createApiServer(
   runs: RunService | null = null,
   store: RasterStore | null = null,
   dashboardAgent: AgentService | null = null,
-  basemap: BasemapProxy | null = null
+  basemap: BasemapProxy | null = null,
+  uiDistPath: string | null = null
 ): Server {
+  const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -163,6 +168,7 @@ async function route(
   store: RasterStore | null,
   dashboardAgent: AgentService | null,
   basemap: BasemapProxy | null,
+  uiDist: string,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -242,9 +248,42 @@ async function route(
       return
     }
     if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
-      if (await serveUi(url, res)) return
+      if (await serveUi(url, res, uiDist)) return
     }
     json(res, 401, { error: "authentication required" })
+    return
+  }
+
+  // Baked-in country boxes for AOI pickers (Natural Earth derived)
+  if (pathname === "/api/countries" && req.method === "GET") {
+    json(res, 200, { countries: COUNTRIES })
+    return
+  }
+
+  // Deployment settings: readable by any signed-in user, writable by admins
+  if (pathname === "/api/settings" && req.method === "GET") {
+    json(res, 200, { settings: { default_aoi: await getDefaultAoi(pool) } })
+    return
+  }
+  if (pathname === `/api/settings/${DEFAULT_AOI_KEY}` && (req.method === "PUT" || req.method === "DELETE")) {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change settings" })
+      return
+    }
+    if (req.method === "DELETE") {
+      await setSetting(pool, DEFAULT_AOI_KEY, null)
+      json(res, 200, { default_aoi: null })
+      return
+    }
+    let aoi
+    try {
+      aoi = parseDefaultAoi(await readJsonBody(req))
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    await setSetting(pool, DEFAULT_AOI_KEY, aoi)
+    json(res, 200, { default_aoi: aoi })
     return
   }
 
@@ -413,6 +452,45 @@ async function route(
     return
   }
 
+  const versionsMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/versions$/)
+  if (versionsMatch && req.method === "GET") {
+    const versions = await listIntegrationVersions(pool, versionsMatch[1])
+    if (versions.length === 0) json(res, 404, { error: "unknown integration" })
+    else json(res, 200, { versions })
+    return
+  }
+
+  // AOI is definition content: changing it archives a new attributed version
+  const aoiMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/aoi$/)
+  if (aoiMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const row = await pool.query("SELECT definition, overrides, status FROM app.integrations WHERE id = $1", [
+      aoiMatch[1]
+    ])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const definition = { ...row.rows[0].definition }
+    try {
+      const mode = String(body.mode ?? "")
+      if (mode === "inherit") delete definition.aoi
+      else if (mode === "full") definition.aoi = null
+      else if (mode === "box") definition.aoi = parseAoi(body.aoi)
+      else throw new Error('mode must be "inherit", "full", or "box"')
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    const { version } = await installIntegration(pool, definition, row.rows[0].overrides, row.rows[0].status, user.id)
+    json(res, 200, { version })
+    return
+  }
+
   const runMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
   if (runMatch && req.method === "POST") {
     if (user.role === "viewer") {
@@ -538,7 +616,7 @@ async function route(
     return
   }
 
-  if (req.method === "GET" && (await serveUi(url, res))) return
+  if (req.method === "GET" && (await serveUi(url, res, uiDist))) return
 
   json(res, 404, { error: "not found" })
 }
@@ -704,14 +782,14 @@ async function routeSessions(
 }
 
 /** Serves the built SPA; returns false when the file tree has no answer. */
-async function serveUi(url: string, res: ServerResponse): Promise<boolean> {
+async function serveUi(url: string, res: ServerResponse, uiDist: string): Promise<boolean> {
   const requested = url === "/" ? "/index.html" : url.split("?")[0]
-  const file = path.normalize(path.join(UI_DIST, requested))
-  if (!file.startsWith(path.normalize(UI_DIST))) return false
+  const file = path.normalize(path.join(uiDist, requested))
+  if (!file.startsWith(path.normalize(uiDist))) return false
 
   const target = await stat(file).then(s => (s.isFile() ? file : null)).catch(() => null)
   // SPA fallback: unknown paths get index.html (hash routing makes this rare)
-  const resolved = target ?? (path.extname(requested) === "" ? path.join(UI_DIST, "index.html") : null)
+  const resolved = target ?? (path.extname(requested) === "" ? path.join(uiDist, "index.html") : null)
   if (!resolved) return false
 
   try {

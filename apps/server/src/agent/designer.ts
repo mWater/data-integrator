@@ -73,7 +73,8 @@ that ingests external data into Postgres tables and/or the raster catalog.
 # Definition format (contract 2)
 Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
 license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true}, or {} for
-manual only), secrets? [names only], aoi? {bbox: [west, south, east, north]},
+manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
+(omit aoi to inherit the deployment default at run time; explicit null means the source's full extent),
 runtime ("python3.12" | "node22"), limits? {timeoutMs?, memoryMb?, cpus?},
 destinations [below], validation?, code (via edit_code, not write_definition), contract: 2.
 

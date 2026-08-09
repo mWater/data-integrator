@@ -35,7 +35,7 @@ Installed integrations: a synced library definition plus deployment overrides.
 | id | text pk | definition id (natural key; renames are new integrations) |
 | definition | jsonb | synced definition |
 | version | int | current version; composite FK into integration_versions (deferred) keeps it from dangling |
-| overrides | jsonb | deployment overrides: aoi, trigger, limits |
+| overrides | jsonb | deployment overrides: trigger, limits (AOI is definition content, versioned) |
 | enabled | boolean | |
 | status | text | `draft` (design-session install, uncertified) or `ready` (cold run passed, or library install) |
 | created_at, updated_at | timestamptz | |
@@ -61,7 +61,7 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | scheduled_at, started_at, finished_at | timestamptz | |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
 | definition_version | int fk | which definition version ran (composite FK with integration_id); null until success and for scratch runs |
-| inputs | jsonb | resolved snapshot ids, extract row counts (lineage) |
+| inputs | jsonb | lineage: `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows written, artifacts, bytes, duration |
 | flags | jsonb | validation violations, freshness |
@@ -149,7 +149,16 @@ metadata (units, enum vocabularies).
 
 ### settings
 
-Deployer configuration: retention, cost caps, model provider, similar knobs.
+Deployment behavior administrators change at runtime through the UI (infra
+wiring stays in environment variables; see config.ts). Known keys:
+
+- `default_aoi`: `{bbox: [west, south, east, north], countries?: [ISO3...],
+  name?}`. Definitions whose `aoi` is omitted inherit it at run time, so a
+  deployment configured for one country scopes every library install
+  automatically. The definition's tri-state wins otherwise: an explicit box
+  clips to it; explicit null means the source's full extent.
+
+Future: retention, cost caps, similar knobs.
 
 | column | type | notes |
 |---|---|---|

@@ -10,6 +10,7 @@ import { materializeInputs } from "./materialize.js"
 import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
+import { getDefaultAoi } from "./settings.js"
 
 /** Everything the executor needs from its host. */
 export interface ExecutorDeps {
@@ -81,9 +82,31 @@ export async function reapStaleRuns(pool: pg.Pool, staleMs = 5 * 60_000): Promis
   return result.rowCount ?? 0
 }
 
-/** Definition with deployment overrides applied (aoi, trigger, limits). */
+/** Definition with deployment overrides applied (trigger, limits). */
 function effectiveDefinition(definition: IntegrationDefinition, overrides: Record<string, unknown>): IntegrationDefinition {
   return { ...definition, ...overrides }
+}
+
+/**
+ * Resolves the definition's tri-state AOI: an explicit Aoi stands, explicit
+ * null strips the field (full source extent), absent inherits the deployment
+ * default. The job's code sees only a concrete aoi or none at all.
+ */
+export function resolveAoi(
+  definition: IntegrationDefinition,
+  defaultAoi: { bbox: [number, number, number, number]; countries?: string[] } | null
+): IntegrationDefinition {
+  if (definition.aoi === null) {
+    const { aoi: _ignored, ...rest } = definition
+    return rest as IntegrationDefinition
+  }
+  if (definition.aoi === undefined && defaultAoi) {
+    return {
+      ...definition,
+      aoi: { bbox: defaultAoi.bbox, ...(defaultAoi.countries ? { countries: defaultAoi.countries } : {}) }
+    }
+  }
+  return definition
 }
 
 /** Per-run execution options. */
@@ -133,6 +156,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       definition = effectiveDefinition(row.definition, row.overrides)
       definitionVersion = row.version
     }
+    // Tri-state AOI: explicit box wins, explicit null means full source
+    // extent, absent inherits the deployment default
+    const defaultAoi = definition.aoi === undefined ? await getDefaultAoi(deps.pool) : null
+    definition = resolveAoi(definition, defaultAoi)
 
     let manifest = null
     if (definition.inputs && Object.keys(definition.inputs).length > 0) {
@@ -280,7 +307,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           definitionVersion,
           JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
           log,
-          manifest ? JSON.stringify(manifest) : null
+          // Lineage records the AOI the run actually executed with: the
+          // deployment default resolves at run time, so the definition alone
+          // cannot answer "what area did run X ingest"
+          JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null })
         ]
       )
       await client.query("COMMIT")

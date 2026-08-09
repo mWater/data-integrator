@@ -10,8 +10,9 @@
 import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { AppConfig } from "./config.js"
 
-/** Basemap proxy configuration, resolved from the environment. */
+/** Basemap proxy configuration: config.basemap plus the cache location. */
 export interface BasemapConfig {
   /** Upstream base URL without trailing slash, or null when disabled. */
   upstream: string | null
@@ -37,16 +38,9 @@ const FRESH_MS = 24 * 3600 * 1000
 /** Upstream fetch timeout. */
 const FETCH_TIMEOUT_MS = 10_000
 
-/** Resolves basemap configuration from the environment. */
-export function basemapConfigFromEnv(cacheRoot: string): BasemapConfig {
-  const raw = (process.env.BASEMAP_UPSTREAM ?? "https://tiles.openfreemap.org").trim()
-  const disabled = raw === "off" || raw === "none" || raw === ""
-  return {
-    upstream: disabled ? null : raw.replace(/\/+$/, ""),
-    styleLight: process.env.BASEMAP_STYLE_LIGHT ?? "styles/positron",
-    styleDark: process.env.BASEMAP_STYLE_DARK ?? "styles/dark",
-    cacheDir: path.join(cacheRoot, "basemap")
-  }
+/** Basemap configuration from the central AppConfig. */
+export function basemapConfigFrom(config: AppConfig): BasemapConfig {
+  return { ...config.basemap, cacheDir: path.join(config.tileCachePath, "basemap") }
 }
 
 interface CacheMeta {
