@@ -280,6 +280,24 @@ test("designer: ask_user pauses with valid options and rejects degenerate input"
   assert.match(noQuestion.result, /question is required/)
 })
 
+test("designer: lookup_country serves baked-in boxes by name or ISO3", async () => {
+  const designer = bareDesigner()
+  const state = initialDesignerState("demo")
+
+  const byIso3 = await designer.execute("lookup_country", { query: "mdg" }, state, noEvents, SID)
+  assert.match(byIso3.result, /Madagascar \(MDG\): bbox \[43\.257, -25\.571, 50\.483, -12\.08\]/)
+
+  const byName = await designer.execute("lookup_country", { query: "angol" }, state, noEvents, SID)
+  assert.match(byName.result, /Angola \(AGO\)/)
+  assert.match(byName.result, /west, south, east, north/)
+
+  const none = await designer.execute("lookup_country", { query: "atlantis" }, state, noEvents, SID)
+  assert.match(none.result, /No country matches/)
+
+  const empty = await designer.execute("lookup_country", {}, state, noEvents, SID)
+  assert.match(empty.result, /query is required/)
+})
+
 test("designer: error signatures ignore tmp path noise", () => {
   const a = errorSignature("gdalinfo failed: /tmp/job-out-AbC123/pop.tif missing")
   const b = errorSignature("gdalinfo failed: /tmp/job-out-Zz9xYy/pop.tif missing")

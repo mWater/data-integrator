@@ -7,6 +7,7 @@ import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
 import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
+import { COUNTRIES } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
@@ -74,7 +75,9 @@ that ingests external data into Postgres tables and/or the raster catalog.
 Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
 license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
-(omit aoi to inherit the deployment default at run time; explicit null means the source's full extent),
+(omit aoi to inherit the deployment default at run time; explicit null means the source's full extent;
+when writing an explicit aoi, take coordinates from lookup_country — never from memory, so agent-authored
+boxes match the UI pickers exactly),
 runtime ("python3.12" | "node22"), limits? {timeoutMs?, memoryMb?, cpus?},
 destinations [below], validation?, code (via edit_code, not write_definition), contract: 2.
 
@@ -212,6 +215,13 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
         })
       }),
+      lookup_country: tool({
+        description:
+          "Look up country bounding boxes in the product's built-in list (Natural Earth derived) by name or ISO 3166-1 alpha-3 code. The authoritative source for aoi coordinates: the same data the UI pickers use.",
+        inputSchema: z.object({
+          query: z.string().describe("Country name (partial matches allowed) or ISO3 code")
+        })
+      }),
       ask_user: tool({
         description:
           "Ask the user a question with selectable options and pause until they answer. Use it to confirm the plan and for any unforced choice (source, dataset variant, resolution, cadence). The user may also reply free-form.",
@@ -252,6 +262,8 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
         return await this.runIntegration(state, args.cold === true, events, sessionId)
       case "query_table":
         return await this.queryTable(String(args.sql ?? ""), sessionId)
+      case "lookup_country":
+        return this.lookupCountry(String(args.query ?? ""))
       case "ask_user":
         return this.askUser(args)
       case "finish":
@@ -492,6 +504,22 @@ export class DesignerImplementation implements AgentImplementation<DesignerState
     if (question === "") return { result: "Error: question is required" }
     if (options.length < 2) return { result: "Error: provide at least two options" }
     return { result: "Question shown; the session is paused for the user's answer.", pause: true }
+  }
+
+  /**
+   * Country bbox lookup over the baked-in Natural Earth list: the same data
+   * the UI pickers use, so agent-authored boxes never come from model memory.
+   */
+  private lookupCountry(query: string): ToolOutcome<DesignerState> {
+    const q = query.trim().toLowerCase()
+    if (q === "") return { result: "Error: query is required" }
+    const matches = COUNTRIES.filter(c => c.iso3.toLowerCase() === q || c.name.toLowerCase().includes(q))
+    if (matches.length === 0) return { result: `No country matches "${query}"` }
+    const shown = matches.slice(0, 5)
+    const lines = shown.map(c => `${c.name} (${c.iso3}): bbox [${c.bbox.join(", ")}]`)
+    if (matches.length > shown.length) lines.push(`...and ${matches.length - shown.length} more; narrow the query`)
+    lines.push("bbox is [west, south, east, north] EPSG:4326; west > east crosses the antimeridian")
+    return { result: lines.join("\n") }
   }
 
   /**
