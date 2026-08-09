@@ -51,6 +51,11 @@ curl -H "Authorization: Bearer $TOKEN" \
   Body `{mode: "inherit"}` (deployment default), `{mode: "full"}` (source's
   full extent), or `{mode: "box", aoi: {bbox, countries?}}`. Archives a new
   attributed definition version; an unchanged state is a no-op.
+- `PUT /api/integrations/:id/trigger` - change the schedule (editor/admin).
+  Body `{cron?: string|null, webhook?: boolean}`; cron is standard 5-field,
+  UTC, validated. Also a versioned definition edit.
+- `PUT /api/integrations/:id/enabled` - `{enabled: boolean}` (editor/admin).
+  Pauses/resumes scheduling; operational state, not versioned.
 
 ## Library
 

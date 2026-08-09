@@ -5,8 +5,6 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Pipeline engine (completes FUC-1/3/4)
 
-- Scheduler loop: cron tick over `trigger.cron`, periodic `reapStaleRuns`, and a
-  worker draining the queue (claim/execute already built).
 - Webhook receiver endpoint writing `webhook_events` (consumption at run time is
   built and tested; nothing receives events yet).
 - Skip-if-unchanged for derived integrations (compare input snapshot ids against

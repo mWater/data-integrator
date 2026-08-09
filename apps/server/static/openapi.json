@@ -164,6 +164,22 @@
         "responses": { "200": { "description": "{ version }" }, "400": { "description": "Invalid mode or bbox" } }
       }
     },
+    "/api/integrations/{id}/trigger": {
+      "put": {
+        "summary": "Change the schedule (editor or admin); a versioned definition edit. Cron is 5-field, UTC, validated",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "description": "{cron?: string|null, webhook?: boolean}" } } } },
+        "responses": { "200": { "description": "{ version, trigger }" }, "400": { "description": "Invalid cron" } }
+      }
+    },
+    "/api/integrations/{id}/enabled": {
+      "put": {
+        "summary": "Pause or resume scheduling (editor or admin); operational state, not versioned",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "description": "{enabled: boolean}" } } } },
+        "responses": { "200": { "description": "{ enabled }" } }
+      }
+    },
     "/api/countries": {
       "get": { "summary": "Baked-in country bounding boxes (Natural Earth derived) for AOI pickers", "responses": { "200": { "description": "{ countries: [{iso3, name, bbox}] }" } } }
     },

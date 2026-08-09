@@ -28,6 +28,7 @@ import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
 import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
 import { AppConfig, describeConfig, loadConfig } from "./config.js"
+import { startScheduler } from "./scheduler.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
@@ -350,6 +351,15 @@ async function main(): Promise<number> {
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))
+        // Cron scheduling and queue draining need the job runner; the API
+        // itself (browse, query, design) stands without one
+        try {
+          await deps.runner.ensureReady()
+          startScheduler(deps)
+          console.log("Scheduler running (cron enqueue, queue workers, stale-run reaper)")
+        } catch (err) {
+          console.log(`No job runner available; scheduler disabled (${err instanceof Error ? err.message : err})`)
+        }
         createApiServer(
           pool,
           tiles,
