@@ -10,6 +10,7 @@ import { materializeInputs } from "./materialize.js"
 import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
+import { getDefaultAoi } from "./settings.js"
 
 /** Everything the executor needs from its host. */
 export interface ExecutorDeps {
@@ -132,6 +133,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       const row = integrationResult.rows[0]
       definition = effectiveDefinition(row.definition, row.overrides)
       definitionVersion = row.version
+    }
+    // AOI resolution: install override > definition > deployment default, so a
+    // deployment configured for one country scopes every install automatically
+    if (!definition.aoi) {
+      const defaultAoi = await getDefaultAoi(deps.pool)
+      if (defaultAoi) definition = { ...definition, aoi: { bbox: defaultAoi.bbox, countries: defaultAoi.countries } }
     }
 
     let manifest = null

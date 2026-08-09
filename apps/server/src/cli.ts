@@ -24,10 +24,10 @@ import { migrate } from "./migrations.js"
 import { installIntegration } from "./install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "./executor.js"
 import { RasterStore } from "./rasterStore.js"
-import { loadSecretKey } from "./secrets.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
-import { basemapConfigFromEnv, BasemapProxy } from "./basemap.js"
+import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
+import { AppConfig, describeConfig, loadConfig } from "./config.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
@@ -58,39 +58,32 @@ async function loadDefinition(target: string): Promise<IntegrationDefinition> {
   throw new Error(`No code.py or code.mjs in ${target}`)
 }
 
-/** Executor dependencies from environment configuration. */
-function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner): ExecutorDeps {
+/** Executor dependencies from the validated configuration. */
+function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: AppConfig): ExecutorDeps {
   return {
     pool,
     runner,
-    databaseUrl: process.env.DATABASE_URL ?? "",
-    store: new RasterStore(process.env.RASTER_STORE_PATH ?? "./raster-store"),
-    workRoot: process.env.WORK_ROOT ?? "./work",
-    secretKey: process.env.INTEGRATOR_SECRET_KEY ? loadSecretKey() : null,
+    databaseUrl: config.databaseUrl,
+    store: new RasterStore(config.rasterStorePath),
+    workRoot: config.workRoot,
+    secretKey: config.secretKey,
     images: {
-      "python3.12": process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
-      node22: process.env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"
+      "python3.12": config.runtimeImages.python,
+      node22: config.runtimeImages.node
     }
   }
 }
 
-/** Reasoning efforts OpenRouter accepts for AGENT_EFFORT. */
-const EFFORTS = ["xhigh", "high", "medium", "low", "minimal", "none"] as const
-
 /** Default agent model (OpenRouter); see Quickstart "Choosing a model". */
 const DEFAULT_MODEL = "openai/gpt-5.6-sol"
 
-/** Agent model from environment: OpenRouter when its key is set, else Anthropic. */
-function buildModel(): LanguageModel | null {
-  const openrouterKey = process.env.OPENROUTER_API_KEY
-  const envEffort = process.env.AGENT_EFFORT as (typeof EFFORTS)[number] | undefined
-  if (envEffort && !EFFORTS.includes(envEffort)) {
-    throw new Error(`AGENT_EFFORT must be one of: ${EFFORTS.join(", ")}`)
-  }
+/** Agent model from configuration: OpenRouter when its key is set, else Anthropic. */
+function buildModel(config: AppConfig): LanguageModel | null {
+  const { openrouterKey, anthropicKey, effort: configEffort } = config.agent
   if (openrouterKey) {
-    const modelId = process.env.AGENT_MODEL ?? DEFAULT_MODEL
+    const modelId = config.agent.model ?? DEFAULT_MODEL
     // The default model runs at medium effort: high cost 6x for no visible gain
-    const effort = envEffort ?? (modelId === DEFAULT_MODEL ? "medium" : undefined)
+    const effort = configEffort ?? (modelId === DEFAULT_MODEL ? "medium" : undefined)
     // Anthropic only caches prompts on an explicit directive (OpenAI and Gemini
     // cache automatically); 1h TTL because sandbox jobs and user think-time
     // routinely outlast the 5m default
@@ -102,9 +95,8 @@ function buildModel(): LanguageModel | null {
     }
     return createOpenRouter({ apiKey: openrouterKey })(modelId, settings)
   }
-  const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (anthropicKey) {
-    return createAnthropic({ apiKey: anthropicKey })(process.env.AGENT_MODEL ?? "claude-sonnet-5")
+    return createAnthropic({ apiKey: anthropicKey })(config.agent.model ?? "claude-sonnet-5")
   }
   return null
 }
@@ -157,12 +149,14 @@ function pendingQuestionIn(messages: unknown[]): PendingQuestion | null {
 
 async function main(): Promise<number> {
   const command = process.argv[2]
-  const databaseUrl = process.env.DATABASE_URL
-  if (!databaseUrl) {
-    console.error("DATABASE_URL is required")
+  let config: AppConfig
+  try {
+    config = loadConfig()
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err))
     return 1
   }
-  const pool = createPool(databaseUrl)
+  const pool = createPool(config.databaseUrl)
 
   try {
     switch (command) {
@@ -200,7 +194,7 @@ async function main(): Promise<number> {
           console.error("Nothing claimable (already running?)")
           return 1
         }
-        await executeRun(buildDeps(pool, runner), run)
+        await executeRun(buildDeps(pool, runner, config), run)
         const final = await pool.query("SELECT status, error, stats FROM app.runs WHERE id = $1", [run.id])
         const { status, error, stats } = final.rows[0]
         console.log(`Run ${run.id}: ${status}${error ? ` (${error})` : ""} ${stats ? JSON.stringify(stats) : ""}`)
@@ -277,14 +271,14 @@ async function main(): Promise<number> {
       }
       case "agent": {
         const target = process.argv[3]
-        const model = buildModel()
+        const model = buildModel(config)
         if (!model) {
           console.error("Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY (AGENT_MODEL overrides the default model)")
           return 1
         }
         const runner = new Runner()
         await runner.ensureReady()
-        const deps = { ...buildDeps(pool, runner), model }
+        const deps = { ...buildDeps(pool, runner, config), model }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
         const service = AgentService.forDesigner(pool, deps)
 
@@ -347,18 +341,20 @@ async function main(): Promise<number> {
         }
       }
       case "serve": {
-        const deps = buildDeps(pool, new Runner())
-        const tileCache = process.env.TILE_CACHE_PATH ?? "./tile-cache"
-        const tiles = new TileRenderer(deps.store, tileCache)
-        const model = buildModel()
+        const deps = buildDeps(pool, new Runner(), config)
+        const tiles = new TileRenderer(deps.store, config.tileCachePath)
+        const model = buildModel(config)
         const agent = model ? AgentService.forDesigner(pool, { ...deps, model }) : null
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
-        const basemap = new BasemapProxy(basemapConfigFromEnv(tileCache))
-        const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent, basemap).listen(port, () => {
-          console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
-        })
+        const basemap = new BasemapProxy(basemapConfigFrom(config))
+        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent, basemap, config.uiDistPath).listen(
+          config.port,
+          () => {
+            console.log(`Serving on http://127.0.0.1:${config.port} (${describeConfig(config)})`)
+            if (!agent) console.log("No model configured; session API disabled")
+          }
+        )
         return await new Promise<number>(() => {})
       }
       default:

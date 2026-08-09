@@ -473,3 +473,47 @@ export async function execDashboardQuery(
   )
   return result.rows
 }
+
+/** One selectable country from the baked-in list (Natural Earth derived). */
+export interface CountryBox {
+  /** ISO 3166-1 alpha-3 */
+  iso3: string
+  /** Display name */
+  name: string
+  /** [west, south, east, north], EPSG:4326; west > east crosses the antimeridian */
+  bbox: [number, number, number, number]
+}
+
+/** Deployment default area of interest. */
+export interface DefaultAoi {
+  /** [west, south, east, north], EPSG:4326 */
+  bbox: [number, number, number, number]
+  /** ISO3 codes covered by the box, for country-keyed sources */
+  countries?: string[]
+  /** Display label of the selection (e.g. the country name) */
+  name?: string
+}
+
+/** The baked-in country list for AOI pickers. */
+export function listCountries(): Promise<{ countries: CountryBox[] }> {
+  return request("/api/countries")
+}
+
+/** Deployment settings. */
+export function getSettings(): Promise<{ settings: { default_aoi: DefaultAoi | null } }> {
+  return request("/api/settings")
+}
+
+/** Sets the deployment default AOI (admin only). */
+export function setDefaultAoi(aoi: DefaultAoi): Promise<{ default_aoi: DefaultAoi }> {
+  return request("/api/settings/default_aoi", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(aoi)
+  })
+}
+
+/** Clears the deployment default AOI (admin only). */
+export function clearDefaultAoi(): Promise<{ default_aoi: null }> {
+  return request("/api/settings/default_aoi", { method: "DELETE" })
+}

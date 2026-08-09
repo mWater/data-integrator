@@ -149,7 +149,16 @@ metadata (units, enum vocabularies).
 
 ### settings
 
-Deployer configuration: retention, cost caps, model provider, similar knobs.
+Deployment behavior administrators change at runtime through the UI (infra
+wiring stays in environment variables; see config.ts). Known keys:
+
+- `default_aoi`: `{bbox: [west, south, east, north], countries?: [ISO3...],
+  name?}`. Integrations whose effective definition has no `aoi` inherit it at
+  run time, so a deployment configured for one country scopes every library
+  install automatically. Resolution order: install override, then definition,
+  then this default.
+
+Future: retention, cost caps, similar knobs.
 
 | column | type | notes |
 |---|---|---|

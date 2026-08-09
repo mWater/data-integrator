@@ -153,3 +153,44 @@ test("rows: csv and geojson formats", async () => {
   assert.deepEqual(wellA.geometry.coordinates, [47.1, -19.2])
   assert.equal(wellA.properties.level, 4.2)
 })
+
+test("settings: countries list, default AOI roundtrip, role enforcement", async () => {
+  const countriesRes = await (await get("/api/countries")).json()
+  const mdg = countriesRes.countries.find((c: { iso3: string }) => c.iso3 === "MDG")
+  assert.ok(mdg, "Madagascar in the baked-in list")
+
+  // Unset by default
+  const initial = await (await get("/api/settings")).json()
+  assert.equal(initial.settings.default_aoi, null)
+
+  // The viewer token cannot write settings
+  const aoi = { bbox: mdg.bbox, countries: ["MDG"], name: "Madagascar" }
+  const forbidden = await fetch(`${base}/api/settings/default_aoi`, {
+    method: "PUT",
+    headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+    body: JSON.stringify(aoi)
+  })
+  assert.equal(forbidden.status, 403)
+
+  const admin = await createUser(pool, "admin@example.org", "hunter2hunter2", "admin")
+  const adminBearer = await createApiToken(pool, admin.id, "admin-token")
+  const adminPut = (body: unknown) =>
+    fetch(`${base}/api/settings/default_aoi`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${adminBearer}`, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    })
+
+  assert.equal((await adminPut({ bbox: [1, 2, 3] })).status, 400)
+  assert.equal((await adminPut(aoi)).status, 200)
+
+  const stored = await (await get("/api/settings")).json()
+  assert.deepEqual(stored.settings.default_aoi, aoi)
+
+  const cleared = await fetch(`${base}/api/settings/default_aoi`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${adminBearer}` }
+  })
+  assert.equal(cleared.status, 200)
+  assert.equal((await (await get("/api/settings")).json()).settings.default_aoi, null)
+})

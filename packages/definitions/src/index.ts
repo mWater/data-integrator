@@ -76,8 +76,10 @@ export interface Trigger {
 
 /** Area of interest that ingestion and input extracts are clipped to. */
 export interface Aoi {
-  /** [west, south, east, north], EPSG:4326 */
+  /** [west, south, east, north], EPSG:4326; west > east crosses the antimeridian */
   bbox: [number, number, number, number]
+  /** ISO 3166-1 alpha-3 codes covered by the box; a hint for sources keyed by country rather than extent */
+  countries?: string[]
 }
 
 /** Per-run resource limits, capped by server configuration. */
