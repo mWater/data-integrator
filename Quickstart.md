@@ -105,12 +105,12 @@ data previews, manual runs, the map, and design sessions.
 ## Install and run a library integration
 
 ```sh
-node apps/server/dist/cli.js install library/worldpop_population
+node apps/server/dist/cli.js install library/integrations/worldpop_population
 node apps/server/dist/cli.js run worldpop_population
 ```
 
-Or click Run Now on the integration's page. `library/chirps_rainfall` adds a
-time-series layer; `library/rainfall_stats` derives population-weighted
+Or click Run Now on the integration's page. `library/integrations/chirps_rainfall`
+adds a time-series layer; `library/integrations/rainfall_stats` derives population-weighted
 rainfall from the other two (install and run those first).
 
 ## Design an integration with the agent
