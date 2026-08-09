@@ -105,6 +105,13 @@ as_app "podman build -t localhost/integrator-runtime-node:dev runtimes/node/"
 echo "==> Environment file"
 mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache} /etc/data-integrator
 chown -R "$APP_USER:$APP_USER" "$DATA_DIR"
+# Out-db raster SQL: Postgres reads the COGs directly (postgres user needs
+# traverse+read on the store) and the out-db settings are superuser-set
+chmod 755 "$DATA_DIR" "$DATA_DIR"/raster-store
+setfacl -R -d -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
+setfacl -R -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
+sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on" || true
+sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'" || true
 if [ ! -f "$ENV_FILE" ]; then
   cat > "$ENV_FILE" <<EOF
 DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator

@@ -11,6 +11,7 @@ import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 import { getDefaultAoi } from "./settings.js"
+import { pruneRasterSql, registerRasterSql } from "./rasterSql.js"
 
 /** Everything the executor needs from its host. */
 export interface ExecutorDeps {
@@ -314,6 +315,27 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       throw err
     } finally {
       client.release()
+    }
+
+    // Post-commit, best-effort: mirror the new snapshots into data.rasters
+    // (out-db PostGIS) so SQL can join raster values against vector rows.
+    // Scratch previews stay out of the public query surface, and a failure
+    // here (e.g. the DB cannot read the store) never fails the run —
+    // `cli.js register-rasters` retries stragglers.
+    if (!scratch && storedArtifacts.length > 0) {
+      for (const { artifact, stored } of storedArtifacts) {
+        await registerRasterSql(deps.pool, {
+          snapshotId: stored.snapshotId,
+          layerId: layerRowFor(artifact.layerId),
+          observedAt: artifact.timestamp,
+          observedEnd: artifact.timestampEnd ?? null,
+          crs: stored.info.crs,
+          absolutePath: path.resolve(deps.store.absolute(stored.relPath))
+        }).catch(err =>
+          console.error(`raster SQL registration failed for ${artifact.layerId}: ${err instanceof Error ? err.message : err}`)
+        )
+      }
+      await pruneRasterSql(deps.pool).catch(() => {})
     }
   } catch (err) {
     await finishRun(deps.pool, run.id, "failed", {

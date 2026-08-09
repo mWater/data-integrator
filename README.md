@@ -44,8 +44,11 @@ definition is the integration's single specification, every change archives a
 version, and the integration page shows the history and an area-of-interest
 editor. A deployment default AOI (Settings page, baked-in country list) scopes
 AOI-less integrations at run time, and runs record the AOI they executed with.
-Skills - source and technique know-how in library/skills/ - load into the
-designer on demand. Configuration is validated centrally at startup
+Promoted raster snapshots are mirrored as tiled out-db PostGIS rasters
+referencing the COGs, so SQL joins raster values with vector rows (per-point
+sampling, buffered zonal statistics) under the read-only sql_engine role -
+pixels never enter the database. Skills - source and technique know-how in
+library/skills/ - load into the designer on demand. Configuration is validated centrally at startup
 (.env.example documents every variable). The scheduler runs in serve: a cron
 tick enqueues runs for enabled integrations (dependency-free 5-field parser,
 UTC), workers drain the queue, and a reaper fails stale runs; schedules are

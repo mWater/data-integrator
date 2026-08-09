@@ -272,6 +272,31 @@ reapplies grants; row identity is not stable across replacements.
 Evolution is the destination adapter's job, never migrations: additive column
 changes apply automatically; type changes or removals rebuild the table.
 
+### rasters
+
+The out-db SQL mirror of promoted snapshots: tiled PostGIS out-db rasters
+whose bands reference the COG files in the raster store, so SQL joins raster
+values against vector rows (ST_Value at features, ST_SummaryStats over
+clipped buffers) under sql_engine like any table. Pixels never enter the
+database. Written best-effort after each run's commit and by
+`cli.js register-rasters`; superseded snapshots are pruned; hard snapshot
+deletes cascade via FK. Scratch previews are never mirrored.
+
+Requires (guaranteed by the reference deployment, checked at registration):
+the `postgis_raster` extension, `postgis.enable_outdb_rasters = on` and
+`postgis.gdal_enabled_drivers` set (superuser settings; migration attempts
+them, deploy script sets them as postgres), and the Postgres server able to
+read the raster store path. Deployments where the database cannot reach the
+files (e.g. a managed remote Postgres) lose this mirror only; catalog API,
+tiles, and downloads are unaffected.
+
+| column | type | notes |
+|---|---|---|
+| layer_id | text | |
+| snapshot_id | uuid fk | cascades on snapshot delete |
+| observed_at, observed_end | timestamptz | snapshot validity, for time filtering in SQL |
+| rast | raster | 256px out-db tiles referencing the COG |
+
 ## Migrations
 
 Numbered .sql files in the server, applied in order at boot, recorded in

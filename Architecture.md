@@ -115,6 +115,11 @@ Raster plane:
 
 - Rasters keep their source grid and CRS (no resampling at ingest); the catalog
   records CRS per snapshot. Tiles are warped to web mercator at render time.
+- Promoted snapshots are also registered as tiled out-db PostGIS rasters
+  (data.rasters) referencing the COGs, so SQL composes raster values with
+  vector rows — per-feature sampling, buffered zonal statistics — without
+  pixels entering the database. Best-effort: requires the DB server to read
+  the store (true in the reference deployment); everything else works without it.
 - Bands declare units and nodata; values are stored in the declared units.
 - Timestamps are UTC. Time-step normalization is declared in the definition.
 - Tabular geometries are PostGIS, EPSG:4326.
