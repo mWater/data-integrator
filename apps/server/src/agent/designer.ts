@@ -572,7 +572,7 @@ ${index}`
       }
     }
     const session = await this.deps.pool.query("SELECT user_id FROM app.agent_sessions WHERE id = $1", [sessionId])
-    await installIntegration(this.deps.pool, state.definition, {}, "ready", session.rows[0]?.user_id ?? null)
+    await installIntegration(this.deps.pool, state.definition, "ready", session.rows[0]?.user_id ?? null)
     await cleanupScratch(this.deps.pool, this.deps.store, this.deps.workRoot, sessionId)
     return {
       result: `Saved ${state.definition.id} as the installed integration (scratch area discarded; its first real run loads data). ${summary}`,

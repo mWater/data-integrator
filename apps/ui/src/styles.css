@@ -341,3 +341,11 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 /* Integration AOI section */
 .aoi-section { margin: 4px 0 16px }
 .aoi-section h3 { margin: 12px 0 6px }
+
+/* Library install confirm row */
+.library-confirm td { background: var(--inset); border-radius: 6px }
+.library-confirm-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 6px }
+.library-confirm-body button:not(.linkish) {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--ink); cursor: pointer
+}

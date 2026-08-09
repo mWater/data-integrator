@@ -82,11 +82,6 @@ export async function reapStaleRuns(pool: pg.Pool, staleMs = 5 * 60_000): Promis
   return result.rowCount ?? 0
 }
 
-/** Definition with deployment overrides applied (trigger, limits). */
-function effectiveDefinition(definition: IntegrationDefinition, overrides: Record<string, unknown>): IntegrationDefinition {
-  return { ...definition, ...overrides }
-}
-
 /**
  * Resolves the definition's tri-state AOI: an explicit Aoi stands, explicit
  * null strips the field (full source extent), absent inherits the deployment
@@ -149,11 +144,11 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       definition = scratch.definition
     } else {
       const integrationResult = await deps.pool.query(
-        "SELECT definition, version, overrides FROM app.integrations WHERE id = $1",
+        "SELECT definition, version FROM app.integrations WHERE id = $1",
         [run.integration_id]
       )
       const row = integrationResult.rows[0]
-      definition = effectiveDefinition(row.definition, row.overrides)
+      definition = row.definition
       definitionVersion = row.version
     }
     // Tri-state AOI: explicit box wins, explicit null means full source

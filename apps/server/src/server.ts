@@ -11,6 +11,7 @@ import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { installIntegration } from "./install.js"
+import { installLibraryEntry, listLibrary } from "./library.js"
 import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
@@ -113,12 +114,13 @@ export function createApiServer(
   store: RasterStore | null = null,
   dashboardAgent: AgentService | null = null,
   basemap: BasemapProxy | null = null,
-  uiDistPath: string | null = null
+  uiDistPath: string | null = null,
+  libraryPath: string | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -169,6 +171,7 @@ async function route(
   dashboardAgent: AgentService | null,
   basemap: BasemapProxy | null,
   uiDist: string,
+  libraryPath: string | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -444,6 +447,36 @@ async function route(
     return
   }
 
+  // The library: browsable entries, one-click install/update for editors
+  if (pathname === "/api/library" && req.method === "GET") {
+    json(res, 200, { entries: libraryPath ? await listLibrary(pool, libraryPath) : [] })
+    return
+  }
+  const libraryInstallMatch = pathname.match(/^\/api\/library\/([a-z][a-z0-9_]*)\/install$/)
+  if (libraryInstallMatch && req.method === "POST") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot install integrations" })
+      return
+    }
+    if (!libraryPath) {
+      json(res, 503, { error: "No library on this server" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const result = await installLibraryEntry(pool, libraryPath, libraryInstallMatch[1], user.id)
+    if (!result) {
+      json(res, 404, { error: "unknown library entry" })
+      return
+    }
+    // First ingest on request, when a job runner exists; install still succeeds without one
+    let runId: string | null = null
+    if (body.runNow === true && runs) {
+      runId = await runs.start(libraryInstallMatch[1]).catch(() => null)
+    }
+    json(res, 200, { version: result.version, runId })
+    return
+  }
+
   const integrationMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)$/)
   if (integrationMatch) {
     const detail = await getIntegration(pool, integrationMatch[1])
@@ -467,9 +500,7 @@ async function route(
       json(res, 403, { error: "Viewers cannot change integrations" })
       return
     }
-    const row = await pool.query("SELECT definition, overrides, status FROM app.integrations WHERE id = $1", [
-      aoiMatch[1]
-    ])
+    const row = await pool.query("SELECT definition, status FROM app.integrations WHERE id = $1", [aoiMatch[1]])
     if (row.rows.length === 0) {
       json(res, 404, { error: "unknown integration" })
       return
@@ -486,7 +517,7 @@ async function route(
       json(res, 400, { error: err instanceof Error ? err.message : String(err) })
       return
     }
-    const { version } = await installIntegration(pool, definition, row.rows[0].overrides, row.rows[0].status, user.id)
+    const { version } = await installIntegration(pool, definition, row.rows[0].status, user.id)
     json(res, 200, { version })
     return
   }

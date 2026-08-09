@@ -192,8 +192,6 @@ export interface IntegrationDetail {
   version: number
   /** Installed definition */
   definition: Definition
-  /** Deployment overrides */
-  overrides: unknown
   /** Whether the scheduler considers it */
   enabled: boolean
   /** Lifecycle: draft until a design session's cold run certifies it */
@@ -553,5 +551,41 @@ export function setIntegrationAoi(
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body)
+  })
+}
+
+/** One library entry with its relationship to this deployment. */
+export interface LibraryEntry {
+  /** Entry id (= integration id when installed) */
+  id: string
+  /** Display name */
+  name: string
+  /** What the integration does */
+  description: string | null
+  /** Source provenance */
+  source: { name?: string; provider?: string; license?: string; url?: string } | null
+  /** Suggested cadence */
+  trigger: { cron?: string; webhook?: boolean }
+  /** Runtime image id */
+  runtime: string
+  /** Declared destinations */
+  destinations: { kind: string; id: string }[]
+  /** Relationship to this deployment */
+  status: "not_installed" | "installed" | "update_available"
+  /** Installed version, when installed */
+  installedVersion: number | null
+}
+
+/** The browsable library with per-entry install status. */
+export function listLibrary(): Promise<{ entries: LibraryEntry[] }> {
+  return request("/api/library")
+}
+
+/** Installs or updates a library entry; optionally starts the first ingest. */
+export function installLibraryEntry(id: string, runNow: boolean): Promise<{ version: number; runId: string | null }> {
+  return request(`/api/library/${id}/install`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ runNow })
   })
 }
