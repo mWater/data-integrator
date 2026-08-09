@@ -66,8 +66,9 @@ four ideas taken, below.
   auto-retry events. This is the channel that streams job logs into the design session.
 
 Rejected from pi: tree/branching sessions (built for exploratory CLI coding; snapshot
-serialization is simpler and proven), its unified LLM layer (AI SDK stays), skills and
-extension system (our equivalent is the integration library and prompts), and its
+serialization is simpler and proven), its unified LLM layer (AI SDK stays), its skills and
+extension system as *runtime code extension* (our skills, library/skills/, are markdown the
+designer reads on demand - content, never executed code), and its
 no-permission stance needed no adopting because it already matches ours: isolation is
 the job runner's problem, not the harness's.
 

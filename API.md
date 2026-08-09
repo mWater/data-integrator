@@ -39,6 +39,38 @@ curl -H "Authorization: Bearer $TOKEN" \
 - `GET /tiles/:layerId/:snapshotId/:z/:x/:y.png` - rendered map tiles,
   snapshot-pinned and immutable.
 
+## Integrations
+
+- `GET /api/integrations` - installed integrations with last-run status.
+- `GET /api/integrations/:id` - detail: current definition and version, recent
+  runs, per-destination stored-data stats.
+- `POST /api/integrations/:id/run` - manual run (editor/admin).
+- `GET /api/integrations/:id/versions` - definition history, newest first:
+  version, when, installing user, and each version's area of interest.
+- `PUT /api/integrations/:id/aoi` - change the area of interest (editor/admin).
+  Body `{mode: "inherit"}` (deployment default), `{mode: "full"}` (source's
+  full extent), or `{mode: "box", aoi: {bbox, countries?}}`. Archives a new
+  attributed definition version; an unchanged state is a no-op.
+
+## Library
+
+- `GET /api/library` - the deployment's integration library with per-entry
+  status: `not_installed`, `installed`, or `update_available` (compared
+  ignoring the deployment-owned fields aoi/trigger/limits).
+- `POST /api/library/:id/install` - install or update (editor/admin). Updates
+  keep the installed aoi, trigger, and limits. Body `{runNow?: boolean}`
+  starts the first ingest when a job runner is configured. Returns
+  `{version, runId}`.
+
+## Deployment settings
+
+- `GET /api/countries` - baked-in country bounding boxes (Natural Earth
+  derived, `{iso3, name, bbox}`) powering AOI pickers, offline.
+- `GET /api/settings` - deployment settings; today `default_aoi`, the AOI
+  that integrations without one of their own inherit at run time.
+- `PUT /api/settings/default_aoi` (admin) - body `{bbox, countries?, name?}`.
+  `DELETE` clears it.
+
 ## Limits
 
 Reads run in read-only transactions with a 30 s statement timeout and a

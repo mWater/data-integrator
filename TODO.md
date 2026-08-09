@@ -58,7 +58,8 @@ Tracked at the level of what is left, not what exists; see README status and the
 - More skills (`library/skills/` is built: index in the designer prompt,
   read_skill on demand): per-source know-how for the remaining ToR sources
   as they are researched, whether or not a finished entry ships.
-- Angola pilot configuration (Madagascar is exercised; Angola AOI/overrides).
+- Angola pilot configuration (Madagascar is exercised; for Angola, set the
+  deployment default AOI in Settings and install the relevant entries).
 
 ## Deployment and compliance (OS-1..9, deliverable 5)
 

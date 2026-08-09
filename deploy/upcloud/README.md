@@ -58,7 +58,8 @@ What the script sets up:
 - Node 22, pnpm, GDAL, rootless podman + nftables, gVisor `runsc`
 - PostgreSQL 16 + PostGIS with an `integrator` database
 - Builds the workspace and both runtime images as a dedicated `integrator` user
-- Config in `/etc/data-integrator/env`, data under `/var/lib/data-integrator`
+- Config in `/etc/data-integrator/env` (every variable documented in the
+  repo's `.env.example`), data under `/var/lib/data-integrator`
 - `data-integrator.service` systemd unit (restarts on failure and on reboot)
 - Caddy on 80/443 proxying to the app on 127.0.0.1:8080
 - ufw allowing only 22/80/443 (the app listens on all interfaces, so this
