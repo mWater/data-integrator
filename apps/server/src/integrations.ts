@@ -59,8 +59,6 @@ export interface IntegrationDetail {
   version: number
   /** Installed definition */
   definition: IntegrationDefinition
-  /** Deployment overrides applied at run time */
-  overrides: unknown
   /** Whether the scheduler considers it */
   enabled: boolean
   /** Lifecycle: draft until a design session's cold run certifies it */
@@ -103,11 +101,11 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
 /** Loads one integration with run history and destination stats, or null. */
 export async function getIntegration(pool: pg.Pool, id: string): Promise<IntegrationDetail | null> {
   const result = await pool.query(
-    "SELECT version, definition, overrides, enabled, status, updated_at FROM app.integrations WHERE id = $1",
+    "SELECT version, definition, enabled, status, updated_at FROM app.integrations WHERE id = $1",
     [id]
   )
   if (result.rows.length === 0) return null
-  const { version, definition, overrides, enabled, status, updated_at } = result.rows[0]
+  const { version, definition, enabled, status, updated_at } = result.rows[0]
 
   const runs = await pool.query(
     `SELECT id, trigger, status, started_at, finished_at, stats, error
@@ -141,7 +139,6 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
     id,
     version,
     definition,
-    overrides,
     enabled,
     status,
     updatedAt: updated_at.toISOString(),

@@ -81,14 +81,15 @@ export type IntegrationStatus = "draft" | "ready"
  * definition when it changed (an unchanged definition keeps its version, so
  * library re-syncs are no-ops), updates the integration row, and ensures
  * destination tables and layers exist with this integration as their sole
- * owner. Design sessions run in a scratch area and call this only at finish,
- * with a cold-run-certified definition. createdBy is the installing user, or
- * null for CLI and library-sync installs.
+ * owner. The definition is the integration's single specification (there is
+ * no override layer); library installs copy the entry's defaults into it and
+ * updates carry deployment-owned fields over. Design sessions run in a
+ * scratch area and call this only at finish, with a cold-run-certified
+ * definition. createdBy is the installing user, or null for CLI installs.
  */
 export async function installIntegration(
   pool: pg.Pool,
   definition: IntegrationDefinition,
-  overrides: Record<string, unknown> = {},
   status: IntegrationStatus = "ready",
   createdBy: string | null = null
 ): Promise<{ version: number }> {
@@ -106,9 +107,8 @@ export async function installIntegration(
     if (current.rows.length === 0) {
       version = 1
       await client.query(
-        `INSERT INTO app.integrations (id, definition, version, overrides, status)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [definition.id, definitionJson, version, JSON.stringify(overrides), status]
+        `INSERT INTO app.integrations (id, definition, version, status) VALUES ($1, $2, $3, $4)`,
+        [definition.id, definitionJson, version, status]
       )
       await client.query(
         `INSERT INTO app.integration_versions (integration_id, version, definition, created_by)
@@ -117,16 +117,15 @@ export async function installIntegration(
       )
     } else if (current.rows[0].unchanged) {
       version = current.rows[0].version
-      await client.query(
-        `UPDATE app.integrations SET overrides = $2, status = $3, updated_at = now() WHERE id = $1`,
-        [definition.id, JSON.stringify(overrides), status]
-      )
+      await client.query(`UPDATE app.integrations SET status = $2, updated_at = now() WHERE id = $1`, [
+        definition.id,
+        status
+      ])
     } else {
       version = current.rows[0].version + 1
       await client.query(
-        `UPDATE app.integrations SET definition = $2, version = $3, overrides = $4, status = $5, updated_at = now()
-         WHERE id = $1`,
-        [definition.id, definitionJson, version, JSON.stringify(overrides), status]
+        `UPDATE app.integrations SET definition = $2, version = $3, status = $4, updated_at = now() WHERE id = $1`,
+        [definition.id, definitionJson, version, status]
       )
       await client.query(
         `INSERT INTO app.integration_versions (integration_id, version, definition, created_by)

@@ -6,10 +6,11 @@
  * inputs, runtime, limits, destinations, validation rules, and the single
  * self-contained code file implementing the run(ctx) entrypoint.
  *
- * Definitions are templates: trigger and limits are defaults that a
- * deployment may override when installing an integration; aoi is tri-state
- * definition content (see its doc). There is no version field; the server
- * assigns integration versions on install.
+ * Library definitions are starting values: installing copies them into the
+ * integration's own definition, the single specification of the installed
+ * integration (there is no override layer). Updates from the library carry
+ * the deployment-owned fields (aoi, trigger, limits) over. There is no
+ * version field; the server assigns integration versions on install.
  *
  * See Architecture.md. Types only for now; validation comes with the server.
  */
@@ -28,7 +29,7 @@ export interface IntegrationDefinition {
   description?: string
   /** Provenance of the external source; documentation, not behavior. Absent for derived integrations. */
   source?: SourceInfo
-  /** How runs are triggered. Default; a deployment may override at install. */
+  /** How runs are triggered. Library entries suggest a cadence; the installed value is carried over on library updates. */
   trigger: Trigger
   /** Names of secrets the code reads via ctx.secrets. Values live in the app DB, never here. */
   secrets?: string[]
@@ -43,7 +44,7 @@ export interface IntegrationDefinition {
   inputs?: Record<string, InputRef>
   /** Runtime image the code runs in */
   runtime: RuntimeId
-  /** Resource limits for each run. Default; a deployment may override at install. */
+  /** Resource limits for each run. Library entries suggest limits; the installed value is carried over on library updates. */
   limits?: JobLimitsSpec
   /** Tables and raster layers the integration writes to */
   destinations: Destination[]

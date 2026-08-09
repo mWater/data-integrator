@@ -610,7 +610,7 @@ test("integrations: design-session installs stay draft until promoted", async ()
     code: "export default async function run() { return {} }",
     contract: 2
   }
-  await installIntegration(pool, definition, {}, "draft")
+  await installIntegration(pool, definition, "draft")
   assert.equal((await getIntegration(pool, "draft_demo"))?.status, "draft")
   assert.equal((await listIntegrations(pool)).find(i => i.id === "draft_demo")?.status, "draft")
 
@@ -619,7 +619,7 @@ test("integrations: design-session installs stay draft until promoted", async ()
   assert.equal((await getIntegration(pool, "draft_demo"))?.status, "ready")
 
   // Editing a ready integration reinstalls it as a draft again
-  await installIntegration(pool, definition, {}, "draft")
+  await installIntegration(pool, definition, "draft")
   assert.equal((await getIntegration(pool, "draft_demo"))?.status, "draft")
 })
 

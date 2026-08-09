@@ -175,9 +175,9 @@ test("install versioning: bump on change, no-op on re-install, created_by record
   )
   const userId = user.rows[0].id as string
 
-  assert.deepEqual(await installIntegration(pool, definition, {}, "ready", userId), { version: 1 })
-  // Same definition, different overrides: overrides update but no new version
-  assert.deepEqual(await installIntegration(pool, definition, { note: "resync" }), { version: 1 })
+  assert.deepEqual(await installIntegration(pool, definition, "ready", userId), { version: 1 })
+  // Re-installing the same definition is a no-op, not a new version
+  assert.deepEqual(await installIntegration(pool, definition), { version: 1 })
   assert.deepEqual(await installIntegration(pool, { ...definition, name: "Versioning 2" }), { version: 2 })
 
   const versions = await pool.query(

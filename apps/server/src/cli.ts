@@ -350,7 +350,17 @@ async function main(): Promise<number> {
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))
-        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent, basemap, config.uiDistPath).listen(
+        createApiServer(
+          pool,
+          tiles,
+          agent,
+          runService,
+          deps.store,
+          dashboardAgent,
+          basemap,
+          config.uiDistPath,
+          config.libraryPath
+        ).listen(
           config.port,
           () => {
             console.log(`Serving on http://127.0.0.1:${config.port} (${describeConfig(config)})`)

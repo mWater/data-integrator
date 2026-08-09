@@ -28,14 +28,14 @@ a new version.
 
 ### integrations
 
-Installed integrations: a synced library definition plus deployment overrides.
+Installed integrations. The definition is the integration's single
+specification — the library entry only provides its starting values.
 
 | column | type | notes |
 |---|---|---|
 | id | text pk | definition id (natural key; renames are new integrations) |
 | definition | jsonb | synced definition |
 | version | int | current version; composite FK into integration_versions (deferred) keeps it from dangling |
-| overrides | jsonb | deployment overrides: trigger, limits (AOI is definition content, versioned) |
 | enabled | boolean | |
 | status | text | `draft` (design-session install, uncertified) or `ready` (cold run passed, or library install) |
 | created_at, updated_at | timestamptz | |

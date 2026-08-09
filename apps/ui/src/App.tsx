@@ -11,6 +11,7 @@ import { MapPage } from "./MapPage.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 import { Settings } from "./Settings.js"
+import { Library } from "./Library.js"
 
 /** Parsed hash route. */
 interface Route {
@@ -28,6 +29,8 @@ interface Route {
   dashboardId: string | null
   /** True on the settings page */
   settings: boolean
+  /** True on the library page */
+  library: boolean
   /** True on the map page */
   map: boolean
   /** Layer to focus when opening the map from an integration */
@@ -51,6 +54,7 @@ function parseHash(): Route {
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
     settings: hash === "#/settings",
+    library: hash === "#/library",
     map: map !== null,
     mapLayerId: map?.[1] ?? null,
     mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
@@ -123,6 +127,7 @@ export function App() {
         <nav>
           <a href="#/">Data</a>
           <a href="#/integrations">Integrations</a>
+          <a href="#/library">Library</a>
           <a href="#/dashboards">Dashboards</a>
           <a href="#/map">Map</a>
           <a href="#/settings">Settings</a>
@@ -147,6 +152,8 @@ export function App() {
         <DashboardView dashboardId={route.dashboardId} />
       ) : route.dashboards ? (
         <DashboardList canDesign={canDesign} />
+      ) : route.library ? (
+        <Library user={user} />
       ) : route.settings ? (
         <Settings user={user} />
       ) : route.sessions ? (
