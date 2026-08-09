@@ -33,6 +33,7 @@ export type FrameMessage =
   | { type: "di:ready" }
   | { type: "di:query"; id: number; name: string; params: Record<string, unknown> }
   | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number }
+  | { type: "di:basemap"; id: number; path: string }
   | { type: "di:error"; message: string; stack?: string }
   | { type: "di:state"; state: unknown }
   | { type: "di:resize"; height: number }
@@ -42,6 +43,7 @@ export type HostMessage =
   | { type: "di:init"; init: FrameInit }
   | { type: "di:query-result"; id: number; ok: boolean; rows?: Row[]; error?: string }
   | { type: "di:tile-result"; id: number; ok: boolean; data?: ArrayBuffer; error?: string }
+  | { type: "di:basemap-result"; id: number; ok: boolean; data?: ArrayBuffer; error?: string }
 
 interface Pending {
   /** Resolves the request with the message payload. */
@@ -71,7 +73,7 @@ function onMessage(event: MessageEvent): void {
     initResolve?.(msg.init)
     return
   }
-  if (msg.type === "di:query-result" || msg.type === "di:tile-result") {
+  if (msg.type === "di:query-result" || msg.type === "di:tile-result" || msg.type === "di:basemap-result") {
     const p = pending.get(msg.id)
     if (p) {
       pending.delete(msg.id)
@@ -115,6 +117,22 @@ export function bridgeTile(layerId: string, z: number, x: number, y: number): Pr
       reject
     })
     post({ type: "di:tile", id, layerId, z, x, y })
+  })
+}
+
+/** Fetches a basemap resource (style, sprite, glyphs, tile) through the host. */
+export function bridgeBasemap(path: string): Promise<ArrayBuffer> {
+  const id = nextId++
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    pending.set(id, {
+      resolve: (msg) => {
+        if (msg.type !== "di:basemap-result") return
+        if (msg.ok && msg.data) resolve(msg.data)
+        else reject(new Error(msg.error ?? "basemap fetch failed"))
+      },
+      reject
+    })
+    post({ type: "di:basemap", id, path })
   })
 }
 

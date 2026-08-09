@@ -12,6 +12,8 @@ export interface FrameHandlers {
   runQuery(name: string, params: Record<string, unknown>): Promise<Row[]>
   /** Fetches raster tile bytes for a catalog layer. */
   fetchTile(layerId: string, z: number, x: number, y: number): Promise<ArrayBuffer>
+  /** Fetches a basemap resource by relative path; absent means no basemap. */
+  fetchBasemap?(path: string): Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error. */
   onError?(message: string, stack?: string): void
   /** Called when the dashboard reports UI state for deep links. */
@@ -63,7 +65,9 @@ function frameHtml(opts: DashboardFrameOptions): string {
     "worker-src blob:",
     `style-src ${origin} 'unsafe-inline'`,
     "img-src data: blob:",
-    "connect-src 'none'"
+    // Same-origin only, and the frame carries no credentials: this reaches
+    // public assets (MapLibre fetches its worker script), never data
+    `connect-src ${origin}`
   ].join("; ")
   return `<!doctype html>
 <html>
@@ -113,6 +117,16 @@ export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame
           (data) => post({ type: "di:tile-result", id: msg.id, ok: true, data }, [data]),
           (err: Error) => post({ type: "di:tile-result", id: msg.id, ok: false, error: err.message })
         )
+        break
+      case "di:basemap":
+        if (opts.handlers.fetchBasemap) {
+          opts.handlers.fetchBasemap(msg.path).then(
+            (data) => post({ type: "di:basemap-result", id: msg.id, ok: true, data }, [data]),
+            (err: Error) => post({ type: "di:basemap-result", id: msg.id, ok: false, error: err.message })
+          )
+        } else {
+          post({ type: "di:basemap-result", id: msg.id, ok: false, error: "basemap unavailable" })
+        }
         break
       case "di:error":
         opts.handlers.onError?.(msg.message, msg.stack)

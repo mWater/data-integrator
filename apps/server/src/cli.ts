@@ -27,6 +27,7 @@ import { RasterStore } from "./rasterStore.js"
 import { loadSecretKey } from "./secrets.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
+import { basemapConfigFromEnv, BasemapProxy } from "./basemap.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { AgentSessionController } from "./agent/controller.js"
@@ -347,13 +348,15 @@ async function main(): Promise<number> {
       }
       case "serve": {
         const deps = buildDeps(pool, new Runner())
-        const tiles = new TileRenderer(deps.store, process.env.TILE_CACHE_PATH ?? "./tile-cache")
+        const tileCache = process.env.TILE_CACHE_PATH ?? "./tile-cache"
+        const tiles = new TileRenderer(deps.store, tileCache)
         const model = buildModel()
         const agent = model ? AgentService.forDesigner(pool, { ...deps, model }) : null
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const runService = new RunService(deps)
+        const basemap = new BasemapProxy(basemapConfigFromEnv(tileCache))
         const port = Number(process.env.PORT ?? 8080)
-        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent).listen(port, () => {
+        createApiServer(pool, tiles, agent, runService, deps.store, dashboardAgent, basemap).listen(port, () => {
           console.log(`Serving on http://127.0.0.1:${port}${agent ? "" : " (no model configured; session API disabled)"}`)
         })
         return await new Promise<number>(() => {})

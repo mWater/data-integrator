@@ -5,12 +5,14 @@
  *     exports over the single core (import-map targets)
  *   kit.js  — @kit/ui bundle (react external, resolved via the import map)
  *   kit.css — Tailwind output + MapLibre css
+ *   maplibre-worker.cjs — MapLibre's tile worker as a classic-script bundle
  */
 
 import { build } from "esbuild"
 import { execFileSync } from "node:child_process"
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
+import path from "node:path"
 
 const require = createRequire(import.meta.url)
 const outdir = "assets"
@@ -62,6 +64,17 @@ await build({
   outfile: `${outdir}/kit.js`,
   external: ["react", "react-dom", "react/jsx-runtime", "react-dom/client"],
   jsx: "automatic"
+})
+
+// MapLibre's tile worker, bundled as a single CLASSIC script. The sandboxed
+// frame's opaque origin blocks module workers outright, so the kit points
+// MapLibre at this file; the .cjs suffix selects MapLibre's classic-worker path
+const maplibreDist = path.dirname(require.resolve("maplibre-gl/dist/maplibre-gl.css"))
+await build({
+  ...common,
+  format: "iife",
+  entryPoints: [path.join(maplibreDist, "maplibre-gl-worker.mjs")],
+  outfile: `${outdir}/maplibre-worker.cjs`
 })
 
 // Tailwind over the kit sources, then append MapLibre's stylesheet

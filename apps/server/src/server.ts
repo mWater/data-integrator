@@ -1,4 +1,5 @@
 import { createServer, Server, IncomingMessage, ServerResponse } from "node:http"
+import { BasemapProxy } from "./basemap.js"
 import { createReadStream } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import { createRequire } from "node:module"
@@ -44,7 +45,7 @@ const KIT_ASSETS = path.join(
 )
 
 /** Matches /kit/:version/:file — the public, immutable kit runtime assets. */
-const KIT_PATH = /^\/kit\/[a-z0-9.-]+\/([a-z0-9-]+\.(?:js|css))$/
+const KIT_PATH = /^\/kit\/[a-z0-9.-]+\/([a-z0-9][a-z0-9.-]*\.(?:js|mjs|cjs|css))$/
 
 /** Built UI directory served as the SPA (overridable for dev layouts). */
 const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "ui", "dist")
@@ -89,11 +90,12 @@ export function createApiServer(
   agent: AgentService | null = null,
   runs: RunService | null = null,
   store: RasterStore | null = null,
-  dashboardAgent: AgentService | null = null
+  dashboardAgent: AgentService | null = null,
+  basemap: BasemapProxy | null = null
 ): Server {
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -142,6 +144,7 @@ async function route(
   runs: RunService | null,
   store: RasterStore | null,
   dashboardAgent: AgentService | null,
+  basemap: BasemapProxy | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -224,6 +227,29 @@ async function route(
       if (await serveUi(url, res)) return
     }
     json(res, 401, { error: "authentication required" })
+    return
+  }
+
+  // Basemap proxy: cached upstream style/sprite/glyph/tile bytes for map frames
+  const basemapMatch = pathname.match(/^\/basemap\/(.+)$/)
+  if (basemapMatch && req.method === "GET") {
+    let framePath: string
+    try {
+      framePath = decodeURIComponent(basemapMatch[1])
+    } catch {
+      json(res, 400, { error: "bad basemap path" })
+      return
+    }
+    const result = basemap ? await basemap.fetch(framePath) : null
+    if (!result) {
+      json(res, 404, { error: "basemap unavailable" })
+      return
+    }
+    res.writeHead(200, {
+      "content-type": result.contentType,
+      "cache-control": "public, max-age=86400"
+    })
+    res.end(result.body)
     return
   }
 

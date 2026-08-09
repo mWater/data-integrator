@@ -107,8 +107,16 @@ One TypeScript React file. Default export is the root component, receiving
 - <FilterBar>, <Select label options value onChange allLabel?>,
   <MultiSelect label options value onChange>, <DateRange label from to onChange>:
   plain value/onChange controls; wire their state into useQuery params.
-- <MarkdownBlock>: narrative text. <MapView layers center zoom height?>: raster
-  catalog layers (layerId), tiles proxied by the host.
+- <MarkdownBlock>: narrative text.
+- <MapView geojson? layers? center? zoom? fit? height?>: interactive map with an
+  automatic basemap (attribution handled for you; degrades to a plain background
+  offline). geojson is [{data: FeatureCollection, color?, radius?, fillOpacity?,
+  popup?}] - build features from query rows (lon/lat columns or ST_AsGeoJSON);
+  a feature "color" property overrides the overlay color; popup names the property
+  shown on click. layers draws raster catalog layers by layerId. Prefer fit={true}
+  over hand-computed center/zoom so the viewport tracks the data. NEVER overlay
+  hand-projected SVG/HTML markers on the map - use geojson, which pans and zooms
+  correctly.
 - useQuery(name, params?) -> {data, loading, error}: executes a stored query.
 - useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
 - useTheme(), useLocale(): resolved tokens and locale.
@@ -122,6 +130,8 @@ and the component passes null for "all". Queries run read-only against the data 
 (plain table names, no schema prefix), statement timeout 15s, row-capped: aggregate in
 SQL rather than shipping raw rows. Cast dates for display (to_char) or chart buckets in
 SQL. Numeric aggregates: cast round(...) results to ::float8 so JSON carries numbers.
+PostGIS functions are available: for geometry columns select ST_X/ST_Y ::float8 (or
+ST_AsGeoJSON) for MapView geojson features - never select raw geometry to parse client-side.
 
 # Data tables
 {{SCHEMAS}}

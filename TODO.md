@@ -38,9 +38,13 @@ Tracked at the level of what is left, not what exists; see README status and the
   contract it needs are built.
 - Analytical dashboards: core built per Dashboards.md (kit v0, in-server build,
   sql_engine execution, viewer + side-by-side design session UI, dashboard
-  agent). Remaining: live-fire the agent with a real model, library
-  distribution of dashboards, headless render test for the install path,
-  MapView exercised against a real raster layer, ThemeTokens branding.
+  agent, live-fired). MapView has a proxied OpenFreeMap basemap + GeoJSON
+  overlays, verified in-browser both modes. Remaining: library distribution of
+  dashboards, headless render test for the install path, MapView against a real
+  raster catalog layer, ThemeTokens branding, content-hashed kit asset names
+  (immutable cache makes dev reloads stale), fix dashboard-session transcript
+  doubling in SessionView (mid-loop refetch overlaps live SSE echoes; keep
+  stored messages frozen until the loop ends).
 - STAC-compatible representation of the raster catalog.
 - UI odds and ends: token management page, admin user management page, remove
   the redundant static /map page, code-split the maplibre chunk.

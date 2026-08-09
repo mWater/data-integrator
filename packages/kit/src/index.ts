@@ -29,4 +29,11 @@ export type {
 export { MarkdownBlock } from "./components/MarkdownBlock.js"
 export type { MarkdownBlockProps } from "./components/MarkdownBlock.js"
 export { MapView } from "./components/MapView.js"
-export type { MapViewProps, MapLayer } from "./components/MapView.js"
+export type {
+  MapViewProps,
+  MapLayer,
+  GeoJsonOverlay,
+  GeoJsonFeatureCollection,
+  GeoJsonFeature,
+  GeoJsonGeometry
+} from "./components/MapView.js"

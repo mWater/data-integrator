@@ -41,8 +41,17 @@ The sanctioned UI surface, audited for accessibility once so generated dashboard
 not each carry their own WCAG risk:
 
 - Layout primitives, stat tile, chart (ECharts, Apache 2.0), table, filter bar (wires
-  control state to query params), markdown, map (MapLibre over the tile service, tile
-  bytes proxied through the bridge).
+  control state to query params), markdown, map (MapLibre: automatic basemap, catalog
+  raster layers, and GeoJSON overlays with fit-to-data and click popups; all bytes
+  proxied through the bridge).
+- Basemap: the server proxies and disk-caches OpenFreeMap (explicitly free for
+  commercial use, no key) at `/basemap/*`, rewriting style/TileJSON URLs to the
+  frame's `di-basemap://` protocol. `BASEMAP_UPSTREAM` / `BASEMAP_STYLE_LIGHT` /
+  `BASEMAP_STYLE_DARK` swap providers per deployment; `off` disables. Attribution
+  renders in-map. Offline or disabled, MapView falls back to a plain background
+  (stale cache serves previously-viewed areas). MapLibre's tile worker ships as a
+  classic-script kit asset (`maplibre-worker.cjs`) because the sandboxed frame's
+  opaque origin blocks module workers.
 - Theme tokens for color and typography, so dashboards are brandable without forking
   the kit.
 - Versioned; bundles pin the version. Upgrades are recompiles, usually agent-driven.
@@ -121,10 +130,13 @@ export default function Dashboard(props: DashboardProps): JSX.Element
   `allow-same-origin` the frame has an opaque origin and no cookies; it makes no
   credentialed request at all.
 - Everything crosses the postMessage bridge: stored-query calls and freshness metadata
-  (surfaced in source as `useQuery`/`useMeta`), map tile bytes (a MapLibre custom
-  protocol in the kit requests them from the host), runtime error reports, and
+  (surfaced in source as `useQuery`/`useMeta`), map tile and basemap bytes (MapLibre
+  custom protocols in the kit request them from the host), runtime error reports, and
   state-change events for deep links. The host executes these with the viewer's
   session against per-dashboard-authorized endpoints; the bridge proxies nothing else.
+  The frame CSP allows `connect-src` to the app origin only (MapLibre fetches its
+  worker script); the frame carries no credentials, so this reaches public assets,
+  never data.
 - No token mechanism in v0: the host page is always the app itself. Short-lived scoped
   tokens return when a frame must fetch directly (external embeds, share links).
 - Net effect: generated code can never see the viewer's session or reach anything an

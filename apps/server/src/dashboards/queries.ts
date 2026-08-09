@@ -124,7 +124,9 @@ export async function executeStoredQuery(
     await client.query("BEGIN TRANSACTION READ ONLY")
     await client.query("SET LOCAL ROLE sql_engine")
     await client.query(`SET LOCAL statement_timeout = '${TIMEOUT}'`)
-    await client.query("SET LOCAL search_path = data")
+    // public is on the path for extension functions (PostGIS); table access
+    // still requires grants, and sql_engine has none outside data
+    await client.query("SET LOCAL search_path = data, public")
     const result = await client.query(`SELECT * FROM (${sql}) _q LIMIT ${cap + 1}`, bound)
     if (result.rows.length > cap)
       throw new Error(`query ${query.name} exceeds ${cap} rows; aggregate or add a filter`)

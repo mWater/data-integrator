@@ -70,6 +70,11 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
             if (!res.ok) throw new Error(`tile ${res.status}`)
             return res.arrayBuffer()
           },
+          fetchBasemap: async path => {
+            const res = await fetch(`/basemap/${path}`)
+            if (!res.ok) throw new Error(`basemap ${res.status}`)
+            return res.arrayBuffer()
+          },
           onError: (message, stack) => errorRef.current?.(message, stack)
         }
       })
