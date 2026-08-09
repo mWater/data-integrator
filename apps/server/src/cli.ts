@@ -178,8 +178,8 @@ async function main(): Promise<number> {
           return 1
         }
         const definition = await loadDefinition(target)
-        const { hash } = await installIntegration(pool, definition)
-        console.log(`Installed ${definition.id} (${hash.slice(0, 12)})`)
+        const { version } = await installIntegration(pool, definition)
+        console.log(`Installed ${definition.id} (v${version})`)
         return 0
       }
       case "run": {

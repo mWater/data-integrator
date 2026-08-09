@@ -9,15 +9,21 @@ PostgreSQL 16 + PostGIS. Two schemas with a hard boundary:
 
 ## app schema
 
-### definition_revisions
+### integration_versions
 
-Content-addressed definition blobs, written on install and edit. Lineage from
-runs stays resolvable after definitions change, without relying on git history.
+Append-only archive of definition versions, written on install and edit. An
+install with an unchanged definition keeps its version (library re-syncs are
+no-ops); any change bumps the per-integration version and archives the new
+definition. Lineage from runs stays resolvable after definitions change, the
+timeline of an integration is readable in order, and each version records who
+installed it. Rollback is re-installing an archived definition, which becomes
+a new version.
 
 | column | type | notes |
 |---|---|---|
-| hash | text pk | content hash of the definition |
+| integration_id, version | text, int pk | version counts up from 1 per integration |
 | definition | jsonb | |
+| created_by | uuid fk null | installing user; null for CLI/library-sync installs |
 | created_at | timestamptz | |
 
 ### integrations
@@ -28,7 +34,7 @@ Installed integrations: a synced library definition plus deployment overrides.
 |---|---|---|
 | id | text pk | definition id (natural key; renames are new integrations) |
 | definition | jsonb | synced definition |
-| definition_hash | text fk | content hash into definition_revisions |
+| version | int | current version; composite FK into integration_versions (deferred) keeps it from dangling |
 | overrides | jsonb | deployment overrides: aoi, trigger, limits |
 | enabled | boolean | |
 | status | text | `draft` (design-session install, uncertified) or `ready` (cold run passed, or library install) |
@@ -54,7 +60,7 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | params | jsonb | manual/backfill parameters, passed to the job |
 | scheduled_at, started_at, finished_at | timestamptz | |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
-| definition_hash | text fk | which definition revision ran |
+| definition_version | int fk | which definition version ran (composite FK with integration_id); null until success and for scratch runs |
 | inputs | jsonb | resolved snapshot ids, extract row counts (lineage) |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows written, artifacts, bytes, duration |

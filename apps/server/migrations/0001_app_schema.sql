@@ -6,22 +6,34 @@ CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE SCHEMA IF NOT EXISTS data;
 
--- Content-addressed definition blobs: lineage from runs stays resolvable after edits
-CREATE TABLE app.definition_revisions (
-  hash text PRIMARY KEY,
-  definition jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE app.integrations (
   id text PRIMARY KEY,
   definition jsonb NOT NULL,
-  definition_hash text NOT NULL REFERENCES app.definition_revisions(hash),
+  version int NOT NULL,
   overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
   enabled boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Append-only archive of definition versions: lineage from runs stays
+-- resolvable after edits, and the archive records who installed each version.
+-- created_by FK is added after app.users below.
+CREATE TABLE app.integration_versions (
+  integration_id text NOT NULL REFERENCES app.integrations(id),
+  version int NOT NULL,
+  definition jsonb NOT NULL,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (integration_id, version)
+);
+
+-- The current pointer cannot dangle; deferred so an install writes the
+-- integration row and its archive row in one transaction, in either order
+ALTER TABLE app.integrations
+  ADD CONSTRAINT integrations_version_fk
+  FOREIGN KEY (id, version) REFERENCES app.integration_versions(integration_id, version)
+  DEFERRABLE INITIALLY DEFERRED;
 
 CREATE TABLE app.runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -35,7 +47,7 @@ CREATE TABLE app.runs (
   finished_at timestamptz,
   claimed_by text,
   heartbeat_at timestamptz,
-  definition_hash text REFERENCES app.definition_revisions(hash),
+  definition_version int,
   inputs jsonb,
   state_out jsonb,
   stats jsonb,
@@ -43,6 +55,13 @@ CREATE TABLE app.runs (
   error text,
   log text
 );
+
+-- Which archived definition a run executed; unchecked while definition_version
+-- is null (queued/failed runs, session scratch runs)
+ALTER TABLE app.runs
+  ADD CONSTRAINT runs_definition_version_fk
+  FOREIGN KEY (integration_id, definition_version)
+  REFERENCES app.integration_versions(integration_id, version);
 
 CREATE INDEX runs_integration_idx ON app.runs (integration_id, scheduled_at DESC);
 CREATE INDEX runs_queue_idx ON app.runs (priority DESC, scheduled_at) WHERE status = 'queued';
@@ -111,6 +130,10 @@ CREATE TABLE app.users (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE app.integration_versions
+  ADD CONSTRAINT integration_versions_created_by_fk
+  FOREIGN KEY (created_by) REFERENCES app.users(id);
 
 CREATE TABLE app.auth_sessions (
   token_hash text PRIMARY KEY,

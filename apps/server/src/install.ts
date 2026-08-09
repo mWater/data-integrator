@@ -10,7 +10,11 @@ export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
 /** Permitted ColumnSpec types; definitions arrive as untyped JSON. */
 const COLUMN_TYPES = ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
 
-/** Stable content hash of a definition (keys sorted recursively). */
+/**
+ * Stable content fingerprint of a definition (keys sorted recursively). Used
+ * only by design sessions to gate finish on a cold run of the exact current
+ * definition; never stored in the database.
+ */
 export function definitionHash(definition: IntegrationDefinition): string {
   const canonical = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonical)
@@ -70,37 +74,63 @@ export function validateDefinition(definition: IntegrationDefinition): void {
 export type IntegrationStatus = "draft" | "ready"
 
 /**
- * Installs or updates an integration: records the definition revision, upserts
- * the integration row, and ensures destination tables and layers exist with
- * this integration as their sole owner. Design sessions run in a scratch area
- * and call this only at finish, with a cold-run-certified definition.
+ * Installs or updates an integration: bumps the version and archives the
+ * definition when it changed (an unchanged definition keeps its version, so
+ * library re-syncs are no-ops), updates the integration row, and ensures
+ * destination tables and layers exist with this integration as their sole
+ * owner. Design sessions run in a scratch area and call this only at finish,
+ * with a cold-run-certified definition. createdBy is the installing user, or
+ * null for CLI and library-sync installs.
  */
 export async function installIntegration(
   pool: pg.Pool,
   definition: IntegrationDefinition,
   overrides: Record<string, unknown> = {},
-  status: IntegrationStatus = "ready"
-): Promise<{ hash: string }> {
+  status: IntegrationStatus = "ready",
+  createdBy: string | null = null
+): Promise<{ version: number }> {
   validateDefinition(definition)
-  const hash = definitionHash(definition)
+  const definitionJson = JSON.stringify(definition)
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    await client.query(
-      "INSERT INTO app.definition_revisions (hash, definition) VALUES ($1, $2) ON CONFLICT (hash) DO NOTHING",
-      [hash, JSON.stringify(definition)]
+    // Lock the row so version assignment is serialized per integration
+    const current = await client.query(
+      "SELECT version, definition = $2::jsonb AS unchanged FROM app.integrations WHERE id = $1 FOR UPDATE",
+      [definition.id, definitionJson]
     )
-    await client.query(
-      `INSERT INTO app.integrations (id, definition, definition_hash, overrides, status)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET
-         definition = EXCLUDED.definition,
-         definition_hash = EXCLUDED.definition_hash,
-         overrides = EXCLUDED.overrides,
-         status = EXCLUDED.status,
-         updated_at = now()`,
-      [definition.id, JSON.stringify(definition), hash, JSON.stringify(overrides), status]
-    )
+    let version: number
+    if (current.rows.length === 0) {
+      version = 1
+      await client.query(
+        `INSERT INTO app.integrations (id, definition, version, overrides, status)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [definition.id, definitionJson, version, JSON.stringify(overrides), status]
+      )
+      await client.query(
+        `INSERT INTO app.integration_versions (integration_id, version, definition, created_by)
+         VALUES ($1, $2, $3, $4)`,
+        [definition.id, version, definitionJson, createdBy]
+      )
+    } else if (current.rows[0].unchanged) {
+      version = current.rows[0].version
+      await client.query(
+        `UPDATE app.integrations SET overrides = $2, status = $3, updated_at = now() WHERE id = $1`,
+        [definition.id, JSON.stringify(overrides), status]
+      )
+    } else {
+      version = current.rows[0].version + 1
+      await client.query(
+        `UPDATE app.integrations SET definition = $2, version = $3, overrides = $4, status = $5, updated_at = now()
+         WHERE id = $1`,
+        [definition.id, definitionJson, version, JSON.stringify(overrides), status]
+      )
+      await client.query(
+        `INSERT INTO app.integration_versions (integration_id, version, definition, created_by)
+         VALUES ($1, $2, $3, $4)`,
+        [definition.id, version, definitionJson, createdBy]
+      )
+    }
     for (const dest of definition.destinations) {
       if (dest.kind === "table") {
         const owner = await client.query("SELECT integration_id FROM app.data_tables WHERE id = $1", [dest.tableId])
@@ -118,7 +148,7 @@ export async function installIntegration(
       }
     }
     await client.query("COMMIT")
-    return { hash }
+    return { version }
   } catch (err) {
     await client.query("ROLLBACK")
     throw err
