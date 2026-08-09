@@ -37,7 +37,16 @@ on the CHIRPS and WorldPop layers. The documented query API works (see
 API.md + /api/openapi.json): personal access tokens, filtered tabular reads in
 json/csv/geojson, raster catalog with COG downloads - fully functional with no
 AI configured. Sessions support mid-run steering (messages land at the next
-step boundary) and a graceful Stop. Scheduler, agent compaction, and cost
+step boundary) and a graceful Stop. The library is browsable in the UI with
+one-click install/update (updates keep the deployment's area of interest,
+schedule, and limits), and definitions are versioned with attribution: the
+definition is the integration's single specification, every change archives a
+version, and the integration page shows the history and an area-of-interest
+editor. A deployment default AOI (Settings page, baked-in country list) scopes
+AOI-less integrations at run time, and runs record the AOI they executed with.
+Skills - source and technique know-how in library/skills/ - load into the
+designer on demand. Configuration is validated centrally at startup
+(.env.example documents every variable). Scheduler, agent compaction, and cost
 governance are not started.
 
 - [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes
@@ -61,11 +70,12 @@ The project is complete when all of these exist.
 - **Runtime images** *(built)* - `node22` and `python3.12` images whose harnesses map
   the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in, including
   the geospatial stack in Python.
-- **Integration library** *(format + first definitions)* - The machine-readable definition format and
-  the definitions themselves for the target data sources (GloFAS, SPI, FPAR, DEMs,
-  WorldPop, GHSL, HydroSHEDS, in-situ sensors). A standalone deliverable, independent
-  of the application, including reusable skills (source and technique know-how) the
-  agent loads on demand.
+- **Integration library** *(format, first definitions, skills, and UI browser built;
+  more sources remaining)* - The machine-readable definition format and the definitions
+  themselves for the target data sources (GloFAS, SPI, FPAR, DEMs, WorldPop, GHSL,
+  HydroSHEDS, in-situ sensors). A standalone deliverable, independent of the
+  application, including reusable skills (source and technique know-how) the agent
+  loads on demand. Browsable in the UI with one-click install and update.
 - **Database and migrations** *(built)* - PostgreSQL/PostGIS schema and migration
   system: destination tables, raster catalog, integrations, runs, secrets, users.
 - **Web server and API** *(built)* - Node/TypeScript server with local accounts, RBAC, and the

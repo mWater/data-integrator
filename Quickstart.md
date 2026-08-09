@@ -105,6 +105,11 @@ data previews, manual runs, the map, and design sessions.
 
 ## Install and run a library integration
 
+In the UI: set your deployment's default area of interest once (Settings,
+country picker), then open Library and click Install — the entry inherits the
+default AOI and its suggested schedule, and can start its first ingest
+immediately. From a terminal instead:
+
 ```sh
 node apps/server/dist/cli.js install library/integrations/worldpop_population
 node apps/server/dist/cli.js run worldpop_population
