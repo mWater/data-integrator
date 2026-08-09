@@ -45,6 +45,7 @@ interest — lives in the Settings page, not the environment.
 | `RASTER_STORE_PATH` | `./raster-store` | COG store (plain directory; mount S3 via FUSE if desired) |
 | `WORK_ROOT` | `./work` | persistent per-integration /work caches |
 | `TILE_CACHE_PATH` | `./tile-cache` | rendered tile cache |
+| `LIBRARY_PATH` | `./library` | integration library root; the designer agent loads `skills/` from here |
 | `PORT` | `8080` | HTTP port |
 | `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the designer agent; without one the platform runs with the session API disabled |
 | `AGENT_MODEL` | `openai/gpt-5.6-sol` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |

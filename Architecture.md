@@ -144,6 +144,9 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
   validate, finish.
 - Test runs use a small AOI window to keep the design loop fast; jobs are minutes, not
   seconds, so tooling is async from day one.
+- Skills (`library/skills/<id>/SKILL.md`): source and technique know-how. The agent's
+  system prompt carries an index of one-liners; read_skill loads full text on demand.
+  Prose only, never executed; the library repo's review is the trust boundary.
 - Warm runs iterate against the `/work` cache. `finish` requires one successful cold run
   of the current code (fresh workspace, null previousState), so a cache primed by
   scratch code cannot fake a pass.

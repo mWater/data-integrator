@@ -280,6 +280,38 @@ test("designer: ask_user pauses with valid options and rejects degenerate input"
   assert.match(noQuestion.result, /question is required/)
 })
 
+test("designer: skills index in the system prompt, read_skill serves full text", async () => {
+  // Without a skills dir: no index section, tool degrades gracefully
+  const bare = bareDesigner()
+  assert.ok(!bare.system().includes("# Skills"))
+  const none = await bare.execute("read_skill", { id: "anything" }, initialDesignerState("demo"), noEvents, SID)
+  assert.match(none.result, /No skills library/)
+
+  // With the shipped library skills
+  const skillsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "library", "skills")
+  const designer = new DesignerImplementation({
+    pool,
+    runner: null as never,
+    store: null as never,
+    workRoot: "/nonexistent",
+    databaseUrl: db.url,
+    secretKey: null,
+    images: {},
+    model: new MockLanguageModelV4({}),
+    skillsDir
+  })
+  const system = designer.system()
+  assert.ok(system.includes("# Skills"))
+  assert.match(system, /- chirps_source: /)
+
+  const read = await designer.execute("read_skill", { id: "chirps_source" }, initialDesignerState("demo"), noEvents, SID)
+  assert.match(read.result, /africa_monthly/)
+
+  const unknown = await designer.execute("read_skill", { id: "nope" }, initialDesignerState("demo"), noEvents, SID)
+  assert.match(unknown.result, /No skill "nope"/)
+  assert.match(unknown.result, /chirps_source/)
+})
+
 test("designer: lookup_country serves baked-in boxes by name or ISO3", async () => {
   const designer = bareDesigner()
   const state = initialDesignerState("demo")
