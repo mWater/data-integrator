@@ -108,15 +108,25 @@ One TypeScript React file. Default export is the root component, receiving
   <MultiSelect label options value onChange>, <DateRange label from to onChange>:
   plain value/onChange controls; wire their state into useQuery params.
 - <MarkdownBlock>: narrative text.
-- <MapView geojson? layers? center? zoom? fit? height?>: interactive map with an
-  automatic basemap (attribution handled for you; degrades to a plain background
-  offline). geojson is [{data: FeatureCollection, color?, radius?, fillOpacity?,
-  popup?}] - build features from query rows (lon/lat columns or ST_AsGeoJSON);
-  a feature "color" property overrides the overlay color; popup names the property
-  shown on click. layers draws raster catalog layers by layerId. Prefer fit={true}
-  over hand-computed center/zoom so the viewport tracks the data. NEVER overlay
-  hand-projected SVG/HTML markers on the map - use geojson, which pans and zooms
-  correctly.
+- <MapView vector? geojson? layers? center? zoom? fit? height?>: interactive map
+  with an automatic basemap (attribution handled for you; degrades to a plain
+  background offline). geojson is [{data: FeatureCollection, color?, radius?,
+  fillOpacity?, popup?}] - build features from query rows (lon/lat columns or
+  ST_AsGeoJSON); a feature "color" property overrides the overlay color; popup
+  names the property shown on click. layers draws raster catalog layers by
+  layerId. Prefer fit={true} over hand-computed center/zoom so the viewport
+  tracks the data. NEVER overlay hand-projected SVG/HTML markers on the map -
+  use geojson, which pans and zooms correctly.
+  vector is [{query, params?, color?, colorBy?, radius?, radiusBy?, fillOpacity?,
+  popup?, minzoom?, maxzoom?}] and draws a TILE query (tile: true, see query
+  contract) as server-rendered vector tiles: only visible tiles reach the
+  browser, so it scales to millions of features. Use vector whenever a layer
+  could exceed a few thousand features; use geojson only for small result sets.
+  colorBy is {kind: "categorical", property, values: [{value, color}], otherwise?}
+  or {kind: "ramp", property, stops: [{value, color}]}; radiusBy is {property,
+  stops: [{value, radius}]} (pair it with grid-aggregated counts). popup names
+  the tile attribute shown on click. fit cannot see tile bounds, so give
+  vector-only maps center/zoom. Pick colors from the theme series tokens.
 - useQuery(name, params?) -> {data, loading, error}: executes a stored query.
 - useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
 - useTheme(), useLocale(): resolved tokens and locale.
@@ -132,6 +142,23 @@ SQL rather than shipping raw rows. Cast dates for display (to_char) or chart buc
 SQL. Numeric aggregates: cast round(...) results to ::float8 so JSON carries numbers.
 PostGIS functions are available: for geometry columns select ST_X/ST_Y ::float8 (or
 ST_AsGeoJSON) for MapView geojson features - never select raw geometry to parse client-side.
+
+Tile queries ({..., tile: true}) serve MVT vector tiles for MapView vector layers
+instead of rows; row caps do not apply. The SQL must select the raw geometry column
+aliased exactly "geom" (SRID 4326 - no ST_AsGeoJSON) plus a FEW scalar attribute
+columns; every attribute is encoded into every tile, so keep the list short. The
+server wraps the query per tile (envelope filter using the spatial index, clip, MVT
+encode); tiles over 2 MB are rejected - that means the query needs level of detail,
+not a bigger limit. For level of detail declare a parameter named "zoom" (type
+integer); the server binds the tile zoom to it. Aggregate at low zoom and go raw
+deep, e.g. with params [{name: "zoom", type: "integer"}]:
+  SELECT ST_Centroid(ST_Collect(geom)) AS geom, count(*)::int AS n
+  FROM sites WHERE $1 < 9 GROUP BY ST_SnapToGrid(geom, 360.0 / 2 ^ ($1 + 6))
+  UNION ALL
+  SELECT geom, 1 AS n FROM sites WHERE $1 >= 9
+Style the aggregated branch with radiusBy/colorBy on "n". Point layers with at most
+tens of thousands of rows can skip aggregation; polygon/line layers usually need
+none at all.
 
 # Data tables
 {{SCHEMAS}}
@@ -224,7 +251,11 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
                     })
                   )
                   .describe("Declared parameters in positional order"),
-                maxRows: z.number().int().positive().optional().describe("Row cap for this query")
+                maxRows: z.number().int().positive().optional().describe("Row cap for this query"),
+                tile: z
+                  .boolean()
+                  .optional()
+                  .describe("Tile query: serves MVT vector tiles for MapView vector layers instead of rows")
               })
             )
             .describe("The complete query list (replaces the previous one)")

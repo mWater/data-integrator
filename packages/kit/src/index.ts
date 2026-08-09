@@ -32,6 +32,11 @@ export { MapView } from "./components/MapView.js"
 export type {
   MapViewProps,
   MapLayer,
+  VectorTileLayer,
+  ColorScale,
+  CategoricalColorScale,
+  RampColorScale,
+  RadiusScale,
   GeoJsonOverlay,
   GeoJsonFeatureCollection,
   GeoJsonFeature,

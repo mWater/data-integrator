@@ -33,6 +33,7 @@ export type FrameMessage =
   | { type: "di:ready" }
   | { type: "di:query"; id: number; name: string; params: Record<string, unknown> }
   | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number }
+  | { type: "di:vtile"; id: number; query: string; z: number; x: number; y: number; params: Record<string, unknown> }
   | { type: "di:basemap"; id: number; path: string }
   | { type: "di:error"; message: string; stack?: string }
   | { type: "di:state"; state: unknown }
@@ -43,6 +44,7 @@ export type HostMessage =
   | { type: "di:init"; init: FrameInit }
   | { type: "di:query-result"; id: number; ok: boolean; rows?: Row[]; error?: string }
   | { type: "di:tile-result"; id: number; ok: boolean; data?: ArrayBuffer; error?: string }
+  | { type: "di:vtile-result"; id: number; ok: boolean; data?: ArrayBuffer; error?: string }
   | { type: "di:basemap-result"; id: number; ok: boolean; data?: ArrayBuffer; error?: string }
 
 interface Pending {
@@ -73,7 +75,12 @@ function onMessage(event: MessageEvent): void {
     initResolve?.(msg.init)
     return
   }
-  if (msg.type === "di:query-result" || msg.type === "di:tile-result" || msg.type === "di:basemap-result") {
+  if (
+    msg.type === "di:query-result" ||
+    msg.type === "di:tile-result" ||
+    msg.type === "di:vtile-result" ||
+    msg.type === "di:basemap-result"
+  ) {
     const p = pending.get(msg.id)
     if (p) {
       pending.delete(msg.id)
@@ -117,6 +124,28 @@ export function bridgeTile(layerId: string, z: number, x: number, y: number): Pr
       reject
     })
     post({ type: "di:tile", id, layerId, z, x, y })
+  })
+}
+
+/** Fetches vector tile bytes of a stored tile query through the host. */
+export function bridgeVectorTile(
+  query: string,
+  z: number,
+  x: number,
+  y: number,
+  params: Record<string, unknown>
+): Promise<ArrayBuffer> {
+  const id = nextId++
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    pending.set(id, {
+      resolve: (msg) => {
+        if (msg.type !== "di:vtile-result") return
+        if (msg.ok && msg.data) resolve(msg.data)
+        else reject(new Error(msg.error ?? "vector tile fetch failed"))
+      },
+      reject
+    })
+    post({ type: "di:vtile", id, query, z, x, y, params })
   })
 }
 

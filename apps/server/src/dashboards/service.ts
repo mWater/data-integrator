@@ -6,7 +6,7 @@
 import pg from "pg"
 import { AuthUser } from "../auth.js"
 import { buildDashboard, KIT_VERSION } from "./build.js"
-import { DashboardQuery, executeStoredQuery, validateQueries } from "./queries.js"
+import { DashboardQuery, executeStoredQuery, executeTileQuery, validateQueries } from "./queries.js"
 
 /** Dashboard ids are natural keys, library-syncable like integrations. */
 const ID_PATTERN = /^[a-z][a-z0-9_-]*$/
@@ -166,4 +166,24 @@ export async function executeDashboardQuery(
   const query = detail.queries.find((q) => q.name === queryName)
   if (!query) return null
   return executeStoredQuery(pool, query, values)
+}
+
+/**
+ * Executes a tile query of a dashboard's current version for one slippy tile;
+ * null when the dashboard or query is missing or the query is not a tile query.
+ */
+export async function executeDashboardTileQuery(
+  pool: pg.Pool,
+  dashboardId: string,
+  queryName: string,
+  values: Record<string, unknown>,
+  z: number,
+  x: number,
+  y: number
+): Promise<Buffer | null> {
+  const detail = await getDashboard(pool, dashboardId)
+  if (!detail) return null
+  const query = detail.queries.find((q) => q.name === queryName && q.tile === true)
+  if (!query) return null
+  return executeTileQuery(pool, query, values, z, x, y)
 }

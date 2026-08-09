@@ -17,11 +17,12 @@ import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from 
 import {
   canViewDashboard,
   executeDashboardQuery,
+  executeDashboardTileQuery,
   getDashboard,
   listDashboards,
   saveDashboard
 } from "./dashboards/service.js"
-import { DashboardQuery, executeStoredQuery } from "./dashboards/queries.js"
+import { DashboardQuery, executeStoredQuery, executeTileQuery } from "./dashboards/queries.js"
 import {
   authenticate,
   AuthUser,
@@ -54,7 +55,24 @@ const UI_DIST = process.env.UI_DIST_PATH ?? path.join(STATIC_DIR, "..", "..", "u
 const TILE_PATH = /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
-const SESSION_PATH = /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*)?$/
+const SESSION_PATH =
+  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
+
+/** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
+const DASHBOARD_TILE_PATH =
+  /^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/tiles\/([a-z][a-z0-9_]*)\/(\d+)\/(\d+)\/(\d+)\.mvt$/
+
+/** Content type of encoded vector tiles. */
+const MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile"
+
+/** Parses the ?params= JSON of a tile request; throws on malformed input. */
+function tileParams(searchParams: URLSearchParams): Record<string, unknown> {
+  const raw = searchParams.get("params")
+  if (!raw) return {}
+  const parsed: unknown = JSON.parse(raw)
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("params must be a JSON object")
+  return parsed as Record<string, unknown>
+}
 
 /** Content types for served static files. */
 const MIME: Record<string, string> = {
@@ -455,6 +473,37 @@ async function route(
     return
   }
 
+  const dashboardTileMatch = pathname.match(DASHBOARD_TILE_PATH)
+  if (dashboardTileMatch && req.method === "GET") {
+    const [, dashboardId, queryName, z, x, y] = dashboardTileMatch
+    if (!canViewDashboard(user, dashboardId)) {
+      json(res, 403, { error: "no access to this dashboard" })
+      return
+    }
+    try {
+      const mvt = await executeDashboardTileQuery(
+        pool,
+        dashboardId,
+        queryName,
+        tileParams(searchParams),
+        Number(z),
+        Number(x),
+        Number(y)
+      )
+      if (mvt === null) {
+        json(res, 404, { error: "unknown dashboard or tile query" })
+        return
+      }
+      // Live data with bound filters: a short private cache absorbs pan/zoom
+      // backtracking without serving stale tiles for long
+      res.writeHead(200, { "content-type": MVT_CONTENT_TYPE, "cache-control": "private, max-age=60" })
+      res.end(mvt)
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
+    return
+  }
+
   const dashboardQueryMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/queries\/([a-z][a-z0-9_]*)$/)
   if (dashboardQueryMatch && req.method === "POST") {
     if (!canViewDashboard(user, dashboardQueryMatch[1])) {
@@ -520,7 +569,10 @@ async function routeSessions(
     return row.rows[0].kind === "dashboard" ? dashboardAgent : agent
   }
 
-  if (url === "/api/sessions") {
+  const [pathname, search] = url.split("?")
+  const searchParams = new URLSearchParams(search ?? "")
+
+  if (pathname === "/api/sessions") {
     if (req.method === "POST") {
       const body = await readJsonBody(req)
       const kind = body.kind === "dashboard" ? "dashboard" : "designer"
@@ -542,7 +594,7 @@ async function routeSessions(
     return
   }
 
-  const match = url.match(SESSION_PATH)
+  const match = pathname.match(SESSION_PATH)
   if (!match) {
     json(res, 404, { error: "not found" })
     return
@@ -559,6 +611,34 @@ async function routeSessions(
     const detail = await agentService.getSession(sessionId)
     if (!detail) json(res, 404, { error: "unknown session" })
     else json(res, 200, detail)
+    return
+  }
+
+  // Draft tile-query execution for the design-session preview map
+  const tileMatch = sub?.match(/^\/tiles\/([a-z][a-z0-9_]*)\/(\d+)\/(\d+)\/(\d+)\.mvt$/)
+  if (tileMatch && req.method === "GET") {
+    const detail = await agentService.getSession(sessionId)
+    const state = detail?.state as { queries?: DashboardQuery[] } | undefined
+    const query = state?.queries?.find(q => q.name === tileMatch[1] && q.tile === true)
+    if (!query) {
+      json(res, 404, { error: "unknown draft tile query" })
+      return
+    }
+    try {
+      const mvt = await executeTileQuery(
+        pool,
+        query,
+        tileParams(searchParams),
+        Number(tileMatch[2]),
+        Number(tileMatch[3]),
+        Number(tileMatch[4])
+      )
+      // Draft queries change under the session; never cache preview tiles
+      res.writeHead(200, { "content-type": MVT_CONTENT_TYPE, "cache-control": "no-store" })
+      res.end(mvt)
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
     return
   }
 

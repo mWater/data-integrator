@@ -10,7 +10,7 @@ import {
   stopSession,
   subscribeEvents
 } from "./api.js"
-import { DashboardFrame } from "./DashboardFrame.js"
+import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
@@ -258,8 +258,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               dashboardId={detail.integrationId ?? "draft"}
               bundleJs={build.bundleJs ?? ""}
               bundleCss={build.bundleCss ?? ""}
-              kitVersion="1"
+              kitVersion="2"
               runQuery={(name, params) => execSessionQuery(sessionId, name, params)}
+              fetchVectorTile={(query, z, x, y, params) =>
+                fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)
+              }
               onError={message =>
                 setPreviewErrors(errors => (errors.includes(message) ? errors : [...errors.slice(-4), message]))
               }
