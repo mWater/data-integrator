@@ -56,9 +56,11 @@ isolated-vm model is retired).
   Replaces in-process safeFetch. A hostname allowlist would require an egress proxy;
   not designed, revisit if a deployment demands it.
 - Runtime images: `node22` and `python3.12`, standard unrestricted runtimes. Python
-  includes the geospatial stack (GDAL, rasterio, xarray, cfgrib, numpy, pyproj,
-  geopandas); Node has real fetch, fs, crypto, and streams. Libraries are a curated set
-  baked into each image, pinned by digest; no package installs at run time.
+  includes the geospatial stack (GDAL, rasterio, xarray, netCDF4/h5netcdf/h5py, cfgrib,
+  numpy, pyproj, geopandas); Node has real fetch, fs, crypto, and streams. Libraries are
+  a curated set baked into each image, pinned by digest; no package installs at run time.
+  The GDAL base is the small build with no netCDF/HDF driver, so those formats are read
+  through xarray/h5py rather than GDAL.
 - Both languages are first-class. Agent guidance: gridded/geospatial/large-file work is
   Python; API-to-rows glue is either.
 

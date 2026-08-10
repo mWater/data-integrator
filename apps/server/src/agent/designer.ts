@@ -106,9 +106,24 @@ path (relative to /out, e.g. "pop_2023.tif"), timestamp, timestampEnd?, footprin
 of truth. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
 
-Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, cfgrib, pyproj,
-requests. Node image: csv-parse, fast-xml-parser, date-fns. Jobs have public-internet
-egress only; private networks are blocked.
+Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, netCDF4,
+h5netcdf, h5py, cfgrib, pyproj, requests. Node image: csv-parse, fast-xml-parser,
+date-fns. Jobs have public-internet egress only; private networks are blocked.
+
+These curated libraries are ALL you get. Every snippet and run starts a fresh
+container, so installing packages does not work: a pip install lasts only to the end
+of that one snippet, and re-installing each run is not an acceptable design. Formats
+you can read: GeoTIFF/COG and the rest of GDAL's small build (rasterio, gdal CLI),
+NetCDF-3/4 (xarray, engine netcdf4 or h5netcdf), plain HDF5 (h5py), GRIB (xarray +
+cfgrib), and the usual CSV/JSON/XML and vector formats (geopandas, ogr2ogr). GDAL
+itself has NO netCDF or HDF driver here, so read those with xarray/h5py and write
+results out as GeoTIFF; gdalinfo and gdal_translate will reject them.
+
+If a source publishes a format nothing here can read, or is only available by
+scraping rendered map images, STOP and tell the user plainly: name the source, say
+what blocks it, and offer alternative sources or formats. Never reverse-engineer
+pixel colors from published map images back into data values, and never build an
+integration whose numbers you cannot trace to a documented source value.
 
 # Inputs (derived integrations)
 An integration can consume platform data instead of (or as well as) external
