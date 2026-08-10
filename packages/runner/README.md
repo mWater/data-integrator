@@ -16,7 +16,7 @@ const result = await runner.run(
     image: "ghcr.io/data-integrator/runtime-python:latest",
     payload: { definition, secrets, previousState, params },
     mounts: { inDir, workDir, outDir },
-    limits: { cpus: 2, memoryMb: 2048, timeoutMs: 600_000 }
+    limits: { cpus: 2, memoryMb: 2048, timeoutMs: 900_000 }
   },
   { onStderrLine: line => log(line) }
 )

@@ -24,7 +24,7 @@ const DEFAULTS = {
 const LIMIT_DEFAULTS = {
   cpus: 2,
   memoryMb: 2048,
-  timeoutMs: 10 * 60 * 1000,
+  timeoutMs: 15 * 60 * 1000,
   pidsMax: 256,
   tmpfsMb: 256
 }
