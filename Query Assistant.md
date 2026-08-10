@@ -103,3 +103,35 @@ as method guidance ("two scales = two charts or index the data"), not
 enforcement. The assistant's `show_chart` remains the declarative subset —
 the escape hatch is a dashboard-authoring power tool reviewed in the preview
 loop, not an ephemeral-answer surface.
+
+# Time-aware MapView layers (companion piece)
+
+Storage is fully time-aware — a time-series layer keeps one promoted
+snapshot per period, each an immutable COG with observed_at/observed_end,
+snapshot-pinned tile URLs, and time columns on the SQL mirror — but the
+dashboard map path is not: at frame boot the host resolves each MapView
+layer id to its current_snapshot_id, so dashboards can only ever draw the
+newest snapshot. (The main app's Map page has a time slider; the kit does
+not.) Data-level time already works via SQL.
+
+The fix is small and follows the same grow-the-declarative-surface move as
+the chart work:
+
+- Kit `MapLayer` becomes `{layerId, at?: ISO date}` (bare string stays
+  valid). The host already fetches /api/layers, which includes each layer's
+  promoted snapshots; it resolves `at` to the snapshot whose period covers
+  that date, falling back to current when absent — existing dashboards
+  unchanged.
+- The frame's tile fetch handler passes the resolved snapshot through.
+  Tiles are snapshot-pinned, so switching time is switching URLs; viewed
+  periods stay cached.
+- Time *control* is then ordinary dashboard state, no new widget:
+  `SELECT DISTINCT observed_at FROM rasters WHERE layer_id = $1 ORDER BY 1
+  DESC` feeds a `<Select>`, whose value binds both the layer's `at` and the
+  parameters of neighboring queries — a synchronized "pick a month, map and
+  chart update together" dashboard from existing primitives.
+- Document the pattern in the dashboard agent's prompt (and the assistant's
+  `show_map` block gains the same optional `at` per layer).
+
+Roughly a one-day PR: kit MapLayer + host snapshot resolution +
+DashboardFrame handler + prompt update.
