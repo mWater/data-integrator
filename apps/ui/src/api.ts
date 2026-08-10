@@ -458,6 +458,11 @@ export function getSession(sessionId: string): Promise<SessionDetail> {
   return request(`/api/sessions/${sessionId}`)
 }
 
+/** Permanently deletes an assistant chat with its transcript and results. */
+export function deleteSession(sessionId: string): Promise<{ ok: boolean }> {
+  return request(`/api/sessions/${sessionId}`, { method: "DELETE" })
+}
+
 /** Requests a graceful stop of a running session (lands at the next step boundary). */
 export function stopSession(sessionId: string): Promise<{ stopping: boolean }> {
   return request(`/api/sessions/${sessionId}/stop`, { method: "POST" })

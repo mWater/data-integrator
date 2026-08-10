@@ -8,8 +8,9 @@ interface ConfirmDeleteProps {
   title: string
   /** Consequence explanation rendered above the confirmation input */
   children: ReactNode
-  /** Exact text the user must type to arm the delete button */
-  confirmToken: string
+  /** Exact text the user must type to arm the delete button; omit to arm it
+   * immediately, for cheap objects where typing is friction without safety */
+  confirmToken?: string
   /** Label of the armed button (default "Delete Forever") */
   confirmLabel?: string
   /** Dismisses without deleting */
@@ -24,27 +25,29 @@ interface ConfirmDeleteProps {
  */
 export function ConfirmDelete({ title, children, confirmToken, confirmLabel, onCancel, onConfirm }: ConfirmDeleteProps) {
   const [typed, setTyped] = useState("")
-  const armed = typed.trim() === confirmToken
+  const armed = confirmToken === undefined || typed.trim() === confirmToken
   return (
     <>
       <div className="drawer-backdrop" onClick={onCancel} />
       <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
         {children}
-        <label>
-          <span>
-            Type <code>{confirmToken}</code> to confirm:
-          </span>
-          <input
-            autoFocus
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && armed) onConfirm()
-              if (e.key === "Escape") onCancel()
-            }}
-          />
-        </label>
+        {confirmToken !== undefined && (
+          <label>
+            <span>
+              Type <code>{confirmToken}</code> to confirm:
+            </span>
+            <input
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && armed) onConfirm()
+                if (e.key === "Escape") onCancel()
+              }}
+            />
+          </label>
+        )}
         <div className="confirm-actions">
           <button className="secondary" onClick={onCancel}>
             Cancel

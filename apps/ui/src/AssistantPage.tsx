@@ -5,7 +5,8 @@
  */
 
 import { useEffect, useState } from "react"
-import { createAssistantSession, listSessions, sendMessage, SessionSummary } from "./api.js"
+import { createAssistantSession, deleteSession, listSessions, sendMessage, SessionSummary } from "./api.js"
+import { ConfirmDelete } from "./ConfirmDelete.js"
 import { WelcomeCompose } from "./WelcomeCompose.js"
 
 /** Human labels for session statuses. */
@@ -21,10 +22,20 @@ const HINTS = [
   "Chart monthly rainfall for the last 12 months"
 ]
 
+/** Trash icon for the per-row delete action. */
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
+  )
+}
+
 /** The Ask-about-the-data page: welcome composer + past conversations. */
 export function AssistantPage() {
   const [chats, setChats] = useState<SessionSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [doomed, setDoomed] = useState<SessionSummary | null>(null)
 
   useEffect(() => {
     listSessions().then(
@@ -32,6 +43,17 @@ export function AssistantPage() {
       err => setError(err.message)
     )
   }, [])
+
+  async function confirmDelete(chat: SessionSummary) {
+    setDoomed(null)
+    setError(null)
+    try {
+      await deleteSession(chat.id)
+      setChats(current => (current ?? []).filter(c => c.id !== chat.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   async function start(text: string) {
     const { sessionId } = await createAssistantSession()
@@ -65,7 +87,7 @@ export function AssistantPage() {
           <h2>Past conversations</h2>
           <table className="sessions">
             <thead>
-              <tr><th>Question</th><th>Status</th><th>Updated</th></tr>
+              <tr><th>Question</th><th>Status</th><th>Updated</th><th /></tr>
             </thead>
             <tbody>
               {chats.map(s => (
@@ -73,11 +95,38 @@ export function AssistantPage() {
                   <td>{s.firstMessage ?? <span className="dim">(empty)</span>}</td>
                   <td><span className={`chip chip-${s.status}`}>{STATUS_LABEL[s.status] ?? s.status}</span></td>
                   <td>{new Date(s.updatedAt).toLocaleString()}</td>
+                  <td className="row-delete-cell">
+                    <button
+                      className="row-delete"
+                      title="Delete chat"
+                      aria-label={`Delete chat: ${s.firstMessage ?? "(empty)"}`}
+                      // The row navigates; the delete must not ride along
+                      onClick={e => {
+                        e.stopPropagation()
+                        setDoomed(s)
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
+      )}
+      {doomed && (
+        <ConfirmDelete
+          title="Delete this conversation?"
+          confirmLabel="Delete"
+          onCancel={() => setDoomed(null)}
+          onConfirm={() => void confirmDelete(doomed)}
+        >
+          <p>
+            {doomed.firstMessage ? <q>{doomed.firstMessage}</q> : "This chat"} and its answers, tables, and charts are
+            deleted for good. <b>This cannot be undone.</b>
+          </p>
+        </ConfirmDelete>
       )}
     </main>
   )

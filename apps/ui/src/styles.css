@@ -189,6 +189,23 @@ table.sessions th, table.sessions td { text-align: left; padding: 10px 14px; bor
 table.sessions tbody tr { cursor: pointer }
 table.sessions tbody tr:hover { background: var(--hover-tint) }
 
+/* Per-row delete: quiet until the row is hovered, so the list stays calm */
+.row-delete-cell { width: 1%; text-align: right; white-space: nowrap }
+.row-delete {
+  padding: 4px 6px;
+  line-height: 0;
+  color: var(--ink-muted);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+tr:hover .row-delete, .row-delete:focus-visible { opacity: 1 }
+.row-delete:hover { color: var(--danger); background: var(--danger-bg) }
+/* Without hover there is no way to reveal it, so keep it out on touch */
+@media (hover: none) { .row-delete { opacity: 1 } }
+
 .dim { color: var(--ink-muted); font-size: 12.5px }
 
 /* Login */

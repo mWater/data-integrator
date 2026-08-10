@@ -904,6 +904,25 @@ async function routeSessions(
     json(res, 403, { error: "Viewers cannot run design sessions" })
     return
   }
+  // Ahead of the service lookup: what may be deleted is a permission question,
+  // and it is answerable whether or not that kind's model is configured
+  if (!sub && req.method === "DELETE") {
+    // Design sessions are team artifacts carrying runs and scratch layers;
+    // only the personal assistant chats are the user's to throw away
+    if (ownerKind !== "assistant") {
+      json(res, 403, { error: "Only assistant chats can be deleted" })
+      return
+    }
+    if (!assistantAgent) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+      return
+    }
+    const deleted = await assistantAgent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
+    if (!deleted) json(res, 403, { error: "Not your chat" })
+    else json(res, 200, { ok: true })
+    return
+  }
+
   const agentService = ownerKind === "dashboard" ? dashboardAgent : ownerKind === "assistant" ? assistantAgent : agent
   if (!agentService) {
     json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })

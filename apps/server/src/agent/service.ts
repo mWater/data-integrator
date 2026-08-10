@@ -219,6 +219,23 @@ export class AgentService<S = unknown> {
     }
   }
 
+  /**
+   * Deletes one session of this kind with its transcript and stored state.
+   * forUserId restricts the delete to that creator's own sessions; a running
+   * loop is asked to stop first, and its later saves fall on the deleted row.
+   * Returns false when nothing matched.
+   */
+  async deleteSession(sessionId: string, forUserId?: string): Promise<boolean> {
+    this.stop(sessionId)
+    const result = await this.pool.query(
+      `DELETE FROM app.agent_sessions WHERE id = $1 AND kind = $2${forUserId ? " AND user_id = $3" : ""}`,
+      forUserId ? [sessionId, this.adapter.kind, forUserId] : [sessionId, this.adapter.kind]
+    )
+    if ((result.rowCount ?? 0) === 0) return false
+    this.channels.delete(sessionId)
+    return true
+  }
+
   /** Subscribes to a session's live events; returns the unsubscribe function. */
   subscribe(sessionId: string, listener: SessionListener): () => void {
     const channel = this.channel(sessionId)

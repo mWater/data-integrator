@@ -449,6 +449,21 @@ test("http: viewers chat with the assistant but stay blocked from design", async
     const body = (await detail.json()) as { kind: string; state: { results: object } }
     assert.equal(body.kind, "assistant")
     assert.deepEqual(body.state.results, {})
+
+    // Delete reaches only your own chats, and only chats
+    const foreignDelete = await fetch(`${base}/api/sessions/${foreign.rows[0].id}`, { method: "DELETE", headers: { cookie } })
+    assert.equal(foreignDelete.status, 403)
+    const designDelete = await fetch(`${base}/api/sessions/${design.rows[0].id}`, { method: "DELETE", headers: { cookie } })
+    assert.equal(designDelete.status, 403)
+    const survivors = await pool.query("SELECT id FROM app.agent_sessions WHERE id = ANY($1)", [
+      [foreign.rows[0].id, design.rows[0].id]
+    ])
+    assert.equal(survivors.rows.length, 2)
+
+    const own = await fetch(`${base}/api/sessions/${sessionId}`, { method: "DELETE", headers: { cookie } })
+    assert.equal(own.status, 200)
+    const gone = await fetch(`${base}/api/sessions/${sessionId}`, { headers: { cookie } })
+    assert.equal(gone.status, 404)
   } finally {
     server.close()
   }
