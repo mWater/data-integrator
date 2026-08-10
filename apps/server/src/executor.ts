@@ -1,17 +1,29 @@
+import { execFile } from "node:child_process"
 import { mkdir, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { promisify } from "node:util"
 import pg from "pg"
 import { Runner, parseJobOutput } from "@data-integrator/runner"
 import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
-import { applyRows, ensureTable } from "./destinations.js"
-import { ensureScratchLayer, storeArtifact, registerSnapshot } from "./catalog.js"
+import {
+  applyRows,
+  applyStagedTable,
+  dropStagedTable,
+  ensureTable,
+  StagedTable,
+  stageTableFile,
+  tableFileFormat
+} from "./destinations.js"
+import { ensureScratchLayer, resolveArtifactPath, storeArtifact, registerSnapshot } from "./catalog.js"
 import { materializeInputs } from "./materialize.js"
 import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 import { getDefaultAoi } from "./settings.js"
 import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx } from "./rasterSql.js"
+
+const execFileP = promisify(execFile)
 
 /** Everything the executor needs from its host. */
 export interface ExecutorDeps {
@@ -138,6 +150,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   const scratch = opts?.scratch ?? null
   let outDir: string | null = null
   let inDir: string | null = null
+  const stagedTables: StagedTable[] = []
   try {
     let definition: IntegrationDefinition
     let definitionVersion: number | null = null
@@ -197,6 +210,17 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       : path.join(deps.workRoot, run.integration_id!)
     if (opts?.cold) await rm(workDir, { recursive: true, force: true })
     await mkdir(workDir, { recursive: true })
+    // The /work quota is a between-runs check, not a kernel limit: a job over
+    // quota does not start, and /work is a cache, so a cold run clears it
+    const workQuotaMb = definition.limits?.workDiskMb ?? null
+    if (workQuotaMb !== null) {
+      const usedMb = await dirUsageMb(workDir)
+      if (usedMb !== null && usedMb > workQuotaMb) {
+        throw new Error(
+          `/work holds ${usedMb} MB, over the ${workQuotaMb} MB workDiskMb quota; run cold to clear the workspace`
+        )
+      }
+    }
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
 
     const logParts: string[] = []
@@ -223,6 +247,15 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         }
       }
     )
+    let workUsedMb: number | null = null
+    if (workQuotaMb !== null) {
+      workUsedMb = await dirUsageMb(workDir)
+      if (workUsedMb !== null && workUsedMb > workQuotaMb) {
+        logParts.push(
+          `warning: /work holds ${workUsedMb} MB, over the ${workQuotaMb} MB quota; the next run will refuse to start`
+        )
+      }
+    }
     const log = logParts.join("\n").slice(-256 * 1024)
 
     if (jobResult.status !== "succeeded") {
@@ -275,6 +308,28 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     const tableSpecs = new Map(
       definition.destinations.filter(d => d.kind === "table").map(d => [d.tableId, d] as const)
     )
+
+    // Table files into staging before the transaction, for the same reason
+    // rasters go to the store first: ogr2ogr cannot join the commit, so only
+    // the staged rows do. Staging tables are dropped in the finally.
+    for (const artifact of output.tables ?? []) {
+      const spec = tableSpecs.get(artifact.tableId)
+      if (!spec) throw new Error(`Table file for undeclared table ${artifact.tableId}`)
+      if (output.data?.[artifact.tableId]) {
+        throw new Error(`Table ${artifact.tableId} arrived both as inline rows and as a file; return one or the other`)
+      }
+      stagedTables.push(
+        await stageTableFile(
+          deps.pool,
+          deps.databaseUrl,
+          spec,
+          resolveArtifactPath(outDir, artifact.path),
+          tableFileFormat(artifact),
+          run.id
+        )
+      )
+    }
+
     const client = await deps.pool.connect()
     try {
       if (!scratch && storedArtifacts.length > 0) await enableOutDbSession(client)
@@ -284,6 +339,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         const spec = tableSpecs.get(tableId)
         if (!spec) throw new Error(`Rows for undeclared table ${tableId}`)
         rowCounts[tableId] = await applyRows(client, spec, rows, run.id, schema)
+      }
+      for (const staged of stagedTables) {
+        rowCounts[staged.spec.tableId] = await applyStagedTable(client, staged, run.id, schema)
       }
       for (const { artifact, layer, stored } of storedArtifacts) {
         await registerSnapshot(client, run.id, artifact, stored, layer.temporality, layerRowFor(artifact.layerId))
@@ -322,7 +380,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           run.id,
           output.state !== undefined ? JSON.stringify(output.state) : null,
           definitionVersion,
-          JSON.stringify({ rows: rowCounts, snapshots: storedArtifacts.length, durationMs: Date.now() - started }),
+          JSON.stringify({
+            rows: rowCounts,
+            snapshots: storedArtifacts.length,
+            durationMs: Date.now() - started,
+            ...(workUsedMb !== null ? { workMb: workUsedMb } : {})
+          }),
           log,
           // Lineage records the AOI the run actually executed with: the
           // deployment default resolves at run time, so the definition alone
@@ -350,8 +413,20 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     })
   } finally {
     clearInterval(heartbeat)
+    for (const staged of stagedTables) await dropStagedTable(deps.pool, staged)
     if (outDir) await rm(outDir, { recursive: true, force: true })
     if (inDir) await rm(inDir, { recursive: true, force: true })
+  }
+}
+
+/** Disk usage of a directory in MB; null when it cannot be measured. */
+async function dirUsageMb(dir: string): Promise<number | null> {
+  try {
+    const { stdout } = await execFileP("du", ["-sk", dir])
+    const kb = Number(stdout.trim().split(/\s+/)[0])
+    return Number.isFinite(kb) ? Math.round(kb / 1024) : null
+  } catch {
+    return null
   }
 }
 

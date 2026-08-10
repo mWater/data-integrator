@@ -70,7 +70,9 @@ One contract, language-agnostic:
 
 - stdin: JSON `{ definition, secrets, previousState, webhookData?, params }`;
   webhookData is all pending events, batched oldest first
-- stdout: JSON `{ data?: { [tableId]: rows[] }, rasters?: RasterArtifact[], state? }`
+- stdout: JSON `{ data?: { [tableId]: rows[] }, tables?: TableArtifact[],
+  rasters?: RasterArtifact[], state? }`. stdout is capped (10 MB), so `data` is for
+  result sets that comfortably fit; larger tables travel as files in `tables[]`
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
   tabular extracts), resolved and materialized by the server at launch and described to
@@ -81,7 +83,8 @@ One contract, language-agnostic:
   limits. `previousState` remains the only authoritative incremental state. Workspaces
   are never shared: data used by multiple integrations is ingested once as a catalog
   layer and consumed via `inputs`.
-- `/out` mount: raster artifacts (COGs) written here, referenced by path in `rasters[]`
+- `/out` mount: artifacts written here, referenced by path: raster snapshots (COGs) in
+  `rasters[]`, table files (GeoJSON/FlatGeobuf/GeoPackage/CSV) in `tables[]`
 - Exit code nonzero = failed run; stderr tail becomes the error
 
 The harness in each image maps the payload onto a single entrypoint, so integration code
@@ -95,6 +98,15 @@ The return value becomes stdout. The sandbox is the container, not the language.
 `RasterArtifact`: `{ layerId, path, timestamp, footprint?, crs?, metadata? }`. The server
 validates tabular output against destination schemas and registers raster artifacts in the
 catalog. Jobs never touch Postgres or the raster store directly.
+
+`TableArtifact`: `{ tableId, path, format? }`, format inferred from the extension. The
+server loads the file into a staging table with ogr2ogr, then applies it to the
+destination inside the commit transaction, so a file load has the same atomicity as
+inline rows: `replace` still builds a new table and swaps. Declared columns remain the
+contract, matched to file fields by name and cast to the declared types; the file's
+geometry feeds a declared geometry column whatever the driver named it, and is
+reprojected to EPSG:4326 when it carries another CRS. One layer per file, and a table
+arrives either inline or as a file, never both.
 
 ## Data storage
 

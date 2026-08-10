@@ -102,9 +102,19 @@ Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webho
 ctx.params, ctx.in_dir, ctx.work_dir, ctx.out_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
 params, inDir, workDir, outDir}).
-Return: {data?: {tableId: [row objects matching declared columns]}, rasters?: [{layerId,
+Return: {data?: {tableId: [row objects matching declared columns]}, tables?: [{tableId,
+path (relative to /out), format? "geojson"|"fgb"|"gpkg"|"csv"}], rasters?: [{layerId,
 path (relative to /out, e.g. "pop_2023.tif"), timestamp, timestampEnd?, footprint?
 [w,s,e,n], crs?, metadata?}], state?: any}. Geometry columns take GeoJSON; raster files should be COGs.
+data is inline rows and travels through stdout, which is capped at 10 MB total. For
+anything larger, and for any geometry-heavy table (boundaries, catchments, road networks),
+write the rows to /out as a file instead and declare it in tables[]: geopandas
+to_file("{ctx.out_dir}/admin1.fgb") then {"tables": [{"tableId": "admin1", "path":
+"admin1.fgb"}]}. There is no size limit on that path and it is faster to load, so never
+split a dataset across many runs, and never simplify geometry, merely to fit stdout. File
+fields are matched to declared columns by name and cast; the file's geometry column feeds
+the declared geometry column whatever it is named, and is reprojected to 4326 if needed.
+One layer per file. A table is either inline or a file, never both in one run.
 /work persists between runs of this integration; treat it as a cache, never as the source
 of truth. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.

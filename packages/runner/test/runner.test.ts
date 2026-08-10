@@ -70,6 +70,20 @@ test("payload arrives on stdin", { skip: !AVAILABLE }, async () => {
   assert.deepEqual(JSON.parse(result.stdout), { a: 1, s: "x" })
 })
 
+test("stdout past the cap reports the size, not broken JSON", { skip: !AVAILABLE }, async () => {
+  const capped = new Runner({ network: "integrator-jobs-test", stdoutLimitBytes: 64 * 1024 })
+  const result = await capped.run({
+    image: ALPINE,
+    payload: null,
+    // Valid JSON until the cap cuts it off, which is how a too-big result looks
+    command: ["sh", "-c", `printf '{"data":"'; head -c 200000 /dev/zero | tr '\\0' x; printf '"}'`]
+  })
+  assert.equal(result.status, "succeeded")
+  assert.ok(result.stdoutTruncated)
+  assert.equal(result.stdoutLimitBytes, 64 * 1024)
+  assert.throws(() => parseJobOutput(result), /exceeded the 64 KB stdout limit.*tables\[\]/s)
+})
+
 test("nonzero exit reports failed with stderr tail", { skip: !AVAILABLE }, async () => {
   const result = await runner.run({
     image: ALPINE,

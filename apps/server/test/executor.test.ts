@@ -273,6 +273,115 @@ def run(ctx):
   assert.equal(Number(out.rows[0].snap_files), 2)
 }, { timeout: 180_000 })
 
+test("table file: rows travel through /out and land atomically", { skip: !AVAILABLE }, async () => {
+  const fileDef: IntegrationDefinition = {
+    id: "e2e_file",
+    name: "File channel",
+    trigger: {},
+    runtime: "python3.12",
+    destinations: [
+      {
+        kind: "table",
+        tableId: "e2e_regions",
+        action: "replace",
+        columns: [
+          { id: "code", type: "text" },
+          { id: "level", type: "number" },
+          { id: "boundary", type: "geometry" }
+        ]
+      }
+    ],
+    code: `
+import geopandas as gpd
+from shapely.geometry import Point
+
+def run(ctx):
+    n = ((ctx.previous_state or {}).get("n") or 0) + 1
+    frame = gpd.GeoDataFrame(
+        {"code": [f"r{i}" for i in range(n)], "level": [float(i) for i in range(n)]},
+        geometry=[Point(44 + i * 0.5, -18 - i * 0.5) for i in range(n)],
+        crs="EPSG:4326",
+    )
+    frame.to_file(f"{ctx.out_dir}/regions.fgb", driver="FlatGeobuf")
+    return {"tables": [{"tableId": "e2e_regions", "path": "regions.fgb"}], "state": {"n": n}}
+`,
+    contract: 2
+  }
+  await installIntegration(pool, fileDef)
+
+  const runFile = async (): Promise<string> => {
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_file', 'manual', 'queued')`)
+    const run = await claimNextRun(pool, "test-worker")
+    assert.ok(run)
+    await executeRun(deps, run!)
+    return run!.id
+  }
+
+  const firstId = await runFile()
+  const first = await pool.query("SELECT status, error, stats FROM app.runs WHERE id = $1", [firstId])
+  assert.equal(first.rows[0].status, "succeeded", first.rows[0].error ?? "")
+  assert.equal(first.rows[0].stats.rows.e2e_regions, 1)
+  const loaded = await pool.query(
+    `SELECT code, level, _run_id, ST_SRID(boundary) AS srid, ST_AsGeoJSON(boundary) AS geom FROM data.e2e_regions`
+  )
+  assert.equal(loaded.rows[0].code, "r0")
+  assert.equal(loaded.rows[0]._run_id, firstId)
+  assert.equal(loaded.rows[0].srid, 4326)
+  assert.deepEqual(JSON.parse(loaded.rows[0].geom).coordinates, [44, -18])
+
+  // Second run replaces wholesale, and staging never outlives the run
+  const secondId = await runFile()
+  const second = await pool.query("SELECT status, error, stats FROM app.runs WHERE id = $1", [secondId])
+  assert.equal(second.rows[0].status, "succeeded", second.rows[0].error ?? "")
+  assert.equal(second.rows[0].stats.rows.e2e_regions, 2)
+  const replaced = await pool.query("SELECT code, _run_id FROM data.e2e_regions ORDER BY code")
+  assert.deepEqual(replaced.rows.map(r => r.code), ["r0", "r1"])
+  assert.ok(replaced.rows.every(r => r._run_id === secondId))
+  const staging = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'stage'`)
+  assert.deepEqual(staging.rows, [])
+}, { timeout: 180_000 })
+
+test("workDiskMb: over-quota /work warns, then refuses the next run", { skip: !AVAILABLE }, async () => {
+  const quotaDef: IntegrationDefinition = {
+    id: "e2e_quota",
+    name: "Quota",
+    trigger: {},
+    runtime: "python3.12",
+    limits: { workDiskMb: 1 },
+    destinations: [
+      { kind: "table", tableId: "e2e_quota_rows", action: "append", columns: [{ id: "n", type: "integer" }] }
+    ],
+    code: `
+def run(ctx):
+    with open(f"{ctx.work_dir}/cache.bin", "wb") as f:
+        f.write(b"x" * 2 * 1024 * 1024)
+    return {"data": {"e2e_quota_rows": [{"n": 1}]}}
+`,
+    contract: 2
+  }
+  await installIntegration(pool, quotaDef)
+  const queue = async (): Promise<string> => {
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_quota', 'manual', 'queued')`)
+    const run = await claimNextRun(pool, "test-worker")
+    assert.ok(run)
+    await executeRun(deps, run!)
+    return run!.id
+  }
+
+  // The job that fills /work still succeeds; its log carries the warning
+  const firstId = await queue()
+  const first = await pool.query("SELECT status, error, log, stats FROM app.runs WHERE id = $1", [firstId])
+  assert.equal(first.rows[0].status, "succeeded", first.rows[0].error ?? "")
+  assert.equal(first.rows[0].stats.workMb, 2)
+  assert.match(first.rows[0].log, /over the 1 MB quota/)
+
+  // The next run refuses to start rather than growing the workspace further
+  const secondId = await queue()
+  const second = await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [secondId])
+  assert.equal(second.rows[0].status, "failed")
+  assert.match(second.rows[0].error, /over the 1 MB workDiskMb quota; run cold to clear/)
+}, { timeout: 180_000 })
+
 test("scratch run: session schema, preview layer, no install, cleanup", { skip: !AVAILABLE }, async () => {
   const session = await pool.query(
     `INSERT INTO app.agent_sessions (kind, status, messages, client_state, usage)

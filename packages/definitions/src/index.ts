@@ -97,7 +97,7 @@ export interface JobLimitsSpec {
   memoryMb?: number
   /** Wall-clock timeout in ms */
   timeoutMs?: number
-  /** Quota for the persistent /work workspace in MB */
+  /** Quota for the persistent /work workspace in MB, checked between runs (no kernel enforcement) */
   workDiskMb?: number
 }
 
@@ -217,7 +217,7 @@ export interface TableInManifestInput {
 /** Where integration results land: a table or a raster layer. */
 export type Destination = TableDestination | RasterLayerDestination
 
-/** Tabular destination; rows arrive via RunResult.data keyed by tableId. */
+/** Tabular destination; rows arrive via RunResult.data keyed by tableId, or as a file via RunResult.tables. */
 export interface TableDestination {
   /** Discriminator */
   kind: "table"
@@ -313,13 +313,33 @@ export interface RangeRule {
 
 /** Return value of run(ctx); the harness serializes it to stdout. */
 export interface RunResult {
-  /** Rows per destination table id */
+  /** Rows per destination table id, inline. Bounded by the stdout cap; larger tables go in `tables`. */
   data?: Record<string, Record<string, unknown>[]>
+  /** Table files written to /out, loaded into their destination tables */
+  tables?: TableArtifact[]
   /** Raster artifacts written to /out, to be registered in the catalog */
   rasters?: RasterArtifact[]
   /** Next incremental state, persisted and passed as previousState */
   state?: Record<string, unknown>
 }
+
+/**
+ * One table file produced by a run, loaded into a destination table. The file
+ * channel carries the same rows `data` would, without serializing them through
+ * stdout, so it is the way to deliver large or geometry-heavy tables. A tableId
+ * may appear in `data` or `tables`, never both.
+ */
+export interface TableArtifact {
+  /** Destination table the file feeds */
+  tableId: string
+  /** Path relative to /out */
+  path: string
+  /** File format; server derives it from the extension when absent */
+  format?: TableArtifactFormat
+}
+
+/** Formats accepted for a table file; all are read with OGR. */
+export type TableArtifactFormat = "geojson" | "fgb" | "gpkg" | "csv"
 
 /** One raster file produced by a run, registered as a catalog snapshot. */
 export interface RasterArtifact {

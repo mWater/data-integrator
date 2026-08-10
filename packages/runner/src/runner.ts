@@ -173,6 +173,7 @@ export class Runner {
       exitCode,
       stdout,
       stdoutTruncated,
+      stdoutLimitBytes: this.opts.stdoutLimitBytes,
       stderrTail,
       durationMs: Date.now() - started
     }
@@ -207,10 +208,22 @@ export class Runner {
   }
 }
 
+/** Byte count as MB or KB, for limit messages. */
+function sizeLabel(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`
+}
+
 /** Parses the stdout of a succeeded job as the harness result JSON. */
 export function parseJobOutput<T = unknown>(result: JobResult): T {
   if (result.status !== "succeeded") {
     throw new Error(`Job ${result.status}: ${result.stderrTail.slice(-500)}`)
+  }
+  // Truncated stdout is invalid JSON in any case; reported as the size problem it is
+  if (result.stdoutTruncated) {
+    throw new Error(
+      `Job result exceeded the ${sizeLabel(result.stdoutLimitBytes)} stdout limit. ` +
+        `Write large tables to /out as files and declare them in tables[] instead of returning rows in data.`
+    )
   }
   try {
     return JSON.parse(result.stdout) as T

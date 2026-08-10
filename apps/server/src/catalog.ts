@@ -63,15 +63,15 @@ export async function ensureLayer(
 }
 
 /**
- * Resolves a declared artifact path against the job's out directory. Accepts
- * the absolute container spelling (/out/x.tif) as well as the contractual
- * relative one; rejects anything escaping the directory.
+ * Resolves a path declared by a job (raster or table file) against the job's
+ * out directory. Accepts the absolute container spelling (/out/x.tif) as well
+ * as the contractual relative one; rejects anything escaping the directory.
  */
 export function resolveArtifactPath(outDir: string, declared: string): string {
   const relative = declared.replace(/^\/out\//, "")
   const file = path.resolve(outDir, relative)
   if (!file.startsWith(path.resolve(outDir) + path.sep)) {
-    throw new Error(`Declared raster path escapes /out: ${declared}`)
+    throw new Error(`Declared path escapes /out: ${declared}`)
   }
   return file
 }

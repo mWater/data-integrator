@@ -53,6 +53,8 @@ export interface JobResult {
   stdout: string
   /** True when stdout exceeded the cap and was cut off */
   stdoutTruncated: boolean
+  /** The cap stdout was captured under */
+  stdoutLimitBytes: number
   /** Trailing stderr output, capped; first place to look on failure */
   stderrTail: string
   /** Wall-clock duration of the run in ms */

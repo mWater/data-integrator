@@ -12,10 +12,12 @@
  *   and execute them; per-integration serialization is the partial unique
  *   indexes' job, not the workers'.
  * - Reaper: periodically fails runs with stale heartbeats, releasing the
- *   one-running constraint so the next tick can re-enqueue.
+ *   one-running constraint so the next tick can re-enqueue, and drops staging
+ *   tables those runs left behind.
  */
 
 import { hostname } from "node:os"
+import { dropOrphanStagedTables } from "./destinations.js"
 import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns } from "./executor.js"
 import { cronMatches, parseCron } from "./cron.js"
 
@@ -120,6 +122,7 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       await sleep(reapMs)
       if (stopped) break
       await reapStaleRuns(deps.pool).catch(err => console.error("scheduler reap failed:", err))
+      await dropOrphanStagedTables(deps.pool).catch(err => console.error("staging cleanup failed:", err))
     }
   })()
 
