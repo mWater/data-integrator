@@ -89,6 +89,26 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
   color: var(--topbar-dim); cursor: pointer; display: flex; align-items: center;
 }
 .theme-toggle:hover { color: var(--topbar-ink); background: rgba(255, 255, 255, 0.08) }
+.user-menu { position: relative; display: flex }
+.user-menu-trigger {
+  background: none; border: 0; padding: 5px 8px; border-radius: 6px; font-size: 13px;
+  color: var(--topbar-dim); cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.user-menu-trigger:hover, .user-menu-trigger[aria-expanded="true"] {
+  color: var(--topbar-ink); background: rgba(255, 255, 255, 0.08);
+}
+.user-menu-list {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; min-width: 180px;
+  display: flex; flex-direction: column; padding: 6px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 8px 24px var(--shadow);
+}
+.user-menu-list [role="menuitem"] {
+  display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
+  background: none; color: var(--ink); font: inherit; font-size: 13.5px;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.user-menu-list [role="menuitem"]:hover { background: var(--hover-tint) }
 
 .error {
   background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);
@@ -198,7 +218,6 @@ body.col-resizing iframe { pointer-events: none }
 }
 .login-card h1 { margin: 0 0 8px; font-size: 20px; text-align: center }
 .login-card input { padding: 9px 12px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit }
-.user-email { color: var(--topbar-dim); font-size: 13px }
 button.linkish {
   background: none; color: var(--topbar-dim); padding: 0; font-size: 13px; text-decoration: underline;
 }
@@ -400,6 +419,36 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 /* Integration AOI section */
 .aoi-section { margin: 4px 0 16px }
 .aoi-section h3 { margin: 12px 0 6px }
+
+/* Settings sections */
+.settings-section { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border) }
+.settings-section h2 { margin-top: 0 }
+
+/* Users table: sessions styling without clickable rows */
+table.users tbody tr { cursor: default }
+table.users tbody tr:hover { background: none }
+.user-add-form { display: flex; gap: 8px; margin: 12px 0; align-items: center }
+.user-add-form input {
+  width: 260px; padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
+}
+.user-add-form select, table.users select { margin-bottom: 0 }
+
+/* Change password form */
+.password-form { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin-top: 8px }
+.password-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-dim) }
+.password-form input {
+  width: 260px; padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
+}
+
+/* Viewport-covering backdrop for dialogs on scrolling pages */
+.modal-backdrop { position: fixed; inset: 0; z-index: 4; background: var(--backdrop) }
+
+/* One-time password reveal */
+.password-box { display: flex; gap: 8px; align-self: stretch }
+.password-box input.password-value {
+  flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 10px;
+  border: 1px solid var(--control-border); border-radius: 6px; background: var(--inset);
+}
 
 /* Library install confirm row */
 .library-confirm td { background: var(--inset); border-radius: 6px }

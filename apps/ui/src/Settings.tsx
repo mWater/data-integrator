@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
+  changePassword,
   clearDefaultAoi,
   CountryBox,
   DefaultAoi,
@@ -8,6 +9,7 @@ import {
   setDefaultAoi,
   User
 } from "./api.js"
+import { UsersSection } from "./UsersSection.js"
 
 /** Formats a bbox for display. */
 function formatBbox(bbox: [number, number, number, number]): string {
@@ -157,6 +159,85 @@ export function Settings({ user }: { user: User }) {
           )}
         </>
       )}
+      {isAdmin && <UsersSection currentUser={user} />}
+      <ChangePasswordSection />
     </main>
+  )
+}
+
+/** Self-service password change, proving the current password. */
+function ChangePasswordSection() {
+  const [current, setCurrent] = useState("")
+  const [next, setNext] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setNotice(null)
+    if (next.length < 8) {
+      setError("Password must be at least 8 characters")
+      return
+    }
+    if (next !== confirm) {
+      setError("New passwords do not match")
+      return
+    }
+    setBusy(true)
+    try {
+      await changePassword(current, next)
+      setCurrent("")
+      setNext("")
+      setConfirm("")
+      setNotice("Password changed.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="settings-section">
+      <h2>Change password</h2>
+      {error && <div className="error">{error}</div>}
+      <form className="password-form" onSubmit={submit}>
+        <label>
+          Current password
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={e => setCurrent(e.target.value)}
+            required
+          />
+        </label>
+        <label>
+          New password
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={next}
+            onChange={e => setNext(e.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Confirm new password
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            required
+          />
+        </label>
+        <button disabled={busy || !current || !next || !confirm}>Change Password</button>
+        {notice && <p className="dim">{notice}</p>}
+      </form>
+    </section>
   )
 }

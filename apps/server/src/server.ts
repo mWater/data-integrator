@@ -38,8 +38,11 @@ import {
   getSessionUser,
   getTokenUser,
   listApiTokens,
-  revokeApiToken
+  revokeApiToken,
+  setPassword,
+  verifyPassword
 } from "./auth.js"
+import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
@@ -290,6 +293,93 @@ async function route(
     await setSetting(pool, DEFAULT_AOI_KEY, aoi)
     json(res, 200, { default_aoi: aoi })
     return
+  }
+
+  // Own password change: any signed-in user, proving the current password
+  if (pathname === "/api/me/password" && req.method === "POST") {
+    const body = await readJsonBody(req)
+    const newPassword = String(body.newPassword ?? "")
+    if (newPassword.length < 8) {
+      json(res, 400, { error: "Password must be at least 8 characters" })
+      return
+    }
+    const row = await pool.query("SELECT password_hash FROM app.users WHERE id = $1", [user.id])
+    // A wrong guess here does not feed the login lockout counter: the caller
+    // already holds a valid session, and a stale tab must not lock the account
+    if (row.rows.length === 0 || !(await verifyPassword(row.rows[0].password_hash, String(body.currentPassword ?? "")))) {
+      json(res, 400, { error: "Current password is incorrect" })
+      return
+    }
+    await setPassword(pool, user.email, newPassword)
+    json(res, 200, { ok: true })
+    return
+  }
+
+  // User management: list/add, and per-user reset/role/disable — admins only
+  const userActionMatch = pathname.match(/^\/api\/users\/([0-9a-f-]{36})\/(password|role|disabled)$/)
+  if (pathname === "/api/users" || userActionMatch) {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can manage users" })
+      return
+    }
+    if (pathname === "/api/users") {
+      if (req.method === "POST") {
+        const body = await readJsonBody(req)
+        const email = String(body.email ?? "").trim()
+        const role = String(body.role ?? "")
+        if (!email.includes("@")) {
+          json(res, 400, { error: "A valid email is required" })
+          return
+        }
+        if (!["admin", "editor", "viewer"].includes(role)) {
+          json(res, 400, { error: "Role must be admin, editor, or viewer" })
+          return
+        }
+        try {
+          json(res, 201, await createManagedUser(pool, email, role as AuthUser["role"]))
+        } catch (err) {
+          if ((err as { code?: string }).code === "23505") {
+            json(res, 409, { error: "A user with that email already exists" })
+          } else throw err
+        }
+      } else {
+        json(res, 200, { users: await listUsers(pool) })
+      }
+      return
+    }
+    const [, targetId, action] = userActionMatch!
+    if (action === "password" && req.method === "POST") {
+      const password = await resetPassword(pool, targetId)
+      if (password === null) json(res, 404, { error: "no such user" })
+      else json(res, 200, { password })
+      return
+    }
+    if (action === "role" && req.method === "PUT") {
+      const body = await readJsonBody(req)
+      const role = String(body.role ?? "")
+      if (!["admin", "editor", "viewer"].includes(role)) {
+        json(res, 400, { error: "Role must be admin, editor, or viewer" })
+        return
+      }
+      const result = await setRole(pool, targetId, role as AuthUser["role"])
+      if (result.ok) json(res, 200, { user: result.user })
+      else if (result.reason === "not-found") json(res, 404, { error: "no such user" })
+      else json(res, 409, { error: "Cannot demote the last active admin" })
+      return
+    }
+    if (action === "disabled" && req.method === "PUT") {
+      const body = await readJsonBody(req)
+      const disabled = Boolean(body.disabled)
+      if (disabled && targetId === user.id) {
+        json(res, 400, { error: "You cannot disable your own account" })
+        return
+      }
+      const result = await setDisabled(pool, targetId, disabled)
+      if (result.ok) json(res, 200, { user: result.user })
+      else if (result.reason === "not-found") json(res, 404, { error: "no such user" })
+      else json(res, 409, { error: "Cannot disable the last active admin" })
+      return
+    }
   }
 
   // Basemap proxy: cached upstream style/sprite/glyph/tile bytes for map frames

@@ -81,6 +81,76 @@
         "responses": { "200": { "description": "Revoked" }, "404": { "description": "No such token" } }
       }
     },
+    "/api/me/password": {
+      "post": {
+        "summary": "Change your own password, proving the current one",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": { "currentPassword": { "type": "string" }, "newPassword": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "{ ok }" }, "400": { "description": "Wrong current password or new password too short" } }
+      }
+    },
+    "/api/users": {
+      "get": { "summary": "List all users (admin)", "responses": { "200": { "description": "{ users }" } } },
+      "post": {
+        "summary": "Create a user with a generated password, returned once (admin)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "role"],
+                "properties": { "email": { "type": "string" }, "role": { "enum": ["admin", "editor", "viewer"] } }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "{ user, password }" }, "409": { "description": "Email already exists" } }
+      }
+    },
+    "/api/users/{id}/password": {
+      "post": {
+        "summary": "Reset a user's password to a fresh generated one, returned once; clears any lockout (admin)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "{ password }" }, "404": { "description": "No such user" } }
+      }
+    },
+    "/api/users/{id}/role": {
+      "put": {
+        "summary": "Change a user's role; refuses to demote the last active admin (admin)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "required": ["role"], "properties": { "role": { "enum": ["admin", "editor", "viewer"] } } }
+            }
+          }
+        },
+        "responses": { "200": { "description": "{ user }" }, "404": { "description": "No such user" }, "409": { "description": "Last active admin" } }
+      }
+    },
+    "/api/users/{id}/disabled": {
+      "put": {
+        "summary": "Disable (revoking sessions) or enable a user; refuses to disable yourself or the last active admin (admin)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "required": ["disabled"], "properties": { "disabled": { "type": "boolean" } } }
+            }
+          }
+        },
+        "responses": { "200": { "description": "{ user }" }, "404": { "description": "No such user" }, "409": { "description": "Last active admin" } }
+      }
+    },
     "/api/tables": {
       "get": {
         "summary": "List queryable tables with their declared column schemas",

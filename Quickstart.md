@@ -102,6 +102,11 @@ Roles: `admin` (everything), `editor` (integrations and agent sessions),
 `viewer` (read-only). More user commands: `user list`, `user disable <email>`,
 `user enable <email>`, `user token <email> [name]`.
 
+Once the first admin exists, further users are managed in the UI under
+**Settings → Users** (add, reset password, change role, disable/enable), and
+every signed-in user can change their own password there. The CLI commands
+remain for bootstrap and for recovering a locked-out admin.
+
 ## Run the server
 
 ```sh

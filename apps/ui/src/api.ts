@@ -254,6 +254,55 @@ export function logout(): Promise<{ ok: boolean }> {
   return request("/api/logout", { method: "POST" })
 }
 
+/** One user as admins manage them. */
+export interface AdminUser {
+  /** User id */
+  id: string
+  /** Login email */
+  email: string
+  /** Role: admin, editor, or viewer */
+  role: "admin" | "editor" | "viewer"
+  /** Whether sign-in is blocked */
+  disabled: boolean
+  /** Creation time (ISO) */
+  createdAt: string
+}
+
+/** JSON request options for a body-carrying method. */
+function jsonBody(method: "POST" | "PUT", body: unknown): RequestInit {
+  return { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
+}
+
+/** Lists all users (admin). */
+export function listUsers(): Promise<{ users: AdminUser[] }> {
+  return request("/api/users")
+}
+
+/** Creates a user; the generated password is returned once (admin). */
+export function createUser(email: string, role: AdminUser["role"]): Promise<{ user: AdminUser; password: string }> {
+  return request("/api/users", jsonBody("POST", { email, role }))
+}
+
+/** Resets a user's password to a fresh generated one, returned once (admin). */
+export function resetUserPassword(id: string): Promise<{ password: string }> {
+  return request(`/api/users/${id}/password`, { method: "POST" })
+}
+
+/** Changes a user's role (admin). */
+export function setUserRole(id: string, role: AdminUser["role"]): Promise<{ user: AdminUser }> {
+  return request(`/api/users/${id}/role`, jsonBody("PUT", { role }))
+}
+
+/** Disables or enables a user (admin). */
+export function setUserDisabled(id: string, disabled: boolean): Promise<{ user: AdminUser }> {
+  return request(`/api/users/${id}/disabled`, jsonBody("PUT", { disabled }))
+}
+
+/** Changes the signed-in user's own password. */
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  return request("/api/me/password", jsonBody("POST", { currentPassword, newPassword }))
+}
+
 /** One promoted snapshot of a layer (map time axis). */
 export interface LayerSnapshot {
   /** Snapshot id (tile URLs pin to it) */

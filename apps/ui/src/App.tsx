@@ -12,6 +12,7 @@ import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 import { Settings } from "./Settings.js"
 import { Library } from "./Library.js"
+import { UserMenu } from "./UserMenu.js"
 
 /** Parsed hash route. */
 interface Route {
@@ -130,17 +131,10 @@ export function App() {
           <a href="#/library">Library</a>
           <a href="#/dashboards">Dashboards</a>
           <a href="#/map">Map</a>
-          <a href="#/settings">Settings</a>
         </nav>
         <span style={{ flex: 1 }} />
         <ThemeToggle />
-        <span className="user-email">{user.email}</span>
-        <button
-          className="linkish"
-          onClick={() => logout().finally(() => setUser(null))}
-        >
-          Sign Out
-        </button>
+        <UserMenu user={user} onSignOut={() => logout().finally(() => setUser(null))} />
       </header>
       {route.sessionId ? (
         <SessionView sessionId={route.sessionId} canDesign={canDesign} />

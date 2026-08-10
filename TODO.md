@@ -44,8 +44,8 @@ Tracked at the level of what is left, not what exists; see README status and the
   doubling in SessionView (mid-loop refetch overlaps live SSE echoes; keep
   stored messages frozen until the loop ends).
 - STAC-compatible representation of the raster catalog.
-- UI odds and ends: token management page, admin user management page, remove
-  the redundant static /map page, code-split the maplibre chunk.
+- UI odds and ends: token management page, remove the redundant static /map
+  page, code-split the maplibre chunk.
 - Accessibility pass over the UI (promised in the ToR).
 - OIDC as an optional bolt-on for ministries with identity providers.
 
