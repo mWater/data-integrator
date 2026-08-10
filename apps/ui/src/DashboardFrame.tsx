@@ -76,6 +76,17 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       }
       const tables: Record<string, string | null> = {}
       for (const s of sources.sources) if (s.kind === "table") tables[s.id] = s.updatedAt
+      // Snapshot timelines let dashboards drive a date control over a layer
+      const layerInfo = layers.layers.map(layer => ({
+        id: layer.id,
+        name: layer.name,
+        temporality: layer.temporality,
+        snapshots: (layer.snapshots ?? []).map(snapshot => ({
+          id: snapshot.id,
+          observedAt: snapshot.observed_at,
+          observedEnd: snapshot.observed_end ?? null
+        }))
+      }))
       if (destroyed || !container.current) return
 
       frame = mountDashboardFrame({
@@ -86,7 +97,8 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
         init: {
           locale: navigator.language || "en",
           theme: mode === "dark" ? darkTheme : lightTheme,
-          meta: { tables }
+          meta: { tables },
+          layers: layerInfo
         },
         handlers: {
           runQuery: (name, params) =>
@@ -97,8 +109,8 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
             fetchVectorTileRef.current
               ? fetchVectorTileRef.current(query, z, x, y, params)
               : fetchTileBytes(`/api/dashboards/${dashboardId}`, query, z, x, y, params),
-          fetchTile: async (layerId, z, x, y) => {
-            const snapshot = snapshotByLayer.get(layerId)
+          fetchTile: async (layerId, z, x, y, snapshotId) => {
+            const snapshot = snapshotId ?? snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
             const res = await fetch(`/tiles/${layerId}/${snapshot}/${z}/${x}/${y}.png`)
             if (!res.ok) throw new Error(`tile ${res.status}`)

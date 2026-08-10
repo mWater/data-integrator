@@ -144,7 +144,15 @@ One TypeScript React file. Default export is the root component, receiving
   fillOpacity?, popup?}] - build features from query rows (lon/lat columns or
   ST_AsGeoJSON); a feature "color" property overrides the overlay color; popup
   names the property shown on click. layers draws raster catalog layers by
-  layerId. Prefer fit={true} over hand-computed center/zoom so the viewport
+  layerId: [{layerId, snapshotId?, opacity?, label?, colorMap?}], server-rendered
+  from the COG with the layer's own color ramp. This is ALWAYS the right way to
+  draw a raster - never convert pixels to points or polygons through a tile
+  query to get a map of raster values. For a date-driven map (time slider,
+  month picker) take the snapshot list from useLayers(), let the control pick
+  one, and pass its id as snapshotId; omitting snapshotId draws the layer's
+  current snapshot. Use SQL over the rasters table for raster NUMBERS
+  (statistics, values at features), not for drawing the surface.
+  Prefer fit={true} over hand-computed center/zoom so the viewport
   tracks the data. NEVER overlay hand-projected SVG/HTML markers on the map -
   use geojson, which pans and zooms correctly.
   vector is [{query, params?, color?, colorBy?, radius?, radiusBy?, fillOpacity?,
@@ -167,6 +175,9 @@ One TypeScript React file. Default export is the root component, receiving
   rows, ramps as a labeled gradient). legend={false} hides it.
 - useQuery(name, params?) -> {data, loading, error}: executes a stored query.
 - useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
+- useLayers() -> [{id, name, temporality, snapshots: [{id, observedAt, observedEnd}]}]:
+  the raster catalog with each layer's snapshot timeline, oldest first. Drive
+  date controls from it and pass the chosen snapshot id to MapView layers.
 - useTheme(), useLocale(): resolved tokens and locale.
 
 # Query contract

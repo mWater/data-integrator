@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { activityLabel } from "./activity.js"
 import { MessagePart, TranscriptMessage } from "./api.js"
 import { Markdown } from "./Markdown.js"
@@ -62,6 +62,35 @@ function toItems(messages: TranscriptMessage[]): ChatItem[] {
   return items
 }
 
+/** A run of adjacent items rendered as one row. */
+interface ChatGroup {
+  /** Activity label for tool runs; absent for everything else */
+  label?: string
+  /** Members; only tool runs ever hold more than one */
+  items: ChatItem[]
+}
+
+/**
+ * Collapses adjacent tool calls that render the same label into one counted
+ * row, so a burst of exploration reads as one line instead of a wall of
+ * identical ones. Grouping on the label (not the tool name) keeps calls that
+ * describe themselves differently, like cold vs warm test runs, apart.
+ */
+function toGroups(items: ChatItem[]): ChatGroup[] {
+  const groups: ChatGroup[] = []
+  for (const item of items) {
+    if (item.kind !== "tool") {
+      groups.push({ items: [item] })
+      continue
+    }
+    const label = activityLabel(item.tool, item.input, false)
+    const last = groups.at(-1)
+    if (last?.label === label) last.items.push(item)
+    else groups.push({ label, items: [item] })
+  }
+  return groups
+}
+
 /** Props for the transcript. */
 interface TranscriptProps {
   /** Stored model messages */
@@ -76,37 +105,45 @@ export function Transcript({ messages, hideTrailingQuestion }: TranscriptProps) 
   const shown = hideTrailingQuestion && items.at(-1)?.kind === "question" ? items.slice(0, -1) : items
   return (
     <>
-      {shown.map((item, i) =>
-        item.kind === "tool" ? (
-          <ToolBlock key={i} item={item} />
+      {toGroups(shown).map((group, i) => {
+        const item = group.items[0]
+        return group.label != null ? (
+          <ToolBlock key={i} label={group.label} items={group.items} />
         ) : item.kind === "assistant" || item.kind === "question" ? (
           <Markdown key={i} className="msg msg-assistant" text={item.text ?? ""} />
         ) : (
           <div key={i} className={`msg msg-${item.kind}`}>{item.text}</div>
         )
-      )}
+      })}
     </>
   )
 }
 
 /** Props for a completed tool block. */
 interface ToolBlockProps {
-  /** Tool item to render */
-  item: ChatItem
+  /** Shared activity label */
+  label: string
+  /** Calls collapsed into this row, in order */
+  items: ChatItem[]
 }
 
-/** A completed tool call: one subtle activity line, click for the raw detail. */
-function ToolBlock({ item }: ToolBlockProps) {
+/** Completed tool calls: one subtle activity line, click for the raw detail. */
+function ToolBlock({ label, items }: ToolBlockProps) {
   const [expanded, setExpanded] = useState(false)
   return (
     <div className="activity-block">
       <div className="activity" onClick={() => setExpanded(v => !v)}>
-        {activityLabel(item.tool, item.input, false)}
+        {label}
+        {items.length > 1 && <span className="activity-count">×{items.length}</span>}
       </div>
       {expanded && (
         <div className="tool-detail">
-          <pre>{JSON.stringify(item.input, null, 2)}</pre>
-          {item.result && <pre>{item.result}</pre>}
+          {items.map((item, i) => (
+            <Fragment key={i}>
+              <pre>{JSON.stringify(item.input, null, 2)}</pre>
+              {item.result && <pre>{item.result}</pre>}
+            </Fragment>
+          ))}
         </div>
       )}
     </div>

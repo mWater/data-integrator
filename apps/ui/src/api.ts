@@ -260,6 +260,8 @@ export interface LayerSnapshot {
   id: string
   /** Observation time (ISO) */
   observed_at: string
+  /** End of the observed period (ISO) for interval layers, else null */
+  observed_end: string | null
 }
 
 /** One catalog layer as /layers reports it. */

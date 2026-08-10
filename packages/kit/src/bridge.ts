@@ -16,6 +16,28 @@ export interface DashboardMeta {
   tables: Record<string, string | null>
 }
 
+/** One promoted snapshot of a raster layer, addressable as map tiles. */
+export interface LayerSnapshotInfo {
+  /** Snapshot id; pass as MapLayer.snapshotId to pin tiles to this observation. */
+  id: string
+  /** Observation time (ISO 8601). */
+  observedAt: string
+  /** End of the observed period (ISO 8601) for interval layers, else null. */
+  observedEnd: string | null
+}
+
+/** One raster catalog layer the dashboard may draw. */
+export interface LayerInfo {
+  /** Layer id, as passed to MapLayer.layerId. */
+  id: string
+  /** Display name. */
+  name: string
+  /** time-series keeps history; current-only holds a single snapshot. */
+  temporality: string
+  /** Promoted snapshots, oldest first; empty before the layer has data. */
+  snapshots: LayerSnapshotInfo[]
+}
+
 /** Props the host resolves and sends to the frame at mount. */
 export interface FrameInit {
   /** BCP 47 locale for number/date formatting. */
@@ -26,13 +48,15 @@ export interface FrameInit {
   initialState?: unknown
   /** Freshness metadata snapshot. */
   meta: DashboardMeta
+  /** Raster layers with their snapshot timelines, for date-driven map layers. */
+  layers: LayerInfo[]
 }
 
 /** Messages sent frame → host. */
 export type FrameMessage =
   | { type: "di:ready" }
   | { type: "di:query"; id: number; name: string; params: Record<string, unknown> }
-  | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number }
+  | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number; snapshotId?: string }
   | { type: "di:vtile"; id: number; query: string; z: number; x: number; y: number; params: Record<string, unknown> }
   | { type: "di:basemap"; id: number; path: string }
   | { type: "di:error"; message: string; stack?: string }
@@ -111,8 +135,18 @@ export function bridgeQuery(name: string, params: Record<string, unknown>): Prom
   })
 }
 
-/** Fetches raster tile bytes through the host (MapLibre custom protocol). */
-export function bridgeTile(layerId: string, z: number, x: number, y: number): Promise<ArrayBuffer> {
+/**
+ * Fetches raster tile bytes through the host (MapLibre custom protocol).
+ * snapshotId pins the tiles to one observation; without it the host serves the
+ * layer's current snapshot.
+ */
+export function bridgeTile(
+  layerId: string,
+  z: number,
+  x: number,
+  y: number,
+  snapshotId?: string
+): Promise<ArrayBuffer> {
   const id = nextId++
   return new Promise<ArrayBuffer>((resolve, reject) => {
     pending.set(id, {
@@ -123,7 +157,7 @@ export function bridgeTile(layerId: string, z: number, x: number, y: number): Pr
       },
       reject
     })
-    post({ type: "di:tile", id, layerId, z, x, y })
+    post({ type: "di:tile", id, layerId, z, x, y, snapshotId })
   })
 }
 

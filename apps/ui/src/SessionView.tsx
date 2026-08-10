@@ -2,6 +2,7 @@ import { FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, u
 import { activityLabel } from "./activity.js"
 import {
   DashboardAgentState,
+  DesignerState,
   execSessionQuery,
   getSession,
   sendMessage,
@@ -31,6 +32,25 @@ export interface LiveItem {
   logs: string[]
   /** True while the tool is still executing */
   open: boolean
+}
+
+/**
+ * Collapses adjacent live tool items that render the same label, matching the
+ * stored transcript. A running call labels itself differently from a finished
+ * one, so the in-flight item stays its own row until it completes and merges.
+ */
+function toLiveGroups(items: LiveItem[]): LiveItem[][] {
+  const groups: LiveItem[][] = []
+  for (const item of items) {
+    const last = groups.at(-1)
+    const mergeable =
+      item.kind === "tool" &&
+      last?.[0].kind === "tool" &&
+      activityLabel(last[0].tool, last[0].input, last[0].open) === activityLabel(item.tool, item.input, item.open)
+    if (mergeable) last.push(item)
+    else groups.push([item])
+  }
+  return groups
 }
 
 /** Preview panel width as a fraction of the page, persisted across sessions. */
@@ -88,7 +108,6 @@ interface SessionViewProps {
 /** One design session: transcript + live stream on the left, state panel on the right. */
 export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [detail, setDetail] = useState<SessionDetail | null>(null)
-  const [liveId, setLiveId] = useState<string | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -123,8 +142,9 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 
   /** Folds one SSE event into the live item list. */
   function onEvent(event: SessionEvent) {
+    // The bound artifact's display name lives in the session state, not the event
     if (event.type === "integration_bound") {
-      setLiveId(event.integrationId ?? null)
+      refresh()
       return
     }
     if (event.type === "stop" || event.type === "error") {
@@ -248,17 +268,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const isDashboard = detail.kind === "dashboard"
   const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
+  const title = isDashboard
+    ? dashState?.name || "New dashboard"
+    : (detail.state as DesignerState)?.definition?.name || "New integration"
   return (
     <main className="session-page" ref={pageRef}>
       <div className="conversation">
         <div className="session-head">
-          {/* Dashboards carry a display name; the id is plumbing, not a title */}
-          <h1>
-            {(isDashboard ? dashState?.name : null) ||
-              detail.integrationId ||
-              liveId ||
-              (isDashboard ? "New dashboard" : "New integration")}
-          </h1>
+          {/* Ids are plumbing: the title is the display name, or a placeholder
+              until the agent names what it is building */}
+          <h1>{title}</h1>
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
           )}
@@ -274,8 +293,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
             messages={frozenRef.current != null ? detail.messages.slice(0, frozenRef.current) : detail.messages}
             hideTrailingQuestion={question != null}
           />
-          {live.map((item, i) => (
-            <LiveBlock key={i} item={item} />
+          {toLiveGroups(live).map((group, i) => (
+            <LiveBlock key={i} items={group} />
           ))}
           {busy && !live.some(i => i.kind === "tool" && i.open) && (
             <div className="thinking">
@@ -341,7 +360,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               dashboardId={detail.integrationId ?? "draft"}
               bundleJs={build.bundleJs ?? ""}
               bundleCss={build.bundleCss ?? ""}
-              kitVersion="2"
+              // Drafts always build against the current kit; keep in step with KIT_VERSION
+              kitVersion="3"
               runQuery={(name, params) => execSessionQuery(sessionId, name, params)}
               fetchVectorTile={(query, z, x, y, params) =>
                 fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)
@@ -372,12 +392,13 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 
 /** Props for a live block. */
 interface LiveBlockProps {
-  /** Item to render */
-  item: LiveItem
+  /** Items collapsed into this row; non-tool rows always hold exactly one */
+  items: LiveItem[]
 }
 
-/** Renders one in-flight item: user echo, assistant text, or a subtle activity line. */
-function LiveBlock({ item }: LiveBlockProps) {
+/** Renders one in-flight row: user echo, assistant text, or a subtle activity line. */
+function LiveBlock({ items }: LiveBlockProps) {
+  const item = items[items.length - 1]
   if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
   if (item.kind === "assistant") return <Markdown className="msg msg-assistant" text={item.text ?? ""} />
   if (item.tool === "ask_user") return null // the question card is the rendering
@@ -385,6 +406,7 @@ function LiveBlock({ item }: LiveBlockProps) {
     <div className="activity-block">
       <div className="activity">
         {activityLabel(item.tool, item.input, item.open)}
+        {items.length > 1 && <span className="activity-count">×{items.length}</span>}
         {item.open && <span className="spinner" />}
       </div>
       {item.open && item.logs.length > 0 && <pre className="tool-logs">{item.logs.join("\n")}</pre>}

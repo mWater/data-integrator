@@ -3,10 +3,10 @@
  * react are the only imports dashboard source may use; the build enforces it.
  */
 
-export type { Row, DashboardMeta } from "./bridge.js"
+export type { Row, DashboardMeta, LayerInfo, LayerSnapshotInfo } from "./bridge.js"
 export { lightTheme, darkTheme, seriesColor } from "./theme.js"
 export type { ThemeTokens, StatusColors, DivergingPair } from "./theme.js"
-export { useQuery, useMeta, useTheme, useLocale } from "./hooks.js"
+export { useQuery, useMeta, useLayers, useTheme, useLocale } from "./hooks.js"
 export type { QueryResult } from "./hooks.js"
 export { mountDashboard } from "./mount.js"
 export type { DashboardProps } from "./mount.js"
@@ -32,6 +32,7 @@ export { MapView } from "./components/MapView.js"
 export type {
   MapViewProps,
   MapLayer,
+  RasterLegendStop,
   VectorTileLayer,
   ColorScale,
   CategoricalColorScale,

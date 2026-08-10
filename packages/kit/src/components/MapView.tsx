@@ -20,11 +20,12 @@ function registerProtocols(): void {
   // The frame's opaque origin blocks module workers, so route MapLibre to the
   // classic worker bundle beside kit.js (.cjs suffix selects the classic path)
   maplibregl.setWorkerUrl(new URL("./maplibre-worker.cjs", import.meta.url).href)
-  // di-tile://<layerId>/<z>/<x>/<y>
+  // di-tile://<layerId>/<snapshotId|current>/<z>/<x>/<y>
   maplibregl.addProtocol("di-tile", async (params: maplibregl.RequestParameters) => {
-    const [, layerId, z, x, y] = /^di-tile:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url) ?? []
+    const [, layerId, snapshot, z, x, y] =
+      /^di-tile:\/\/([^/]+)\/([^/]+)\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url) ?? []
     if (!layerId) throw new Error(`bad tile url: ${params.url}`)
-    const data = await bridgeTile(layerId, Number(z), Number(x), Number(y))
+    const data = await bridgeTile(layerId, Number(z), Number(x), Number(y), snapshot === "current" ? undefined : snapshot)
     return { data }
   })
   // di-vtile://<queryName>/<z>/<x>/<y>?params=<urlencoded json>
@@ -101,6 +102,11 @@ export interface RasterLegendStop {
 export interface MapLayer {
   /** Raster catalog layer id; the host resolves the current snapshot. */
   layerId: string
+  /**
+   * Draw this snapshot instead of the layer's current one, for date-driven
+   * maps (sliders, month pickers). Get ids from useLayers().
+   */
+  snapshotId?: string
   /** Layer opacity, 0-1. */
   opacity?: number
   /** Legend title; defaults to the layer id when colorMap is given. */
@@ -517,19 +523,22 @@ export function MapView({ layers, vector, geojson, center, zoom, fit, height, le
       // Surface resource failures in devtools; MapLibre swallows them otherwise
       instance.on("error", (e) => console.error("[MapView]", String(e.error?.message ?? e.error)))
       instance.on("load", () => {
-        for (const layer of layers ?? []) {
-          instance.addSource(layer.layerId, {
+        // Source ids are positional, not layer ids: the same catalog layer can
+        // appear twice at different snapshots (e.g. comparing two months)
+        ;(layers ?? []).forEach((layer, i) => {
+          const id = `di-raster-${i}`
+          instance.addSource(id, {
             type: "raster",
-            tiles: [`di-tile://${layer.layerId}/{z}/{x}/{y}`],
+            tiles: [`di-tile://${layer.layerId}/${layer.snapshotId ?? "current"}/{z}/{x}/{y}`],
             tileSize: 256
           })
           instance.addLayer({
-            id: layer.layerId,
+            id,
             type: "raster",
-            source: layer.layerId,
+            source: id,
             paint: { "raster-opacity": layer.opacity ?? 0.85 }
           })
-        }
+        })
         if (vector) addVectorLayers(instance, vector, theme)
         if (geojson) addOverlays(instance, geojson, theme)
         if (fit && geojson) {
