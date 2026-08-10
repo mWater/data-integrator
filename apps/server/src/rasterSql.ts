@@ -5,12 +5,13 @@
  * with vector rows (ST_Value at points, ST_SummaryStats over clipped
  * buffers) under the read-only sql_engine role.
  *
- * Registration is best-effort by design: it requires the Postgres server to
- * read the store files and the out-db settings to be enabled, which holds in
- * the reference single-host deployment but not everywhere (e.g. the CI
- * database runs in a container without the host filesystem). A snapshot that
- * fails to register is still served by the catalog API, tiles, and
- * downloads; `cli.js register-rasters` retries stragglers.
+ * Registration is required and happens inside the run's commit transaction:
+ * SQL is a first-class consumer of raster data, so a snapshot the database
+ * cannot register fails the run instead of silently missing from the query
+ * surface. The Postgres server process must be able to read the raster store
+ * path (same host or shared mount, world-readable files) with the out-db
+ * settings enabled. `cli.js register-rasters` backfills registrations for
+ * snapshots that predate this requirement or after a store move.
  */
 
 import { execFile } from "node:child_process"
@@ -37,11 +38,22 @@ export interface SnapshotRef {
 }
 
 /**
- * Registers one snapshot, replacing any previous registration. Throws with a
- * clear message when the file has no EPSG CRS, gdalinfo fails, or the
- * database rejects out-db access.
+ * Enables out-db raster access for the session when permitted; otherwise the
+ * database-level settings from the migration/deploy step carry it. Call
+ * outside a transaction so a permissions failure cannot poison it.
  */
-export async function registerRasterSql(pool: pg.Pool, ref: SnapshotRef): Promise<void> {
+export async function enableOutDbSession(client: pg.ClientBase): Promise<void> {
+  await client.query("SET postgis.enable_outdb_rasters = on").catch(() => {})
+  await client.query("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'").catch(() => {})
+}
+
+/**
+ * Registers one snapshot inside the caller's transaction, replacing any
+ * previous registration. Throws with a clear message when the file has no
+ * EPSG CRS, gdalinfo fails, or the database rejects out-db access. Call
+ * enableOutDbSession on the client before opening the transaction.
+ */
+export async function registerRasterSqlInTx(client: pg.ClientBase, ref: SnapshotRef): Promise<void> {
   const epsg = ref.crs.match(/^EPSG:(\d+)$/)
   if (!epsg) throw new Error(`Snapshot ${ref.snapshotId} has non-EPSG CRS "${ref.crs}"; not registering`)
   const srid = Number(epsg[1])
@@ -57,44 +69,48 @@ export async function registerRasterSql(pool: pg.Pool, ref: SnapshotRef): Promis
   if (!gt) throw new Error(`Snapshot ${ref.snapshotId} has no geotransform; not registering`)
   const bandCount = info.bands?.length ?? 1
 
+  await client.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [ref.snapshotId])
+  await client.query(
+    `INSERT INTO data.rasters (layer_id, snapshot_id, observed_at, observed_end, rast)
+     SELECT $1, $2, $3, $4,
+            ST_Tile(
+              ST_AddBand(
+                ST_MakeEmptyRaster($5::int, $6::int, $7, $8, $9, $10, $11, $12, $13::int),
+                1, $14::text, (SELECT array_agg(i) FROM generate_series(1, $15::int) i)
+              ),
+              $16::int, $16::int
+            )`,
+    [
+      ref.layerId,
+      ref.snapshotId,
+      ref.observedAt,
+      ref.observedEnd,
+      width,
+      height,
+      gt[0], // upper-left x
+      gt[3], // upper-left y
+      gt[1], // x scale
+      gt[5], // y scale
+      gt[2], // x skew
+      gt[4], // y skew
+      srid,
+      ref.absolutePath,
+      bandCount,
+      TILE_SIZE
+    ]
+  )
+}
+
+/**
+ * Registers one snapshot in its own transaction (the backfill path; runs
+ * register via registerRasterSqlInTx inside their commit transaction).
+ */
+export async function registerRasterSql(pool: pg.Pool, ref: SnapshotRef): Promise<void> {
   const client = await pool.connect()
   try {
-    // Session-level enable when permitted (outside the transaction, so a
-    // permissions failure cannot poison it); otherwise the database-level
-    // setting from the migration/deploy step carries it
-    await client.query("SET postgis.enable_outdb_rasters = on").catch(() => {})
-    await client.query("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'").catch(() => {})
+    await enableOutDbSession(client)
     await client.query("BEGIN")
-    await client.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [ref.snapshotId])
-    await client.query(
-      `INSERT INTO data.rasters (layer_id, snapshot_id, observed_at, observed_end, rast)
-       SELECT $1, $2, $3, $4,
-              ST_Tile(
-                ST_AddBand(
-                  ST_MakeEmptyRaster($5::int, $6::int, $7, $8, $9, $10, $11, $12, $13::int),
-                  1, $14::text, (SELECT array_agg(i) FROM generate_series(1, $15::int) i)
-                ),
-                $16::int, $16::int
-              )`,
-      [
-        ref.layerId,
-        ref.snapshotId,
-        ref.observedAt,
-        ref.observedEnd,
-        width,
-        height,
-        gt[0], // upper-left x
-        gt[3], // upper-left y
-        gt[1], // x scale
-        gt[5], // y scale
-        gt[2], // x skew
-        gt[4], // y skew
-        srid,
-        ref.absolutePath,
-        bandCount,
-        TILE_SIZE
-      ]
-    )
+    await registerRasterSqlInTx(client, ref)
     await client.query("COMMIT")
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})

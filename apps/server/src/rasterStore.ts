@@ -1,4 +1,4 @@
-import { copyFile, mkdir, rm } from "node:fs/promises"
+import { chmod, copyFile, mkdir, rm } from "node:fs/promises"
 import path from "node:path"
 
 /**
@@ -20,11 +20,17 @@ export class RasterStore {
     return path.join(this.root, relPath)
   }
 
-  /** Copies a file into the store at relPath, creating directories as needed. */
+  /**
+   * Copies a file into the store at relPath, creating directories as needed.
+   * Contents are made world-readable: the Postgres server process reads store
+   * files as its own OS user for out-db SQL registration.
+   */
   async put(srcFile: string, relPath: string): Promise<void> {
     const dest = this.absolute(relPath)
     await mkdir(path.dirname(dest), { recursive: true })
+    await chmod(path.dirname(dest), 0o755)
     await copyFile(srcFile, dest)
+    await chmod(dest, 0o644)
   }
 
   /** Removes a stored file; missing files are not an error. */

@@ -11,7 +11,7 @@ import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 import { getDefaultAoi } from "./settings.js"
-import { pruneRasterSql, registerRasterSql } from "./rasterSql.js"
+import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx } from "./rasterSql.js"
 
 /** Everything the executor needs from its host. */
 export interface ExecutorDeps {
@@ -277,6 +277,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     )
     const client = await deps.pool.connect()
     try {
+      if (!scratch && storedArtifacts.length > 0) await enableOutDbSession(client)
       await client.query("BEGIN")
       const rowCounts: Record<string, number> = {}
       for (const [tableId, rows] of Object.entries(output.data ?? {})) {
@@ -286,6 +287,26 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       }
       for (const { artifact, layer, stored } of storedArtifacts) {
         await registerSnapshot(client, run.id, artifact, stored, layer.temporality, layerRowFor(artifact.layerId))
+        // SQL is a first-class consumer of raster data: a snapshot the
+        // database cannot register out-db fails the run (and rolls back the
+        // promotion) instead of silently missing from the query surface.
+        // Scratch previews stay out of the public query surface.
+        if (!scratch) {
+          try {
+            await registerRasterSqlInTx(client, {
+              snapshotId: stored.snapshotId,
+              layerId: layerRowFor(artifact.layerId),
+              observedAt: artifact.timestamp,
+              observedEnd: artifact.timestampEnd ?? null,
+              crs: stored.info.crs,
+              absolutePath: path.resolve(deps.store.absolute(stored.relPath))
+            })
+          } catch (err) {
+            throw new Error(
+              `raster SQL registration failed for ${artifact.layerId}: ${err instanceof Error ? err.message : err}`
+            )
+          }
+        }
       }
       if (webhookEvents.rows.length > 0) {
         await client.query("UPDATE app.webhook_events SET run_id = $1 WHERE id = ANY($2)", [
@@ -317,24 +338,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       client.release()
     }
 
-    // Post-commit, best-effort: mirror the new snapshots into data.rasters
-    // (out-db PostGIS) so SQL can join raster values against vector rows.
-    // Scratch previews stay out of the public query surface, and a failure
-    // here (e.g. the DB cannot read the store) never fails the run —
-    // `cli.js register-rasters` retries stragglers.
+    // Post-commit, best-effort: drop registrations of snapshots this run
+    // superseded; the next run prunes again if this misses
     if (!scratch && storedArtifacts.length > 0) {
-      for (const { artifact, stored } of storedArtifacts) {
-        await registerRasterSql(deps.pool, {
-          snapshotId: stored.snapshotId,
-          layerId: layerRowFor(artifact.layerId),
-          observedAt: artifact.timestamp,
-          observedEnd: artifact.timestampEnd ?? null,
-          crs: stored.info.crs,
-          absolutePath: path.resolve(deps.store.absolute(stored.relPath))
-        }).catch(err =>
-          console.error(`raster SQL registration failed for ${artifact.layerId}: ${err instanceof Error ? err.message : err}`)
-        )
-      }
       await pruneRasterSql(deps.pool).catch(() => {})
     }
   } catch (err) {

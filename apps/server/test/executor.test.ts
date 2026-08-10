@@ -2,7 +2,7 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { mkdtemp, access } from "node:fs/promises"
+import { access, chmod, mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -98,13 +98,22 @@ const runner = new Runner({ network: "integrator-jobs-exec", egress: "open" })
 before(async () => {
   if (!AVAILABLE) return
   db = await startTestDb()
-  pool = new pg.Pool({ connectionString: db.url, max: 5 })
+  // Session out-db GUCs: the migration's ALTER DATABASE misses connections
+  // the pool opened before it ran, and assertions read out-db pixels
+  pool = new pg.Pool({
+    connectionString: db.url,
+    max: 5,
+    options: "-c postgis.enable_outdb_rasters=on -c postgis.gdal_enabled_drivers=ENABLE_ALL"
+  })
   await migrate(pool, MIGRATIONS_DIR)
   await runner.ensureReady()
+  // mkdtemp is 0700; the test database's postgres user must traverse it
+  const storeRoot = await mkdtemp(path.join(tmpdir(), "raster-store-"))
+  await chmod(storeRoot, 0o755)
   deps = {
     pool,
     runner,
-    store: new RasterStore(await mkdtemp(path.join(tmpdir(), "raster-store-"))),
+    store: new RasterStore(storeRoot),
     workRoot: await mkdtemp(path.join(tmpdir(), "work-root-")),
     secretKey: null,
     images: { "python3.12": PY_IMAGE },
@@ -154,6 +163,13 @@ test("first run: rows, snapshot, state, stats", { skip: !AVAILABLE }, async () =
   assert.equal(snapshot.rows[0].crs, "EPSG:4326")
   assert.ok(snapshot.rows[0].is_current)
   await access(deps.store.absolute(snapshot.rows[0].path))
+
+  // Registered out-db in the same transaction: pixel values queryable in SQL
+  const raster = await pool.query(
+    `SELECT ST_Value(rast, 1, ST_SetSRID(ST_MakePoint(44.15, -18.15), 4326)) AS v FROM data.rasters`
+  )
+  assert.equal(raster.rows.length, 1)
+  assert.equal(Number(raster.rows[0].v), 1)
 }, { timeout: 180_000 })
 
 test("second run: state chains, merge updates, current pointer advances", { skip: !AVAILABLE }, async () => {
@@ -174,6 +190,9 @@ test("second run: state chains, merge updates, current pointer advances", { skip
   )
   assert.equal(layer.rows[0].promoted, 2) // time-series keeps history
   assert.equal(new Date(layer.rows[0].current_time).getUTCMonth(), 1) // Feb = cursor 2
+
+  const registered = await pool.query("SELECT count(*)::int AS n FROM data.rasters")
+  assert.equal(registered.rows[0].n, 2)
 }, { timeout: 180_000 })
 
 test("failing code marks the run failed with the traceback", { skip: !AVAILABLE }, async () => {

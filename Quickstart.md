@@ -12,14 +12,23 @@ agent. Commands assume Linux and a POSIX shell.
   (https://gvisor.dev/docs/user_guide/install/).
 - **GDAL CLI tools** - `apt install gdal-bin` (gdalinfo, gdalwarp, gdaldem,
   ogr2ogr; used for the raster catalog, tiles, and GeoPackage extracts).
-- **PostgreSQL 16 + PostGIS** - anywhere reachable; a local container works:
+- **PostgreSQL 16 + PostGIS** - anywhere reachable, but the Postgres server
+  process must be able to read `RASTER_STORE_PATH` at the same absolute path:
+  runs register snapshots as out-db rasters, and a run fails if the database
+  cannot open the files. A local container works with the store mounted in:
 
 ```sh
+mkdir -p $PWD/raster-store
 podman run -d --name integrator-pg \
   -e POSTGRES_PASSWORD=changeme \
   -p 127.0.0.1:15432:5432 \
+  -v $PWD/raster-store:$PWD/raster-store:ro \
   docker.io/postgis/postgis:16-3.4
 ```
+
+  For a host-installed Postgres, grant the `postgres` user traverse access to
+  the path instead (e.g. `setfacl -m u:postgres:x ~` when the store lives
+  under your home directory).
 
 ## Build
 

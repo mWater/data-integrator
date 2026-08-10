@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { chmod, mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
@@ -13,27 +14,25 @@ import { startTestDb, TestDb } from "./helpers/pg.js"
 const execFileP = promisify(execFile)
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
 
-/**
- * Out-db reads need the Postgres server to open the test file, which holds
- * only for an external same-host database (TEST_DATABASE_URL), not the
- * containerized podman one.
- */
-const AVAILABLE = !!process.env.TEST_DATABASE_URL
-
 let db: TestDb
 let pool: pg.Pool
 let storeDir: string
 let tifPath: string
 
 before(async () => {
-  if (!AVAILABLE) return
   db = await startTestDb()
-  pool = new pg.Pool({ connectionString: db.url })
+  // Session out-db GUCs: the migration's ALTER DATABASE misses connections
+  // the pool opened before it ran, and assertions read out-db pixels
+  pool = new pg.Pool({
+    connectionString: db.url,
+    options: "-c postgis.enable_outdb_rasters=on -c postgis.gdal_enabled_drivers=ENABLE_ALL"
+  })
   await migrate(pool, MIGRATIONS_DIR)
 
   // A 20x20 constant-value GeoTIFF covering [10,0,30,10], world-readable so
-  // the postgres server process can open it
-  storeDir = await mkdtemp("/tmp/raster-sql-test-")
+  // the postgres server process can open it (under tmpdir, which the test
+  // database container mounts)
+  storeDir = await mkdtemp(path.join(tmpdir(), "raster-sql-test-"))
   await chmod(storeDir, 0o755)
   tifPath = path.join(storeDir, "snap.tif")
   await execFileP("gdal_create", [
@@ -74,7 +73,6 @@ before(async () => {
 }, { timeout: 120_000 })
 
 after(async () => {
-  if (!AVAILABLE) return
   await pool?.end()
   await db?.stop()
   await rm(storeDir, { recursive: true, force: true })
@@ -82,7 +80,7 @@ after(async () => {
 
 const SNAPSHOT = "11111111-1111-1111-1111-111111111111"
 
-test("out-db registration makes raster values queryable in SQL", { skip: !AVAILABLE }, async () => {
+test("out-db registration makes raster values queryable in SQL", async () => {
   await registerRasterSql(pool, {
     snapshotId: SNAPSHOT,
     layerId: "rsql_layer",
@@ -140,7 +138,7 @@ test("out-db registration makes raster values queryable in SQL", { skip: !AVAILA
   assert.equal(again.rows[0].n, 1)
 })
 
-test("registerMissingRasters backfills and prune drops non-promoted", { skip: !AVAILABLE }, async () => {
+test("registerMissingRasters backfills and prune drops non-promoted", async () => {
   await pool.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
   const result = await registerMissingRasters(pool, () => tifPath)
   assert.equal(result.registered, 1)
@@ -153,7 +151,7 @@ test("registerMissingRasters backfills and prune drops non-promoted", { skip: !A
   await pool.query("UPDATE app.raster_snapshots SET status = 'promoted' WHERE id = $1", [SNAPSHOT])
 })
 
-test("non-EPSG CRS is refused with a clear message", { skip: !AVAILABLE }, async () => {
+test("non-EPSG CRS is refused with a clear message", async () => {
   await assert.rejects(
     registerRasterSql(pool, {
       snapshotId: SNAPSHOT,

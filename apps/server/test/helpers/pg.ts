@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
-import { promisify } from "node:util"
 import { randomUUID } from "node:crypto"
+import { tmpdir } from "node:os"
+import { promisify } from "node:util"
 import pg from "pg"
 
 const execFileP = promisify(execFile)
@@ -31,6 +32,9 @@ export async function startTestDb(): Promise<TestDb> {
     "run", "-d", "--rm", "--name", name,
     "-e", "POSTGRES_PASSWORD=test",
     "-p", "127.0.0.1::5432",
+    // Same-path mount of the host tmpdir: out-db raster registration hands
+    // the database absolute paths of test raster stores created under it
+    "-v", `${tmpdir()}:${tmpdir()}`,
     POSTGIS_IMAGE
   ])
   const { stdout } = await execFileP("podman", ["port", name, "5432"])
