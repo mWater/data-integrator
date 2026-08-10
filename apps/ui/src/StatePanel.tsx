@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { DashboardAgentState, DashboardQuery, DesignerState, SessionDetail } from "./api.js"
+import { AssistantState, DashboardAgentState, DashboardQuery, DesignerState, SessionDetail } from "./api.js"
 
 /** Panel tabs. */
 type Tab = "definition" | "code" | "status"
@@ -14,6 +14,7 @@ interface StatePanelProps {
 export function StatePanel({ detail }: StatePanelProps) {
   const [tab, setTab] = useState<Tab>("definition")
   if (detail.kind === "dashboard") return <DashboardStatePanel state={detail.state as DashboardAgentState} />
+  if (detail.kind === "assistant") return <AssistantStatePanel detail={detail} />
   const state = detail.state as DesignerState
   const { definition } = state
   const { code, ...rest } = definition
@@ -63,6 +64,31 @@ export function StatePanel({ detail }: StatePanelProps) {
           </dl>
         </div>
       )}
+    </aside>
+  )
+}
+
+/** Assistant drawer: session status and usage. */
+function AssistantStatePanel({ detail }: StatePanelProps) {
+  const state = detail.state as AssistantState
+  return (
+    <aside className="state-panel">
+      <div className="pane status-pane">
+        <dl>
+          <dt>Status</dt>
+          <dd>{detail.status}</dd>
+          <dt>Query results</dt>
+          <dd>{Object.keys(state?.results ?? {}).length}</dd>
+          <dt>Model calls</dt>
+          <dd>{detail.usage?.steps ?? 0}</dd>
+          <dt>Tokens</dt>
+          <dd>
+            {detail.usage
+              ? `${detail.usage.inputTokens.toLocaleString()} in / ${detail.usage.outputTokens.toLocaleString()} out`
+              : "0"}
+          </dd>
+        </dl>
+      </div>
     </aside>
   )
 }

@@ -51,6 +51,11 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Integration library
 
+- CHIRPS COGs do not declare a NODATA value, so -9999 sentinels (and ST_Clip
+  fill) leak into SQL statistics; set nodata in the library entry's outputs
+  and re-promote. (Surfaced by assistant raster queries 2026-08-10; the agent
+  prompt now teaches the workaround.)
+
 - Remaining ToR sources: GloFAS, SPI, FPAR, DEM/FABDEM, GHSL, HydroSHEDS, SAR,
   in-situ sensors, UNICEF datasources.
 - More skills (`library/skills/` is built: index in the designer prompt,

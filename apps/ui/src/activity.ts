@@ -10,7 +10,12 @@ const LABELS: Record<string, [string, string]> = {
   write_source: ["Writing the dashboard", "Wrote the dashboard"],
   edit_source: ["Editing the dashboard", "Edited the dashboard"],
   set_queries: ["Updating queries", "Updated queries"],
-  sample_query: ["Exploring data", "Explored data"]
+  sample_query: ["Exploring data", "Explored data"],
+  list_schema: ["Reading the schema", "Read the schema"],
+  query: ["Running a query", "Ran a query"],
+  show_chart: ["Drawing a chart", "Drew a chart"],
+  show_map: ["Drawing a map", "Drew a map"],
+  lookup_country: ["Looking up a place", "Looked up a place"]
 }
 
 /** Human-readable label for a tool call; raw tool names stay out of the UI. */

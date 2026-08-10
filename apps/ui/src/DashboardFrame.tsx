@@ -4,8 +4,9 @@
  */
 
 import { useEffect, useRef } from "react"
-import { mountDashboardFrame } from "@data-integrator/kit/host"
-import { darkTheme, lightTheme } from "@data-integrator/kit"
+// Themes come from /host so the eager bundle skips the component barrel
+// (and its echarts side effects); kit components load with the blocks chunk
+import { darkTheme, lightTheme, mountDashboardFrame } from "@data-integrator/kit/host"
 import { execDashboardQuery, listLayers, listSources } from "./api.js"
 import { useAppTheme } from "./theme.js"
 

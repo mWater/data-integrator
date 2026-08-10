@@ -2,8 +2,8 @@
 export interface SessionSummary {
   /** Session id */
   id: string
-  /** Session kind: designer or dashboard */
-  kind: "designer" | "dashboard"
+  /** Session kind */
+  kind: "designer" | "dashboard" | "assistant"
   /** Session status: active, paused, or finished */
   status: string
   /** Integration id of the draft; null until the agent names a new integration */
@@ -70,12 +70,30 @@ export interface DashboardAgentState {
   saved: { version: number } | null
 }
 
+/** One stored query result of an assistant session; blocks bind to it by id. */
+export interface AssistantResult {
+  /** The SQL that produced it, shown on block expand */
+  sql: string
+  /** Column names in result order */
+  columns: string[]
+  /** Complete result rows (over-cap queries are rejected server-side) */
+  rows: Record<string, unknown>[]
+}
+
+/** Assistant-session client state mirrored from the server. */
+export interface AssistantState {
+  /** Stored query results by id ("q1", "q2", ...) */
+  results: Record<string, AssistantResult>
+  /** Ordinal of the next result id */
+  nextResult: number
+}
+
 /** Full session detail from GET /api/sessions/:id. */
 export interface SessionDetail extends SessionSummary {
   /** Serialized model messages (the transcript) */
   messages: TranscriptMessage[]
   /** Per-kind client state */
-  state: DesignerState | DashboardAgentState
+  state: DesignerState | DashboardAgentState | AssistantState
   /** Cumulative usage counters */
   usage: { steps: number; inputTokens: number; outputTokens: number } | null
   /** True when the current definition passed a cold run */
@@ -406,6 +424,15 @@ export function createDashboardSession(dashboardId?: string): Promise<{ sessionI
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ kind: "dashboard", ...(dashboardId ? { dashboardId } : {}) })
+  })
+}
+
+/** Creates an assistant chat session (open to every role). */
+export function createAssistantSession(): Promise<{ sessionId: string }> {
+  return request("/api/sessions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind: "assistant" })
   })
 }
 

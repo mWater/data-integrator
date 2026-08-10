@@ -218,6 +218,16 @@ test("show_map: validates layers, geometry declarations, and dates", async () =>
 
   const lonlat = await a.execute("show_map", { overlays: [{ resultId: "q1", lonColumn: "lon", latColumn: "lat" }] }, state, () => {}, "s1")
   assert.match(lonlat.result, /^Map is shown/)
+
+  // Models send "" for optional fields they mean to omit
+  const blanks = await a.execute(
+    "show_map",
+    { overlays: [{ resultId: "q1", geojsonColumn: "gj", lonColumn: "", latColumn: "", color: "", popup: "" }] },
+    state,
+    () => {},
+    "s1"
+  )
+  assert.match(blanks.result, /^Map is shown/)
 })
 
 test("list_schema and lookup_country ground the model", async () => {

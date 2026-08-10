@@ -67,18 +67,26 @@ export class AgentSessionController<S> {
   }
 
   /**
-   * Appends a user message and runs the loop until the session stops. Any
-   * status accepts messages: "finished" marks the agent's task complete but
-   * is never terminal — the session continues like a paused one.
+   * Appends a user message and persists the session as active, so the
+   * transcript shows the message before the first (slow) model step lands.
+   * Any status accepts messages: "finished" marks the agent's task complete
+   * but is never terminal — the session continues like a paused one.
    */
+  async appendUserMessage(sessionId: string, text: string): Promise<void> {
+    const session = await this.load(sessionId)
+    session.messages.push({ role: "user", content: text })
+    await this.save(sessionId, "active", session)
+  }
+
+  /** Appends a user message and runs the loop until the session stops. */
   async sendMessage(
     sessionId: string,
     text: string,
     events?: AgentEventListener,
     controls?: LoopControls
   ): Promise<SessionStop> {
+    await this.appendUserMessage(sessionId, text)
     const session = await this.load(sessionId)
-    session.messages.push({ role: "user", content: text })
     return await this.runLoop(sessionId, session, events, controls)
   }
 

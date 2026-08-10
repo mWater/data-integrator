@@ -1,6 +1,8 @@
-import { FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react"
+import { FormEvent, lazy, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { activityLabel } from "./activity.js"
 import {
+  AssistantResult,
+  AssistantState,
   DashboardAgentState,
   DesignerState,
   execSessionQuery,
@@ -11,10 +13,14 @@ import {
   stopSession,
   subscribeEvents
 } from "./api.js"
+import { isBlockCall } from "./blocks/types.js"
 import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
+
+// Same lazy chunk as the stored transcript's blocks
+const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
 
 /** One live item rendered below the stored transcript while the loop runs. */
 export interface LiveItem {
@@ -34,10 +40,16 @@ export interface LiveItem {
   open: boolean
 }
 
+/** A completed call that renders as a result block rather than an activity row. */
+function isLiveBlockItem(item: LiveItem): boolean {
+  return item.kind === "tool" && !item.open && isBlockCall(item.tool, item.summary)
+}
+
 /**
  * Collapses adjacent live tool items that render the same label, matching the
  * stored transcript. A running call labels itself differently from a finished
  * one, so the in-flight item stays its own row until it completes and merges.
+ * Result blocks never merge: each renders in full.
  */
 function toLiveGroups(items: LiveItem[]): LiveItem[][] {
   const groups: LiveItem[][] = []
@@ -45,7 +57,9 @@ function toLiveGroups(items: LiveItem[]): LiveItem[][] {
     const last = groups.at(-1)
     const mergeable =
       item.kind === "tool" &&
+      !isLiveBlockItem(item) &&
       last?.[0].kind === "tool" &&
+      !isLiveBlockItem(last[0]) &&
       activityLabel(last[0].tool, last[0].input, last[0].open) === activityLabel(item.tool, item.input, item.open)
     if (mergeable) last.push(item)
     else groups.push([item])
@@ -124,14 +138,31 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   // refreshes persist steps into detail.messages, so without the cut the same
   // message renders twice (stored + live) until the loop ends.
   const frozenRef = useRef<number | null>(null)
+  // Stored message count as currently rendered: the freeze point for a loop
+  // first noticed through its SSE events (steering relaunch, another tab)
+  const messagesLenRef = useRef(0)
+  // Refetch sequence; late responses from superseded refetches are dropped
+  const seqRef = useRef(0)
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((opts?: { midLoop?: boolean }) => {
+    const seq = ++seqRef.current
     getSession(sessionId).then(d => {
+      if (seq !== seqRef.current) return
       kindRef.current = d.kind
-      if (d.running && frozenRef.current == null) frozenRef.current = d.messages.length
+      if (opts?.midLoop) {
+        // State-only: the live overlay owns everything newer than the freeze
+        // point, so the rendered transcript must not advance mid-loop
+        setDetail(prev => (prev ? { ...d, messages: prev.messages } : d))
+        return
+      }
+      messagesLenRef.current = d.messages.length
+      frozenRef.current = d.running ? (frozenRef.current ?? d.messages.length) : null
+      if (!d.running) setLive([])
       setDetail(d)
       setBusy(d.running)
-    }, err => setError(err.message))
+    }, err => {
+      if (seq === seqRef.current) setError(err.message)
+    })
   }, [sessionId])
 
   useEffect(() => {
@@ -148,14 +179,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       return
     }
     if (event.type === "stop" || event.type === "error") {
-      frozenRef.current = null
-      setLive([])
-      setBusy(false)
       setStopping(false)
       if (event.type === "error") setError(event.message ?? "unknown error")
+      // Teardown (unfreeze, clear the overlay) waits for the refetch, so the
+      // overlay keeps covering the tail until the stored transcript has it
       refresh()
       return
     }
+    // Any live event means a loop is running, even one this tab did not start
+    if (frozenRef.current == null) frozenRef.current = messagesLenRef.current
+    setBusy(true)
     setLive(items => {
       const next = [...items]
       if (event.type === "user_message") next.push({ kind: "user", text: event.text, logs: [], open: false })
@@ -168,9 +201,14 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           item.open = false
           item.summary = event.summary
         }
-        // Dashboard sessions: state (draft, build) changes with tool results,
-        // so refetch to keep the live preview current mid-loop
-        if (kindRef.current === "dashboard") refresh()
+        // Dashboard builds and assistant query results land in client state,
+        // so refetch (state-only) to keep preview/blocks current mid-loop.
+        // The trailing refetch covers the save landing just after the event;
+        // the sequence guard discards whichever response is superseded.
+        if (kindRef.current === "dashboard" || kindRef.current === "assistant") {
+          refresh({ midLoop: true })
+          setTimeout(() => refresh({ midLoop: true }), 700)
+        }
       } else if (event.type === "job_log") {
         const item = next.findLast(i => i.kind === "tool" && i.open)
         if (item) item.logs = [...item.logs.slice(-199), event.line ?? ""]
@@ -187,7 +225,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     if (!text) return
     setError(null)
     const wasBusy = busy
-    if (!wasBusy) frozenRef.current = detail?.messages.length ?? 0
+    if (!wasBusy) frozenRef.current = messagesLenRef.current
     setBusy(true)
     setInput("")
     // Preview runtime errors ride along with the next message so the agent
@@ -264,13 +302,19 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       </main>
     )
 
-  const question = !busy && canDesign && detail.status === "paused" ? pendingQuestion(detail) : null
   const isDashboard = detail.kind === "dashboard"
+  const isAssistant = detail.kind === "assistant"
+  // Viewers may chat with the read-only assistant; design kinds stay gated
+  const canSend = isAssistant || canDesign
+  const question = !busy && canSend && detail.status === "paused" ? pendingQuestion(detail) : null
   const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
-  const title = isDashboard
-    ? dashState?.name || "New dashboard"
-    : (detail.state as DesignerState)?.definition?.name || "New integration"
+  const assistantResults = isAssistant ? (detail.state as AssistantState)?.results : undefined
+  const title = isAssistant
+    ? detail.firstMessage || "New chat"
+    : isDashboard
+      ? dashState?.name || "New dashboard"
+      : (detail.state as DesignerState)?.definition?.name || "New integration"
   return (
     <main className="session-page" ref={pageRef}>
       <div className="conversation">
@@ -292,9 +336,10 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           <Transcript
             messages={frozenRef.current != null ? detail.messages.slice(0, frozenRef.current) : detail.messages}
             hideTrailingQuestion={question != null}
+            results={assistantResults}
           />
           {toLiveGroups(live).map((group, i) => (
-            <LiveBlock key={i} items={group} />
+            <LiveBlock key={i} items={group} results={assistantResults} />
           ))}
           {busy && !live.some(i => i.kind === "tool" && i.open) && (
             <div className="thinking">
@@ -324,21 +369,23 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               }
             }}
             placeholder={
-              !canDesign
+              !canSend
                 ? "Viewers can watch but not send"
                 : busy
                   ? "Steer the agent — your message lands after the current step…"
-                  : "Describe what to build or change…"
+                  : isAssistant
+                    ? "Ask about the data…"
+                    : "Describe what to build or change…"
             }
-            disabled={!canDesign}
+            disabled={!canSend}
             rows={3}
           />
           {busy && input.trim() === "" ? (
-            <button type="button" className="stop" onClick={() => void onStop()} disabled={!canDesign || stopping}>
+            <button type="button" className="stop" onClick={() => void onStop()} disabled={!canSend || stopping}>
               {stopping ? "Stopping…" : "Stop"}
             </button>
           ) : (
-            <button type="submit" disabled={!canDesign || !input.trim()}>Send</button>
+            <button type="submit" disabled={!canSend || !input.trim()}>Send</button>
           )}
         </form>
       </div>
@@ -394,14 +441,25 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 interface LiveBlockProps {
   /** Items collapsed into this row; non-tool rows always hold exactly one */
   items: LiveItem[]
+  /** Stored assistant results, for rendering completed calls as result blocks */
+  results?: Record<string, AssistantResult>
 }
 
-/** Renders one in-flight row: user echo, assistant text, or a subtle activity line. */
-function LiveBlock({ items }: LiveBlockProps) {
+/** Renders one in-flight row: user echo, assistant text, a result block, or a subtle activity line. */
+function LiveBlock({ items, results }: LiveBlockProps) {
   const item = items[items.length - 1]
   if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
   if (item.kind === "assistant") return <Markdown className="msg msg-assistant" text={item.text ?? ""} />
   if (item.tool === "ask_user") return null // the question card is the rendering
+  if (!item.open && isBlockCall(item.tool, item.summary)) {
+    // A completed assistant call renders as its block as soon as the mid-loop
+    // state refetch delivers the stored result
+    return (
+      <Suspense fallback={<div className="activity">Loading…</div>}>
+        <BlockRenderer tool={item.tool ?? ""} input={item.input} resultText={item.summary} results={results} />
+      </Suspense>
+    )
+  }
   return (
     <div className="activity-block">
       <div className="activity">

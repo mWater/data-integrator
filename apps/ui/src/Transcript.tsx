@@ -1,19 +1,24 @@
-import { Fragment, useState } from "react"
+import { Fragment, lazy, Suspense, useState } from "react"
 import { activityLabel } from "./activity.js"
-import { MessagePart, TranscriptMessage } from "./api.js"
+import { AssistantResult, MessagePart, TranscriptMessage } from "./api.js"
+import { isBlockCall } from "./blocks/types.js"
 import { Markdown } from "./Markdown.js"
+
+// The blocks chunk carries echarts and maplibre; load it only when a
+// transcript actually contains blocks
+const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
 
 /** One rendered chat item derived from the stored transcript. */
 interface ChatItem {
-  /** Item kind; "question" is an ask_user call rendered as its question text */
-  kind: "user" | "assistant" | "tool" | "question"
+  /** Item kind; "question" is an ask_user call rendered as its question text, "block" a typed result block */
+  kind: "user" | "assistant" | "tool" | "question" | "block"
   /** Text for user/assistant/question items */
   text?: string
-  /** Tool name for tool items */
+  /** Tool name for tool/block items */
   tool?: string
-  /** Tool input JSON for tool items */
+  /** Tool input JSON for tool/block items */
   input?: unknown
-  /** Tool result text for tool items */
+  /** Tool result text for tool/block items */
   result?: string
 }
 
@@ -49,11 +54,13 @@ function toItems(messages: TranscriptMessage[]): ChatItem[] {
             if (question) items.push({ kind: "question", text: String(question) })
             continue
           }
+          const result = part.toolCallId ? results.get(part.toolCallId) : undefined
           items.push({
-            kind: "tool",
+            // Successful assistant query/chart/map calls render as result blocks
+            kind: isBlockCall(part.toolName, result) ? "block" : "tool",
             tool: part.toolName,
             input: part.input,
-            result: part.toolCallId ? results.get(part.toolCallId) : undefined
+            result
           })
         }
       }
@@ -97,10 +104,12 @@ interface TranscriptProps {
   messages: TranscriptMessage[]
   /** True while the pending-question card is shown, so the trailing question is not rendered twice */
   hideTrailingQuestion?: boolean
+  /** Stored assistant results, for rendering result blocks */
+  results?: Record<string, AssistantResult>
 }
 
 /** Renders the stored session transcript. */
-export function Transcript({ messages, hideTrailingQuestion }: TranscriptProps) {
+export function Transcript({ messages, hideTrailingQuestion, results }: TranscriptProps) {
   const items = toItems(messages)
   const shown = hideTrailingQuestion && items.at(-1)?.kind === "question" ? items.slice(0, -1) : items
   return (
@@ -109,6 +118,10 @@ export function Transcript({ messages, hideTrailingQuestion }: TranscriptProps) 
         const item = group.items[0]
         return group.label != null ? (
           <ToolBlock key={i} label={group.label} items={group.items} />
+        ) : item.kind === "block" ? (
+          <Suspense key={i} fallback={<div className="activity">Loading…</div>}>
+            <BlockRenderer tool={item.tool ?? ""} input={item.input} resultText={item.result} results={results} />
+          </Suspense>
         ) : item.kind === "assistant" || item.kind === "question" ? (
           <Markdown key={i} className="msg msg-assistant" text={item.text ?? ""} />
         ) : (

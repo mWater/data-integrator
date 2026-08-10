@@ -248,11 +248,20 @@ export class AgentService<S = unknown> {
     }
     channel.running = true
     channel.stopRequested = false
-    await this.ensureRunner()
+    try {
+      await this.ensureRunner()
+      // Persist the message before launching the loop, so a page navigating
+      // here right after this call finds it in the stored transcript instead
+      // of waiting out the first (slow) model step
+      await this.controller.appendUserMessage(sessionId, text)
+    } catch (err) {
+      channel.running = false
+      throw err
+    }
     broadcast({ type: "user_message", text })
 
     void this.controller
-      .sendMessage(sessionId, text, event => broadcast(event as SessionEvent), {
+      .resume(sessionId, event => broadcast(event as SessionEvent), {
         drainSteering: () => channel.steering.splice(0),
         stopRequested: () => channel.stopRequested
       })
@@ -299,8 +308,15 @@ export class AgentService<S = unknown> {
     const broadcast: SessionListener = event => {
       for (const listener of channel.listeners) listener(event)
     }
+    try {
+      await this.controller.appendUserMessage(sessionId, text)
+    } catch (err) {
+      channel.running = false
+      broadcast({ type: "error", message: err instanceof Error ? err.message : String(err) })
+      return
+    }
     void this.controller
-      .sendMessage(sessionId, text, event => broadcast(event as SessionEvent), {
+      .resume(sessionId, event => broadcast(event as SessionEvent), {
         drainSteering: () => channel.steering.splice(0),
         stopRequested: () => channel.stopRequested
       })

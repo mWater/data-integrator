@@ -1,18 +1,21 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { getMe, logout, User } from "./api.js"
 import { ThemePreference, useAppTheme } from "./theme.js"
+import { AssistantPage } from "./AssistantPage.js"
 import { DashboardList } from "./DashboardList.js"
 import { DashboardView } from "./DashboardView.js"
 import { DataSources } from "./DataSources.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
 import { Login } from "./Login.js"
-import { MapPage } from "./MapPage.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 import { Settings } from "./Settings.js"
 import { Library } from "./Library.js"
 import { UserMenu } from "./UserMenu.js"
+
+// The map page owns the maplibre chunk; keep it out of the first paint
+const MapPage = lazy(() => import("./MapPage.js").then(m => ({ default: m.MapPage })))
 
 /** Parsed hash route. */
 interface Route {
@@ -22,6 +25,8 @@ interface Route {
   integrationId: string | null
   /** True on the sessions list page */
   sessions: boolean
+  /** True on the assistant page */
+  assistant: boolean
   /** True on the integrations list page */
   integrations: boolean
   /** True on the dashboards list page */
@@ -51,6 +56,7 @@ function parseHash(): Route {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
     sessions: hash === "#/sessions",
+    assistant: hash === "#/assistant",
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
@@ -127,6 +133,7 @@ export function App() {
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
           <a href="#/">Data</a>
+          <a href="#/assistant">Assistant</a>
           <a href="#/integrations">Integrations</a>
           <a href="#/library">Library</a>
           <a href="#/dashboards">Dashboards</a>
@@ -141,7 +148,11 @@ export function App() {
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
       ) : route.map ? (
-        <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
+        <Suspense fallback={null}>
+          <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
+        </Suspense>
+      ) : route.assistant ? (
+        <AssistantPage />
       ) : route.dashboardId ? (
         <DashboardView dashboardId={route.dashboardId} />
       ) : route.dashboards ? (

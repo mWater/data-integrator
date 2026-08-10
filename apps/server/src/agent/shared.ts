@@ -25,7 +25,13 @@ Always filter layer_id, observed_at (time-series layers have one snapshot per
 period), and spatially via ST_Intersects(ST_ConvexHull(rast), ...) so only
 the needed tiles are read. Keep clipped areas modest - the 15s timeout is
 real; never scan a whole layer unfiltered. For buffers in meters cast through
-geography: ST_Buffer(geom::geography, 500)::geometry.`
+geography: ST_Buffer(geom::geography, 500)::geometry.
+Nodata discipline: bands do not always declare their nodata value, so
+sentinel pixels (-9999, or float minima near -3.4e+38 that ST_Clip fills
+outside the clip geometry) can pollute samples and statistics. Sanity-check
+min/max against the band's units; when sentinels appear, exclude them
+explicitly (e.g. WHERE sampled_value > -9000 for physical quantities, or a
+NULLIF/threshold inside the aggregate) before presenting numbers.`
 
 /**
  * Describes the queryable surface for an agent: data tables with columns,

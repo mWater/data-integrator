@@ -311,8 +311,17 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
 
   /** Validates a map spec: known layers, resolvable overlay geometry. */
   private async showMap(state: AssistantState, spec: ShowMapInput): Promise<ToolOutcome<AssistantState>> {
-    const layers = spec.layers ?? []
-    const overlays = spec.overlays ?? []
+    // Models send "" for optional fields they mean to omit
+    const layers = (spec.layers ?? []).map((l) => ({ ...l, at: blank(l.at), label: blank(l.label) }))
+    const overlays = (spec.overlays ?? []).map((o) => ({
+      ...o,
+      geojsonColumn: blank(o.geojsonColumn),
+      lonColumn: blank(o.lonColumn),
+      latColumn: blank(o.latColumn),
+      label: blank(o.label),
+      color: blank(o.color),
+      popup: blank(o.popup)
+    }))
     if (layers.length === 0 && overlays.length === 0) {
       return { result: "Error: give at least one layer or overlay" }
     }
@@ -411,4 +420,9 @@ function tryParse(text: string): unknown {
   } catch {
     return null
   }
+}
+
+/** Empty or whitespace-only strings become undefined. */
+function blank(value: string | undefined): string | undefined {
+  return value == null || value.trim() === "" ? undefined : value
 }
