@@ -359,6 +359,7 @@ async function main(): Promise<number> {
           ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: path.join(config.libraryPath, "skills") })
           : null
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
+        const assistantAgent = model ? AgentService.forAssistant(pool, { pool, model }) : null
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))
         // Cron scheduling and queue draining need the job runner; the API
@@ -379,7 +380,8 @@ async function main(): Promise<number> {
           dashboardAgent,
           basemap,
           config.uiDistPath,
-          config.libraryPath
+          config.libraryPath,
+          assistantAgent
         ).listen(
           config.port,
           () => {

@@ -3,6 +3,7 @@ import { AgentSessionController } from "./controller.js"
 import { AgentImplementation } from "./types.js"
 import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState } from "./designer.js"
 import { DashboardAgentState, DashboardDeps, DashboardImplementation, initialDashboardState } from "./dashboard.js"
+import { AssistantDeps, AssistantImplementation, AssistantState, initialAssistantState } from "./assistant.js"
 import { ID_PATTERN, definitionHash } from "../install.js"
 
 /** One event delivered to SSE subscribers; AgentEvents plus lifecycle. */
@@ -134,6 +135,19 @@ export class AgentService<S = unknown> {
       bindIdSql: "NULLIF(client_state->>'dashboardId', '')",
       initialState: (dashboardId?: string) => initialDashboardState(pool, dashboardId ?? ""),
       bindId: state => state.dashboardId || null,
+      detailExtras: async () => ({}),
+      ensureReady: async () => {}
+    })
+  }
+
+  /** The assistant service: read-only Q&A chat sessions, viewer-accessible. */
+  static forAssistant(pool: pg.Pool, deps: AssistantDeps): AgentService<AssistantState> {
+    return new AgentService<AssistantState>(pool, {
+      kind: "assistant",
+      implementation: new AssistantImplementation(deps),
+      bindIdSql: "NULL::text",
+      initialState: async () => initialAssistantState(),
+      bindId: () => null,
       detailExtras: async () => ({}),
       ensureReady: async () => {}
     })

@@ -7,7 +7,7 @@ import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
 import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
-import { COUNTRIES } from "../countries.js"
+import { COUNTRIES, lookupCountry } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
@@ -304,7 +304,7 @@ ${index}`
       case "read_skill":
         return this.readSkill(String(args.id ?? ""))
       case "lookup_country":
-        return this.lookupCountry(String(args.query ?? ""))
+        return { result: lookupCountry(String(args.query ?? "")) }
       case "ask_user":
         return this.askUser(args)
       case "finish":
@@ -556,22 +556,6 @@ ${index}`
       return { result: `No skill "${id}"; the index lists: ${this.skills.map(s => s.id).join(", ")}` }
     }
     return { result: text }
-  }
-
-  /**
-   * Country bbox lookup over the baked-in Natural Earth list: the same data
-   * the UI pickers use, so agent-authored boxes never come from model memory.
-   */
-  private lookupCountry(query: string): ToolOutcome<DesignerState> {
-    const q = query.trim().toLowerCase()
-    if (q === "") return { result: "Error: query is required" }
-    const matches = COUNTRIES.filter(c => c.iso3.toLowerCase() === q || c.name.toLowerCase().includes(q))
-    if (matches.length === 0) return { result: `No country matches "${query}"` }
-    const shown = matches.slice(0, 5)
-    const lines = shown.map(c => `${c.name} (${c.iso3}): bbox [${c.bbox.join(", ")}]`)
-    if (matches.length > shown.length) lines.push(`...and ${matches.length - shown.length} more; narrow the query`)
-    lines.push("bbox is [west, south, east, north] EPSG:4326; west > east crosses the antimeridian")
-    return { result: lines.join("\n") }
   }
 
   /**

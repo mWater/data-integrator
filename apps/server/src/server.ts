@@ -120,12 +120,13 @@ export function createApiServer(
   dashboardAgent: AgentService | null = null,
   basemap: BasemapProxy | null = null,
   uiDistPath: string | null = null,
-  libraryPath: string | null = null
+  libraryPath: string | null = null,
+  assistantAgent: AgentService | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -177,6 +178,7 @@ async function route(
   basemap: BasemapProxy | null,
   uiDist: string,
   libraryPath: string | null,
+  assistantAgent: AgentService | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -821,7 +823,7 @@ async function route(
   }
 
   if (pathname.startsWith("/api/sessions")) {
-    await routeSessions(pool, agent, dashboardAgent, user, req, res, url)
+    await routeSessions(pool, agent, dashboardAgent, assistantAgent, user, req, res, url)
     return
   }
 
@@ -837,54 +839,51 @@ async function route(
   json(res, 404, { error: "not found" })
 }
 
-/** Handles the /api/sessions routes; design actions need editor or admin. */
+/** Handles the /api/sessions routes; design actions need editor or admin, assistant chats are open to viewers. */
 async function routeSessions(
   pool: pg.Pool,
   agent: AgentService | null,
   dashboardAgent: AgentService | null,
+  assistantAgent: AgentService | null,
   user: AuthUser,
   req: IncomingMessage,
   res: ServerResponse,
   url: string
 ): Promise<void> {
-  if (req.method === "POST" && user.role === "viewer") {
-    json(res, 403, { error: "Viewers cannot run design sessions" })
+  const isViewer = user.role === "viewer"
+  const [pathname, search] = url.split("?")
+  const searchParams = new URLSearchParams(search ?? "")
+
+  // Creation first: the viewer rejection outranks the no-model 503
+  if (pathname === "/api/sessions" && req.method === "POST") {
+    const body = await readJsonBody(req)
+    const kind = body.kind === "dashboard" ? "dashboard" : body.kind === "assistant" ? "assistant" : "designer"
+    if (isViewer && kind !== "assistant") {
+      json(res, 403, { error: "Viewers cannot run design sessions" })
+      return
+    }
+    const service = kind === "dashboard" ? dashboardAgent : kind === "assistant" ? assistantAgent : agent
+    if (!service) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+      return
+    }
+    const bindId = kind === "dashboard" ? body.dashboardId : kind === "designer" ? body.integrationId : undefined
+    const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId))
+    json(res, 201, { sessionId })
     return
   }
-  if (!agent && !dashboardAgent) {
+
+  if (!agent && !dashboardAgent && !assistantAgent) {
     json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
     return
   }
 
-  /** Service owning a stored session, resolved by its kind column. */
-  const serviceFor = async (sessionId: string): Promise<AgentService | null> => {
-    const row = await pool.query("SELECT kind FROM app.agent_sessions WHERE id = $1", [sessionId])
-    if (row.rows.length === 0) return null
-    return row.rows[0].kind === "dashboard" ? dashboardAgent : agent
-  }
-
-  const [pathname, search] = url.split("?")
-  const searchParams = new URLSearchParams(search ?? "")
-
   if (pathname === "/api/sessions") {
-    if (req.method === "POST") {
-      const body = await readJsonBody(req)
-      const kind = body.kind === "dashboard" ? "dashboard" : "designer"
-      const service = kind === "dashboard" ? dashboardAgent : agent
-      if (!service) {
-        json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
-        return
-      }
-      const bindId = kind === "dashboard" ? body.dashboardId : body.integrationId
-      const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId))
-      json(res, 201, { sessionId })
-    } else {
-      const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions()])
-      const sessions = lists
-        .flatMap(l => l ?? [])
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      json(res, 200, { sessions })
-    }
+    const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions(), assistantAgent?.listSessions()])
+    const sessions = lists
+      .flatMap(l => l ?? [])
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    json(res, 200, { sessions })
     return
   }
 
@@ -894,12 +893,21 @@ async function routeSessions(
     return
   }
   const [, sessionId, sub] = match
-  const owner = await serviceFor(sessionId)
-  if (!owner) {
+  const owner = await pool.query("SELECT kind FROM app.agent_sessions WHERE id = $1", [sessionId])
+  if (owner.rows.length === 0) {
     json(res, 404, { error: "unknown session" })
     return
   }
-  const agentService = owner
+  const ownerKind: string = owner.rows[0].kind
+  if (isViewer && req.method === "POST" && ownerKind !== "assistant") {
+    json(res, 403, { error: "Viewers cannot run design sessions" })
+    return
+  }
+  const agentService = ownerKind === "dashboard" ? dashboardAgent : ownerKind === "assistant" ? assistantAgent : agent
+  if (!agentService) {
+    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+    return
+  }
 
   if (!sub && req.method === "GET") {
     const detail = await agentService.getSession(sessionId)

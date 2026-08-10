@@ -45,6 +45,8 @@ export interface AgentImplementation<S> {
   execute(tool: string, input: unknown, state: S, events: AgentEventListener, sessionId: string): Promise<ToolOutcome<S>>
   /** Hard cap on model calls per session */
   maxSteps: number
+  /** Cap on model calls per run (one user turn); the loop pauses when hit. Absent means no per-run cap */
+  stepsPerRun?: number
 }
 
 /** Cumulative usage persisted with the session. */

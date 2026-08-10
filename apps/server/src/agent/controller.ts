@@ -122,6 +122,7 @@ export class AgentSessionController<S> {
     controls?: LoopControls
   ): Promise<SessionStop> {
     const emit: AgentEventListener = events ?? (() => {})
+    let stepsThisRun = 0
     for (;;) {
       // Steering typed while the loop ran lands here, before the next model call
       for (const text of controls?.drainSteering?.() ?? []) {
@@ -131,7 +132,7 @@ export class AgentSessionController<S> {
         await this.save(sessionId, "paused", session)
         return { sessionId, reason: "stopped", text: null }
       }
-      if (session.usage.steps >= this.impl.maxSteps) {
+      if (session.usage.steps >= this.impl.maxSteps || stepsThisRun >= (this.impl.stepsPerRun ?? Infinity)) {
         await this.save(sessionId, "paused", session)
         return { sessionId, reason: "step_limit", text: null }
       }
@@ -144,6 +145,7 @@ export class AgentSessionController<S> {
         maxOutputTokens: OUTPUT_TOKENS_MAX
       })
       session.usage.steps++
+      stepsThisRun++
       session.usage.inputTokens += result.usage.inputTokens ?? 0
       session.usage.outputTokens += result.usage.outputTokens ?? 0
       session.messages.push(...(result.response.messages as ModelMessage[]))

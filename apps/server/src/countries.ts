@@ -256,3 +256,20 @@ export const COUNTRIES: CountryBox[] = [
   { iso3: "ZWE", name: "Zimbabwe", bbox: [25.224, -22.402, 33.007, -15.643] },
   { iso3: "ALA", name: "\u00c5land Islands", bbox: [19.519, 60.012, 20.611, 60.406] },
 ]
+
+/**
+ * Country bbox lookup over the baked-in list: the same data the UI pickers
+ * use, so agent-authored boxes never come from model memory. Returns display
+ * text (matches, an overflow hint, and the bbox convention note).
+ */
+export function lookupCountry(query: string): string {
+  const q = query.trim().toLowerCase()
+  if (q === "") return "Error: query is required"
+  const matches = COUNTRIES.filter((c) => c.iso3.toLowerCase() === q || c.name.toLowerCase().includes(q))
+  if (matches.length === 0) return `No country matches "${query}"`
+  const shown = matches.slice(0, 5)
+  const lines = shown.map((c) => `${c.name} (${c.iso3}): bbox [${c.bbox.join(", ")}]`)
+  if (matches.length > shown.length) lines.push(`...and ${matches.length - shown.length} more; narrow the query`)
+  lines.push("bbox is [west, south, east, north] EPSG:4326; west > east crosses the antimeridian")
+  return lines.join("\n")
+}
