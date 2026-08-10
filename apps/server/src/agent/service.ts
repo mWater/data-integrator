@@ -160,21 +160,22 @@ export class AgentService<S = unknown> {
 
   /**
    * Creates a new session, optionally bound to an existing artifact id so the
-   * agent edits rather than re-derives.
+   * agent edits rather than re-derives. userId records the creator.
    */
-  async createSession(bindId?: string): Promise<string> {
-    return await this.controller.createSession(await this.adapter.initialState(bindId))
+  async createSession(bindId?: string, userId?: string): Promise<string> {
+    return await this.controller.createSession(await this.adapter.initialState(bindId), userId)
   }
 
-  /** Lists this kind's sessions, newest first. */
-  async listSessions(): Promise<SessionSummary[]> {
+  /** Lists this kind's sessions, newest first; forUserId narrows to one creator's. */
+  async listSessions(forUserId?: string): Promise<SessionSummary[]> {
     const result = await this.pool.query(
       `SELECT id, status, ${this.adapter.bindIdSql} AS bind_id,
               (SELECT left(msg->>'content', 120) FROM jsonb_array_elements(messages) msg
                WHERE msg->>'role' = 'user' LIMIT 1) AS first_message,
               COALESCE((usage->>'steps')::int, 0) AS steps, updated_at
-       FROM app.agent_sessions WHERE kind = $1 ORDER BY updated_at DESC LIMIT 100`,
-      [this.adapter.kind]
+       FROM app.agent_sessions WHERE kind = $1 ${forUserId ? "AND user_id = $2" : ""}
+       ORDER BY updated_at DESC LIMIT 100`,
+      forUserId ? [this.adapter.kind, forUserId] : [this.adapter.kind]
     )
     return result.rows.map(r => ({
       id: r.id,

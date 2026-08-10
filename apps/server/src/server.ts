@@ -868,7 +868,7 @@ async function routeSessions(
       return
     }
     const bindId = kind === "dashboard" ? body.dashboardId : kind === "designer" ? body.integrationId : undefined
-    const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId))
+    const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId), user.id)
     json(res, 201, { sessionId })
     return
   }
@@ -879,7 +879,8 @@ async function routeSessions(
   }
 
   if (pathname === "/api/sessions") {
-    const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions(), assistantAgent?.listSessions()])
+    // Design sessions are team artifacts; assistant chats list per creator
+    const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions(), assistantAgent?.listSessions(user.id)])
     const sessions = lists
       .flatMap(l => l ?? [])
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))

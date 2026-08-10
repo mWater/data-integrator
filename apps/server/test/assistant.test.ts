@@ -406,10 +406,18 @@ test("http: viewers chat with the assistant but stay blocked from design", async
     })
     assert.equal(blocked.status, 403)
 
+    // Another user's chat must not appear in this user's list
+    const other = await createUser(pool, "other@example.org", "hunter2hunter2", "viewer")
+    const foreign = await pool.query(
+      "INSERT INTO app.agent_sessions (kind, user_id, status, client_state, usage) VALUES ('assistant', $1, 'paused', '{\"results\":{},\"nextResult\":1}', '{}') RETURNING id",
+      [other.id]
+    )
+
     const list = await fetch(`${base}/api/sessions`, { headers: { cookie } })
     assert.equal(list.status, 200)
     const { sessions } = (await list.json()) as { sessions: { id: string; kind: string }[] }
     assert.ok(sessions.some(s => s.id === sessionId && s.kind === "assistant"))
+    assert.ok(!sessions.some(s => s.id === foreign.rows[0].id))
 
     // Detail carries client_state (the block store) to every role
     const detail = await fetch(`${base}/api/sessions/${sessionId}`, { headers: { cookie } })
