@@ -119,6 +119,28 @@ Or click Run Now on the integration's page. `library/integrations/chirps_rainfal
 adds a time-series layer; `library/integrations/rainfall_stats` derives population-weighted
 rainfall from the other two (install and run those first).
 
+## Develop live (no rebuilds)
+
+One command instead of the build-and-serve loop:
+
+```sh
+set -a; . ./.env; set +a          # export the .env vars to child processes
+pnpm dev
+```
+
+This runs both dev processes in parallel with prefixed output: the API
+server from source (`tsx watch`, restarting on change) and the Vite UI with
+hot reload, proxying `/api` and friends to :8080. Open the Vite URL it
+prints (usually http://localhost:5173): UI edits apply instantly, server
+edits restart the process. Ctrl+C stops both. (`set -a` makes every
+variable the sourced `.env` defines exported, so they reach pnpm's child
+processes; `set +a` turns that back off.)
+
+One caveat: the server dev process runs with `apps/server` as its working
+directory, so the relative path defaults (`./library`, `./raster-store`,
+...) resolve there — use absolute paths in your `.env` (including
+`LIBRARY_PATH`) when developing, or the Library page will come up empty.
+
 ## Design an integration with the agent
 
 In the UI: New Integration on the landing page, then describe what to build.
