@@ -11,6 +11,7 @@ import { Login } from "./Login.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
 import { Settings } from "./Settings.js"
+import { TablePage } from "./TablePage.js"
 import { Library } from "./Library.js"
 import { UserMenu } from "./UserMenu.js"
 
@@ -23,6 +24,8 @@ interface Route {
   sessionId: string | null
   /** Integration id, when on an integration page */
   integrationId: string | null
+  /** Destination table id, when on a table page */
+  tableId: string | null
   /** True on the sessions list page */
   sessions: boolean
   /** True on the assistant page */
@@ -50,11 +53,13 @@ function parseHash(): Route {
   const [hash, query] = window.location.hash.split("?")
   const session = hash.match(/^#\/session\/([0-9a-f-]+)$/)
   const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
+  const table = hash.match(/^#\/table\/([a-z][a-z0-9_]*)$/)
   const dashboard = hash.match(/^#\/dashboard\/([a-z][a-z0-9_-]*)$/)
   const map = hash.match(/^#\/map(?:\/([a-z][a-z0-9_]*))?$/)
   return {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
+    tableId: table ? table[1] : null,
     sessions: hash === "#/sessions",
     assistant: hash === "#/assistant",
     integrations: hash === "#/integrations",
@@ -147,6 +152,8 @@ export function App() {
         <SessionView sessionId={route.sessionId} canDesign={canDesign} />
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
+      ) : route.tableId ? (
+        <TablePage tableId={route.tableId} />
       ) : route.map ? (
         <Suspense fallback={null}>
           <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />

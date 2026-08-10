@@ -337,6 +337,12 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     : isDashboard
       ? dashState?.name || "New dashboard"
       : (detail.state as DesignerState)?.definition?.name || "New integration"
+  // A finished designer session has installed its integration; the card is the
+  // handoff to it, since the transcript alone leaves the user without a next step
+  const installed =
+    !busy && !isDashboard && !isAssistant && detail.status === "finished" && detail.integrationId != null
+      ? (detail.state as DesignerState)
+      : null
   return (
     <main className="session-page" ref={pageRef}>
       <div className="conversation">
@@ -347,7 +353,6 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
           )}
-          {detail.certified && <span className="chip chip-certified">cold-run certified</span>}
           {detail.scratchLayers.length > 0 && <a href={`#/map?session=${detail.id}`}>Map preview</a>}
           <span className="spacer" />
           <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
@@ -371,6 +376,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           <div ref={bottomRef} />
         </div>
         {question && <QuestionCard question={question} onAnswer={text => void send(text)} />}
+        {installed && (
+          <div className="question installed-card">
+            <b>Integration installed.</b>{" "}
+            {installed.firstLoadStarted
+              ? "Its first data load started automatically — open it to see the data arrive."
+              : "Open it to see its data, runs, and schedule."}
+            <div className="installed-actions">
+              <a href={`#/integration/${detail.integrationId}`}>Open Integration</a>
+            </div>
+          </div>
+        )}
         {previewErrors.length > 0 && (
           <div className="error">
             Preview error: {previewErrors[previewErrors.length - 1]} (attached to your next message)

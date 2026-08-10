@@ -9,6 +9,7 @@ import { ExecutorDeps, executeRun } from "../executor.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
 import { COUNTRIES, lookupCountry } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
+import { startProductionRun } from "../runService.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
 import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
@@ -23,6 +24,8 @@ export interface DesignerState {
   lastRun: { runId: string; status: string; cold: boolean } | null
   /** Consecutive failed runs sharing one error signature (thrash guard); absent on older sessions */
   failStreak?: { signature: string; count: number } | null
+  /** True when finish started the fresh install's first production load; absent before finish */
+  firstLoadStarted?: boolean
 }
 
 /** Everything the designer needs: executor deps plus the model. */
@@ -154,9 +157,10 @@ this integration's own destinations.
    write to a session-scoped scratch area; nothing touches installed integrations
    or their data until finish. query_table reads your scratch tables by plain name.
 5. When it works, run_integration with cold=true (fresh /work, null previousState).
-6. finish saves: it installs the certified definition as the real integration and
-   discards the scratch area (the first production run then loads data). It is
-   rejected unless the current code passed a cold run unchanged.
+6. finish saves: it installs the certified definition as the real integration,
+   discards the scratch area, and on a fresh install starts the first production
+   run so data begins loading immediately. It is rejected unless the current
+   code passed a cold run unchanged.
 
 Rules: never fabricate data. Reference secrets by name only. Prefer incremental state
 over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
@@ -561,8 +565,9 @@ ${index}`
   /**
    * The save: behind the cold-run gate, installs the certified definition as
    * the real integration (creating or updating its tables and layers) and
-   * discards the session's scratch area. The integration starts empty; its
-   * first production run loads data.
+   * discards the session's scratch area. A fresh install starts empty, so its
+   * first production load is started here; an integration that has run before
+   * keeps its schedule and manual control.
    */
   private async finish(state: DesignerState, summary: string, sessionId: string): Promise<ToolOutcome<DesignerState>> {
     const hash = definitionHash(state.definition)
@@ -573,10 +578,27 @@ ${index}`
       }
     }
     const session = await this.deps.pool.query("SELECT user_id FROM app.agent_sessions WHERE id = $1", [sessionId])
+    const prior = await this.deps.pool.query("SELECT 1 FROM app.runs WHERE integration_id = $1 LIMIT 1", [
+      state.definition.id
+    ])
     await installIntegration(this.deps.pool, state.definition, "ready", session.rows[0]?.user_id ?? null)
     await cleanupScratch(this.deps.pool, this.deps.store, this.deps.workRoot, sessionId)
+    let firstLoadStarted = false
+    if (prior.rows.length === 0) {
+      try {
+        await startProductionRun(this.deps, state.definition.id)
+        firstLoadStarted = true
+      } catch {
+        // The install stands; the first load can still be started from the integration page
+      }
+    }
     return {
-      result: `Saved ${state.definition.id} as the installed integration (scratch area discarded; its first real run loads data). ${summary}`,
+      result: `Saved ${state.definition.id} as the installed integration (scratch area discarded).${
+        firstLoadStarted
+          ? " Its first data load is already running; the integration page shows progress."
+          : " Data loads on its scheduled or manual runs."
+      } ${summary}`,
+      state: { ...state, firstLoadStarted },
       finished: true
     }
   }

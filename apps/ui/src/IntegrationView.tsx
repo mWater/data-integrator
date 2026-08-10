@@ -8,7 +8,6 @@ import {
   getIntegrationUsage,
   getIntegrationVersions,
   getSettings,
-  getTableRows,
   IntegrationDetail,
   IntegrationUsage,
   listCountries,
@@ -20,6 +19,7 @@ import {
 } from "./api.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { triggerLabel } from "./IntegrationList.js"
+import { DataTab } from "./TablePage.js"
 
 /** Props for the integration detail view. */
 interface IntegrationViewProps {
@@ -165,7 +165,11 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
             <b>{d.id}</b>
             <div>
               {d.count === null
-                ? "no data yet"
+                ? running
+                  ? "first run in progress…"
+                  : canDesign
+                    ? "no data yet — Run Now loads it"
+                    : "no data yet"
                 : `${d.count.toLocaleString()} ${d.kind === "table" ? "rows" : "snapshots"}`}
             </div>
             {d.kind === "raster" && d.count !== null && <a href={`#/map/${d.id}`}>View on map</a>}
@@ -207,7 +211,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
             </tbody>
           </table>
         ))}
-      {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} />}
+      {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} running={running} />}
       {tab === "definition" && (
         <>
           <ScheduleSection detail={detail} canDesign={canDesign} onChanged={refresh} />
@@ -619,71 +623,6 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
       )}
     </div>
   )
-}
-
-/** Props for the data preview tab. */
-interface DataTabProps {
-  /** Integration whose tables are shown */
-  integrationId: string
-  /** Destination table ids */
-  tableIds: string[]
-}
-
-/** Newest-rows preview of one destination table at a time. */
-function DataTab({ integrationId, tableIds }: DataTabProps) {
-  const [tableId, setTableId] = useState(tableIds[0])
-  const [preview, setPreview] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setPreview(null)
-    setError(null)
-    getTableRows(integrationId, tableId).then(setPreview, err => setError(err.message))
-  }, [integrationId, tableId])
-
-  return (
-    <div>
-      {tableIds.length > 1 && (
-        <select value={tableId} onChange={e => setTableId(e.target.value)}>
-          {tableIds.map(id => (
-            <option key={id}>{id}</option>
-          ))}
-        </select>
-      )}
-      {error && <div className="error">{error}</div>}
-      {!preview && !error && <p>Loading…</p>}
-      {preview && (
-        <div className="data-scroll">
-          <table className="sessions data-table">
-            <thead>
-              <tr>{preview.columns.map(c => <th key={c}>{c}</th>)}</tr>
-            </thead>
-            <tbody>
-              {preview.rows.map((row, i) => (
-                <tr key={i}>
-                  {preview.columns.map(c => (
-                    <td key={c}>{cellText(row[c])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="dim">Newest {preview.rows.length} rows</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Renders one cell: dates and objects (geometry) get compact text forms. */
-function cellText(value: unknown): string {
-  if (value === null || value === undefined) return ""
-  if (typeof value === "object") {
-    const geo = value as { type?: string; coordinates?: unknown }
-    if (geo.type && geo.coordinates) return `${geo.type}(${JSON.stringify(geo.coordinates).slice(0, 40)}…)`
-    return JSON.stringify(value).slice(0, 80)
-  }
-  return String(value)
 }
 
 /** Props for the integration delete dialog. */

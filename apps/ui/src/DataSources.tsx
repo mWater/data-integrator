@@ -10,9 +10,9 @@ export function DataSources() {
     listSources().then(r => setSources(r.sources), err => setError(err.message))
   }, [])
 
-  /** Tables open their integration's data preview; rasters open on the map. */
+  /** Tables open their table page; rasters open on the map. */
   function open(source: DataSource) {
-    window.location.hash = source.kind === "raster" ? `#/map/${source.id}` : `#/integration/${source.integrationId}`
+    window.location.hash = source.kind === "raster" ? `#/map/${source.id}` : `#/table/${source.id}`
   }
 
   return (

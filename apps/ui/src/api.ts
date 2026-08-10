@@ -38,6 +38,8 @@ export interface DesignerState {
   coldRun: { definitionHash: string; runId: string } | null
   /** Most recent test run */
   lastRun: { runId: string; status: string; cold: boolean } | null
+  /** True when finish started the fresh install's first production load; absent before finish */
+  firstLoadStarted?: boolean
 }
 
 /** Build outcome inside a dashboard session's client state. */

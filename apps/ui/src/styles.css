@@ -380,6 +380,13 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 }
 .question-other button:disabled { opacity: 0.5; cursor: default }
 
+/* Post-install handoff card: the link is the primary action, styled as one */
+.installed-actions { margin-top: 10px }
+.installed-actions a {
+  display: inline-block; background: var(--accent); color: var(--accent-ink);
+  border-radius: 6px; padding: 8px 16px; text-decoration: none;
+}
+
 .composer { display: flex; gap: 8px; padding-top: 10px }
 .composer .stop { background: var(--surface); border: 1px solid var(--danger); color: var(--danger) }
 .composer .stop:hover { background: var(--danger-bg) }
