@@ -1,5 +1,10 @@
-/** Data table: the accessible tabular view for query results. */
+/**
+ * Data table: the accessible tabular view for query results. Styled inline
+ * (no stylesheet dependency) so it renders identically inside dashboard
+ * frames and host-side under KitTheme.
+ */
 
+import type { CSSProperties } from "react"
 import { useTheme } from "../hooks.js"
 import type { Row } from "../bridge.js"
 
@@ -27,6 +32,19 @@ export interface DataTableProps {
   height?: number
 }
 
+/** Visually-hidden style for the accessible caption. */
+const srOnly: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  borderWidth: 0
+}
+
 /** Scrollable table with sticky header; numbers right-aligned in tabular figures. */
 export function DataTable({ data, columns, caption, height }: DataTableProps) {
   const theme = useTheme()
@@ -36,18 +54,28 @@ export function DataTable({ data, columns, caption, height }: DataTableProps) {
       key,
       numeric: typeof data[0]?.[key] === "number"
     }))
+  const cell: CSSProperties = { padding: "6px 8px" }
   return (
-    <div className="overflow-auto" style={{ maxHeight: height ?? 320 }}>
-      <table className="w-full border-collapse text-sm">
-        {caption ? <caption className="sr-only">{caption}</caption> : null}
+    <div style={{ overflow: "auto", maxHeight: height ?? 320 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, lineHeight: 1.4 }}>
+        {caption ? <caption style={srOnly}>{caption}</caption> : null}
         <thead>
           <tr>
             {cols.map((c) => (
               <th
                 key={c.key}
                 scope="col"
-                className={"sticky top-0 px-2 py-1.5 text-left text-xs font-medium" + (c.numeric ? " text-right" : "")}
-                style={{ background: theme.surface, color: theme.inkSecondary, borderBottom: `1px solid ${theme.baseline}` }}
+                style={{
+                  ...cell,
+                  position: "sticky",
+                  top: 0,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  textAlign: c.numeric ? "right" : "left",
+                  background: theme.surface,
+                  color: theme.inkSecondary,
+                  borderBottom: `1px solid ${theme.baseline}`
+                }}
               >
                 {c.label ?? c.key}
               </th>
@@ -60,8 +88,12 @@ export function DataTable({ data, columns, caption, height }: DataTableProps) {
               {cols.map((c) => (
                 <td
                   key={c.key}
-                  className={"px-2 py-1.5" + (c.numeric ? " text-right [font-variant-numeric:tabular-nums]" : "")}
-                  style={{ borderBottom: `1px solid ${theme.gridline}` }}
+                  style={{
+                    ...cell,
+                    textAlign: c.numeric ? "right" : "left",
+                    fontVariantNumeric: c.numeric ? "tabular-nums" : undefined,
+                    borderBottom: `1px solid ${theme.gridline}`
+                  }}
                 >
                   {c.format ? c.format(row[c.key]) : row[c.key] == null ? "" : String(row[c.key])}
                 </td>

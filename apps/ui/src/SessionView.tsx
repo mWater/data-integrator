@@ -361,7 +361,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               bundleJs={build.bundleJs ?? ""}
               bundleCss={build.bundleCss ?? ""}
               // Drafts always build against the current kit; keep in step with KIT_VERSION
-              kitVersion="3"
+              kitVersion="4"
               runQuery={(name, params) => execSessionQuery(sessionId, name, params)}
               fetchVectorTile={(query, z, x, y, params) =>
                 fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)

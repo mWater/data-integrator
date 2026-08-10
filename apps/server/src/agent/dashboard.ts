@@ -129,11 +129,17 @@ One TypeScript React file. Default export is the root component, receiving
 - <Page title subtitle? controls?>: page scaffold; put a <FilterBar> in controls.
 - <Grid columns={2|3|4}>: responsive card grid. <Card title? wide?>: content surface.
 - <StatTile label value detail? status?>: one headline number (use for single values).
-- <Chart type="line|area|bar|pie" data x series labels? stacked? height? format?>:
-  data is rows; x names the category column; series names value columns (colors follow
-  series order automatically; max ~8). One value axis by design - for two scales use
-  two charts. Pie takes exactly one series column and few slices.
+- <Chart type="line|area|bar|pie|scatter" data x series labels? stacked? height? format?
+  xType? zoom?>: data is rows; x names the category column; series names value columns
+  (colors follow series order automatically; max ~8). One value axis by design - for
+  two scales use two charts. Pie takes exactly one series column and few slices.
+  xType="time" draws a true time axis - pass raw ISO date/timestamp x values, don't
+  to_char-bucket for display. Scatter relates two measures (numeric x by default).
+  zoom adds interactive zooming for long series.
 - <DataTable data columns? caption? height?>: accessible table view of rows.
+- <EChart option height?>: raw ECharts option with the theme (palette, ink, fonts)
+  merged underneath. Registered forms: bar/line/pie/scatter/heatmap plus grid/legend/
+  tooltip/dataZoom/markLine/markArea/visualMap.
 - <FilterBar>, <Select label options value onChange allLabel?>,
   <MultiSelect label options value onChange>, <DateRange label from to onChange>:
   plain value/onChange controls; wire their state into useQuery params.
@@ -245,9 +251,11 @@ none at all.
    It is rejected while the latest build has errors.
 
 Chart guidance: pick the form by the data's job (trend = line/area, comparison = bar,
-single value = StatTile, composition with few parts = pie, detail = DataTable). Series
-colors are assigned by order and must keep their meaning across filters. Give every
-multi-series chart labels; keep grids and axes recessive (the kit does this).
+single value = StatTile, composition with few parts = pie, relation = scatter, detail =
+DataTable). Use Chart; reach for EChart only when Chart cannot express the form; never
+hand-roll SVG charts. Series colors are assigned by order and must keep their meaning
+across filters. Give every multi-series chart labels; keep grids and axes recessive
+(the kit does this).
 
 Rules: never fabricate data; if a query returns nothing, say so and ask. Whenever a
 choice is not forced (which metric, which period, which breakdown), ask_user rather

@@ -6,19 +6,29 @@
 
 import { useEffect, useRef } from "react"
 import { use, init, type EChartsType, type EChartsCoreOption } from "echarts/core"
-import { BarChart, LineChart, PieChart } from "echarts/charts"
-import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components"
+import { BarChart, LineChart, PieChart, ScatterChart } from "echarts/charts"
+import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } from "echarts/components"
 import { CanvasRenderer } from "echarts/renderers"
 import type { Row } from "../bridge.js"
 import { useTheme } from "../hooks.js"
 import { seriesColor, type ThemeTokens } from "../theme.js"
 
-use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+use([
+  BarChart,
+  LineChart,
+  PieChart,
+  ScatterChart,
+  DataZoomComponent,
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+  CanvasRenderer
+])
 
 /** Props for the Chart component. */
 export interface ChartProps {
-  /** Chart form. Pick by the data's job: change-over-time = line/area, magnitude comparison = bar, part-of-whole = pie (few slices). */
-  type: "line" | "area" | "bar" | "pie"
+  /** Chart form. Pick by the data's job: change-over-time = line/area, magnitude comparison = bar, part-of-whole = pie (few slices), relation between two measures = scatter. */
+  type: "line" | "area" | "bar" | "pie" | "scatter"
   /** Result rows, one per x value (or one per slice for pie). */
   data: Row[]
   /** Column holding the x category (or the slice label for pie). */
@@ -33,10 +43,15 @@ export interface ChartProps {
   height?: number
   /** Formats values for tooltips and the value axis. */
   format?: (value: number) => string
+  /** X-axis scale: "category" (default) or "time" (a true time axis; x values are ISO date/timestamp strings). Scatter defaults to a numeric x axis. */
+  xType?: "category" | "time"
+  /** Interactive zoom (wheel/drag plus a range slider) for long series. */
+  zoom?: boolean
 }
 
-function buildOption(props: ChartProps, theme: ThemeTokens): EChartsCoreOption {
-  const { type, data, x, series, labels, stacked, format } = props
+/** Builds the full ECharts option for the given props and theme. Exported for tests. */
+export function buildOption(props: ChartProps, theme: ThemeTokens): EChartsCoreOption {
+  const { type, data, x, series, labels, stacked, format, xType, zoom } = props
   const text = { color: theme.inkSecondary, fontFamily: theme.fontFamily, fontSize: 11 }
   const fmt = format ?? ((v: number) => String(v))
   const axisFmt = (v: number | string) => (typeof v === "number" ? fmt(v) : String(v))
@@ -61,20 +76,45 @@ function buildOption(props: ChartProps, theme: ThemeTokens): EChartsCoreOption {
     }
   }
 
+  // Scatter relates two measures, so its x defaults to a value axis
+  const axisType: "category" | "time" | "value" = xType ?? (type === "scatter" ? "value" : "category")
+  // Non-category axes carry the x value inside each datum instead of xAxis.data
+  const seriesData = (col: string) =>
+    axisType === "category" ? data.map((row) => row[col] as number) : data.map((row) => [row[x], row[col] as number])
+
+  const showLegend = series.length > 1
   return {
     color: series.map((_, i) => seriesColor(theme, i)),
     tooltip: {
       trigger: "axis",
-      axisPointer: { type: type === "bar" ? "shadow" : "line" },
+      axisPointer: { type: type === "bar" ? "shadow" : type === "scatter" ? "cross" : "line" },
       valueFormatter: fmt
     },
-    // A single series needs no legend box: the card title names it
-    legend:
-      series.length > 1 ? { bottom: 0, textStyle: text, icon: "circle" } : { show: false },
-    grid: { left: 8, right: 12, top: 12, bottom: series.length > 1 ? 32 : 8, containLabel: true },
+    // A single series needs no legend box: the card title names it.
+    // The zoom slider owns the bottom edge, so the legend moves up top.
+    legend: showLegend
+      ? zoom
+        ? { top: 0, textStyle: text, icon: "circle" }
+        : { bottom: 0, textStyle: text, icon: "circle" }
+      : { show: false },
+    grid: {
+      left: 8,
+      right: 12,
+      top: zoom && showLegend ? 32 : 12,
+      bottom: zoom ? 40 : showLegend ? 32 : 8,
+      containLabel: true
+    },
+    ...(zoom
+      ? {
+          dataZoom: [
+            { type: "inside" },
+            { type: "slider", bottom: 0, height: 18, borderColor: theme.border, textStyle: { ...text, fontSize: 10 } }
+          ]
+        }
+      : {}),
     xAxis: {
-      type: "category",
-      data: data.map((row) => String(row[x])),
+      type: axisType,
+      ...(axisType === "category" ? { data: data.map((row) => String(row[x])) } : {}),
       axisLine: { lineStyle: { color: theme.baseline } },
       axisTick: { show: false },
       axisLabel: text
@@ -86,13 +126,12 @@ function buildOption(props: ChartProps, theme: ThemeTokens): EChartsCoreOption {
     },
     series: series.map((col) => {
       const name = labels?.[col] ?? col
-      const values = data.map((row) => row[col] as number)
       if (type === "bar") {
         return {
           name,
           type: "bar",
           stack: stacked ? "total" : undefined,
-          data: values,
+          data: seriesData(col),
           // Rounded data-end anchored to the baseline; surface gap between stacked fills
           itemStyle: stacked
             ? { borderColor: theme.surface, borderWidth: 1 }
@@ -100,12 +139,21 @@ function buildOption(props: ChartProps, theme: ThemeTokens): EChartsCoreOption {
           barMaxWidth: 40
         }
       }
+      if (type === "scatter") {
+        return {
+          name,
+          type: "scatter",
+          data: seriesData(col),
+          symbolSize: 8,
+          emphasis: { focus: series.length > 1 ? "series" : "none" }
+        }
+      }
       return {
         name,
         type: "line",
         stack: type === "area" && stacked ? "total" : undefined,
         areaStyle: type === "area" ? { opacity: 0.25 } : undefined,
-        data: values,
+        data: seriesData(col),
         lineStyle: { width: 2 },
         showSymbol: false,
         symbolSize: 8,

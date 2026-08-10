@@ -6,6 +6,12 @@
 
 import type { FrameInit, FrameMessage, HostMessage, Row } from "./bridge.js"
 
+// Theme tokens re-exported for hosts, so importing them (e.g. to pass into
+// KitTheme or mountDashboardFrame) does not pull the component barrel and its
+// chart/map bundle weight into the host's eager chunk.
+export { lightTheme, darkTheme } from "./theme.js"
+export type { ThemeTokens } from "./theme.js"
+
 /** Host callbacks that service frame requests using the viewer's session. */
 export interface FrameHandlers {
   /** Executes a stored query by name with typed parameter values. */
