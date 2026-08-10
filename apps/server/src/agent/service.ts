@@ -248,7 +248,7 @@ export class AgentService<S = unknown> {
         // Steering that missed the loop starts a fresh one, unless the user stopped
         if (channel.steering.length > 0) {
           const leftover = channel.steering.splice(0)
-          if (stop.reason !== "finished" && stop.reason !== "stopped") {
+          if (stop.reason !== "stopped") {
             void this.startQueued(sessionId, leftover.join("\n\n"))
           }
         }

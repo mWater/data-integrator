@@ -83,6 +83,18 @@ export interface GeoJsonOverlay {
   radius?: number
   /** Property name shown in a popup when a feature is clicked. */
   popup?: string
+  /** Legend entry text; without it the overlay stays out of the legend. */
+  label?: string
+}
+
+/** One value-to-color stop of a raster legend, mirroring the layer's rendering colorMap. */
+export interface RasterLegendStop {
+  /** Band value at this stop. */
+  value: number
+  /** Hex color at this stop. */
+  color: string
+  /** Text shown instead of the numeric value. */
+  label?: string
 }
 
 /** One raster layer to display. */
@@ -91,6 +103,10 @@ export interface MapLayer {
   layerId: string
   /** Layer opacity, 0-1. */
   opacity?: number
+  /** Legend title; defaults to the layer id when colorMap is given. */
+  label?: string
+  /** Legend color stops (mirror the catalog layer's rendering colorMap); without it the layer stays out of the legend. */
+  colorMap?: RasterLegendStop[]
 }
 
 /** Data-driven color: distinct color per value of a feature attribute. */
@@ -99,8 +115,8 @@ export interface CategoricalColorScale {
   kind: "categorical"
   /** Tile attribute matched against values. */
   property: string
-  /** Attribute value to color pairs. */
-  values: { value: string | number; color: string }[]
+  /** Attribute value to color pairs; a label replaces the raw value in the legend. */
+  values: { value: string | number; color: string; label?: string }[]
   /** Color for unmatched values; defaults to the layer's base color. */
   otherwise?: string
 }
@@ -152,6 +168,8 @@ export interface VectorTileLayer {
   minzoom?: number
   /** Hide the layer at and above this zoom level. */
   maxzoom?: number
+  /** Legend title; also enables a single swatch entry when no colorBy is set. */
+  label?: string
 }
 
 /** Props for the map view. */
@@ -173,6 +191,8 @@ export interface MapViewProps {
   fit?: boolean
   /** Pixel height of the map. */
   height?: number
+  /** Set false to hide the legend; by default it shows when any layer declares legend info. */
+  legend?: boolean
 }
 
 /** Fallback style when the basemap proxy is unreachable: plain background. */
@@ -260,6 +280,116 @@ function radiusExpression(layer: VectorTileLayer): unknown {
   const expr: unknown[] = ["interpolate", ["linear"], ["to-number", ["get", scale.property]]]
   for (const stop of stops) expr.push(stop.value, stop.radius)
   return expr
+}
+
+/** One rendered legend block: discrete swatch rows or a continuous ramp bar. */
+interface LegendBlock {
+  /** Block heading; omitted for single-swatch blocks whose row carries the text. */
+  title?: string
+  /** Discrete color + text rows. */
+  swatches?: { color: string; label: string }[]
+  /** Ascending stops rendered as a gradient bar with end labels. */
+  ramp?: { value: number; color: string }[]
+}
+
+/** Compact number for legend labels. */
+function legendNumber(value: number): string {
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value)
+}
+
+/** Derives legend blocks from everything the layers declare. */
+function legendBlocks(
+  layers: MapLayer[],
+  vector: VectorTileLayer[],
+  geojson: GeoJsonOverlay[],
+  theme: ThemeTokens
+): LegendBlock[] {
+  const blocks: LegendBlock[] = []
+  for (const layer of layers) {
+    if (!layer.colorMap || layer.colorMap.length === 0) continue
+    const stops = [...layer.colorMap].sort((a, b) => a.value - b.value)
+    const title = layer.label ?? layer.layerId
+    if (stops.length === 1 || stops.some(s => s.label)) {
+      blocks.push({ title, swatches: stops.map(s => ({ color: s.color, label: s.label ?? legendNumber(s.value) })) })
+    } else {
+      blocks.push({ title, ramp: stops })
+    }
+  }
+  vector.forEach((layer, i) => {
+    const scale = layer.colorBy
+    const title = layer.label ?? layer.query
+    if (scale?.kind === "categorical" && scale.values.length > 0) {
+      blocks.push({ title, swatches: scale.values.map(v => ({ color: v.color, label: v.label ?? String(v.value) })) })
+    } else if (scale?.kind === "ramp" && scale.stops.length > 1) {
+      blocks.push({ title, ramp: [...scale.stops].sort((a, b) => a.value - b.value) })
+    } else if (layer.label) {
+      blocks.push({ swatches: [{ color: layer.color ?? theme.series[i % theme.series.length], label: layer.label }] })
+    }
+  })
+  for (const overlay of geojson) {
+    if (overlay.label) blocks.push({ swatches: [{ color: overlay.color ?? theme.series[0], label: overlay.label }] })
+  }
+  return blocks
+}
+
+/** CSS gradient stop list over ascending ramp stops, positioned by value. */
+function rampGradient(stops: { value: number; color: string }[]): string {
+  const min = stops[0].value
+  const span = stops[stops.length - 1].value - min || 1
+  return stops.map(s => `${s.color} ${((s.value - min) / span) * 100}%`).join(", ")
+}
+
+/** Props for the legend overlay. */
+interface MapLegendProps {
+  /** Blocks to render. */
+  blocks: LegendBlock[]
+  /** Resolved theme tokens. */
+  theme: ThemeTokens
+}
+
+/** Legend overlay: a bottom-left card listing each layer's colors. */
+function MapLegend({ blocks, theme }: MapLegendProps) {
+  return (
+    <div
+      className="rounded px-2.5 py-2 text-xs shadow-sm"
+      style={{
+        position: "absolute",
+        left: 8,
+        bottom: 8,
+        zIndex: 10,
+        maxWidth: "55%",
+        background: theme.surface,
+        color: theme.inkPrimary,
+        border: `1px solid ${theme.border}`
+      }}
+    >
+      {blocks.map((block, i) => (
+        <div key={i} className={i > 0 ? "mt-2" : undefined}>
+          {block.title && (
+            <div className="mb-1 font-medium" style={{ color: theme.inkSecondary }}>{block.title}</div>
+          )}
+          {block.swatches?.map((row, j) => (
+            <div key={j} className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: row.color }} />
+              <span>{row.label}</span>
+            </div>
+          ))}
+          {block.ramp && (
+            <div>
+              <div
+                className="h-2 w-36 rounded-sm"
+                style={{ background: `linear-gradient(to right, ${rampGradient(block.ramp)})` }}
+              />
+              <div className="flex justify-between" style={{ color: theme.inkMuted }}>
+                <span>{legendNumber(block.ramp[0].value)}</span>
+                <span>{legendNumber(block.ramp[block.ramp.length - 1].value)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function addVectorLayers(map: maplibregl.Map, vector: VectorTileLayer[], theme: ThemeTokens): void {
@@ -351,8 +481,8 @@ function addOverlays(map: maplibregl.Map, overlays: GeoJsonOverlay[], theme: The
   })
 }
 
-/** Interactive map: basemap, raster layers, vector tile layers, GeoJSON overlays. */
-export function MapView({ layers, vector, geojson, center, zoom, fit, height }: MapViewProps) {
+/** Interactive map: basemap, raster layers, vector tile layers, GeoJSON overlays, legend. */
+export function MapView({ layers, vector, geojson, center, zoom, fit, height, legend }: MapViewProps) {
   const theme = useTheme()
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
@@ -420,5 +550,14 @@ export function MapView({ layers, vector, geojson, center, zoom, fit, height }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(layers), JSON.stringify(vector), JSON.stringify(geojson), JSON.stringify(center), zoom, fit, theme.mode])
 
-  return <div ref={el} style={{ height: height ?? 380 }} />
+  const blocks = legend === false ? [] : legendBlocks(layers ?? [], vector ?? [], geojson ?? [], theme)
+  // Positioning is inline: MapLibre's stylesheet (appended after the Tailwind
+  // utilities in kit.css) resets the container's position and would override
+  // utility classes, collapsing the map to zero height
+  return (
+    <div style={{ position: "relative", height: height ?? 380 }}>
+      <div ref={el} style={{ position: "absolute", inset: 0 }} />
+      {blocks.length > 0 && <MapLegend blocks={blocks} theme={theme} />}
+    </div>
+  )
 }

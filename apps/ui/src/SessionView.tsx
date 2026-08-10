@@ -83,10 +83,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const kindRef = useRef<string | null>(null)
+  // While the loop runs, the stored transcript is rendered only up to this
+  // message count; the live event overlay covers everything newer. Mid-loop
+  // refreshes persist steps into detail.messages, so without the cut the same
+  // message renders twice (stored + live) until the loop ends.
+  const frozenRef = useRef<number | null>(null)
 
   const refresh = useCallback(() => {
     getSession(sessionId).then(d => {
       kindRef.current = d.kind
+      if (d.running && frozenRef.current == null) frozenRef.current = d.messages.length
       setDetail(d)
       setBusy(d.running)
     }, err => setError(err.message))
@@ -105,6 +111,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       return
     }
     if (event.type === "stop" || event.type === "error") {
+      frozenRef.current = null
       setLive([])
       setBusy(false)
       setStopping(false)
@@ -143,6 +150,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     if (!text) return
     setError(null)
     const wasBusy = busy
+    if (!wasBusy) frozenRef.current = detail?.messages.length ?? 0
     setBusy(true)
     setInput("")
     // Preview runtime errors ride along with the next message so the agent
@@ -155,7 +163,10 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     try {
       await sendMessage(sessionId, outgoing)
     } catch (err) {
-      if (!wasBusy) setBusy(false)
+      if (!wasBusy) {
+        setBusy(false)
+        frozenRef.current = null
+      }
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -177,7 +188,6 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
 
   if (!detail) return <main className="session-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
 
-  const finished = detail.status === "finished"
   const question = !busy && canDesign && detail.status === "paused" ? pendingQuestion(detail) : null
   const isDashboard = detail.kind === "dashboard"
   const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
@@ -198,7 +208,10 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           </button>
         </div>
         <div className="messages">
-          <Transcript messages={detail.messages} hideTrailingQuestion={question != null} />
+          <Transcript
+            messages={frozenRef.current != null ? detail.messages.slice(0, frozenRef.current) : detail.messages}
+            hideTrailingQuestion={question != null}
+          />
           {live.map((item, i) => (
             <LiveBlock key={i} item={item} />
           ))}
@@ -232,13 +245,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
             placeholder={
               !canDesign
                 ? "Viewers can watch but not send"
-                : finished
-                  ? "Session finished"
-                  : busy
-                    ? "Steer the agent — your message lands after the current step…"
-                    : "Describe what to build or change…"
+                : busy
+                  ? "Steer the agent — your message lands after the current step…"
+                  : "Describe what to build or change…"
             }
-            disabled={!canDesign || finished}
+            disabled={!canDesign}
             rows={3}
           />
           {busy && input.trim() === "" ? (
@@ -246,7 +257,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               {stopping ? "Stopping…" : "Stop"}
             </button>
           ) : (
-            <button type="submit" disabled={!canDesign || finished || !input.trim()}>Send</button>
+            <button type="submit" disabled={!canDesign || !input.trim()}>Send</button>
           )}
         </form>
       </div>

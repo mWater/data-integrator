@@ -69,8 +69,17 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Pr
       : "\n\nRaster layers (in the rasters table; band index in file order):\n" +
         layers.rows
           .map(
-            (l: { id: string; temporality: string; bands: { id: string; units?: string }[] }) =>
-              `${l.id} (${l.temporality}): ${l.bands.map((b, i) => `band ${i + 1}=${b.id}${b.units ? ` (${b.units})` : ""}`).join(", ")}`
+            (l: {
+              id: string
+              temporality: string
+              bands: { id: string; units?: string; rendering?: { colorMap?: { value: number; color: string }[] } }[]
+            }) =>
+              `${l.id} (${l.temporality}): ${l.bands
+                .map((b, i) => {
+                  const ramp = b.rendering?.colorMap ? `, tile colorMap ${JSON.stringify(b.rendering.colorMap)}` : ""
+                  return `band ${i + 1}=${b.id}${b.units ? ` (${b.units})` : ""}${ramp}`
+                })
+                .join(", ")}`
           )
           .join("\n")
   const schemas = tableBlock + layerBlock
@@ -137,11 +146,19 @@ One TypeScript React file. Default export is the root component, receiving
   contract) as server-rendered vector tiles: only visible tiles reach the
   browser, so it scales to millions of features. Use vector whenever a layer
   could exceed a few thousand features; use geojson only for small result sets.
-  colorBy is {kind: "categorical", property, values: [{value, color}], otherwise?}
-  or {kind: "ramp", property, stops: [{value, color}]}; radiusBy is {property,
-  stops: [{value, radius}]} (pair it with grid-aggregated counts). popup names
-  the tile attribute shown on click. fit cannot see tile bounds, so give
-  vector-only maps center/zoom. Pick colors from the theme series tokens.
+  colorBy is {kind: "categorical", property, values: [{value, color, label?}],
+  otherwise?} or {kind: "ramp", property, stops: [{value, color}]}; radiusBy is
+  {property, stops: [{value, radius}]} (pair it with grid-aggregated counts).
+  popup names the tile attribute shown on click. fit cannot see tile bounds, so
+  give vector-only maps center/zoom. Pick colors from the theme series tokens.
+  Maps render an automatic legend from what layers declare - ALWAYS fill it in:
+  give every layer a label (its legend title; on plain-colored vector/geojson
+  layers the label alone adds a swatch entry), raster layers a colorMap
+  ([{value, color, label?}] - COPY the layer's tile colorMap from the raster
+  layer listing verbatim, minus fully-transparent stops; the tiles are
+  server-rendered with those exact colors, so invented colors mismatch the
+  map), and colorBy scales legend themselves (categorical values as swatch
+  rows, ramps as a labeled gradient). legend={false} hides it.
 - useQuery(name, params?) -> {data, loading, error}: executes a stored query.
 - useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
 - useTheme(), useLocale(): resolved tokens and locale.

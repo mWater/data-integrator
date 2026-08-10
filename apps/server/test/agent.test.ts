@@ -102,7 +102,7 @@ test("controller: tool call round-trip, persistence, and pause on plain text", a
   assert.equal(row.messages[2].content[0].output.value, "echo:hello")
 })
 
-test("controller: a finishing tool ends the session", async () => {
+test("controller: a finishing tool marks the session finished but it stays continuable", async () => {
   const model = new MockLanguageModelV4({
     doGenerate: [
       {
@@ -110,7 +110,8 @@ test("controller: a finishing tool ends the session", async () => {
         finishReason: "tool-calls" as const,
         usage: USAGE,
         warnings: []
-      }
+      },
+      { content: [{ type: "text" as const, text: "back again" }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
     ]
   })
   const controller = new AgentSessionController(pool, echoImplementation(model, true))
@@ -120,7 +121,12 @@ test("controller: a finishing tool ends the session", async () => {
   assert.equal(stop.reason, "finished")
   const row = (await pool.query("SELECT status FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
   assert.equal(row.status, "finished")
-  await assert.rejects(() => controller.sendMessage(sessionId, "more"), /finished/)
+
+  // "finished" is a badge, not a terminal state: the session accepts more work
+  const again = await controller.sendMessage(sessionId, "more")
+  assert.equal(again.reason, "awaiting_user")
+  const after = (await pool.query("SELECT status FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(after.status, "paused")
 })
 
 test("controller: a pausing tool stops the loop as awaiting_user", async () => {

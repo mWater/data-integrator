@@ -66,7 +66,11 @@ export class AgentSessionController<S> {
     return result.rows[0].id
   }
 
-  /** Appends a user message and runs the loop until the session stops. */
+  /**
+   * Appends a user message and runs the loop until the session stops. Any
+   * status accepts messages: "finished" marks the agent's task complete but
+   * is never terminal — the session continues like a paused one.
+   */
   async sendMessage(
     sessionId: string,
     text: string,
@@ -74,7 +78,6 @@ export class AgentSessionController<S> {
     controls?: LoopControls
   ): Promise<SessionStop> {
     const session = await this.load(sessionId)
-    if (session.status === "finished") throw new Error(`Session ${sessionId} is finished`)
     session.messages.push({ role: "user", content: text })
     return await this.runLoop(sessionId, session, events, controls)
   }
