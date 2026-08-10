@@ -158,6 +158,7 @@ button.danger:disabled { color: var(--ink-muted); border-color: var(--control-bo
 .confirm-dialog h2 { margin: 0; font-size: 17px }
 .confirm-dialog p { margin: 0; font-size: 13.5px; line-height: 1.5 }
 .confirm-dialog label { display: flex; flex-direction: column; gap: 6px; font-size: 13px }
+.confirm-dialog ul { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6 }
 .confirm-dialog code { background: var(--hover-tint); padding: 1px 5px; border-radius: 4px }
 .confirm-dialog input {
   padding: 8px 10px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;

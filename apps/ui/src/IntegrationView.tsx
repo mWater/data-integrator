@@ -3,11 +3,14 @@ import {
   CountryBox,
   createSession,
   DefaultAoi,
+  deleteIntegration,
   getIntegration,
+  getIntegrationUsage,
   getIntegrationVersions,
   getSettings,
   getTableRows,
   IntegrationDetail,
+  IntegrationUsage,
   listCountries,
   setIntegrationAoi,
   setIntegrationEnabled,
@@ -15,6 +18,7 @@ import {
   startRun,
   VersionSummary
 } from "./api.js"
+import { ConfirmDelete } from "./ConfirmDelete.js"
 import { triggerLabel } from "./IntegrationList.js"
 
 /** Props for the integration detail view. */
@@ -36,6 +40,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
   const [detail, setDetail] = useState<IntegrationDetail | null>(null)
   const [picked, setPicked] = useState<Tab | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [usage, setUsage] = useState<IntegrationUsage | null>(null)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(() => {
@@ -91,6 +96,27 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
     }
   }
 
+  /** Opens the delete dialog once usage (dependents, dashboards) is known. */
+  async function onDeleteOpen() {
+    setError(null)
+    try {
+      setUsage(await getIntegrationUsage(integrationId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function onDeleteConfirm() {
+    setError(null)
+    try {
+      await deleteIntegration(integrationId)
+      window.location.hash = "#/integrations"
+    } catch (err) {
+      setUsage(null)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   if (!detail) return <main className="list-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
 
   const { definition } = detail
@@ -116,8 +142,21 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
           </button>
         )}
         {canDesign && <button onClick={onDesign}>Design with Agent</button>}
+        {canDesign && (
+          <button className="danger" onClick={() => void onDeleteOpen()}>
+            Delete
+          </button>
+        )}
       </div>
       {error && <div className="error">{error}</div>}
+      {usage && (
+        <DeleteIntegrationDialog
+          detail={detail}
+          usage={usage}
+          onCancel={() => setUsage(null)}
+          onConfirm={() => void onDeleteConfirm()}
+        />
+      )}
 
       <div className="dest-cards">
         {detail.destinations.map(d => (
@@ -645,4 +684,83 @@ function cellText(value: unknown): string {
     return JSON.stringify(value).slice(0, 80)
   }
   return String(value)
+}
+
+/** Props for the integration delete dialog. */
+interface DeleteIntegrationDialogProps {
+  /** Integration being deleted */
+  detail: IntegrationDetail
+  /** What it owns and who depends on it */
+  usage: IntegrationUsage
+  /** Dismisses without deleting */
+  onCancel: () => void
+  /** Proceeds with the delete */
+  onConfirm: () => void
+}
+
+/**
+ * Integration delete confirmation. Deletion takes the integration's data with
+ * it, so the dialog enumerates every table and layer that dies; dependent
+ * integrations block deletion outright.
+ */
+function DeleteIntegrationDialog({ detail, usage, onCancel, onConfirm }: DeleteIntegrationDialogProps) {
+  const blocked = usage.dependents.length > 0
+  if (blocked) {
+    return (
+      <>
+        <div className="drawer-backdrop" onClick={onCancel} />
+        <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Cannot delete">
+          <h2>“{detail.definition.name}” cannot be deleted yet</h2>
+          <p>Other integrations read its data and would break:</p>
+          <ul>
+            {usage.dependents.map(d => (
+              <li key={`${d.id}-${d.via}`}>
+                <b>{d.id}</b> reads <code>{d.via}</code>
+              </li>
+            ))}
+          </ul>
+          <p className="dim">Delete or edit those integrations first.</p>
+          <div className="confirm-actions">
+            <button className="secondary" onClick={onCancel}>Close</button>
+          </div>
+        </div>
+      </>
+    )
+  }
+  const tables = detail.destinations.filter(d => d.kind === "table")
+  const rasters = detail.destinations.filter(d => d.kind === "raster")
+  return (
+    <ConfirmDelete
+      title={`Delete “${detail.definition.name}”?`}
+      confirmToken={detail.id}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    >
+      <p>
+        Integrations own their data, so deleting this integration <b>permanently deletes the data itself</b>, not just
+        the pipeline. <b>This cannot be undone</b>, and data from sources that no longer publish history cannot be
+        re-ingested. This will delete:
+      </p>
+      <ul>
+        {tables.map(t => (
+          <li key={t.id}>
+            table <code>{t.id}</code>{t.count !== null ? ` — ${t.count.toLocaleString()} rows` : ""}
+          </li>
+        ))}
+        {rasters.map(r => (
+          <li key={r.id}>
+            raster layer <code>{r.id}</code>{r.count !== null ? ` — ${r.count.toLocaleString()} snapshots (files included)` : ""}
+          </li>
+        ))}
+        <li>{usage.runs.toLocaleString()} run{usage.runs === 1 ? "" : "s"} of history and any pending webhook events</li>
+      </ul>
+      {usage.dashboards.length > 0 && (
+        <p>
+          ⚠ {usage.dashboards.length === 1 ? "A dashboard appears" : `${usage.dashboards.length} dashboards appear`} to
+          query this data and will break: {usage.dashboards.map(d => d.name).join(", ")}.
+        </p>
+      )}
+      <p className="dim">Design sessions that built it are kept, with their link to this integration cleared.</p>
+    </ConfirmDelete>
+  )
 }

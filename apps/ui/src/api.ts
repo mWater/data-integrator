@@ -468,6 +468,34 @@ export function deleteDashboard(id: string): Promise<{ versions: number; session
   return request(`/api/dashboards/${id}`, { method: "DELETE" })
 }
 
+/** What an integration owns and what would break with it. */
+export interface IntegrationUsage {
+  /** Owned destination table ids */
+  tables: string[]
+  /** Owned raster layer ids */
+  layers: string[]
+  /** Installed integrations whose inputs read this one's data */
+  dependents: { id: string; via: string }[]
+  /** Dashboards whose queries appear to reference the owned data */
+  dashboards: { id: string; name: string }[]
+  /** Total recorded runs */
+  runs: number
+}
+
+/** Reports an integration's owned data and its dependents, for the delete dialog. */
+export function getIntegrationUsage(id: string): Promise<IntegrationUsage> {
+  return request(`/api/integrations/${id}/usage`)
+}
+
+/**
+ * Permanently deletes an integration with everything it owns (tables, rasters,
+ * files, run history); design sessions are kept. 409s while runs are active or
+ * dependents exist.
+ */
+export function deleteIntegration(id: string): Promise<{ tables: number; snapshots: number; runs: number }> {
+  return request(`/api/integrations/${id}`, { method: "DELETE" })
+}
+
 /** Executes a stored dashboard query with named parameter values. */
 export async function execDashboardQuery(
   dashboardId: string,

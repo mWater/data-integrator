@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createDashboardSession, DashboardSummary, deleteDashboard, listDashboards } from "./api.js"
+import { ConfirmDelete } from "./ConfirmDelete.js"
 
 /** Props for the dashboards list. */
 interface Props {
@@ -83,62 +84,19 @@ export function DashboardList({ canDesign }: Props) {
         </table>
       ) : null}
       {doomed ? (
-        <DeleteDialog dashboard={doomed} onCancel={() => setDoomed(null)} onConfirm={() => void confirmDelete(doomed)} />
+        <ConfirmDelete
+          title={`Delete “${doomed.name}”?`}
+          confirmToken={doomed.id}
+          onCancel={() => setDoomed(null)}
+          onConfirm={() => void confirmDelete(doomed)}
+        >
+          <p>
+            This permanently deletes the dashboard and all {doomed.currentVersion ?? 0} of its saved versions. Anyone
+            with a link to it will get a 404. <b>This cannot be undone.</b>
+          </p>
+          <p className="dim">Design sessions that built it are kept, with their link to this dashboard cleared.</p>
+        </ConfirmDelete>
       ) : null}
     </main>
-  )
-}
-
-/** Props for the delete confirmation. */
-interface DeleteDialogProps {
-  /** Dashboard about to be deleted */
-  dashboard: DashboardSummary
-  /** Dismisses without deleting */
-  onCancel: () => void
-  /** Proceeds with the delete */
-  onConfirm: () => void
-}
-
-/**
- * Delete confirmation: names the consequences and requires typing the
- * dashboard's id, so an irreversible delete cannot happen on a stray click.
- */
-function DeleteDialog({ dashboard, onCancel, onConfirm }: DeleteDialogProps) {
-  const [typed, setTyped] = useState("")
-  const armed = typed.trim() === dashboard.id
-  return (
-    <>
-      <div className="drawer-backdrop" onClick={onCancel} />
-      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={`Delete ${dashboard.name}`}>
-        <h2>Delete “{dashboard.name}”?</h2>
-        <p>
-          This permanently deletes the dashboard and all {dashboard.currentVersion ?? 0} of its saved versions. Anyone
-          with a link to it will get a 404. <b>This cannot be undone.</b>
-        </p>
-        <p className="dim">Design sessions that built it are kept, with their link to this dashboard cleared.</p>
-        <label>
-          <span>
-            Type <code>{dashboard.id}</code> to confirm:
-          </span>
-          <input
-            autoFocus
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && armed) onConfirm()
-              if (e.key === "Escape") onCancel()
-            }}
-          />
-        </label>
-        <div className="confirm-actions">
-          <button className="secondary" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="danger" disabled={!armed} onClick={onConfirm}>
-            Delete Forever
-          </button>
-        </div>
-      </div>
-    </>
   )
 }

@@ -46,7 +46,7 @@ function bindValue(spec: ColumnSpec, value: unknown): unknown {
 }
 
 /** Quotes an identifier defensively; ids are slug-validated but quoting costs nothing. */
-function ident(name: string): string {
+export function ident(name: string): string {
   return `"${name.replace(/"/g, "")}"`
 }
 

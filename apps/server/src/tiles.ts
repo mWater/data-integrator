@@ -97,4 +97,9 @@ export class TileRenderer {
       await rm(work, { recursive: true, force: true })
     }
   }
+
+  /** Removes a layer's whole cache subtree (all snapshots); missing is fine. */
+  async dropLayer(layerId: string): Promise<void> {
+    await rm(path.join(this.cacheDir, layerId), { recursive: true, force: true })
+  }
 }

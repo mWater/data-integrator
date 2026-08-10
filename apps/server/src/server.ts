@@ -10,7 +10,7 @@ import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
-import { installIntegration } from "./install.js"
+import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
 import { parseCron } from "./cron.js"
 import { listSources } from "./sources.js"
@@ -534,9 +534,39 @@ async function route(
 
   const integrationMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)$/)
   if (integrationMatch) {
+    if (req.method === "DELETE") {
+      if (user.role === "viewer") {
+        json(res, 403, { error: "Viewers cannot delete integrations" })
+        return
+      }
+      let result
+      try {
+        result = await deleteIntegration(pool, integrationMatch[1])
+      } catch (err) {
+        // Active runs and dependent integrations refuse with a clear message
+        json(res, 409, { error: err instanceof Error ? err.message : String(err) })
+        return
+      }
+      if (!result.ok) {
+        json(res, 404, { error: "unknown integration" })
+        return
+      }
+      // Best-effort file cleanup; orphans are disk-only and harmless
+      for (const relPath of result.snapshotPaths) await store?.delete(relPath).catch(() => {})
+      for (const layerId of result.layerIds) await tiles.dropLayer(layerId).catch(() => {})
+      await runs?.removeWorkDir(integrationMatch[1]).catch(() => {})
+      json(res, 200, { tables: result.tables, snapshots: result.snapshots, runs: result.runs, sessions: result.sessions })
+      return
+    }
     const detail = await getIntegration(pool, integrationMatch[1])
     if (!detail) json(res, 404, { error: "unknown integration" })
     else json(res, 200, detail)
+    return
+  }
+
+  const usageMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/usage$/)
+  if (usageMatch && req.method === "GET") {
+    json(res, 200, await integrationUsage(pool, usageMatch[1]))
     return
   }
 

@@ -1,3 +1,5 @@
+import { rm } from "node:fs/promises"
+import path from "node:path"
 import { ExecutorDeps, executeRun } from "./executor.js"
 
 /**
@@ -48,5 +50,10 @@ export class RunService {
       // executeRun records its own failures; nothing useful to add here
     })
     return runId
+  }
+
+  /** Removes an integration's persistent /work cache; missing is fine. */
+  async removeWorkDir(integrationId: string): Promise<void> {
+    await rm(path.join(this.deps.workRoot, integrationId), { recursive: true, force: true })
   }
 }
