@@ -60,12 +60,18 @@ dashboard session with the assistant's queries and specs.
 
 - `list_schema` — tables with columns/units plus raster layers with band
   indexes (same block the dashboard agent gets).
-- `query` — one SELECT under the sql_engine guards. Includes the full
-  raster×vector space via `data.rasters` (out-db PostGIS); the prompt carries
-  the same raster-SQL documentation as the dashboard agent: ST_Value at
-  features, tile-aggregated zonal statistics, the
+- `query` — one SELECT under the sql_engine guards, for the assistant's own
+  investigation: the result is stored and previewed back to the model but
+  never shown, so it can test and iterate without the user watching. Includes
+  the full raster×vector space via `data.rasters` (out-db PostGIS); the prompt
+  carries the same raster-SQL documentation as the dashboard agent: ST_Value
+  at features, tile-aggregated zonal statistics, the
   ST_Intersects(ST_ConvexHull(rast), ...) filter, timeout discipline.
-- `show_chart`, `show_map` — emit blocks bound to prior query results.
+- `show_table` — runs its own SELECT under the same guards and emits the
+  table block. Blocks are finished products, so showing one is a deliberate
+  act after `query` has settled the SQL, not a side effect of querying.
+- `show_chart`, `show_map` — emit blocks bound to a stored result id, from
+  either `query` or `show_table`.
 - `lookup_country` — reused from the designer; place names resolve against
   the baked-in gazetteer, never model memory.
 

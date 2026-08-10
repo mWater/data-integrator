@@ -21,10 +21,12 @@ interface TableBlockProps {
   resultId: string
   /** The stored result */
   result: AssistantResult
+  /** Title above the table */
+  title?: string
 }
 
 /** Renders one query result as a data-browser-style table. */
-export function TableBlock({ resultId, result }: TableBlockProps) {
+export function TableBlock({ resultId, result, title }: TableBlockProps) {
   const columns = result.columns.map(key => ({
     key,
     numeric: typeof result.rows.find(r => r[key] != null)?.[key] === "number",
@@ -32,6 +34,7 @@ export function TableBlock({ resultId, result }: TableBlockProps) {
   }))
   return (
     <BlockShell
+      title={title}
       meta={`${result.rows.length} row${result.rows.length === 1 ? "" : "s"}`}
       sql={result.sql}
       onDownloadCsv={() => downloadCsv(`${resultId}.csv`, result.columns, result.rows)}

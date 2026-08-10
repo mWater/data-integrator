@@ -72,6 +72,13 @@ sudo -u postgres psql -c "ALTER USER integrator PASSWORD '${DB_PASS}'"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='integrator'" | grep -q 1 ||
   sudo -u postgres createdb -O integrator integrator
 sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis"
+# Migrations run as the unprivileged integrator user, so the superuser-only parts
+# happen here: postgis_raster is not a trusted extension, and 0006 needs the
+# sql_engine role to exist (ADMIN OPTION lets that migration grant it onward).
+sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis_raster"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='sql_engine'" | grep -q 1 ||
+  sudo -u postgres psql -c "CREATE ROLE sql_engine NOLOGIN"
+sudo -u postgres psql -c "GRANT sql_engine TO integrator WITH ADMIN OPTION"
 
 echo "==> App user"
 id "$APP_USER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$APP_USER"

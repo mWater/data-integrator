@@ -67,17 +67,25 @@ What the script sets up:
 
 ## Day-2
 
-```sh
-# deploy an update
-rsync -a --exclude node_modules ./ root@<ip>:/opt/data-integrator/
-ssh root@<ip> 'sudo -H -u integrator bash -c "cd /opt/data-integrator && pnpm install && pnpm -r build" && systemctl restart data-integrator'
+Deploy an update — pushes the working tree, rebuilds, migrates, restarts:
 
-# logs
-journalctl -u data-integrator -f
+```sh
+./deploy/upcloud/push.sh root@<ip>
 ```
 
-The script is safe to re-run; it keeps the existing env file (and secret key)
-and skips work already done.
+Add `IMAGES=1` when `runtimes/` changed, to rebuild the sandbox images too.
+Two steps in there are easy to miss by hand: the rsync runs as root, so the
+tree has to be handed back to the `integrator` user before the build, and
+`serve` does not migrate at boot, so a schema change needs the explicit
+`migrate`. Files deleted locally are not removed on the server.
+
+```sh
+# logs
+ssh root@<ip> journalctl -u data-integrator -f
+```
+
+`setup.sh` is also safe to re-run; it keeps the existing env file (and secret
+key) and skips work already done.
 
 ## Tear down
 

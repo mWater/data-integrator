@@ -35,6 +35,18 @@ export interface AssistantResult {
   rows: Record<string, unknown>[]
 }
 
+/** One executed statement: the stored result plus the state now holding it. */
+interface StoredRun {
+  /** Result id the transcript and later tool calls reference */
+  id: string
+  /** Column names in result order */
+  columns: string[]
+  /** Complete result rows */
+  rows: Record<string, unknown>[]
+  /** Session state with this result added */
+  state: AssistantState
+}
+
 /** Client state of an assistant chat session. */
 export interface AssistantState {
   /** Stored query results by id ("q1", "q2", ...) */
@@ -125,10 +137,14 @@ top-N. The 15s statement timeout is real - filter before you scan.
 ${RASTER_SQL_GUIDE}
 
 # Showing results
-Every successful query is shown to the user as a table block carrying its SQL and a
-CSV download; you get back a result_id and a preview. Do not paste rows into your
-prose - summarize what matters and refer to the table.
-- show_chart binds a chart to a result_id. Forms: trend = line/area, comparison = bar,
+query is how you investigate: its results are yours alone, so test your SQL, check
+shapes and ranges, and iterate as much as you need. Only the show_ tools put anything
+in front of the user, so nothing half-finished is ever on screen - work the question
+out with query first, then show the result you are happy with. Do not paste rows into
+your prose; summarize what matters and refer to the block.
+- show_table runs its own statement and shows the complete result as a table carrying
+  its SQL and a CSV download. Show the results your answer rests on, not every step.
+- show_chart binds a chart to a result_id (from query or show_table). Forms: trend = line/area, comparison = bar,
   composition with few slices = pie, relation between two measures = scatter. Use
   xType "time" with raw ISO date x values for time series. One value axis by design:
   two scales means two charts or index the data. Give multi-series charts labels.
@@ -173,9 +189,17 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
       }),
       query: tool({
         description:
-          "Run one read-only SELECT against the data schema (tables plus the rasters mirror). The full result (max 1000 rows) is stored and shown to the user as a table block with CSV download; you get back a preview and a result_id to bind charts and maps to. Inline literal values; no parameters.",
+          "Investigate the data: run one read-only SELECT against the data schema (tables plus the rasters mirror) and get back a preview and a result_id. The user never sees these results, so explore and iterate freely. Max 1000 rows. Inline literal values; no parameters.",
         inputSchema: z.object({
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
+        })
+      }),
+      show_table: tool({
+        description:
+          "Show a result to the user as a table block with its SQL and a CSV download. Runs its own statement, under the same rules as query; check the statement with query first, then show the result you want the user to have.",
+        inputSchema: z.object({
+          sql: z.string().describe("A single SELECT (or WITH...SELECT) statement"),
+          title: z.string().describe("Short title shown above the table")
         })
       }),
       show_chart: tool({
@@ -245,6 +269,8 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
         return { result: await describeSchema(this.deps.pool) }
       case "query":
         return await this.query(state, String(args.sql ?? ""))
+      case "show_table":
+        return await this.showTable(state, String(args.sql ?? ""))
       case "show_chart":
         return this.showChart(state, args as unknown as ShowChartInput)
       case "show_map":
@@ -256,11 +282,15 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
     }
   }
 
-  /** Runs one guarded SELECT, stores the complete result, and previews it. */
-  private async query(state: AssistantState, sql: string): Promise<ToolOutcome<AssistantState>> {
+  /**
+   * Runs one guarded SELECT and stores the complete result under a fresh id.
+   * Shared by query and show_table: the SQL path is identical, only whether the
+   * user sees the result differs.
+   */
+  private async runSql(state: AssistantState, sql: string): Promise<StoredRun | { error: string }> {
     const trimmed = sql.trim()
     if (!/^(select|with)\b/i.test(trimmed) || trimmed.includes(";")) {
-      return { result: "Error: a single SELECT (or WITH...SELECT) statement without semicolons is required" }
+      return { error: "Error: a single SELECT (or WITH...SELECT) statement without semicolons is required" }
     }
     let rows: Record<string, unknown>[]
     try {
@@ -270,21 +300,39 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
         {}
       )
     } catch (err) {
-      return { result: `Error: query failed: ${err instanceof Error ? err.message : String(err)}` }
+      return { error: `Error: query failed: ${err instanceof Error ? err.message : String(err)}` }
     }
     const bytes = JSON.stringify(rows).length
     if (bytes > RESULT_BYTES_MAX) {
       return {
-        result: `Error: result too large (${bytes} bytes); select fewer columns, simplify geometry (ST_SimplifyPreserveTopology), or aggregate`
+        error: `Error: result too large (${bytes} bytes); select fewer columns, simplify geometry (ST_SimplifyPreserveTopology), or aggregate`
       }
     }
     const id = `q${state.nextResult}`
     const columns = Object.keys(rows[0] ?? {})
-    const next: AssistantState = {
-      results: { ...state.results, [id]: { sql: trimmed, columns, rows } },
-      nextResult: state.nextResult + 1
+    return {
+      id,
+      columns,
+      rows,
+      state: {
+        results: { ...state.results, [id]: { sql: trimmed, columns, rows } },
+        nextResult: state.nextResult + 1
+      }
     }
-    return { result: previewText(id, columns, rows), state: next }
+  }
+
+  /** Investigation query: stored and previewed to the model, never shown. */
+  private async query(state: AssistantState, sql: string): Promise<ToolOutcome<AssistantState>> {
+    const run = await this.runSql(state, sql)
+    if ("error" in run) return { result: run.error }
+    return { result: previewText(run, false), state: run.state }
+  }
+
+  /** Runs a statement and shows its complete result to the user as a table. */
+  private async showTable(state: AssistantState, sql: string): Promise<ToolOutcome<AssistantState>> {
+    const run = await this.runSql(state, sql)
+    if ("error" in run) return { result: run.error }
+    return { result: previewText(run, true), state: run.state }
   }
 
   /** Validates a chart spec against its stored result; the block is the input. */
@@ -352,8 +400,9 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
   }
 }
 
-/** Builds the query tool's result text: id line, counts, and a bounded preview. */
-function previewText(id: string, columns: string[], rows: Record<string, unknown>[]): string {
+/** Builds the result text for a run: id line, counts, and a bounded preview. */
+function previewText(run: StoredRun, shownToUser: boolean): string {
+  const { id, columns, rows } = run
   const shown = rows.slice(0, PREVIEW_ROWS)
   const parts: string[] = []
   let bytes = 0
@@ -374,7 +423,9 @@ function previewText(id: string, columns: string[], rows: Record<string, unknown
     `columns: ${columns.join(", ")}`,
     `preview (${label}):`,
     `[${parts.join(",")}]${clipped ? " [preview clipped]" : ""}`,
-    "The full result is shown to the user as a table with its SQL and a CSV download. Bind charts or maps to it by result_id."
+    shownToUser
+      ? "The full result is shown to the user as a table with its SQL and a CSV download. Bind charts or maps to it by result_id."
+      : "The user does not see this result. Show it with show_table, or bind a chart or map to it by result_id."
   ].join("\n")
 }
 

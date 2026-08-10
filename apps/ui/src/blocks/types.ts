@@ -1,5 +1,13 @@
 /** Tool-call input contracts for assistant blocks (mirrors the server's zod schemas). */
 
+/** Input of show_table: the statement to run and the title above the table. */
+export interface ShowTableInput {
+  /** The statement whose complete result is shown */
+  sql: string
+  /** Title above the table */
+  title: string
+}
+
 /** Input of show_chart: the kit Chart declarative subset bound to a result. */
 export interface ShowChartInput {
   /** Stored result the chart binds to */
@@ -69,11 +77,12 @@ export function parseResultId(resultText: string | undefined): string | null {
 }
 
 /**
- * Whether a tool call renders as a result block. Failed or cancelled calls
- * degrade to the ordinary collapsed activity row.
+ * Whether a tool call renders as a result block. Only the show_ tools do: a
+ * query is the assistant investigating, which stays a collapsed activity row.
+ * Failed or cancelled calls degrade to that row too.
  */
 export function isBlockCall(tool: string | undefined, resultText: string | undefined): boolean {
-  if (tool === "query") return parseResultId(resultText) != null
+  if (tool === "show_table") return parseResultId(resultText) != null
   if (tool === "show_chart" || tool === "show_map") {
     return resultText != null && !resultText.startsWith("Error:") && !resultText.startsWith("Cancelled:")
   }

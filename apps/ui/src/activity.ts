@@ -12,7 +12,8 @@ const LABELS: Record<string, [string, string]> = {
   set_queries: ["Updating queries", "Updated queries"],
   sample_query: ["Exploring data", "Explored data"],
   list_schema: ["Reading the schema", "Read the schema"],
-  query: ["Running a query", "Ran a query"],
+  query: ["Investigating the data", "Investigated the data"],
+  show_table: ["Building a table", "Built a table"],
   show_chart: ["Drawing a chart", "Drew a chart"],
   show_map: ["Drawing a map", "Drew a map"],
   lookup_country: ["Looking up a place", "Looked up a place"]

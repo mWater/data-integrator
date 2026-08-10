@@ -11,15 +11,15 @@ import { useAppTheme } from "../theme.js"
 import { ChartBlock } from "./ChartBlock.js"
 import { MapBlock } from "./MapBlock.js"
 import { TableBlock } from "./TableBlock.js"
-import { parseResultId, ShowChartInput, ShowMapInput } from "./types.js"
+import { parseResultId, ShowChartInput, ShowMapInput, ShowTableInput } from "./types.js"
 
 /** Props for the block renderer. */
 interface BlockRendererProps {
-  /** Tool that produced the block: query, show_chart, or show_map */
+  /** Tool that produced the block: show_table, show_chart, or show_map */
   tool: string
   /** The tool-call input part */
   input: unknown
-  /** Tool result text (carries the result id for query blocks) */
+  /** Tool result text (carries the result id for table blocks) */
   resultText?: string
   /** The session's stored results */
   results: Record<string, AssistantResult> | undefined
@@ -34,10 +34,15 @@ function Unavailable() {
 export default function BlockRenderer({ tool, input, resultText, results }: BlockRendererProps) {
   const { mode } = useAppTheme()
   let content = null
-  if (tool === "query") {
+  if (tool === "show_table") {
     const id = parseResultId(resultText)
     const result = id ? results?.[id] : undefined
-    content = id && result ? <TableBlock resultId={id} result={result} /> : <Unavailable />
+    content =
+      id && result ? (
+        <TableBlock resultId={id} result={result} title={(input as ShowTableInput).title} />
+      ) : (
+        <Unavailable />
+      )
   } else if (tool === "show_chart") {
     const spec = input as ShowChartInput
     const result = results?.[spec.resultId]

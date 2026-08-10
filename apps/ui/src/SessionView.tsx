@@ -143,31 +143,44 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const messagesLenRef = useRef(0)
   // Refetch sequence; late responses from superseded refetches are dropped
   const seqRef = useRef(0)
+  // Full refetches carry the loop teardown (busy, freeze, overlay) that
+  // mid-loop ones deliberately omit, so only a newer full refetch may
+  // supersede one; a mid-loop refetch overtaking it would strand the view busy
+  const fullSeqRef = useRef(0)
+  // Pending trailing mid-loop refetch, cancelled once the loop ends
+  const midLoopTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refresh = useCallback((opts?: { midLoop?: boolean }) => {
     const seq = ++seqRef.current
+    const fullSeq = opts?.midLoop ? 0 : ++fullSeqRef.current
     getSession(sessionId).then(d => {
-      if (seq !== seqRef.current) return
-      kindRef.current = d.kind
       if (opts?.midLoop) {
+        if (seq !== seqRef.current) return
+        kindRef.current = d.kind
         // State-only: the live overlay owns everything newer than the freeze
         // point, so the rendered transcript must not advance mid-loop
         setDetail(prev => (prev ? { ...d, messages: prev.messages } : d))
         return
       }
+      if (fullSeq !== fullSeqRef.current) return
+      kindRef.current = d.kind
       messagesLenRef.current = d.messages.length
       frozenRef.current = d.running ? (frozenRef.current ?? d.messages.length) : null
       if (!d.running) setLive([])
       setDetail(d)
       setBusy(d.running)
     }, err => {
-      if (seq === seqRef.current) setError(err.message)
+      if (opts?.midLoop ? seq === seqRef.current : fullSeq === fullSeqRef.current) setError(err.message)
     })
   }, [sessionId])
 
   useEffect(() => {
     refresh()
-    return subscribeEvents(sessionId, event => onEvent(event))
+    const unsubscribe = subscribeEvents(sessionId, event => onEvent(event))
+    return () => {
+      unsubscribe()
+      if (midLoopTimer.current != null) clearTimeout(midLoopTimer.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
@@ -179,6 +192,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       return
     }
     if (event.type === "stop" || event.type === "error") {
+      // The loop is done; its trailing refetch would only race the full one
+      if (midLoopTimer.current != null) {
+        clearTimeout(midLoopTimer.current)
+        midLoopTimer.current = null
+      }
       setStopping(false)
       if (event.type === "error") setError(event.message ?? "unknown error")
       // Teardown (unfreeze, clear the overlay) waits for the refetch, so the
@@ -207,7 +225,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         // the sequence guard discards whichever response is superseded.
         if (kindRef.current === "dashboard" || kindRef.current === "assistant") {
           refresh({ midLoop: true })
-          setTimeout(() => refresh({ midLoop: true }), 700)
+          if (midLoopTimer.current != null) clearTimeout(midLoopTimer.current)
+          midLoopTimer.current = setTimeout(() => {
+            midLoopTimer.current = null
+            refresh({ midLoop: true })
+          }, 700)
         }
       } else if (event.type === "job_log") {
         const item = next.findLast(i => i.kind === "tool" && i.open)

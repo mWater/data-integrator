@@ -146,6 +146,30 @@ test("query: results accumulate under fresh ids", async () => {
   assert.match(second.result, /^result_id: q2/)
 })
 
+test("query results stay private; show_table is what the user sees", async () => {
+  const a = impl()
+  const sql = "SELECT name, level FROM asst_sites ORDER BY name"
+  const investigated = await runQuery(a, initialAssistantState(), sql)
+  assert.match(investigated.result, /The user does not see this result/)
+
+  const shown = await a.execute("show_table", { sql, title: "Sites" }, investigated.state, () => {}, "s1")
+  assert.ok(!shown.result.startsWith("Error:"), shown.result)
+  // Its own run, so it stores its own result rather than reusing the query's
+  assert.match(shown.result, /^result_id: q2/)
+  assert.match(shown.result, /shown to the user as a table/)
+  assert.equal(shown.state?.results.q2.rows.length, 3)
+})
+
+test("show_table: applies the same statement guards as query", async () => {
+  const a = impl()
+  const state = initialAssistantState()
+  for (const sql of ["DELETE FROM asst_sites", "SELECT 1; SELECT 2"]) {
+    const outcome = await a.execute("show_table", { sql, title: "Bad" }, state, () => {}, "s1")
+    assert.match(outcome.result, /^Error:/)
+    assert.equal(outcome.state, undefined)
+  }
+})
+
 test("show_chart: validates result, columns, and pie arity", async () => {
   const a = impl()
   const { state } = await runQuery(a, initialAssistantState(), "SELECT name, level FROM asst_sites ORDER BY name")
