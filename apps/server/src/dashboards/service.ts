@@ -154,6 +154,48 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
   }
 }
 
+/** What a delete removed. */
+export interface DeleteDashboardResult {
+  /** False when no such dashboard exists. */
+  ok: boolean
+  /** Versions deleted with it. */
+  versions: number
+  /** Design sessions kept, with their dashboard binding cleared. */
+  sessions: number
+}
+
+/**
+ * Permanently deletes a dashboard and every stored version. Design sessions
+ * survive with their binding cleared, so the transcript of how a dashboard was
+ * built outlives the dashboard itself.
+ */
+export async function deleteDashboard(pool: pg.Pool, id: string): Promise<DeleteDashboardResult> {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const existing = await client.query("SELECT id FROM app.dashboards WHERE id = $1 FOR UPDATE", [id])
+    if (existing.rows.length === 0) {
+      await client.query("ROLLBACK")
+      return { ok: false, versions: 0, sessions: 0 }
+    }
+    // current_version points into dashboard_versions; release it before the rows go
+    await client.query("UPDATE app.dashboards SET current_version = NULL WHERE id = $1", [id])
+    const sessions = await client.query(
+      "UPDATE app.agent_sessions SET dashboard_id = NULL WHERE dashboard_id = $1",
+      [id]
+    )
+    const versions = await client.query("DELETE FROM app.dashboard_versions WHERE dashboard_id = $1", [id])
+    await client.query("DELETE FROM app.dashboards WHERE id = $1", [id])
+    await client.query("COMMIT")
+    return { ok: true, versions: versions.rowCount ?? 0, sessions: sessions.rowCount ?? 0 }
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {})
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
 /** Executes a stored query of a dashboard's current version. */
 export async function executeDashboardQuery(
   pool: pg.Pool,

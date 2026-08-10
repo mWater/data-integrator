@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { DashboardAgentState, DesignerState, SessionDetail } from "./api.js"
+import { DashboardAgentState, DashboardQuery, DesignerState, SessionDetail } from "./api.js"
 
 /** Panel tabs. */
 type Tab = "definition" | "code" | "status"
@@ -88,8 +88,45 @@ function DashboardStatePanel({ state }: DashboardStatePanelProps) {
       {tab === "source" ? (
         <pre className="pane pane-code">{state.source || "(no source yet)"}</pre>
       ) : (
-        <pre className="pane">{state.queries.length === 0 ? "(no queries yet)" : JSON.stringify(state.queries, null, 2)}</pre>
+        <div className="pane query-list">
+          {state.queries.length === 0 ? (
+            <p className="dim">(no queries yet)</p>
+          ) : (
+            state.queries.map(query => <QueryCard key={query.name} query={query} />)
+          )}
+        </div>
       )}
     </aside>
+  )
+}
+
+/** Props for one stored-query card. */
+interface QueryCardProps {
+  /** Query to render */
+  query: DashboardQuery
+}
+
+/** One stored query: name, kind, parameters, and its SQL. */
+function QueryCard({ query }: QueryCardProps) {
+  return (
+    <div className="query-card">
+      <div className="query-head">
+        <b>{query.name}</b>
+        {query.tile && <span className="chip">tiles</span>}
+        {query.maxRows != null && <span className="chip">max {query.maxRows.toLocaleString()} rows</span>}
+      </div>
+      {query.params.length > 0 && (
+        <div className="query-params">
+          {query.params.map((param, i) => (
+            // $1..$n bind in declaration order, so the position is what the SQL references
+            <span key={param.name} className="query-param">
+              <code>${i + 1}</code> {param.name}
+              <span className="dim"> {param.type}{param.required ? " · required" : ""}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <pre className="query-sql">{query.sql}</pre>
+    </div>
   )
 }

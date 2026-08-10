@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
+import { FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react"
 import { activityLabel } from "./activity.js"
 import {
   DashboardAgentState,
@@ -31,6 +31,21 @@ export interface LiveItem {
   logs: string[]
   /** True while the tool is still executing */
   open: boolean
+}
+
+/** Preview panel width as a fraction of the page, persisted across sessions. */
+const SPLIT_KEY = "di.sessionSplit"
+
+/** Default preview share of the page width. */
+const SPLIT_DEFAULT = 0.55
+
+/** Narrowest either side may be dragged, as a fraction of the page. */
+const SPLIT_MIN = 0.2
+
+/** Reads the persisted split fraction, falling back to the default. */
+function storedSplit(): number {
+  const raw = Number(localStorage.getItem(SPLIT_KEY))
+  return raw >= SPLIT_MIN && raw <= 1 - SPLIT_MIN ? raw : SPLIT_DEFAULT
 }
 
 /** A structured question awaiting the user's answer. */
@@ -81,6 +96,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
+  const [split, setSplit] = useState(storedSplit)
+  const pageRef = useRef<HTMLElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const kindRef = useRef<string | null>(null)
   // While the loop runs, the stored transcript is rendered only up to this
@@ -176,6 +193,40 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     void send(input.trim())
   }
 
+  /** Drags the divider; the split persists so it survives navigation. */
+  function onSplitDown(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const page = pageRef.current
+    if (!page) return
+    const handle = e.currentTarget
+    handle.classList.add("dragging")
+    document.body.classList.add("col-resizing")
+
+    const onMove = (move: PointerEvent) => {
+      const box = page.getBoundingClientRect()
+      const fraction = (box.right - move.clientX) / box.width
+      setSplit(Math.min(1 - SPLIT_MIN, Math.max(SPLIT_MIN, fraction)))
+    }
+    const onUp = () => {
+      handle.classList.remove("dragging")
+      document.body.classList.remove("col-resizing")
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      setSplit(current => {
+        localStorage.setItem(SPLIT_KEY, String(current))
+        return current
+      })
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
+
+  /** Double-click restores the default split. */
+  function onSplitReset() {
+    setSplit(SPLIT_DEFAULT)
+    localStorage.setItem(SPLIT_KEY, String(SPLIT_DEFAULT))
+  }
+
   async function onStop() {
     setStopping(true)
     try {
@@ -186,17 +237,28 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     }
   }
 
-  if (!detail) return <main className="session-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
+  if (!detail)
+    return (
+      <main className="session-page" ref={pageRef}>
+        {error ? <div className="error">{error}</div> : "Loading…"}
+      </main>
+    )
 
   const question = !busy && canDesign && detail.status === "paused" ? pendingQuestion(detail) : null
   const isDashboard = detail.kind === "dashboard"
   const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
   return (
-    <main className="session-page">
+    <main className="session-page" ref={pageRef}>
       <div className="conversation">
         <div className="session-head">
-          <h1>{detail.integrationId ?? liveId ?? (isDashboard ? "New dashboard" : "New integration")}</h1>
+          {/* Dashboards carry a display name; the id is plumbing, not a title */}
+          <h1>
+            {(isDashboard ? dashState?.name : null) ||
+              detail.integrationId ||
+              liveId ||
+              (isDashboard ? "New dashboard" : "New integration")}
+          </h1>
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
           )}
@@ -262,7 +324,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         </form>
       </div>
       {isDashboard && (
-        <div className="preview-panel">
+        <div
+          className="split-handle"
+          onPointerDown={onSplitDown}
+          onDoubleClick={onSplitReset}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize preview"
+        />
+      )}
+      {isDashboard && (
+        <div className="preview-panel" style={{ flex: `0 0 ${(split * 100).toFixed(2)}%` }}>
           {build ? (
             <DashboardFrame
               key={build.rev}

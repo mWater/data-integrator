@@ -19,6 +19,7 @@ import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
 import {
   canViewDashboard,
+  deleteDashboard,
   executeDashboardQuery,
   executeDashboardTileQuery,
   getDashboard,
@@ -628,6 +629,16 @@ async function route(
   if (dashboardMatch) {
     if (!canViewDashboard(user, dashboardMatch[1])) {
       json(res, 403, { error: "no access to this dashboard" })
+      return
+    }
+    if (req.method === "DELETE") {
+      if (user.role === "viewer") {
+        json(res, 403, { error: "Viewers cannot delete dashboards" })
+        return
+      }
+      const result = await deleteDashboard(pool, dashboardMatch[1])
+      if (!result.ok) json(res, 404, { error: "unknown dashboard" })
+      else json(res, 200, { versions: result.versions, sessions: result.sessions })
       return
     }
     const detail = await getDashboard(pool, dashboardMatch[1])

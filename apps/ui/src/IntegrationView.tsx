@@ -106,12 +106,12 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
         {!detail.enabled && <span className="chip chip-paused">paused</span>}
         <span style={{ flex: 1 }} />
         {canDesign && (
-          <button onClick={onToggleEnabled} title="Paused integrations are skipped by the scheduler">
+          <button className="secondary" onClick={onToggleEnabled} title="Paused integrations are skipped by the scheduler">
             {detail.enabled ? "Pause" : "Resume"}
           </button>
         )}
         {canDesign && (
-          <button onClick={onRun} disabled={running}>
+          <button className="secondary" onClick={onRun} disabled={running}>
             {running ? "Running…" : "Run Now"}
           </button>
         )}

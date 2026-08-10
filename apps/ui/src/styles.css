@@ -95,7 +95,7 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
   padding: 8px 12px; border-radius: 6px; margin: 8px 0;
 }
 .chip {
-  font-size: 12px; padding: 2px 10px; border-radius: 999px;
+  font-size: 12px; padding: 2px 10px; border-radius: 999px; white-space: nowrap;
   background: var(--inset); color: var(--ink-dim); text-transform: lowercase;
 }
 .chip-active { background: #d6e8ff; color: #0b5394 }
@@ -125,16 +125,44 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 .dim-link { color: var(--ink-dim); font-size: 13px }
 
 /* Session list */
-.list-page { max-width: 760px; margin: 0 auto; padding: 28px 20px; width: 100% }
+.list-page { max-width: 1120px; margin: 0 auto; padding: 28px 20px; width: 100% }
 .new-session { display: flex; gap: 8px; margin: 16px 0 }
 .new-session input {
   flex: 1; padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
 }
 button {
-  padding: 8px 16px; border: 0; border-radius: 6px; font: inherit;
+  padding: 8px 16px; border: 0; border-radius: 6px; font: inherit; white-space: nowrap;
   background: var(--accent); color: var(--accent-ink); cursor: pointer;
 }
 button:disabled { background: var(--control-disabled); cursor: default }
+/* Secondary: supporting actions next to a primary one, so a toolbar reads as
+   one call to action rather than a row of competing buttons */
+button.secondary {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--control-border);
+}
+button.secondary:hover { background: var(--hover-tint) }
+button.secondary:disabled { color: var(--ink-muted); background: var(--surface); cursor: default }
+button.danger { background: var(--surface); color: var(--danger); border: 1px solid var(--danger-border) }
+button.danger:hover { background: var(--danger-bg) }
+button.danger:disabled { color: var(--ink-muted); border-color: var(--control-border); background: var(--surface) }
+.row-actions { display: flex; gap: 8px; justify-content: flex-end }
+.row-actions button { padding: 5px 10px; font-size: 13px }
+
+/* Irreversible-action confirmation */
+.confirm-dialog {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5;
+  width: min(440px, 90%); display: flex; flex-direction: column; gap: 12px; padding: 22px 24px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 10px 30px var(--shadow);
+}
+.confirm-dialog h2 { margin: 0; font-size: 17px }
+.confirm-dialog p { margin: 0; font-size: 13.5px; line-height: 1.5 }
+.confirm-dialog label { display: flex; flex-direction: column; gap: 6px; font-size: 13px }
+.confirm-dialog code { background: var(--hover-tint); padding: 1px 5px; border-radius: 4px }
+.confirm-dialog input {
+  padding: 8px 10px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
+}
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px }
 table.sessions { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden }
 table.sessions th, table.sessions td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-soft) }
 table.sessions tbody tr { cursor: pointer }
@@ -147,10 +175,20 @@ table.sessions tbody tr:hover { background: var(--hover-tint) }
 .dashboard-frame { flex: 1; min-height: 0 }
 .dashboard-frame iframe { display: block }
 
-.preview-panel { flex: 1.2; min-width: 0; display: flex; border-left: 1px solid var(--border); background: var(--surface) }
+.preview-panel { min-width: 0; display: flex; border-left: 1px solid var(--border); background: var(--surface) }
 .preview-panel .dashboard-frame { flex: 1 }
 .preview-empty { margin: auto; color: var(--ink-muted); font-size: 13.5px; max-width: 260px; text-align: center }
-@media (max-width: 1100px) { .preview-panel { display: none } }
+/* Drag handle between transcript and preview; the hit area is wider than the line */
+.split-handle {
+  flex: 0 0 7px; cursor: col-resize; background: transparent; position: relative; z-index: 3;
+}
+.split-handle::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: var(--border);
+}
+.split-handle:hover::after, .split-handle.dragging::after { background: var(--accent); width: 2px }
+body.col-resizing { cursor: col-resize; user-select: none }
+body.col-resizing iframe { pointer-events: none }
+@media (max-width: 1100px) { .preview-panel, .split-handle { display: none } }
 
 .login-page { display: flex; align-items: center; justify-content: center; height: 100% }
 .login-card {
@@ -164,7 +202,7 @@ button.linkish {
   background: none; color: var(--topbar-dim); padding: 0; font-size: 13px; text-decoration: underline;
 }
 button.linkish:hover { color: var(--topbar-ink) }
-.list-page.wide { max-width: 980px }
+.list-page.wide { max-width: 1320px }
 .dest-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 }
 .dest-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
@@ -243,11 +281,18 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 .drawer-close:hover { background: var(--inset); color: var(--ink) }
 .conversation { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 20px }
 /* Scroll container spans the page (scrollbar at the edge); content centers inside */
-.session-head, .composer, .question, .conversation > .error {
+/* Reading-width column, scoped to the conversation: other pages reuse
+   .session-head as a page header and should span their own width */
+.conversation > .session-head, .composer, .question, .conversation > .error {
   width: 100%; max-width: 920px; margin-left: auto; margin-right: auto;
 }
 .session-head { display: flex; align-items: center; gap: 12px }
-.session-head h1 { font-size: 18px; margin: 0 }
+/* The title yields before the actions do: it truncates rather than squeezing
+   the buttons into wrapped two-line blocks */
+.session-head h1 {
+  font-size: 18px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.session-head .chip { flex: 0 0 auto }
 .messages {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
   padding: 12px max(4px, calc((100% - 920px) / 2));
@@ -317,6 +362,19 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600 }
 .pane { flex: 1; overflow: auto; margin: 0; padding: 14px; font-size: 12.5px }
 .pane-code { background: var(--code-bg); color: var(--code-ink) }
+
+/* Stored queries: one card each, SQL readable without horizontal scrolling */
+.query-list { display: flex; flex-direction: column; gap: 10px }
+.query-card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px }
+.query-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.query-params { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12px }
+.query-param code {
+  background: var(--inset); color: var(--ink-dim); padding: 0 4px; border-radius: 4px; margin-right: 3px;
+}
+.query-sql {
+  margin: 8px 0 0; padding: 9px 10px; border-radius: 6px; background: var(--code-bg); color: var(--code-ink);
+  font-size: 12px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere;
+}
 .status-pane dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 0 }
 .status-pane dt { color: var(--ink-muted) }
 .status-pane dd { margin: 0 }
@@ -333,10 +391,7 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 .aoi-bbox label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--ink-dim) }
 .aoi-bbox input { width: 90px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px }
 .aoi-actions { display: flex; gap: 12px; align-items: center }
-.aoi-actions button:not(.linkish) {
-  padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--surface); color: var(--ink); cursor: pointer
-}
+.aoi-actions button { padding: 6px 14px }
 
 /* Integration AOI section */
 .aoi-section { margin: 4px 0 16px }

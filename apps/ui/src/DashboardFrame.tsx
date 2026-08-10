@@ -48,8 +48,15 @@ export async function fetchTileBytes(
 /** Sandboxed dashboard iframe wired to the app's API. */
 export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, runQuery, fetchVectorTile, onError }: Props) {
   const container = useRef<HTMLDivElement>(null)
+  // Handlers live in refs, never in the effect deps: the bridge calls them
+  // lazily, so a caller's inline lambda changing identity on every render
+  // (e.g. typing in the session composer) must not remount the frame
   const errorRef = useRef(onError)
   errorRef.current = onError
+  const runQueryRef = useRef(runQuery)
+  runQueryRef.current = runQuery
+  const fetchVectorTileRef = useRef(fetchVectorTile)
+  fetchVectorTileRef.current = fetchVectorTile
   const { mode } = useAppTheme()
 
   useEffect(() => {
@@ -82,10 +89,14 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
           meta: { tables }
         },
         handlers: {
-          runQuery: runQuery ?? ((name, params) => execDashboardQuery(dashboardId, name, params)),
-          fetchVectorTile:
-            fetchVectorTile ??
-            ((query, z, x, y, params) => fetchTileBytes(`/api/dashboards/${dashboardId}`, query, z, x, y, params)),
+          runQuery: (name, params) =>
+            runQueryRef.current
+              ? runQueryRef.current(name, params)
+              : execDashboardQuery(dashboardId, name, params),
+          fetchVectorTile: (query, z, x, y, params) =>
+            fetchVectorTileRef.current
+              ? fetchVectorTileRef.current(query, z, x, y, params)
+              : fetchTileBytes(`/api/dashboards/${dashboardId}`, query, z, x, y, params),
           fetchTile: async (layerId, z, x, y) => {
             const snapshot = snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
@@ -109,7 +120,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       frame?.destroy()
     }
     // mode in deps: a theme change remounts the frame with the other token set
-  }, [dashboardId, bundleJs, bundleCss, kitVersion, runQuery, fetchVectorTile, mode])
+  }, [dashboardId, bundleJs, bundleCss, kitVersion, mode])
 
   return <div ref={container} className="dashboard-frame" />
 }

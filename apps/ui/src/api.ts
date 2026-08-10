@@ -419,6 +419,10 @@ export interface DashboardQuery {
   sql: string
   /** Declared parameters in positional order */
   params: DashboardQueryParam[]
+  /** Row cap for this query, when the default is overridden */
+  maxRows?: number
+  /** True when the query serves MVT vector tiles instead of rows */
+  tile?: boolean
 }
 
 /** Summary row from GET /api/dashboards. */
@@ -455,6 +459,11 @@ export function listDashboards(): Promise<{ dashboards: DashboardSummary[] }> {
 /** Fetches one dashboard at its current version. */
 export function getDashboard(id: string): Promise<DashboardDetail> {
   return request(`/api/dashboards/${id}`)
+}
+
+/** Permanently deletes a dashboard and all its versions; design sessions are kept. */
+export function deleteDashboard(id: string): Promise<{ versions: number; sessions: number }> {
+  return request(`/api/dashboards/${id}`, { method: "DELETE" })
 }
 
 /** Executes a stored dashboard query with named parameter values. */

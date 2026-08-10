@@ -140,7 +140,7 @@ export function Library({ user }: { user: User }) {
                           <button disabled={busy} onClick={() => install(entry)}>
                             {busy ? "Installing…" : entry.status === "not_installed" ? "Install" : "Update"}
                           </button>
-                          <button className="linkish" onClick={() => setConfirming(null)}>
+                          <button className="secondary" onClick={() => setConfirming(null)}>
                             Cancel
                           </button>
                         </div>

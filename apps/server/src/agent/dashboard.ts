@@ -103,6 +103,12 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Pr
       state.name = existing.rows[0].name
       state.source = existing.rows[0].source
       state.queries = existing.rows[0].queries
+      // Build the saved source now so the preview panel is live from the first
+      // frame; it also surfaces drift from the current kit before any edit
+      const built = await buildDashboard(state.source)
+      state.build = built.ok
+        ? { rev: 1, ok: true, errors: [], bundleJs: built.bundleJs, bundleCss: built.bundleCss }
+        : { rev: 1, ok: false, errors: built.errors }
     }
   }
   return state

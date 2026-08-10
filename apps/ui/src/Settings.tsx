@@ -145,7 +145,7 @@ export function Settings({ user }: { user: User }) {
               <div className="aoi-actions">
                 <button onClick={save}>Save</button>
                 {current && (
-                  <button className="linkish" onClick={clear}>
+                  <button className="secondary" onClick={clear}>
                     Clear
                   </button>
                 )}
