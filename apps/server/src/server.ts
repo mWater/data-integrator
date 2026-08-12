@@ -14,6 +14,7 @@ import { deleteIntegration, installIntegration, integrationUsage } from "./insta
 import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
 import { parseCron } from "./cron.js"
+import { loadSkill, loadSkillsIndex, skillsDir } from "./skills.js"
 import { listSources } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
@@ -588,6 +589,23 @@ async function route(
     json(res, 200, { entries: libraryPath ? await listLibrary(pool, libraryPath) : [] })
     return
   }
+  // Skills: the library's source and technique know-how, readable by any
+  // signed-in user. The agent loads these on demand; this is the human view.
+  if (pathname === "/api/skills" && req.method === "GET") {
+    json(res, 200, { skills: libraryPath ? loadSkillsIndex(skillsDir(libraryPath)) : [] })
+    return
+  }
+  const skillMatch = pathname.match(/^\/api\/skills\/([a-z][a-z0-9_]*)$/)
+  if (skillMatch && req.method === "GET") {
+    const skill = libraryPath ? loadSkill(skillsDir(libraryPath), skillMatch[1]) : null
+    if (!skill) {
+      json(res, 404, { error: "No such skill" })
+      return
+    }
+    json(res, 200, skill)
+    return
+  }
+
   const libraryInstallMatch = pathname.match(/^\/api\/library\/([a-z][a-z0-9_]*)\/install$/)
   if (libraryInstallMatch && req.method === "POST") {
     if (user.role === "viewer") {

@@ -809,6 +809,34 @@ export function listLibrary(): Promise<{ entries: LibraryEntry[] }> {
   return request("/api/library")
 }
 
+/** One skill in the library index: source and technique know-how. */
+export interface SkillSummary {
+  /** Directory name under library/skills */
+  id: string
+  /** Display name */
+  name: string
+  /** One-liner describing what it covers */
+  description: string
+  /** Date the skill was last checked against the live source, when recorded */
+  verified: string | null
+}
+
+/** One skill's readable content. */
+export interface SkillDetail extends SkillSummary {
+  /** Markdown body, frontmatter removed */
+  body: string
+}
+
+/** Lists the library's skills; empty when the deployment has no library. */
+export function listSkills(): Promise<{ skills: SkillSummary[] }> {
+  return request("/api/skills")
+}
+
+/** Fetches one skill's full text. */
+export function getSkill(id: string): Promise<SkillDetail> {
+  return request(`/api/skills/${id}`)
+}
+
 /** Installs or updates a library entry; optionally starts the first ingest. */
 export function installLibraryEntry(id: string, runNow: boolean): Promise<{ version: number; runId: string | null }> {
   return request(`/api/library/${id}/install`, {

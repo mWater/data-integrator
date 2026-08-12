@@ -14,6 +14,14 @@ import path from "node:path"
 /** Skill directory names: same published-identifier rule as definition ids. */
 const SKILL_ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
 
+/** Leading `---` fenced frontmatter block of a SKILL.md. */
+const FRONTMATTER = /^---\n([\s\S]*?)\n---\n?/
+
+/** The skills directory of a library root: where the layout is decided. */
+export function skillsDir(libraryPath: string): string {
+  return path.join(libraryPath, "skills")
+}
+
 /** One skill's index entry, from its frontmatter. */
 export interface SkillSummary {
   /** Directory name under library/skills */
@@ -22,6 +30,14 @@ export interface SkillSummary {
   name: string
   /** One-liner shown in the agent's index; what makes on-demand loading work */
   description: string
+  /** Date the skill was last checked against the live source, when recorded */
+  verified: string | null
+}
+
+/** One skill's readable content: its index entry plus the prose. */
+export interface SkillDetail extends SkillSummary {
+  /** Markdown body with the frontmatter block removed */
+  body: string
 }
 
 /**
@@ -29,7 +45,7 @@ export interface SkillSummary {
  * leading `---` fences. Returns {} when there is no block.
  */
 function parseFrontmatter(text: string): Record<string, string> {
-  const match = text.match(/^---\n([\s\S]*?)\n---\n?/)
+  const match = text.match(FRONTMATTER)
   if (!match) return {}
   const fields: Record<string, string> = {}
   for (const line of match[1].split("\n")) {
@@ -57,9 +73,31 @@ export function loadSkillsIndex(skillsDir: string): SkillSummary[] {
     const text = readSkill(skillsDir, id)
     if (text === null) continue
     const fields = parseFrontmatter(text)
-    skills.push({ id, name: fields.name ?? id, description: fields.description ?? "" })
+    skills.push({
+      id,
+      name: fields.name ?? id,
+      description: fields.description ?? "",
+      verified: fields.verified ?? null
+    })
   }
   return skills
+}
+
+/**
+ * One skill ready to read: frontmatter fields split from the markdown body.
+ * Null when the id is malformed or the skill does not exist.
+ */
+export function loadSkill(skillsDir: string, id: string): SkillDetail | null {
+  const text = readSkill(skillsDir, id)
+  if (text === null) return null
+  const fields = parseFrontmatter(text)
+  return {
+    id,
+    name: fields.name ?? id,
+    description: fields.description ?? "",
+    verified: fields.verified ?? null,
+    body: text.replace(FRONTMATTER, "").trimStart()
+  }
 }
 
 /**

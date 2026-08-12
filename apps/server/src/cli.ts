@@ -38,6 +38,7 @@ import { DesignerImplementation } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
 import { RunService } from "./runService.js"
+import { skillsDir } from "./skills.js"
 
 /** Directory holding the numbered .sql migration files. */
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -281,7 +282,7 @@ async function main(): Promise<number> {
         }
         const runner = new Runner()
         await runner.ensureReady()
-        const deps = { ...buildDeps(pool, runner, config), model, skillsDir: path.join(config.libraryPath, "skills") }
+        const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath) }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
         const service = AgentService.forDesigner(pool, deps)
 
@@ -356,7 +357,7 @@ async function main(): Promise<number> {
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
         const model = buildModel(config)
         const agent = model
-          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: path.join(config.libraryPath, "skills") })
+          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: skillsDir(config.libraryPath) })
           : null
         const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
         const assistantAgent = model ? AgentService.forAssistant(pool, { pool, model }) : null

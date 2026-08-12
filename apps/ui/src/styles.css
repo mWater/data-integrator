@@ -639,6 +639,41 @@ table.users tbody tr:hover { background: none }
   .home-actions, .home-columns, .home-routes { grid-template-columns: 1fr }
 }
 
+/* ---------------------------------------------------------------------------
+   Library skills: reference material under the installable entries. Quieter
+   than the table above it, and each row opens in place.
+--------------------------------------------------------------------------- */
+.skills-section { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--border) }
+.skills-section h2 { margin: 0 0 4px; font-size: 15px }
+.skills-section > .dim { margin: 0 0 14px; max-width: 74ch }
+.skill-list { list-style: none; margin: 0; padding: 0 }
+.skill { border-top: 1px solid var(--border-soft) }
+.skill:first-child { border-top: 0 }
+.skill-head {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 9px 2px;
+  background: none; border: 0; border-radius: 6px; color: var(--ink); font: inherit;
+  text-align: left; cursor: pointer;
+}
+.skill-head:hover { background: var(--hover-tint) }
+.skill-head:hover .skill-name { color: var(--link) }
+.skill-caret {
+  display: flex; flex: none; color: var(--ink-faint); align-self: center;
+  transition: transform 0.13s;
+}
+.skill-head[aria-expanded="true"] .skill-caret { transform: rotate(90deg); color: var(--accent) }
+.skill-name { font-weight: 600; font-size: 13.5px; flex: none }
+.skill-desc {
+  color: var(--ink-muted); font-size: 12.5px; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.skill-verified { color: var(--ink-faint); font-size: 12px; flex: none; white-space: nowrap }
+.skill-body {
+  padding: 4px 2px 18px 23px; max-width: 82ch;
+}
+.skill-body .markdown { font-size: 13.5px }
+.skill-body .markdown pre { font-size: 12px }
+@media (prefers-reduced-motion: reduce) { .skill-caret { transition: none } }
+
 /* Library install confirm row */
 .library-confirm td { background: var(--inset); border-radius: 6px }
 .library-confirm-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 6px }

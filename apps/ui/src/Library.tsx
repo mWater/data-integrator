@@ -1,6 +1,91 @@
 import { useEffect, useState } from "react"
-import { DefaultAoi, getSettings, installLibraryEntry, LibraryEntry, listLibrary, User } from "./api.js"
+import {
+  DefaultAoi,
+  getSettings,
+  getSkill,
+  installLibraryEntry,
+  LibraryEntry,
+  listLibrary,
+  listSkills,
+  SkillDetail,
+  SkillSummary,
+  User
+} from "./api.js"
 import { triggerLabel } from "./IntegrationList.js"
+import { Markdown } from "./Markdown.js"
+
+/**
+ * The library's skills: source and technique know-how the design agent loads on
+ * demand. Reference material rather than something to act on, so it sits quietly
+ * below the installable entries and opens in place.
+ */
+function SkillsSection() {
+  const [skills, setSkills] = useState<SkillSummary[] | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
+  const [texts, setTexts] = useState<Record<string, SkillDetail>>({})
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    listSkills().then(r => setSkills(r.skills), err => setError(err.message))
+  }, [])
+
+  function toggle(id: string) {
+    if (open === id) {
+      setOpen(null)
+      return
+    }
+    setOpen(id)
+    // Bodies are fetched once and kept, so reopening is instant
+    if (!texts[id]) {
+      getSkill(id).then(
+        skill => setTexts(prev => ({ ...prev, [id]: skill })),
+        err => setError(err.message)
+      )
+    }
+  }
+
+  if (skills !== null && skills.length === 0) return null
+
+  return (
+    <section className="skills-section">
+      <h2>Skills</h2>
+      <p className="dim">
+        Source and technique notes the designer agent reads while building an integration: publishing
+        quirks, file layouts, working snippets. Reference material, nothing to install.
+      </p>
+      {error && <div className="error">{error}</div>}
+      {skills === null ? (
+        <p className="dim">Loading…</p>
+      ) : (
+        <ul className="skill-list">
+          {skills.map(skill => {
+            const expanded = open === skill.id
+            const detail = texts[skill.id]
+            return (
+              <li className="skill" key={skill.id}>
+                <button className="skill-head" aria-expanded={expanded} onClick={() => toggle(skill.id)}>
+                  <span className="skill-caret" aria-hidden="true">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 6 6 6-6 6" />
+                    </svg>
+                  </span>
+                  <span className="skill-name">{skill.name}</span>
+                  <span className="skill-desc">{skill.description}</span>
+                  {skill.verified && <span className="skill-verified">checked {skill.verified}</span>}
+                </button>
+                {expanded && (
+                  <div className="skill-body">
+                    {detail ? <Markdown text={detail.body} /> : <p className="dim">Loading…</p>}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
 
 /** Human label for the entry's relationship to this deployment. */
 const STATUS_LABEL: Record<LibraryEntry["status"], string> = {
@@ -153,6 +238,7 @@ export function Library({ user }: { user: User }) {
           </tbody>
         </table>
       )}
+      <SkillsSection />
     </main>
   )
 }
