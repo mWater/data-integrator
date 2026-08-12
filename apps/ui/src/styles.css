@@ -501,6 +501,13 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 .aoi-section { margin: 4px 0 16px }
 .aoi-section h3 { margin: 12px 0 6px }
 
+/* Settings: deployment name */
+.title-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px }
+.title-form input {
+  width: 320px; padding: 8px 12px; border: 1px solid var(--control-border);
+  border-radius: 6px; font: inherit;
+}
+
 /* Settings sections */
 .settings-section { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border) }
 .settings-section h2 { margin-top: 0 }
@@ -536,27 +543,39 @@ table.users tbody tr:hover { background: none }
    action-first page once it has. Both share the card and panel atoms below.
 --------------------------------------------------------------------------- */
 .home { max-width: 1120px; margin: 0 auto; padding: 28px 20px 40px; width: 100% }
-.home-hello h1 { font-size: 22px; letter-spacing: -0.012em; margin: 0 0 3px }
+/* Masthead: the deployment owns the page; warmth and counts sit under it */
+.home-hello h1 { font-size: 24px; letter-spacing: -0.014em; margin: 0 0 4px }
 .home-hello p { margin: 0 0 20px; color: var(--ink-muted); font-size: 13px }
+.home-hello p b { color: var(--ink-dim); font-weight: 600; font-variant-numeric: tabular-nums }
 
 /* Cards: same shape whether they navigate (a) or start something (button) */
 .card {
-  display: flex; flex-direction: column; gap: 5px; text-align: left;
+  display: flex; flex-direction: column; text-align: left;
   background: var(--surface); color: var(--ink); border: 1px solid var(--border);
-  border-radius: 10px; padding: 15px 16px; text-decoration: none; cursor: pointer;
+  border-radius: 10px; padding: 16px 17px 14px; text-decoration: none; cursor: pointer;
   font: inherit; white-space: normal;
+  transition: border-color 0.13s, box-shadow 0.13s;
 }
-.card:hover { border-color: var(--accent); background: var(--hover-tint) }
-.card:disabled { cursor: default; background: var(--surface); border-color: var(--border) }
+.card:hover { border-color: var(--accent); box-shadow: 0 4px 14px var(--shadow) }
+.card:disabled { cursor: default; border-color: var(--border); box-shadow: none }
 .card.primary { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint) }
-.card-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14.5px }
-.card-icon { color: var(--accent); display: flex; flex: none }
-.card-desc { color: var(--ink-muted); font-size: 12.5px }
-/* A quiet inset, never a control: the cards are peers, so none of them gets to
-   look like an input field the others lack */
-.card-fact {
-  margin-top: auto; background: var(--inset); color: var(--ink-muted);
-  border-radius: 7px; padding: 8px 10px; font-size: 12.5px;
+.card-tile {
+  width: 34px; height: 34px; border-radius: 9px; flex: none; margin-bottom: 11px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--tint); color: var(--accent);
+}
+.card-title { font-weight: 600; font-size: 15px; margin-bottom: 3px }
+.card-desc { color: var(--ink-muted); font-size: 12.5px; margin-bottom: 12px }
+/* Footer on a rule, closed by an arrow: what says "this goes somewhere" */
+.card-foot {
+  margin-top: auto; padding-top: 11px; border-top: 1px solid var(--border-soft);
+  display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink-muted);
+}
+.card-go { margin-left: auto; color: var(--accent); display: flex; flex: none; transition: transform 0.13s }
+.card:hover .card-go { transform: translateX(3px) }
+@media (prefers-reduced-motion: reduce) {
+  .card, .card-go { transition: none }
+  .card:hover .card-go { transform: none }
 }
 .home-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px }
 

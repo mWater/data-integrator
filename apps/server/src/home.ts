@@ -10,7 +10,7 @@ import pg from "pg"
 import { listDashboards } from "./dashboards/service.js"
 import { listIntegrations } from "./integrations.js"
 import { listLibrary } from "./library.js"
-import { getDefaultAoi } from "./settings.js"
+import { DEFAULT_SITE_TITLE, getSiteTitle } from "./settings.js"
 import { listSources } from "./sources.js"
 
 /** Rows each home panel shows before deferring to its section page. */
@@ -90,8 +90,8 @@ export interface HomeAi {
 
 /** Everything the home page renders. */
 export interface HomeSummary {
-  /** Default area-of-interest label, when one is configured */
-  deployment: string | null
+  /** Deployment display name, already resolved against the default */
+  title: string
   /** True once any destination holds data: switches the page out of its welcome state */
   hasData: boolean
   /** Headline counts */
@@ -137,8 +137,8 @@ export async function getHomeSummary(
   libraryPath: string | null,
   ai: HomeAi
 ): Promise<HomeSummary> {
-  const [deployment, sources, integrations, dashboards, problems] = await Promise.all([
-    getDefaultAoi(pool),
+  const [title, sources, integrations, dashboards, problems] = await Promise.all([
+    getSiteTitle(pool),
     listSources(pool),
     listIntegrations(pool),
     listDashboards(pool),
@@ -155,7 +155,7 @@ export async function getHomeSummary(
     libraryPath && integrations.length === 0 ? (await listLibrary(pool, libraryPath)).length : null
 
   return {
-    deployment: deployment?.name ?? null,
+    title: title ?? DEFAULT_SITE_TITLE,
     hasData: filled.length > 0,
     counts: {
       integrations: integrations.length,

@@ -457,8 +457,8 @@ export interface HomeAi {
 
 /** Everything the home page renders, from GET /api/home. */
 export interface HomeSummary {
-  /** Default area-of-interest label, when configured */
-  deployment: string | null
+  /** Deployment display name, already resolved against the default */
+  title: string
   /** True once any destination holds data */
   hasData: boolean
   /** Headline counts */
@@ -717,8 +717,19 @@ export function listCountries(): Promise<{ countries: CountryBox[] }> {
 }
 
 /** Deployment settings. */
-export function getSettings(): Promise<{ settings: { default_aoi: DefaultAoi | null } }> {
+export function getSettings(): Promise<{
+  settings: { default_aoi: DefaultAoi | null; site_title: string | null }
+}> {
   return request("/api/settings")
+}
+
+/** Sets the deployment display name; a blank title restores the default (admin only). */
+export function setSiteTitle(title: string): Promise<{ site_title: string | null }> {
+  return request("/api/settings/site_title", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title })
+  })
 }
 
 /** Sets the deployment default AOI (admin only). */

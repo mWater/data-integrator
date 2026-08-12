@@ -7,9 +7,69 @@ import {
   getSettings,
   listCountries,
   setDefaultAoi,
+  setSiteTitle,
   User
 } from "./api.js"
 import { UsersSection } from "./UsersSection.js"
+
+/** Shown as the home page title when the deployment has not set one. */
+const DEFAULT_SITE_TITLE = "Data Integrator"
+
+/**
+ * The deployment's display name, shown as the home page heading. Blank restores
+ * the default, so there is no separate clear action.
+ */
+function SiteTitleSection({ initial, isAdmin }: { initial: string | null; isAdmin: boolean }) {
+  const [title, setTitle] = useState(initial ?? "")
+  const [saved, setSaved] = useState(initial)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await setSiteTitle(title)
+      setSaved(result.site_title)
+      setTitle(result.site_title ?? "")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <h2>Deployment name</h2>
+      <p className="dim">
+        The heading on the home page. Name it after the deployment, for example "Madagascar Data
+        Integrator".
+      </p>
+      <p>
+        Current: <b>{saved ?? DEFAULT_SITE_TITLE}</b>
+        {saved === null && <span className="dim"> (default)</span>}
+      </p>
+      {error && <div className="error">{error}</div>}
+      {isAdmin ? (
+        <form className="title-form" onSubmit={save}>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder={DEFAULT_SITE_TITLE}
+            maxLength={120}
+            aria-label="Deployment name"
+          />
+          <button disabled={busy || title.trim() === (saved ?? "")}>Save</button>
+          <span className="dim">Leave blank to use “{DEFAULT_SITE_TITLE}”.</span>
+        </form>
+      ) : (
+        <p className="dim">Only administrators can change settings.</p>
+      )}
+    </>
+  )
+}
 
 /** Formats a bbox for display. */
 function formatBbox(bbox: [number, number, number, number]): string {
@@ -23,6 +83,7 @@ function formatBbox(bbox: [number, number, number, number]): string {
  */
 export function Settings({ user }: { user: User }) {
   const [current, setCurrent] = useState<DefaultAoi | null>(null)
+  const [siteTitle, setSiteTitleState] = useState<string | null>(null)
   const [countries, setCountries] = useState<CountryBox[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +100,7 @@ export function Settings({ user }: { user: User }) {
     Promise.all([getSettings(), listCountries()]).then(
       ([settings, countryList]) => {
         setCurrent(settings.settings.default_aoi)
+        setSiteTitleState(settings.settings.site_title)
         setCountries(countryList.countries)
         setLoaded(true)
       },
@@ -89,6 +151,8 @@ export function Settings({ user }: { user: User }) {
         <p>Loading…</p>
       ) : (
         <>
+          <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />
+
           <h2>Default area of interest</h2>
           <p className="dim">
             Integrations installed without an area of interest are clipped to this at run

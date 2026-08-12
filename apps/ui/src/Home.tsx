@@ -34,17 +34,18 @@ function since(iso: string | null): string | null {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", year: "numeric" })
 }
 
-/** Greeting for the local time of day. */
-function greeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 12) return "Good morning"
-  if (hour < 18) return "Good afternoon"
-  return "Good evening"
-}
-
 /** "1 row" / "2 rows", so counts read as sentences. */
 function plural(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
+}
+
+/** A count in the status line: the number carries ink, the noun stays quiet. */
+function Count({ n, one, many }: { n: number; one: string; many?: string }) {
+  return (
+    <>
+      <b>{n.toLocaleString()}</b> {n === 1 ? one : (many ?? `${one}s`)}
+    </>
+  )
 }
 
 /** What a source holds: rows for tables, promoted snapshots for layers. */
@@ -93,13 +94,13 @@ const ICONS = {
   )
 }
 
-/** One 16px line icon from the set above. */
+/** Icon from the set above, on the card's tinted tile. */
 function Icon({ name }: { name: keyof typeof ICONS }) {
   return (
-    <span className="card-icon" aria-hidden="true">
+    <span className="card-tile" aria-hidden="true">
       <svg
-        width="16"
-        height="16"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -108,6 +109,26 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
         strokeLinejoin="round"
       >
         {ICONS[name]}
+      </svg>
+    </span>
+  )
+}
+
+/** The footer arrow: the mark that makes a card read as a control. */
+function Go() {
+  return (
+    <span className="card-go" aria-hidden="true">
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5 12h13M12 5l7 7-7 7" />
       </svg>
     </span>
   )
@@ -131,12 +152,13 @@ interface CardProps {
 function LinkCard({ href, icon, title, description, fact, className = "" }: CardProps & { href: string }) {
   return (
     <a className={`card ${className}`} href={href}>
-      <span className="card-title">
-        <Icon name={icon} />
-        {title}
-      </span>
+      <Icon name={icon} />
+      <span className="card-title">{title}</span>
       <span className="card-desc">{description}</span>
-      <span className="card-fact">{fact}</span>
+      <span className="card-foot">
+        {fact}
+        <Go />
+      </span>
     </a>
   )
 }
@@ -153,12 +175,13 @@ function ActionCard({
 }: CardProps & { onClick: () => void; busy: boolean }) {
   return (
     <button className={`card ${className}`} onClick={onClick} disabled={busy}>
-      <span className="card-title">
-        <Icon name={icon} />
-        {title}
-      </span>
+      <Icon name={icon} />
+      <span className="card-title">{title}</span>
       <span className="card-desc">{description}</span>
-      <span className="card-fact">{busy ? "Starting…" : fact}</span>
+      <span className="card-foot">
+        {busy ? "Starting…" : fact}
+        <Go />
+      </span>
     </button>
   )
 }
@@ -345,10 +368,10 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
   return (
     <main className="home">
       <header className="home-hello">
-        <h1>{greeting()}</h1>
+        <h1>{home.title}</h1>
         <p>
-          {home.deployment ? `${home.deployment} · ` : ""}
-          {plural(counts.integrations, "integration")} keeping {plural(sources, "data source")} current
+          <Count n={counts.integrations} one="integration" /> keeping{" "}
+          <Count n={sources} one="data source" /> current
         </p>
       </header>
 

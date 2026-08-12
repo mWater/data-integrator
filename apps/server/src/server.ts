@@ -29,7 +29,16 @@ import {
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
-import { DEFAULT_AOI_KEY, getDefaultAoi, parseAoi, parseDefaultAoi, setSetting } from "./settings.js"
+import {
+  DEFAULT_AOI_KEY,
+  getDefaultAoi,
+  getSiteTitle,
+  parseAoi,
+  parseDefaultAoi,
+  parseSiteTitle,
+  setSetting,
+  SITE_TITLE_KEY
+} from "./settings.js"
 import {
   authenticate,
   AuthUser,
@@ -273,7 +282,25 @@ async function route(
 
   // Deployment settings: readable by any signed-in user, writable by admins
   if (pathname === "/api/settings" && req.method === "GET") {
-    json(res, 200, { settings: { default_aoi: await getDefaultAoi(pool) } })
+    json(res, 200, {
+      settings: { default_aoi: await getDefaultAoi(pool), site_title: await getSiteTitle(pool) }
+    })
+    return
+  }
+  if (pathname === `/api/settings/${SITE_TITLE_KEY}` && req.method === "PUT") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change settings" })
+      return
+    }
+    let title
+    try {
+      title = parseSiteTitle(await readJsonBody(req))
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    await setSetting(pool, SITE_TITLE_KEY, title)
+    json(res, 200, { site_title: title })
     return
   }
   if (pathname === `/api/settings/${DEFAULT_AOI_KEY}` && (req.method === "PUT" || req.method === "DELETE")) {

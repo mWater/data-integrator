@@ -7,7 +7,7 @@ import { IntegrationDefinition } from "@data-integrator/definitions"
 import { getHomeSummary } from "../src/home.js"
 import { installIntegration } from "../src/install.js"
 import { migrate } from "../src/migrations.js"
-import { DEFAULT_AOI_KEY, setSetting } from "../src/settings.js"
+import { DEFAULT_SITE_TITLE, parseSiteTitle, setSetting, SITE_TITLE_KEY } from "../src/settings.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -133,8 +133,19 @@ test("a paused integration is not reported as a problem", async () => {
   await pool.query("UPDATE app.integrations SET enabled = true WHERE id = 'home_broken'")
 })
 
-test("the deployment label comes from the default area of interest", async () => {
-  assert.equal((await getHomeSummary(pool, null, NO_AI)).deployment, null)
-  await setSetting(pool, DEFAULT_AOI_KEY, { name: "Angola", bbox: [11.743, -18.02, 24.047, -4.429] })
-  assert.equal((await getHomeSummary(pool, null, NO_AI)).deployment, "Angola")
+test("the title comes from settings and falls back to the product name", async () => {
+  assert.equal((await getHomeSummary(pool, null, NO_AI)).title, DEFAULT_SITE_TITLE)
+  await setSetting(pool, SITE_TITLE_KEY, "Madagascar Data Integrator")
+  assert.equal((await getHomeSummary(pool, null, NO_AI)).title, "Madagascar Data Integrator")
+  // Clearing the setting restores the default rather than blanking the heading
+  await setSetting(pool, SITE_TITLE_KEY, null)
+  assert.equal((await getHomeSummary(pool, null, NO_AI)).title, DEFAULT_SITE_TITLE)
+})
+
+test("parseSiteTitle trims, caps length, and treats blank as unset", () => {
+  assert.equal(parseSiteTitle({ title: "  Madagascar Data Integrator  " }), "Madagascar Data Integrator")
+  assert.equal(parseSiteTitle({ title: "   " }), null)
+  assert.equal(parseSiteTitle({}), null)
+  assert.equal(parseSiteTitle({ title: "x".repeat(200) })?.length, 120)
+  assert.throws(() => parseSiteTitle({ title: 7 }), /title must be a string/)
 })

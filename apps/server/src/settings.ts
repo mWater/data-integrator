@@ -22,6 +22,12 @@ export interface DefaultAoi extends Aoi {
 /** Settings key for the deployment default AOI. */
 export const DEFAULT_AOI_KEY = "default_aoi"
 
+/** Settings key for the deployment's display name, shown as the home page title. */
+export const SITE_TITLE_KEY = "site_title"
+
+/** Title to fall back to when the deployment has not set one. */
+export const DEFAULT_SITE_TITLE = "Data Integrator"
+
 /** Reads one setting; null when unset. */
 export async function getSetting<T>(pool: pg.Pool, key: string): Promise<T | null> {
   const result = await pool.query("SELECT value FROM app.settings WHERE key = $1", [key])
@@ -44,6 +50,22 @@ export async function setSetting(pool: pg.Pool, key: string, value: unknown): Pr
 /** The deployment default AOI, or null when none is configured. */
 export async function getDefaultAoi(pool: pg.Pool): Promise<DefaultAoi | null> {
   return getSetting<DefaultAoi>(pool, DEFAULT_AOI_KEY)
+}
+
+/** The deployment's display name, or null when none is configured. */
+export async function getSiteTitle(pool: pg.Pool): Promise<string | null> {
+  return getSetting<string>(pool, SITE_TITLE_KEY)
+}
+
+/**
+ * Validates a site-title setting value. Returns the trimmed title, or null when
+ * it is blank, which clears the setting and restores the default.
+ */
+export function parseSiteTitle(body: unknown): string | null {
+  const raw = (body as { title?: unknown })?.title
+  if (raw === undefined || raw === null) return null
+  if (typeof raw !== "string") throw new Error("title must be a string")
+  return raw.trim().slice(0, 120) || null
 }
 
 /**
