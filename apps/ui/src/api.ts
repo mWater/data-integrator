@@ -383,6 +383,101 @@ export function listSources(): Promise<{ sources: DataSource[] }> {
   return request("/api/sources")
 }
 
+/** One data source row on the home page. */
+export interface HomeSource {
+  /** Source kind */
+  kind: "table" | "raster"
+  /** tableId or layerId */
+  id: string
+  /** Display name */
+  name: string
+  /** Row count (tables); null for rasters */
+  rows: number | null
+  /** Declared column count (tables); null for rasters */
+  columns: number | null
+  /** Promoted snapshot count (rasters); null for tables */
+  snapshots: number | null
+  /** Latest data time (ISO) */
+  updatedAt: string | null
+}
+
+/** One integration row on the home page. */
+export interface HomeIntegration {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: string
+  /** Whether the scheduler considers it */
+  enabled: boolean
+  /** Lifecycle: draft until a design session's cold run certifies it */
+  status: "draft" | "ready"
+  /** Status of the most recent run, if any */
+  lastRunStatus: string | null
+  /** Time of the most recent run (ISO) */
+  lastRunAt: string | null
+}
+
+/** An enabled integration whose most recent run failed. */
+export interface HomeProblem {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: string
+  /** Terminal status of the failing run */
+  status: string
+  /** Error recorded on the run */
+  error: string | null
+  /** When the run failed (ISO) */
+  failedAt: string | null
+}
+
+/** Headline counts behind the home page's action cards and panel links. */
+export interface HomeCounts {
+  /** Installed integrations */
+  integrations: number
+  /** Destination tables holding data */
+  tables: number
+  /** Raster layers holding data */
+  rasters: number
+  /** Saved dashboards */
+  dashboards: number
+  /** Library entries available to install; null when not computed */
+  library: number | null
+}
+
+/** Which agent-backed features this deployment has a model configured for. */
+export interface HomeAi {
+  /** Designing and editing integrations with the agent */
+  designer: boolean
+  /** Building dashboards with the agent */
+  dashboards: boolean
+  /** The query assistant */
+  assistant: boolean
+}
+
+/** Everything the home page renders, from GET /api/home. */
+export interface HomeSummary {
+  /** Default area-of-interest label, when configured */
+  deployment: string | null
+  /** True once any destination holds data */
+  hasData: boolean
+  /** Headline counts */
+  counts: HomeCounts
+  /** Freshest data sources, capped */
+  sources: HomeSource[]
+  /** Integrations, most recently updated first, capped */
+  integrations: HomeIntegration[]
+  /** Enabled integrations whose most recent run failed */
+  problems: HomeProblem[]
+  /** Agent-backed features available here */
+  ai: HomeAi
+}
+
+/** Fetches the home page summary. */
+export function getHome(): Promise<HomeSummary> {
+  return request("/api/home")
+}
+
 /** Lists installed integrations. */
 export function listIntegrations(): Promise<{ integrations: IntegrationSummary[] }> {
   return request("/api/integrations")

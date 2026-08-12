@@ -11,6 +11,7 @@ import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
+import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
 import { parseCron } from "./cron.js"
 import { listSources } from "./sources.js"
@@ -528,6 +529,20 @@ async function route(
     // Snapshot-pinned URL: content never changes, cache hard
     res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
     res.end(png)
+    return
+  }
+
+  // The landing page: counts, panels and health in one round trip
+  if (pathname === "/api/home") {
+    json(
+      res,
+      200,
+      await getHomeSummary(pool, libraryPath, {
+        designer: agent !== null,
+        dashboards: dashboardAgent !== null,
+        assistant: assistantAgent !== null
+      })
+    )
     return
   }
 

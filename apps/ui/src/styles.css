@@ -531,6 +531,95 @@ table.users tbody tr:hover { background: none }
   border: 1px solid var(--control-border); border-radius: 6px; background: var(--inset);
 }
 
+/* ---------------------------------------------------------------------------
+   Home page. Two states: a welcome while no data has landed, and an
+   action-first page once it has. Both share the card and panel atoms below.
+--------------------------------------------------------------------------- */
+.home { max-width: 1120px; margin: 0 auto; padding: 28px 20px 40px; width: 100% }
+.home-hello h1 { font-size: 22px; letter-spacing: -0.012em; margin: 0 0 3px }
+.home-hello p { margin: 0 0 20px; color: var(--ink-muted); font-size: 13px }
+
+/* Cards: same shape whether they navigate (a) or start something (button) */
+.card {
+  display: flex; flex-direction: column; gap: 5px; text-align: left;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 10px; padding: 15px 16px; text-decoration: none; cursor: pointer;
+  font: inherit; white-space: normal;
+}
+.card:hover { border-color: var(--accent); background: var(--hover-tint) }
+.card:disabled { cursor: default; background: var(--surface); border-color: var(--border) }
+.card.primary { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint) }
+.card-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14.5px }
+.card-icon { color: var(--accent); display: flex; flex: none }
+.card-desc { color: var(--ink-muted); font-size: 12.5px }
+/* A quiet inset, never a control: the cards are peers, so none of them gets to
+   look like an input field the others lack */
+.card-fact {
+  margin-top: auto; background: var(--inset); color: var(--ink-muted);
+  border-radius: 7px; padding: 8px 10px; font-size: 12.5px;
+}
+.home-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px }
+
+/* Failure banner: absent entirely on a healthy deployment */
+.home-alerts { display: flex; flex-direction: column; gap: 8px; margin-top: 18px }
+.home-alert {
+  display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--danger-border); border-radius: 8px;
+  box-shadow: inset 3px 0 0 var(--danger); padding: 10px 14px; text-decoration: none;
+}
+.home-alert:hover { background: var(--danger-bg) }
+.home-alert .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.home-alert-action { color: var(--link); font-size: 12.5px; white-space: nowrap }
+.home-alert-more { font-size: 12.5px; color: var(--link); padding-left: 2px }
+
+/* Panels */
+.home-columns { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start }
+.home-panel { min-width: 0 }
+.home-panel-head { display: flex; align-items: baseline; gap: 10px; margin: 28px 0 9px }
+.home-panel-head h2 {
+  margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-faint); line-height: 1.4;
+}
+.home-panel-head a { font-size: 12.5px; margin-left: auto }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 2px 15px 6px }
+.panel-row {
+  display: flex; align-items: center; gap: 11px; padding: 9px 0; font-size: 13px;
+  border-top: 1px solid var(--border-soft); color: var(--ink); text-decoration: none;
+}
+.panel-row:first-child { border-top: 0 }
+.panel-row:hover { color: var(--link) }
+.panel-row .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.panel-fact, .panel-when {
+  color: var(--ink-muted); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.panel-when { min-width: 68px; text-align: right }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #2f9e4f }
+.dot.run { background: var(--link) }
+.dot.bad { background: var(--danger) }
+.dot.idle { background: var(--ink-faint) }
+
+/* Welcome state */
+.home-welcome { max-width: 660px; text-align: center; padding-top: 44px }
+.home-welcome h1 { font-size: 26px; letter-spacing: -0.015em; margin: 0 0 8px }
+.home-lede { margin: 0 auto 24px; color: var(--ink-dim); font-size: 14.5px; max-width: 48ch }
+/* The welcome column centers, but its lists are still read left to right */
+.home-welcome .error, .home-welcome .dim, .home-welcome .panel { text-align: left }
+.home-routes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.home-welcome .home-panel-head { margin-top: 0; text-align: left }
+.home-after {
+  margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);
+  font-size: 12.5px; color: var(--ink-muted);
+}
+.home-flow {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  font-size: 12.5px; color: var(--ink-faint); margin-bottom: 8px; flex-wrap: wrap;
+}
+.home-flow b { color: var(--ink-dim); font-weight: 600 }
+
+@media (max-width: 900px) {
+  .home-actions, .home-columns, .home-routes { grid-template-columns: 1fr }
+}
+
 /* Library install confirm row */
 .library-confirm td { background: var(--inset); border-radius: 6px }
 .library-confirm-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 6px }

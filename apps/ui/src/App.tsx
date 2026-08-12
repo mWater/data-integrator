@@ -5,6 +5,7 @@ import { AssistantPage } from "./AssistantPage.js"
 import { DashboardList } from "./DashboardList.js"
 import { DashboardView } from "./DashboardView.js"
 import { DataSources } from "./DataSources.js"
+import { Home } from "./Home.js"
 import { IntegrationList } from "./IntegrationList.js"
 import { IntegrationView } from "./IntegrationView.js"
 import { Login } from "./Login.js"
@@ -28,6 +29,8 @@ interface Route {
   tableId: string | null
   /** True on the sessions list page */
   sessions: boolean
+  /** True on the data catalog page */
+  data: boolean
   /** True on the assistant page */
   assistant: boolean
   /** True on the integrations list page */
@@ -61,6 +64,7 @@ function parseHash(): Route {
     integrationId: integration ? integration[1] : null,
     tableId: table ? table[1] : null,
     sessions: hash === "#/sessions",
+    data: hash === "#/data",
     assistant: hash === "#/assistant",
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
@@ -137,7 +141,8 @@ export function App() {
       <header className="topbar">
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
-          <a href="#/">Data</a>
+          <a href="#/">Home</a>
+          <a href="#/data">Data</a>
           <a href="#/assistant">Assistant</a>
           <a href="#/integrations">Integrations</a>
           <a href="#/library">Library</a>
@@ -172,8 +177,10 @@ export function App() {
         <SessionList />
       ) : route.integrations ? (
         <IntegrationList canDesign={canDesign} />
-      ) : (
+      ) : route.data ? (
         <DataSources />
+      ) : (
+        <Home user={user} />
       )}
     </div>
   )
