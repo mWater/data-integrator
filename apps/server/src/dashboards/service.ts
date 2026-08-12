@@ -29,8 +29,9 @@ export interface DashboardDetail extends DashboardSummary {
   source: string
   /** Stored queries of the current version. */
   queries: DashboardQuery[]
-  /** Kit version the bundle is pinned to. */
-  kitVersion: string
+  /** Kit version the bundle was built against. Provenance only: the loader
+   * always uses the current kit, so this never selects an asset. */
+  builtWithKit: string
   /** Compiled ESM bundle. */
   bundleJs: string
   /** Compiled stylesheet. */
@@ -80,7 +81,7 @@ export async function getDashboard(pool: pg.Pool, id: string): Promise<Dashboard
     updatedAt: row.updated_at.toISOString(),
     source: row.source,
     queries: row.queries,
-    kitVersion: row.kit_version,
+    builtWithKit: row.kit_version,
     bundleJs: row.bundle_js,
     bundleCss: row.bundle_css
   }

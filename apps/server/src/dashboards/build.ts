@@ -19,9 +19,11 @@ const require = createRequire(import.meta.url)
 /** Imports dashboard source may use; everything else fails the build. */
 const ALLOWED_IMPORTS = new Set(["react", "react/jsx-runtime", "@kit/ui"])
 
-/** Kit version stamped on bundles built by this server. Bumped on kit surface
- * changes so new bundles bust the immutable /kit/:version asset cache. */
-export const KIT_VERSION = "5"
+/**
+ * The kit version this server builds against, recorded on each saved version
+ * as provenance. It is not a pin: the loader uses the current kit either way.
+ */
+export { KIT_VERSION } from "@data-integrator/kit/version"
 
 /** Result of a dashboard build. */
 export interface DashboardBuildResult {

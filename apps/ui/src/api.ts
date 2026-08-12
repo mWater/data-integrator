@@ -690,8 +690,8 @@ export interface DashboardDetail extends DashboardSummary {
   source: string
   /** Stored queries of the current version */
   queries: DashboardQuery[]
-  /** Kit version the bundle is pinned to */
-  kitVersion: string
+  /** Kit version the bundle was built against; provenance, not a loader input */
+  builtWithKit: string
   /** Compiled ESM bundle */
   bundleJs: string
   /** Compiled stylesheet */

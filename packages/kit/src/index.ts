@@ -30,6 +30,7 @@ export type {
   MultiSelectProps,
   DateRangeProps
 } from "./components/FilterBar.js"
+export { KIT_VERSION } from "./version.js"
 export { MarkdownBlock } from "./components/MarkdownBlock.js"
 export type { MarkdownBlockProps } from "./components/MarkdownBlock.js"
 export { MapView } from "./components/MapView.js"

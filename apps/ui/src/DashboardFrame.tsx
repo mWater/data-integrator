@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react"
 // Themes come from /host so the eager bundle skips the component barrel
 // (and its echarts side effects); kit components load with the blocks chunk
 import { darkTheme, lightTheme, mountDashboardFrame } from "@data-integrator/kit/host"
+import { KIT_VERSION } from "@data-integrator/kit/version"
 import { execDashboardQuery, listLayers, listSources } from "./api.js"
 import { useAppTheme } from "./theme.js"
 
@@ -19,7 +20,6 @@ interface Props {
   /** Compiled stylesheet */
   bundleCss: string
   /** Kit version the bundle is pinned to */
-  kitVersion: string
   /** Draft override: executes queries via this handler instead of the saved dashboard */
   runQuery?: (name: string, params: Record<string, unknown>) => Promise<Record<string, unknown>[]>
   /** Draft override: fetches vector tiles via this handler instead of the saved dashboard */
@@ -47,7 +47,7 @@ export async function fetchTileBytes(
 }
 
 /** Sandboxed dashboard iframe wired to the app's API. */
-export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, runQuery, fetchVectorTile, onError }: Props) {
+export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fetchVectorTile, onError }: Props) {
   const container = useRef<HTMLDivElement>(null)
   // Handlers live in refs, never in the effect deps: the bridge calls them
   // lazily, so a caller's inline lambda changing identity on every render
@@ -94,7 +94,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
         container: container.current,
         bundleJs,
         bundleCss,
-        kitBase: `/kit/${kitVersion}`,
+        kitBase: `/kit/${KIT_VERSION}`,
         init: {
           locale: navigator.language || "en",
           theme: mode === "dark" ? darkTheme : lightTheme,
@@ -133,7 +133,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, kitVersion, r
       frame?.destroy()
     }
     // mode in deps: a theme change remounts the frame with the other token set
-  }, [dashboardId, bundleJs, bundleCss, kitVersion, mode])
+  }, [dashboardId, bundleJs, bundleCss, mode])
 
   return <div ref={container} className="dashboard-frame" />
 }

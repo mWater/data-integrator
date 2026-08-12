@@ -28,7 +28,6 @@ export function DashboardView({ dashboardId }: Props) {
         dashboardId={detail.id}
         bundleJs={detail.bundleJs}
         bundleCss={detail.bundleCss}
-        kitVersion={detail.kitVersion}
       />
     </main>
   )
