@@ -172,7 +172,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
                     : "no data yet"
                 : `${d.count.toLocaleString()} ${d.kind === "table" ? "rows" : "snapshots"}`}
             </div>
-            {d.kind === "raster" && d.count !== null && <a href={`#/map/${d.id}`}>View on map</a>}
+            {d.kind === "raster" && d.count !== null && <a href={`#/layer/${d.id}`}>View on map</a>}
           </div>
         ))}
       </div>

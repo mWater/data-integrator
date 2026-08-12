@@ -52,18 +52,21 @@ export class TileRenderer {
   /**
    * Returns the PNG for one tile, rendering and caching on miss.
    * @param snapshotPath - Store-relative path of the snapshot COG
+   * @param bandId - Band being drawn; part of the cache key, since bands of one
+   *   snapshot share a path but render to different pixels
    * @param rendering - Band rendering config (color map, resampling)
    */
   async tile(
     layerId: string,
     snapshotId: string,
     snapshotPath: string,
+    bandId: string,
     rendering: BandRendering,
     z: number,
     x: number,
     y: number
   ): Promise<Buffer> {
-    const cached = path.join(this.cacheDir, layerId, snapshotId, String(z), String(x), `${y}.png`)
+    const cached = path.join(this.cacheDir, layerId, snapshotId, bandId, String(z), String(x), `${y}.png`)
     try {
       await access(cached)
       return await readFile(cached)

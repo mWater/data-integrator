@@ -111,7 +111,7 @@ One TypeScript React file. Default export is the root component, receiving
   <MultiSelect label options value onChange>, <DateRange label from to onChange>:
   plain value/onChange controls; wire their state into useQuery params.
 - <MarkdownBlock>: narrative text.
-- <MapView vector? geojson? layers? center? zoom? fit? height?>: interactive map
+- <MapView vector? geojson? layers? center? zoom? fit? height? onFeatureClick?>: interactive map
   with an automatic basemap (attribution handled for you; degrades to a plain
   background offline). geojson is [{data: FeatureCollection, color?, radius?,
   fillOpacity?, popup?}] - build features from query rows (lon/lat columns or
@@ -138,6 +138,11 @@ One TypeScript React file. Default export is the root component, receiving
   {property, stops: [{value, radius}]} (pair it with grid-aggregated counts).
   popup names the tile attribute shown on click. fit cannot see tile bounds, so
   give vector-only maps center/zoom. Pick colors from the theme series tokens.
+  onFeatureClick(event) fires when a vector or geojson feature is clicked, with
+  {source: "vector"|"geojson", layer, properties, lngLat}: use it to drive React
+  state - open a detail panel or modal, select a district, filter the rest of
+  the dashboard. It is independent of popup, so set popup for a quick label,
+  onFeatureClick for anything richer, or both. Raster layers do not fire it.
   Maps render an automatic legend from what layers declare - ALWAYS fill it in:
   give every layer a label (its legend title; on plain-colored vector/geojson
   layers the label alone adds a swatch entry), raster layers a colorMap

@@ -353,7 +353,11 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
           )}
-          {detail.scratchLayers.length > 0 && <a href={`#/map?session=${detail.id}`}>Map preview</a>}
+          {/* Layers get their own pages, so this opens the first one; the
+              details panel lists the rest */}
+          {detail.scratchLayers.length > 0 && (
+            <a href={`#/layer/${detail.scratchLayers[0].id}?session=${detail.id}`}>Map preview</a>
+          )}
           <span className="spacer" />
           <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
             {showDetails ? "Hide details" : "Show Details"}

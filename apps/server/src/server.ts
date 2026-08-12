@@ -71,8 +71,13 @@ const KIT_PATH = /^\/kit\/[a-z0-9.-]+\/([a-z0-9][a-z0-9.-]*\.(?:js|mjs|cjs|css))
 /** Built UI directory served as the SPA (config.uiDistPath overrides for dev layouts). */
 const DEFAULT_UI_DIST = path.join(STATIC_DIR, "..", "..", "ui", "dist")
 
-/** Matches /tiles/:layerId/:snapshotId/:z/:x/:y.png */
-const TILE_PATH = /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/
+/**
+ * Matches /tiles/:layerId/:snapshotId/:z/:x/:y.png and its band-qualified form
+ * /tiles/:layerId/:snapshotId/:bandId/:z/:x/:y.png. The band segment is
+ * unambiguous because band ids must start with a letter and z never can.
+ */
+const TILE_PATH =
+  /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
 const SESSION_PATH =
@@ -538,9 +543,57 @@ async function route(
     return
   }
 
+  // One layer in full, for its detail page. ?session= scopes to a design
+  // session's scratch layers, matching /layers.
+  const layerMatch = pathname.match(/^\/api\/layers\/([a-z][a-z0-9_]*)$/)
+  if (layerMatch && req.method === "GET") {
+    const session = searchParams.get("session")
+    const result = await pool.query(
+      `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
+              l.integration_id, i.definition->>'name' AS integration_name,
+              s.observed_at, s.observed_end, s.crs,
+              ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
+              COALESCE(sn.snapshots, '[]'::json) AS snapshots,
+              COALESCE(sn.size_bytes, 0) AS size_bytes
+       FROM app.raster_layers l
+       JOIN app.integrations i ON i.id = l.integration_id
+       LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(json_build_object(
+                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end
+                ) ORDER BY observed_at) AS snapshots,
+                sum(size_bytes) AS size_bytes
+         FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
+       ) sn ON true
+       WHERE l.id = $1 AND ${session ? "l.session_id = $2" : "l.session_id IS NULL"}`,
+      session ? [layerMatch[1], session] : [layerMatch[1]]
+    )
+    if (result.rows.length === 0) {
+      json(res, 404, { error: "unknown layer" })
+      return
+    }
+    const row = result.rows[0]
+    json(res, 200, {
+      id: row.id,
+      name: row.name,
+      integrationId: row.integration_id,
+      integrationName: row.integration_name ?? row.integration_id,
+      temporality: row.temporality,
+      bands: row.bands,
+      currentSnapshotId: row.current_snapshot_id,
+      observedAt: row.observed_at,
+      observedEnd: row.observed_end,
+      crs: row.crs,
+      footprint: row.footprint,
+      snapshots: row.snapshots,
+      sizeBytes: Number(row.size_bytes)
+    })
+    return
+  }
+
   const tileMatch = pathname.match(TILE_PATH)
   if (tileMatch) {
-    const [, layerId, snapshotId, z, x, y] = tileMatch
+    const [, layerId, snapshotId, bandId, z, x, y] = tileMatch
     const snapshot = await pool.query(
       `SELECT s.path, l.bands FROM app.raster_snapshots s
        JOIN app.raster_layers l ON l.id = s.layer_id
@@ -552,8 +605,22 @@ async function route(
       return
     }
     const bands = snapshot.rows[0].bands as BandSpec[]
-    const rendering = bands[0]?.rendering ?? {}
-    const png = await tiles.tile(layerId, snapshotId, snapshot.rows[0].path, rendering, Number(z), Number(x), Number(y))
+    const band = bandId ? bands.find(b => b.id === bandId) : bands[0]
+    if (!band) {
+      json(res, 404, { error: `unknown band "${bandId}"` })
+      return
+    }
+    const rendering = band.rendering ?? {}
+    const png = await tiles.tile(
+      layerId,
+      snapshotId,
+      snapshot.rows[0].path,
+      band.id,
+      rendering,
+      Number(z),
+      Number(x),
+      Number(y)
+    )
     // Snapshot-pinned URL: content never changes, cache hard
     res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
     res.end(png)

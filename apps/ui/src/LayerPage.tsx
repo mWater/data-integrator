@@ -1,0 +1,251 @@
+/**
+ * One raster layer, the way TablePage is one table: what it is on the left,
+ * the pixels on the right. Bands and snapshots are both switchable, since a
+ * layer is a stack of measurements over time rather than a single image.
+ */
+
+import { useEffect, useRef, useState } from "react"
+import { LngLatBounds, Map as MapLibreMap, RasterTileSource } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+import { getLayer, LayerBand, LayerDetail } from "./api.js"
+
+/** Tile URL for one layer, snapshot and band. */
+const tileUrl = (layerId: string, snapshotId: string, bandId: string) =>
+  `/tiles/${layerId}/${snapshotId}/${bandId}/{z}/{x}/{y}.png`
+
+/** Id of the single maplibre layer this page draws into. */
+const RASTER_LAYER = "raster"
+
+/** Props for the layer page. */
+interface LayerPageProps {
+  /** Layer to show */
+  layerId: string
+  /** Design session whose scratch layers to read instead of the catalog */
+  sessionId?: string | null
+}
+
+/** A band's display label. */
+function bandLabel(band: LayerBand): string {
+  return band.name ?? band.id
+}
+
+/** Human byte size, for the storage line. */
+function bytes(n: number): string {
+  if (n <= 0) return "unknown"
+  const units = ["B", "KB", "MB", "GB", "TB"]
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
+  const value = n / 1024 ** i
+  return `${value >= 100 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`
+}
+
+/** Snapshot timestamp, to the day for intervals and to the minute otherwise. */
+function snapshotLabel(iso: string, interval: boolean): string {
+  const date = new Date(iso)
+  return interval ? date.toLocaleDateString() : date.toLocaleString()
+}
+
+/** Color ramp legend from the band's declared color map. */
+function Legend({ band }: { band: LayerBand }) {
+  const stops = band.rendering?.colorMap
+  if (!stops || stops.length < 2) return null
+  const min = stops[0].value
+  const max = stops[stops.length - 1].value
+  const span = max - min || 1
+  const gradient = stops.map(s => `${s.color} ${((s.value - min) / span) * 100}%`).join(", ")
+  return (
+    <div className="layer-legend">
+      <div className="layer-ramp" style={{ background: `linear-gradient(to right, ${gradient})` }} />
+      <div className="layer-ramp-ends">
+        <span>{min.toLocaleString()}</span>
+        <span>{max.toLocaleString()}</span>
+      </div>
+      {band.units && <div className="dim">{band.units}</div>}
+    </div>
+  )
+}
+
+/** The raster layer page: detail panel plus its own map. */
+export function LayerPage({ layerId, sessionId }: LayerPageProps) {
+  const container = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const [layer, setLayer] = useState<LayerDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [bandId, setBandId] = useState<string | null>(null)
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    getLayer(layerId, sessionId).then(detail => {
+      setLayer(detail)
+      setBandId(detail.bands[0]?.id ?? null)
+      const current = detail.snapshots.findIndex(s => s.id === detail.currentSnapshotId)
+      setIndex(current >= 0 ? current : Math.max(0, detail.snapshots.length - 1))
+    }, err => setError(err.message))
+  }, [layerId, sessionId])
+
+  // The map is created once the layer is known, so the first tiles are right
+  useEffect(() => {
+    if (!layer || !bandId || layer.snapshots.length === 0 || mapRef.current) return
+    const map = new MapLibreMap({
+      container: container.current!,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "(c) OpenStreetMap contributors"
+          }
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }]
+      },
+      center: [30, -10],
+      zoom: 3
+    })
+    mapRef.current = map
+    map.on("load", () => {
+      map.addSource(RASTER_LAYER, {
+        type: "raster",
+        tiles: [tileUrl(layer.id, layer.snapshots[index].id, bandId)],
+        tileSize: 256
+      })
+      map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": 0.85 } })
+      if (layer.footprint) {
+        const bounds = new LngLatBounds()
+        for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
+        if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40, animate: false })
+      }
+    })
+    // Layer identity drives creation; band and snapshot changes retile below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layer, bandId])
+
+  // Band and time changes only swap the source's tile template
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !layer || !bandId || !map.getSource(RASTER_LAYER)) return
+    const source = map.getSource(RASTER_LAYER) as RasterTileSource
+    source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, bandId)])
+  }, [layer, bandId, index])
+
+  useEffect(() => () => {
+    mapRef.current?.remove()
+    mapRef.current = null
+  }, [])
+
+  if (error) {
+    return (
+      <main className="list-page">
+        <div className="error">{error}</div>
+      </main>
+    )
+  }
+  if (!layer) return null
+
+  const band = layer.bands.find(b => b.id === bandId) ?? layer.bands[0]
+  const snapshot = layer.snapshots[index]
+  const interval = snapshot?.observed_end != null
+
+  return (
+    <main className="layer-page">
+      <aside className="layer-side">
+        <div className="layer-head">
+          <h1>{layer.name}</h1>
+          <div className="dim">{layer.id}</div>
+        </div>
+
+        {layer.snapshots.length === 0 ? (
+          <p className="dim">
+            No data yet. Snapshots appear here once{" "}
+            <a href={`#/integration/${layer.integrationId}`}>{layer.integrationName}</a> runs.
+          </p>
+        ) : (
+          <>
+            {layer.bands.length > 1 && (
+              <section className="layer-section">
+                <h2>Band</h2>
+                <div className="layer-bands">
+                  {layer.bands.map(b => (
+                    <button
+                      key={b.id}
+                      className={`layer-band${b.id === band?.id ? " active" : ""}`}
+                      aria-pressed={b.id === band?.id}
+                      onClick={() => setBandId(b.id)}
+                    >
+                      <span className="layer-band-name">{bandLabel(b)}</span>
+                      {b.units && <span className="dim">{b.units}</span>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="layer-section">
+              <h2>{layer.snapshots.length > 1 ? "Time" : "Observed"}</h2>
+              <div className="layer-when">{snapshotLabel(snapshot.observed_at, interval)}</div>
+              {interval && snapshot.observed_end && (
+                <div className="dim">through {snapshotLabel(snapshot.observed_end, true)}</div>
+              )}
+              {layer.snapshots.length > 1 && (
+                <>
+                  <input
+                    type="range"
+                    min={0}
+                    max={layer.snapshots.length - 1}
+                    value={index}
+                    aria-label="Snapshot time"
+                    onChange={e => setIndex(Number(e.target.value))}
+                  />
+                  <div className="dim">
+                    {index + 1} of {layer.snapshots.length} snapshots
+                  </div>
+                </>
+              )}
+            </section>
+
+            {band && <Legend band={band} />}
+          </>
+        )}
+
+        <section className="layer-section">
+          <h2>Details</h2>
+          <dl className="layer-facts">
+            <dt>From</dt>
+            <dd>
+              <a href={`#/integration/${layer.integrationId}`}>{layer.integrationName}</a>
+            </dd>
+            <dt>Kind</dt>
+            <dd>{layer.temporality === "time-series" ? "Time series" : "Current only"}</dd>
+            <dt>Bands</dt>
+            <dd>{layer.bands.map(bandLabel).join(", ") || "none declared"}</dd>
+            {/* A declared NaN cannot survive jsonb, so it arrives as null;
+                only a real sentinel value is worth a row */}
+            {typeof band?.nodata === "number" && Number.isFinite(band.nodata) && (
+              <>
+                <dt>No data</dt>
+                <dd>{band.nodata.toLocaleString()}</dd>
+              </>
+            )}
+            <dt>Snapshots</dt>
+            <dd>{layer.snapshots.length.toLocaleString()}</dd>
+            {layer.crs && (
+              <>
+                <dt>CRS</dt>
+                <dd>{layer.crs}</dd>
+              </>
+            )}
+            <dt>Storage</dt>
+            <dd>{bytes(layer.sizeBytes)}</dd>
+          </dl>
+        </section>
+      </aside>
+      {layer.snapshots.length === 0 ? (
+        <div className="layer-map layer-map-empty">
+          <p>Nothing to draw yet. This layer has no promoted snapshots.</p>
+        </div>
+      ) : (
+        <div ref={container} className="layer-map" />
+      )}
+    </main>
+  )
+}

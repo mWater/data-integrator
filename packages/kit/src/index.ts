@@ -45,5 +45,7 @@ export type {
   GeoJsonOverlay,
   GeoJsonFeatureCollection,
   GeoJsonFeature,
-  GeoJsonGeometry
+  GeoJsonGeometry,
+  MapFeatureClick,
+  LngLat
 } from "./components/MapView.js"

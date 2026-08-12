@@ -6,7 +6,7 @@
  * unavailable (offline, disabled), the map degrades to a plain background.
  */
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import * as maplibregl from "maplibre-gl"
 import { bridgeBasemap, bridgeTile, bridgeVectorTile } from "../bridge.js"
 import { useTheme } from "../hooks.js"
@@ -178,6 +178,26 @@ export interface VectorTileLayer {
   label?: string
 }
 
+/** A clicked point, as longitude and latitude. */
+export interface LngLat {
+  /** Longitude in degrees. */
+  lng: number
+  /** Latitude in degrees. */
+  lat: number
+}
+
+/** A feature click, delivered to onFeatureClick. */
+export interface MapFeatureClick {
+  /** Which kind of layer was clicked. */
+  source: "vector" | "geojson"
+  /** Vector layers report their query name; overlays report their label, or overlay-<index> without one. */
+  layer: string
+  /** The clicked feature's properties: for vector layers, its tile attributes. */
+  properties: Record<string, unknown>
+  /** Where the click landed. */
+  lngLat: LngLat
+}
+
 /** Props for the map view. */
 export interface MapViewProps {
   /** Raster catalog layers, drawn in order above the basemap. */
@@ -199,6 +219,12 @@ export interface MapViewProps {
   height?: number
   /** Set false to hide the legend; by default it shows when any layer declares legend info. */
   legend?: boolean
+  /**
+   * Called when a vector tile or GeoJSON feature is clicked, for opening a
+   * modal, driving a selection, or filtering the rest of the dashboard. Works
+   * alongside a layer's popup rather than replacing it.
+   */
+  onFeatureClick?: (event: MapFeatureClick) => void
 }
 
 /** Fallback style when the basemap proxy is unreachable: plain background. */
@@ -236,17 +262,31 @@ function overlayBounds(overlays: GeoJsonOverlay[]): maplibregl.LngLatBounds | nu
   return bounds.isEmpty() ? null : bounds
 }
 
-/** Click popup + pointer cursor on the given layers, showing one property. */
-function wirePopup(map: maplibregl.Map, layerIds: string[], property: string): void {
+/**
+ * Wires clicks on the given layers: the pointer cursor, an optional popup, and
+ * an optional handler. Both are independent, so a map can show a popup, open a
+ * modal, or do both from one click.
+ */
+function wireClicks(
+  map: maplibregl.Map,
+  layerIds: string[],
+  options: { popup?: string; onClick?: (properties: Record<string, unknown>, lngLat: LngLat) => void }
+): void {
   for (const layerId of layerIds) {
     map.on("click", layerId, (e) => {
       const feature = e.features?.[0]
-      const value = feature?.properties?.[property]
-      if (value == null) return
-      new maplibregl.Popup({ closeButton: false })
-        .setLngLat(e.lngLat)
-        .setText(String(value))
-        .addTo(map)
+      if (!feature) return
+      const properties = (feature.properties ?? {}) as Record<string, unknown>
+      if (options.popup) {
+        const value = properties[options.popup]
+        if (value != null) {
+          new maplibregl.Popup({ closeButton: false })
+            .setLngLat(e.lngLat)
+            .setText(String(value))
+            .addTo(map)
+        }
+      }
+      options.onClick?.(properties, { lng: e.lngLat.lng, lat: e.lngLat.lat })
     })
     map.on("mouseenter", layerId, () => {
       map.getCanvas().style.cursor = "pointer"
@@ -398,7 +438,12 @@ function MapLegend({ blocks, theme }: MapLegendProps) {
   )
 }
 
-function addVectorLayers(map: maplibregl.Map, vector: VectorTileLayer[], theme: ThemeTokens): void {
+function addVectorLayers(
+  map: maplibregl.Map,
+  vector: VectorTileLayer[],
+  theme: ThemeTokens,
+  onFeatureClick?: (event: MapFeatureClick) => void
+): void {
   vector.forEach((layer, i) => {
     const id = `di-vtile-${i}`
     const params = encodeURIComponent(JSON.stringify(layer.params ?? {}))
@@ -445,11 +490,26 @@ function addVectorLayers(map: maplibregl.Map, vector: VectorTileLayer[], theme: 
         "circle-stroke-width": 1
       }
     })
-    if (layer.popup) wirePopup(map, [`${id}-circle`, `${id}-fill`], layer.popup)
+    // Wired whenever either is asked for: the cursor and handler are useful
+    // without a popup, and vice versa
+    if (layer.popup || onFeatureClick) {
+      wireClicks(map, [`${id}-circle`, `${id}-fill`], {
+        popup: layer.popup,
+        onClick: onFeatureClick
+          ? (properties, lngLat) =>
+              onFeatureClick({ source: "vector", layer: layer.query, properties, lngLat })
+          : undefined
+      })
+    }
   })
 }
 
-function addOverlays(map: maplibregl.Map, overlays: GeoJsonOverlay[], theme: ThemeTokens): void {
+function addOverlays(
+  map: maplibregl.Map,
+  overlays: GeoJsonOverlay[],
+  theme: ThemeTokens,
+  onFeatureClick?: (event: MapFeatureClick) => void
+): void {
   overlays.forEach((overlay, i) => {
     const id = `di-geojson-${i}`
     const color: unknown = ["coalesce", ["get", "color"], overlay.color ?? theme.series[0]]
@@ -483,13 +543,37 @@ function addOverlays(map: maplibregl.Map, overlays: GeoJsonOverlay[], theme: The
         "circle-stroke-width": 2
       }
     })
-    if (overlay.popup) wirePopup(map, [`${id}-circle`, `${id}-fill`], overlay.popup)
+    if (overlay.popup || onFeatureClick) {
+      wireClicks(map, [`${id}-circle`, `${id}-fill`], {
+        popup: overlay.popup,
+        onClick: onFeatureClick
+          ? (properties, lngLat) =>
+              onFeatureClick({ source: "geojson", layer: overlay.label ?? `overlay-${i}`, properties, lngLat })
+          : undefined
+      })
+    }
   })
 }
 
 /** Interactive map: basemap, raster layers, vector tile layers, GeoJSON overlays, legend. */
-export function MapView({ layers, vector, geojson, center, zoom, fit, height, legend }: MapViewProps) {
+export function MapView({
+  layers,
+  vector,
+  geojson,
+  center,
+  zoom,
+  fit,
+  height,
+  legend,
+  onFeatureClick
+}: MapViewProps) {
   const theme = useTheme()
+  // Read through a ref so a fresh handler identity each render does not tear
+  // down and rebuild the map; only gaining or losing a handler rewires it
+  const clickRef = useRef(onFeatureClick)
+  clickRef.current = onFeatureClick
+  const hasClick = onFeatureClick !== undefined
+  const emitClick = useCallback((event: MapFeatureClick) => clickRef.current?.(event), [])
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
 
@@ -539,8 +623,8 @@ export function MapView({ layers, vector, geojson, center, zoom, fit, height, le
             paint: { "raster-opacity": layer.opacity ?? 0.85 }
           })
         })
-        if (vector) addVectorLayers(instance, vector, theme)
-        if (geojson) addOverlays(instance, geojson, theme)
+        if (vector) addVectorLayers(instance, vector, theme, hasClick ? emitClick : undefined)
+        if (geojson) addOverlays(instance, geojson, theme, hasClick ? emitClick : undefined)
         if (fit && geojson) {
           const bounds = overlayBounds(geojson)
           if (bounds) instance.fitBounds(bounds, { padding: 40, maxZoom: 13, duration: 0 })
@@ -557,7 +641,7 @@ export function MapView({ layers, vector, geojson, center, zoom, fit, height, le
     }
     // Data/viewport changes rebuild the map; dashboards re-mount rather than mutate
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(layers), JSON.stringify(vector), JSON.stringify(geojson), JSON.stringify(center), zoom, fit, theme.mode])
+  }, [JSON.stringify(layers), JSON.stringify(vector), JSON.stringify(geojson), JSON.stringify(center), zoom, fit, theme.mode, hasClick, emitClick])
 
   const blocks = legend === false ? [] : legendBlocks(layers ?? [], vector ?? [], geojson ?? [], theme)
   // Positioning is inline: MapLibre's stylesheet (appended after the Tailwind

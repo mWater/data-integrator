@@ -207,7 +207,7 @@ function Panel({ title, link, href, children }: {
 
 /** One row of the data panel. */
 function SourceRow({ source }: { source: HomeSource }) {
-  const href = source.kind === "raster" ? `#/map/${source.id}` : `#/table/${source.id}`
+  const href = source.kind === "raster" ? `#/layer/${source.id}` : `#/table/${source.id}`
   return (
     <a className="panel-row" href={href}>
       <span className={`chip chip-${source.kind}`}>{source.kind}</span>

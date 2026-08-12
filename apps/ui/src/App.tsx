@@ -16,8 +16,8 @@ import { TablePage } from "./TablePage.js"
 import { Library } from "./Library.js"
 import { UserMenu } from "./UserMenu.js"
 
-// The map page owns the maplibre chunk; keep it out of the first paint
-const MapPage = lazy(() => import("./MapPage.js").then(m => ({ default: m.MapPage })))
+// The layer page owns the maplibre chunk; keep it out of the first paint
+const LayerPage = lazy(() => import("./LayerPage.js").then(m => ({ default: m.LayerPage })))
 
 /** Parsed hash route. */
 interface Route {
@@ -43,12 +43,10 @@ interface Route {
   settings: boolean
   /** True on the library page */
   library: boolean
-  /** True on the map page */
-  map: boolean
-  /** Layer to focus when opening the map from an integration */
-  mapLayerId: string | null
-  /** Design session whose scratch layers the map shows (?session=) */
-  mapSessionId: string | null
+  /** Raster layer id, when on a layer page */
+  layerId: string | null
+  /** Design session whose scratch layer the page shows (?session=) */
+  layerSessionId: string | null
 }
 
 /** Current location parsed from the hash. */
@@ -58,7 +56,7 @@ function parseHash(): Route {
   const integration = hash.match(/^#\/integration\/([a-z][a-z0-9_]*)$/)
   const table = hash.match(/^#\/table\/([a-z][a-z0-9_]*)$/)
   const dashboard = hash.match(/^#\/dashboard\/([a-z][a-z0-9_-]*)$/)
-  const map = hash.match(/^#\/map(?:\/([a-z][a-z0-9_]*))?$/)
+  const layer = hash.match(/^#\/layer\/([a-z][a-z0-9_]*)$/)
   return {
     sessionId: session ? session[1] : null,
     integrationId: integration ? integration[1] : null,
@@ -71,9 +69,8 @@ function parseHash(): Route {
     dashboardId: dashboard ? dashboard[1] : null,
     settings: hash === "#/settings",
     library: hash === "#/library",
-    map: map !== null,
-    mapLayerId: map?.[1] ?? null,
-    mapSessionId: map ? new URLSearchParams(query ?? "").get("session") : null
+    layerId: layer ? layer[1] : null,
+    layerSessionId: layer ? new URLSearchParams(query ?? "").get("session") : null
   }
 }
 
@@ -147,7 +144,6 @@ export function App() {
           <a href="#/integrations">Integrations</a>
           <a href="#/library">Library</a>
           <a href="#/dashboards">Dashboards</a>
-          <a href="#/map">Map</a>
         </nav>
         <span style={{ flex: 1 }} />
         <ThemeToggle />
@@ -159,9 +155,9 @@ export function App() {
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
       ) : route.tableId ? (
         <TablePage tableId={route.tableId} />
-      ) : route.map ? (
+      ) : route.layerId ? (
         <Suspense fallback={null}>
-          <MapPage focusLayerId={route.mapLayerId} sessionId={route.mapSessionId} />
+          <LayerPage layerId={route.layerId} sessionId={route.layerSessionId} />
         </Suspense>
       ) : route.assistant ? (
         <AssistantPage />

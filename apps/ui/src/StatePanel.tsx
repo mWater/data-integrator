@@ -49,7 +49,7 @@ export function StatePanel({ detail }: StatePanelProps) {
                 <dd>
                   {detail.scratchLayers.map(layer => (
                     <div key={layer.id}>
-                      <a href={`#/map/${layer.id}?session=${detail.id}`}>{layer.name}</a>
+                      <a href={`#/layer/${layer.id}?session=${detail.id}`}>{layer.name}</a>
                     </div>
                   ))}
                 </dd>

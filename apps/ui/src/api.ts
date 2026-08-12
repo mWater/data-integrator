@@ -356,6 +356,73 @@ export function listLayers(sessionId?: string): Promise<{ layers: MapLayer[] }> 
   return request(sessionId ? `/layers?session=${encodeURIComponent(sessionId)}` : "/layers")
 }
 
+/** One value-to-color stop of a band's color map. */
+export interface BandColorStop {
+  /** Pixel value the color is pinned to */
+  value: number
+  /** CSS color at that value */
+  color: string
+}
+
+/** How a band draws as map tiles. */
+export interface BandRendering {
+  /** Value-to-color stops; also the legend */
+  colorMap?: BandColorStop[]
+  /** Display scaling range */
+  defaultRange?: { min: number; max: number }
+  /** Overview resampling */
+  resampling?: "nearest" | "average"
+}
+
+/** One measured band of a raster layer. */
+export interface LayerBand {
+  /** Band id, used in tile URLs */
+  id: string
+  /** Display name; falls back to the id */
+  name?: string
+  /** Measurement units, e.g. "mm/month" */
+  units?: string
+  /** Value meaning "no data" */
+  nodata?: number
+  /** Tile rendering config */
+  rendering?: BandRendering
+}
+
+/** One raster layer in full, from GET /api/layers/:id. */
+export interface LayerDetail {
+  /** Layer id */
+  id: string
+  /** Display name */
+  name: string
+  /** Owning integration id */
+  integrationId: string
+  /** Owning integration display name */
+  integrationName: string
+  /** current-only or time-series */
+  temporality: string
+  /** Measured bands, in declaration order */
+  bands: LayerBand[]
+  /** Current snapshot id, null before first data */
+  currentSnapshotId: string | null
+  /** Observation time of the current snapshot (ISO) */
+  observedAt: string | null
+  /** End of the observed period (ISO) for interval layers */
+  observedEnd: string | null
+  /** CRS of the stored rasters */
+  crs: string | null
+  /** Envelope of the current snapshot as GeoJSON */
+  footprint: { coordinates: number[][][] } | null
+  /** Promoted snapshots, ascending by time */
+  snapshots: LayerSnapshot[]
+  /** Total bytes across promoted snapshots */
+  sizeBytes: number
+}
+
+/** Fetches one raster layer; sessionId scopes to a design session's scratch layers. */
+export function getLayer(id: string, sessionId?: string | null): Promise<LayerDetail> {
+  return request(`/api/layers/${id}${sessionId ? `?session=${encodeURIComponent(sessionId)}` : ""}`)
+}
+
 /** One data source in the catalog: a destination table or a raster layer. */
 export interface DataSource {
   /** Source kind */

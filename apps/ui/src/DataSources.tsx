@@ -12,7 +12,7 @@ export function DataSources() {
 
   /** Tables open their table page; rasters open on the map. */
   function open(source: DataSource) {
-    window.location.hash = source.kind === "raster" ? `#/map/${source.id}` : `#/table/${source.id}`
+    window.location.hash = source.kind === "raster" ? `#/layer/${source.id}` : `#/table/${source.id}`
   }
 
   return (

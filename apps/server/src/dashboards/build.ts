@@ -21,7 +21,7 @@ const ALLOWED_IMPORTS = new Set(["react", "react/jsx-runtime", "@kit/ui"])
 
 /** Kit version stamped on bundles built by this server. Bumped on kit surface
  * changes so new bundles bust the immutable /kit/:version asset cache. */
-export const KIT_VERSION = "4"
+export const KIT_VERSION = "5"
 
 /** Result of a dashboard build. */
 export interface DashboardBuildResult {
