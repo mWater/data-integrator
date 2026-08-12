@@ -1,0 +1,50 @@
+/* MapLibre popup theming. Appended after MapLibre's own stylesheet (see
+   build-assets.mjs) because it overrides that stylesheet's hardcoded white
+   card, which is unreadable in dark mode. Values come from custom properties
+   MapView sets on the map container from the dashboard theme tokens; the
+   fallbacks keep a popup legible if a map is ever mounted without them. */
+
+.maplibregl-popup-content {
+  background: var(--kit-popup-bg, #fff);
+  color: var(--kit-popup-ink, #101418);
+  border: 1px solid var(--kit-popup-border, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 22%);
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--kit-popup-muted, #6a737d);
+  font-size: 15px;
+  padding: 0 5px;
+  border-radius: 0 8px 0 6px;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: rgb(127 127 127 / 18%);
+  color: var(--kit-popup-ink, #101418);
+}
+
+/* The tip is a CSS triangle: which border edge carries the colour depends on
+   the anchor MapLibre picked, so every anchor has to be restated. */
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--kit-popup-bg, #fff);
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--kit-popup-bg, #fff);
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--kit-popup-bg, #fff);
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--kit-popup-bg, #fff);
+}

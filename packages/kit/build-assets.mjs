@@ -77,13 +77,15 @@ await build({
   outfile: `${outdir}/maplibre-worker.cjs`
 })
 
-// Tailwind over the kit sources, then append MapLibre's stylesheet
+// Tailwind over the kit sources, then MapLibre's stylesheet, then our overrides
+// of it: popup.css only wins if it lands after the stylesheet it corrects
 execFileSync("npx", ["@tailwindcss/cli", "-i", "src/css/kit.css", "-o", `${outdir}/kit.tw.css`, "--minify"], {
   stdio: "inherit"
 })
 const tw = readFileSync(`${outdir}/kit.tw.css`, "utf8")
 const maplibre = readFileSync(require.resolve("maplibre-gl/dist/maplibre-gl.css"), "utf8")
-writeFileSync(`${outdir}/kit.css`, tw + "\n" + maplibre)
+const popup = readFileSync("src/css/popup.css", "utf8")
+writeFileSync(`${outdir}/kit.css`, tw + "\n" + maplibre + "\n" + popup)
 unlinkSync(`${outdir}/kit.tw.css`)
 
 console.log("kit assets built into assets/")

@@ -15,6 +15,7 @@ import {
   HomeSummary,
   User
 } from "./api.js"
+import { FlowDiagram } from "./FlowDiagram.js"
 
 /** Problems listed before the rest collapse into a count. */
 const PROBLEM_LIMIT = 2
@@ -331,13 +332,7 @@ function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean })
       )}
 
       <div className="home-after">
-        <div className="home-flow">
-          <b>Integrations</b>
-          <span aria-hidden="true">→</span>
-          <b>Data</b>
-          <span aria-hidden="true">→</span>
-          <b>Dashboards, Assistant, Map</b>
-        </div>
+        <FlowDiagram />
         Once data is in, you can chart it, map it, or ask questions about it.
       </div>
     </main>
@@ -428,6 +423,8 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
           ))}
         </Panel>
       </div>
+
+      <FlowDiagram variant="compact" />
     </main>
   )
 }

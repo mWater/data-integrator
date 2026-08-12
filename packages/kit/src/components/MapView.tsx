@@ -564,7 +564,18 @@ export function MapView({ layers, vector, geojson, center, zoom, fit, height, le
   // utilities in kit.css) resets the container's position and would override
   // utility classes, collapsing the map to zero height
   return (
-    <div style={{ position: "relative", height: height ?? 380 }}>
+    <div
+      style={{
+        position: "relative",
+        height: height ?? 380,
+        // Popups mount into the map container, so the theme reaches MapLibre's
+        // own stylesheet (kit.css) through these custom properties
+        ["--kit-popup-bg" as string]: theme.surface,
+        ["--kit-popup-ink" as string]: theme.inkPrimary,
+        ["--kit-popup-border" as string]: theme.border,
+        ["--kit-popup-muted" as string]: theme.inkMuted
+      }}
+    >
       <div ref={el} style={{ position: "absolute", inset: 0 }} />
       {blocks.length > 0 && <MapLegend blocks={blocks} theme={theme} />}
     </div>

@@ -31,6 +31,8 @@
   --topbar-dim: #a9b2bb;
   --backdrop: rgba(20, 30, 40, 0.15);
   --shadow: rgba(0, 0, 0, 0.08);
+  /* Mode-independent, so it is only declared here */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -261,6 +263,37 @@ button.linkish:hover { color: var(--topbar-ink) }
 :root[data-theme="dark"] .chip-draft { background: #2e2338; color: #c9a1ee }
 :root[data-theme="dark"] .chip-table { background: #1d2e3d; color: #9dc4e4 }
 :root[data-theme="dark"] .chip-raster { background: #1c2f24; color: #8fc9a4 }
+
+/* ---------------------------------------------------------------------------
+   MapLibre popups. Stock styling hardcodes a white card, which is unreadable
+   on the dark theme, and the tip is a CSS triangle whose coloured edge depends
+   on the anchor, so every anchor has to be restated.
+--------------------------------------------------------------------------- */
+.maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 12.5px;
+}
+.maplibregl-popup-close-button {
+  color: var(--ink-muted);
+  font-size: 15px;
+  padding: 0 5px;
+  border-radius: 0 8px 0 6px;
+}
+.maplibregl-popup-close-button:hover { background: var(--inset); color: var(--ink) }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--surface) }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--surface) }
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface) }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface) }
 
 /* Map page */
 .map-page { flex: 1; display: flex; min-height: 0 }
@@ -534,7 +567,7 @@ table.users tbody tr:hover { background: none }
 /* One-time password reveal */
 .password-box { display: flex; gap: 8px; align-self: stretch }
 .password-box input.password-value {
-  flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 10px;
+  flex: 1; font-family: var(--font-mono); padding: 8px 10px;
   border: 1px solid var(--control-border); border-radius: 6px; background: var(--inset);
 }
 
@@ -617,23 +650,32 @@ table.users tbody tr:hover { background: none }
 .dot.bad { background: var(--danger) }
 .dot.idle { background: var(--ink-faint) }
 
-/* Welcome state */
-.home-welcome { max-width: 660px; text-align: center; padding-top: 44px }
+/* Welcome state. The column is sized for the diagram, which only reads at its
+   drawn scale; the text and cards inside keep their own narrower measures. */
+.home-welcome { max-width: 880px; text-align: center; padding-top: 44px }
 .home-welcome h1 { font-size: 26px; letter-spacing: -0.015em; margin: 0 0 8px }
 .home-lede { margin: 0 auto 24px; color: var(--ink-dim); font-size: 14.5px; max-width: 48ch }
 /* The welcome column centers, but its lists are still read left to right */
 .home-welcome .error, .home-welcome .dim, .home-welcome .panel { text-align: left }
-.home-routes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.home-routes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 660px; margin: 0 auto }
+.home-welcome .home-panel-head, .home-welcome .panel { max-width: 660px; margin-left: auto; margin-right: auto }
 .home-welcome .home-panel-head { margin-top: 0; text-align: left }
 .home-after {
   margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);
   font-size: 12.5px; color: var(--ink-muted);
 }
-.home-flow {
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  font-size: 12.5px; color: var(--ink-faint); margin-bottom: 8px; flex-wrap: wrap;
+
+/* Flow diagram. Sized by its viewBox so it scales with the column; the compact
+   variant is a quiet footer, so it is capped smaller and dimmed until hovered. */
+.flow { margin: 0; display: flex; justify-content: center }
+.flow-svg { display: block; width: 100%; height: auto; color: var(--ink-dim) }
+.flow-full { max-width: 880px; margin-bottom: 12px }
+.flow-compact {
+  max-width: 660px; color: var(--ink-muted); opacity: 0.75; transition: opacity 0.15s;
 }
-.home-flow b { color: var(--ink-dim); font-weight: 600 }
+.flow-compact:hover { opacity: 1 }
+.home > .flow { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--border) }
+@media (prefers-reduced-motion: reduce) { .flow-compact { transition: none } }
 
 @media (max-width: 900px) {
   .home-actions, .home-columns, .home-routes { grid-template-columns: 1fr }
