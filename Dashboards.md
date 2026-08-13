@@ -22,7 +22,7 @@ Dashboard {
   id, name, version
   source       // single React file composing the component kit
   queries      // { name, sql, params: ParamSpec[], maxRows? }[]
-  kitVersion   // component kit the bundle is pinned to
+  kitVersion   // kit the bundle was built with (provenance; viewers get the current kit)
   bundle       // compiled { js, css } pair, immutable per version
 }
 ```
@@ -67,7 +67,12 @@ not each carry their own WCAG risk:
   opaque origin blocks module workers.
 - Theme tokens for color and typography, so dashboards are brandable without forking
   the kit.
-- Versioned; bundles pin the version. Upgrades are recompiles, usually agent-driven.
+- Versioned as provenance: saved versions record the kit they were built with, but the
+  loader always serves the current kit, so kit changes must stay compatible with stored
+  source and bundles (exports and prop contracts are append-only) until a
+  rebuild-on-upgrade sweep exists. Upgrades are recompiles, usually agent-driven.
+- The EChart escape hatch's ECharts major and registered module set are part of that
+  surface: extended freely, never trimmed within a kit version.
 
 Stack: Tailwind CSS (pinned major version, stated in the design prompt) over vendored
 shadcn-style components on Radix primitives. Radix and Tailwind are the only runtime UI

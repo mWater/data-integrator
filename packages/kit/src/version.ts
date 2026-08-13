@@ -10,6 +10,10 @@
  * (building the frame URL) read this one constant, so a bump takes effect
  * everywhere at once.
  *
+ * Because stored bundles resolve @kit/ui to the current kit and are never
+ * rebuilt on a bump, the kit's exported names and prop contracts are
+ * append-only for as long as that holds.
+ *
  * Dependency-free on purpose: the server imports it without pulling in React.
  */
-export const KIT_VERSION = "5"
+export const KIT_VERSION = "6"

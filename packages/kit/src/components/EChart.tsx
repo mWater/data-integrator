@@ -2,7 +2,9 @@
  * EChart: the sanctioned escape hatch for chart forms the declarative Chart
  * cannot express. Takes a raw ECharts option and applies it over the theme
  * (palette, ink, fonts, axis chrome merged underneath via an init theme).
- * The registered module set is curated, not all of ECharts.
+ * The registered module set is curated, not all of ECharts. Saved dashboards
+ * depend on it: the ECharts major and this module list are compatibility
+ * surface, extended freely but never trimmed within a kit version.
  */
 
 import { useEffect, useRef } from "react"
@@ -41,12 +43,14 @@ use([
 export interface EChartProps {
   /** Raw ECharts option, applied over the theme. */
   option: EChartsCoreOption
+  /** Accessible description of the chart (its aria-label). */
+  label?: string
   /** Pixel height of the plot. */
   height?: number
 }
 
 /** Renders a raw ECharts option with the theme merged underneath. */
-export function EChart({ option, height }: EChartProps) {
+export function EChart({ option, label, height }: EChartProps) {
   const theme = useTheme()
   const el = useRef<HTMLDivElement>(null)
   const chart = useRef<EChartsType | null>(null)
@@ -69,5 +73,5 @@ export function EChart({ option, height }: EChartProps) {
     chart.current?.setOption(option, true)
   })
 
-  return <div ref={el} style={{ height: height ?? 260 }} role="img" />
+  return <div ref={el} style={{ height: height ?? 260 }} role="img" aria-label={label ?? "chart"} />
 }

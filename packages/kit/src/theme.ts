@@ -2,6 +2,10 @@
  * Theme tokens: the brandable color and typography surface for dashboards.
  * Defaults are a validated, brand-neutral palette (categorical order is the
  * CVD-safety mechanism: assign slots in order, never cycle or re-sort).
+ *
+ * ThemeTokens is read by stored dashboard source, so the interface is
+ * append-only: add tokens freely; renaming or removing one breaks saved
+ * dashboards.
  */
 
 /** Status colors, reserved for state (never used as series colors). */

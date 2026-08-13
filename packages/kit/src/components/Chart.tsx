@@ -47,6 +47,13 @@ export interface ChartProps {
   xType?: "category" | "time"
   /** Interactive zoom (wheel/drag plus a range slider) for long series. */
   zoom?: boolean
+  /** Accessible description of the chart (its aria-label); defaults to the series display labels. */
+  label?: string
+}
+
+/** Accessible name for the chart: the explicit label, else the series display labels. Exported for tests. */
+export function chartLabel(props: ChartProps): string {
+  return props.label ?? props.series.map((col) => props.labels?.[col] ?? col).join(", ")
 }
 
 /** Builds the full ECharts option for the given props and theme. Exported for tests. */
@@ -186,5 +193,5 @@ export function Chart(props: ChartProps) {
     chart.current?.setOption(buildOption(props, theme), true)
   })
 
-  return <div ref={el} style={{ height: props.height ?? 260 }} role="img" />
+  return <div ref={el} style={{ height: props.height ?? 260 }} role="img" aria-label={chartLabel(props)} />
 }

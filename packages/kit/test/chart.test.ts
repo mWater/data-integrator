@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { buildOption, type ChartProps } from "../src/components/Chart.js"
+import { buildOption, chartLabel, type ChartProps } from "../src/components/Chart.js"
 import { echartsTheme } from "../src/echartsTheme.js"
 import { lightTheme } from "../src/theme.js"
 
@@ -55,6 +55,18 @@ test("pie path is unaffected by the new props", () => {
   const o = opt({ type: "pie", zoom: true, xType: "time" })
   assert.equal(o.series[0].type, "pie")
   assert.equal(o.dataZoom, undefined)
+})
+
+test("chartLabel prefers the explicit label, else joins series display labels", () => {
+  const base: ChartProps = {
+    type: "line",
+    data: rows,
+    x: "month",
+    series: ["rain", "level"],
+    labels: { rain: "Rainfall" }
+  }
+  assert.equal(chartLabel(base), "Rainfall, level")
+  assert.equal(chartLabel({ ...base, label: "Rainfall against river level" }), "Rainfall against river level")
 })
 
 test("echartsTheme derives its chrome from the tokens", () => {
