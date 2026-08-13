@@ -209,6 +209,10 @@ single value = StatTile, composition with few parts = pie, relation = scatter, d
 DataTable). Use Chart; reach for EChart only when Chart cannot express the form; never
 hand-roll SVG charts. Give every Chart and EChart a label: one plain sentence saying
 what it shows, read by screen readers (the Card title does not name the canvas).
+Number and date formatting (Chart format, ECharts formatters): use Intl.NumberFormat /
+Intl.DateTimeFormat over useLocale(); NEVER hardcode a locale like "en-US". In EChart
+options prefer template strings ("{b}: {c}") where they suffice; write formatter
+functions only when templates cannot express it.
 Series colors are assigned by order and must keep their meaning
 across filters. Give every multi-series chart labels; keep grids and axes recessive
 (the kit does this).
