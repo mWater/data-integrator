@@ -50,3 +50,29 @@ jobs:
           podman pull -q docker.io/postgis/postgis:16-3.4
 
       - run: pnpm test
+
+  compliance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: License allowlist (OSI-approved SPDX identifiers only)
+        run: pnpm licenses list --prod --json | node scripts/check-licenses.mjs
+
+      - name: Software bill of materials (CycloneDX)
+        run: pnpm dlx @cyclonedx/cdxgen@11 -t pnpm -o sbom.cdx.json --no-babel .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
