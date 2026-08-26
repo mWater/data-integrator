@@ -10,6 +10,7 @@ import { BandSpec } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
+import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
 import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
 import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
@@ -227,6 +228,37 @@ async function route(
     const spec = await readFile(path.join(STATIC_DIR, "openapi.json"))
     res.writeHead(200, { "content-type": "application/json" })
     res.end(spec)
+    return
+  }
+
+  // Webhook receiver: the random token in the URL is the credential, so no
+  // session applies; unknown and non-webhook integrations 404 alike
+  if (pathname.startsWith("/hooks/")) {
+    if (req.method !== "POST") {
+      json(res, 405, { error: "POST only" })
+      return
+    }
+    const hookToken = pathname.slice("/hooks/".length)
+    if (!WEBHOOK_TOKEN_PATTERN.test(hookToken)) {
+      json(res, 404, { error: "unknown webhook" })
+      return
+    }
+    const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
+    if (contentType !== "application/json") {
+      json(res, 415, { error: "application/json required" })
+      return
+    }
+    let payload: unknown
+    try {
+      payload = await readJsonBody(req)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      json(res, message === "Request body too large" ? 413 : 400, { error: message })
+      return
+    }
+    const receipt = await receiveWebhook(pool, hookToken, payload)
+    if (!receipt) json(res, 404, { error: "unknown webhook" })
+    else json(res, 202, { eventId: receipt.eventId })
     return
   }
 
@@ -689,6 +721,26 @@ async function route(
       runId = await runs.start(libraryInstallMatch[1]).catch(() => null)
     }
     json(res, 200, { version: result.version, runId })
+    return
+  }
+
+  // The webhook capability URL: readable by editors, rotation admin-only
+  const webhookTokenMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/webhook-token$/)
+  if (webhookTokenMatch && (req.method === "GET" || req.method === "POST")) {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot read webhook tokens" })
+      return
+    }
+    if (req.method === "POST" && user.role !== "admin") {
+      json(res, 403, { error: "Only admins can rotate webhook tokens" })
+      return
+    }
+    const webhookToken =
+      req.method === "POST"
+        ? await rotateWebhookToken(pool, webhookTokenMatch[1])
+        : await getWebhookToken(pool, webhookTokenMatch[1])
+    if (!webhookToken) json(res, 404, { error: "unknown integration" })
+    else json(res, 200, { token: webhookToken, path: `/hooks/${webhookToken}` })
     return
   }
 

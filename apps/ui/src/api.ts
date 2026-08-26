@@ -913,6 +913,16 @@ export function installLibraryEntry(id: string, runNow: boolean): Promise<{ vers
   })
 }
 
+/** Reads the webhook capability URL parts (editor or admin). */
+export function getWebhookToken(id: string): Promise<{ token: string; path: string }> {
+  return request(`/api/integrations/${id}/webhook-token`)
+}
+
+/** Rotates the webhook token, invalidating the old URL (admin only). */
+export function rotateWebhookToken(id: string): Promise<{ token: string; path: string }> {
+  return request(`/api/integrations/${id}/webhook-token`, { method: "POST" })
+}
+
 /** Changes the schedule (definition content: archives a new version). */
 export function setIntegrationTrigger(
   id: string,

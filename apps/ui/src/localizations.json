@@ -3634,6 +3634,34 @@
       "es": "Usar configuración del sistema",
       "mg": "Mifanaraka amin’ny rafitra",
       "sw": "Fuata mfumo"
+    },
+    {
+      "_base": "en",
+      "en": "Webhook URL regenerated; the old URL no longer works.",
+      "fr": "URL du webhook régénérée ; l’ancienne URL ne fonctionne plus.",
+      "pt": "URL do webhook gerado novamente; o URL antigo já não funciona.",
+      "es": "Se regeneró la URL del webhook; la URL anterior ya no funciona.",
+      "mg": "Noforonina indray ny URL webhook; tsy mandeha intsony ilay URL taloha.",
+      "sw": "URL ya webhook imeundwa upya; URL ya zamani haifanyi kazi tena."
+    },
+    {
+      "_base": "en",
+      "en": "Webhook URL:",
+      "fr": "URL du webhook :",
+      "pt": "URL do webhook:",
+      "es": "URL del webhook:",
+      "mg": "URL webhook:",
+      "sw": "URL ya webhook:"
+    },
+    {
+      "_base": "en",
+      "en": "Regenerate",
+      "fr": "Régénérer",
+      "pt": "Gerar novamente",
+      "es": "Regenerar",
+      "mg": "Forony indray",
+      "sw": "Unda upya"
     }
-  ]
+  ],
+  "unused": []
 }

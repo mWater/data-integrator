@@ -57,6 +57,21 @@ curl -H "Authorization: Bearer $TOKEN" \
 - `PUT /api/integrations/:id/enabled` - `{enabled: boolean}` (editor/admin).
   Pauses/resumes scheduling; operational state, not versioned.
 
+## Webhooks
+
+- `POST /hooks/:token` - public webhook receiver. The random per-integration
+  token in the URL is the credential; no session or bearer token applies.
+  JSON bodies only (1 MB cap); the payload is buffered verbatim and the next
+  run receives every pending event oldest-first in `ctx.webhookData`. A
+  receipt enqueues a run immediately (bursts coalesce into one queued run);
+  events for a paused or draft integration buffer until it runs again.
+  Returns `202 {eventId}`. Unknown tokens and integrations whose trigger
+  does not accept webhooks 404 alike.
+- `GET /api/integrations/:id/webhook-token` - the token and `/hooks` path
+  (editor/admin).
+- `POST /api/integrations/:id/webhook-token` - rotate the token (admin).
+  The old URL stops working immediately.
+
 ## Library
 
 - `GET /api/library` - the deployment's integration library with per-entry

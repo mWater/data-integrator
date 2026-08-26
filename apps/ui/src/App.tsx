@@ -152,7 +152,7 @@ export function App() {
       {route.sessionId ? (
         <SessionView sessionId={route.sessionId} canDesign={canDesign} />
       ) : route.integrationId ? (
-        <IntegrationView integrationId={route.integrationId} canDesign={canDesign} />
+        <IntegrationView integrationId={route.integrationId} canDesign={canDesign} isAdmin={user.role === "admin"} />
       ) : route.tableId ? (
         <TablePage tableId={route.tableId} />
       ) : route.layerId ? (

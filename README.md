@@ -53,7 +53,10 @@ library/skills/ - load into the designer on demand. Configuration is validated c
 tick enqueues runs for enabled integrations (dependency-free 5-field parser,
 UTC), workers drain the queue, and a reaper fails stale runs; schedules are
 editable in the UI as versioned definition changes, with a Pause toggle for
-the operational off-switch. Agent compaction and cost governance are not
+the operational off-switch. Webhook triggers are live: each integration has a
+capability URL (`POST /hooks/<token>`, shown on the integration page, admin
+rotation) that buffers the JSON payload and enqueues a run; events for paused
+integrations wait for re-enable. Agent compaction and cost governance are not
 started.
 
 - [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes
@@ -88,7 +91,7 @@ The project is complete when all of these exist.
 - **Web server and API** *(built)* - Node/TypeScript server with local accounts, RBAC, and the
   documented REST query interface over tabular data and the raster catalog. The
   contractual programmatic access path; fully functional with no AI configured.
-- **Pipeline engine** *(executor + /in built)* - Scheduler and DB-backed job queue:
+- **Pipeline engine** *(executor, /in, webhooks built)* - Scheduler and DB-backed job queue:
   triggers runs (cron, webhook), materializes `/in`, registers rows and raster
   artifacts, and backfills after connectivity gaps. Evaluates validation rules and
   records lineage and freshness per run.

@@ -5,8 +5,6 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Pipeline engine (completes FUC-1/3/4)
 
-- Webhook receiver endpoint writing `webhook_events` (consumption at run time is
-  built and tested; nothing receives events yet).
 - Skip-if-unchanged for derived integrations (compare input snapshot ids against
   the previous run's recorded lineage).
 - Backfill after connectivity gaps (library entries already do this via

@@ -8,6 +8,8 @@ import {
   getIntegrationUsage,
   getIntegrationVersions,
   getSettings,
+  getWebhookToken,
+  rotateWebhookToken,
   IntegrationDetail,
   IntegrationUsage,
   listCountries,
@@ -38,6 +40,8 @@ interface IntegrationViewProps {
   integrationId: string
   /** False for viewers: hides Design with Agent and Run Now */
   canDesign: boolean
+  /** True for admins: enables webhook token rotation */
+  isAdmin: boolean
 }
 
 /** Detail tabs. */
@@ -47,7 +51,7 @@ type Tab = "runs" | "data" | "definition" | "code"
 const POLL_MS = 2500
 
 /** One installed integration: data, run history, definition, code. */
-export function IntegrationView({ integrationId, canDesign }: IntegrationViewProps) {
+export function IntegrationView({ integrationId, canDesign, isAdmin }: IntegrationViewProps) {
   const [detail, setDetail] = useState<IntegrationDetail | null>(null)
   const [picked, setPicked] = useState<Tab | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -227,7 +231,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
       {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} running={running} />}
       {tab === "definition" && (
         <>
-          <ScheduleSection detail={detail} canDesign={canDesign} onChanged={refresh} />
+          <ScheduleSection detail={detail} canDesign={canDesign} isAdmin={isAdmin} onChanged={refresh} />
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <DefinitionTab definition={definition} />
           <VersionsSection integrationId={integrationId} currentVersion={detail.version} />
@@ -245,6 +249,8 @@ function formatBbox(bbox: [number, number, number, number]): string {
 
 /** Props for the schedule section. */
 interface ScheduleSectionProps {
+  /** True for admins: enables webhook token rotation */
+  isAdmin: boolean
   /** Integration detail (definition carries the trigger) */
   detail: IntegrationDetail
   /** False for viewers: read-only display */
@@ -258,12 +264,32 @@ interface ScheduleSectionProps {
  * a new attributed version. Pausing is separate (the Pause button) and not a
  * definition change.
  */
-function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps) {
+function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSectionProps) {
   const trigger = (detail.definition.trigger ?? {}) as { cron?: string; webhook?: boolean }
   const [cron, setCron] = useState(trigger.cron ?? "")
   const [webhook, setWebhook] = useState(trigger.webhook === true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [hookPath, setHookPath] = useState<string | null>(null)
+
+  // The capability URL is only fetched when the integration accepts webhooks
+  useEffect(() => {
+    if (trigger.webhook === true && canDesign) {
+      getWebhookToken(detail.id).then(r => setHookPath(r.path), () => setHookPath(null))
+    } else setHookPath(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail.id, trigger.webhook, canDesign])
+
+  async function rotate() {
+    setError(null)
+    try {
+      const r = await rotateWebhookToken(detail.id)
+      setHookPath(r.path)
+      setNotice(T`Webhook URL regenerated; the old URL no longer works.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   async function save() {
     setError(null)
@@ -304,6 +330,13 @@ function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps)
           <label>
             <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> {T`Accept webhook events`}
           </label>
+          {hookPath && (
+            <p className="dim">
+              {T`Webhook URL:`} <code>{`${location.origin}${hookPath}`}</code>{" "}
+              <button onClick={() => navigator.clipboard.writeText(`${location.origin}${hookPath}`)}>{T`Copy`}</button>{" "}
+              {isAdmin && <button onClick={rotate}>{T`Regenerate`}</button>}
+            </p>
+          )}
           <div className="aoi-actions">
             <button onClick={save}>{T`Save`}</button>
             <span className="dim">{T`Saving archives a new definition version. Pause instead to stop runs temporarily.`}</span>
