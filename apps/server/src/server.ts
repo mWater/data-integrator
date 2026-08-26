@@ -663,6 +663,8 @@ async function route(
       return
     }
     const rendering = band.rendering ?? {}
+    // A cancelled request (slider scrubbed past this snapshot) stops the
+    // GDAL pipeline between steps instead of rendering pixels nobody wants
     const png = await tiles.tile(
       layerId,
       snapshotId,
@@ -671,8 +673,13 @@ async function route(
       rendering,
       Number(z),
       Number(x),
-      Number(y)
+      Number(y),
+      () => !req.destroyed && !res.destroyed
     )
+    if (png === null) {
+      res.destroy()
+      return
+    }
     // Snapshot-pinned URL: content never changes, cache hard
     res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
     res.end(png)

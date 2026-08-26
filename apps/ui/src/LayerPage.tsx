@@ -121,12 +121,18 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer, bandId])
 
-  // Band and time changes only swap the source's tile template
+  // Band and time changes only swap the source's tile template. Retiling is
+  // debounced: a slider drag emits every intermediate snapshot, and reloading
+  // tiles for each one queues hundreds of requests the browser must drain
+  // before the final position renders.
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !layer || !bandId || !map.getSource(RASTER_LAYER)) return
-    const source = map.getSource(RASTER_LAYER) as RasterTileSource
-    source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])])
+    const timer = setTimeout(() => {
+      const map = mapRef.current
+      if (!map || !layer || !bandId || !map.getSource(RASTER_LAYER)) return
+      const source = map.getSource(RASTER_LAYER) as RasterTileSource
+      source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])])
+    }, 200)
+    return () => clearTimeout(timer)
   }, [layer, bandId, index])
 
   useEffect(() => () => {

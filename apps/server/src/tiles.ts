@@ -56,6 +56,8 @@ export class TileRenderer {
    * @param bandId - Band being drawn; part of the cache key, since bands of one
    *   snapshot share a path but render to different pixels
    * @param rendering - Band rendering config (color map, resampling)
+   * @param alive - Rendering stops between steps once this returns false
+   *   (the requester hung up); the tile resolves to null instead
    */
   async tile(
     layerId: string,
@@ -65,8 +67,9 @@ export class TileRenderer {
     rendering: BandRendering,
     z: number,
     x: number,
-    y: number
-  ): Promise<Buffer> {
+    y: number,
+    alive: () => boolean = () => true
+  ): Promise<Buffer | null> {
     // The rendering config is part of the key: restyling a band must not
     // serve tiles drawn under the old ramp (stale entries age out via the
     // cache budget)
@@ -89,13 +92,16 @@ export class TileRenderer {
       const colored = path.join(work, "colored.tif")
       const png = path.join(work, "tile.png")
       const resampling = rendering.resampling === "average" ? "average" : "near"
+      if (!alive()) return null
       await execFileP("gdalwarp", [
         "-q", "-t_srs", "EPSG:3857",
         "-te", String(minX), String(minY), String(maxX), String(maxY),
         "-ts", "256", "256", "-r", resampling,
         this.store.absolute(snapshotPath), warped
       ])
+      if (!alive()) return null
       await execFileP("gdaldem", ["color-relief", "-q", "-alpha", warped, ramp, colored])
+      if (!alive()) return null
       await execFileP("gdal_translate", ["-q", "-of", "PNG", colored, png])
       const buffer = await readFile(png)
       await mkdir(path.dirname(cached), { recursive: true })
