@@ -58,15 +58,21 @@ export class Runner {
     }
 
     const keeper = `${this.opts.network}-keeper`
+    // A keeper can survive host changes that invalidate it (its recorded OCI
+    // runtime uninstalled, its image pruned); recreate rather than wedge
     if (await this.podmanOk(["container", "exists", keeper])) {
-      await this.podman(["start", keeper])
-    } else {
-      await this.podman([
-        "run", "-d", "--name", keeper, "--network", this.opts.network,
-        KEEPER_IMAGE, "sleep", "infinity"
-      ])
+      if (await this.podmanOk(["start", keeper])) return this.ensureEgress()
+      await this.podmanOk(["rm", "-f", keeper])
     }
+    await this.podman([
+      "run", "-d", "--name", keeper, "--network", this.opts.network,
+      KEEPER_IMAGE, "sleep", "infinity"
+    ])
+    await this.ensureEgress()
+  }
 
+  /** Applies the egress policy when configured. */
+  private async ensureEgress(): Promise<void> {
     if (this.opts.egress === "public-only") {
       await this.applyEgressRules()
     }
