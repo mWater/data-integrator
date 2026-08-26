@@ -198,7 +198,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         midLoopTimer.current = null
       }
       setStopping(false)
-      if (event.type === "error") setError(event.message ?? "unknown error")
+      if (event.type === "error") setError(event.message ?? T`unknown error`)
       // Teardown (unfreeze, clear the overlay) waits for the refetch, so the
       // overlay keeps covering the tail until the stored transcript has it
       refresh()
@@ -320,7 +320,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   if (!detail)
     return (
       <main className="session-page" ref={pageRef}>
-        {error ? <div className="error">{error}</div> : "Loading…"}
+        {error ? <div className="error">{error}</div> : T`Loading…`}
       </main>
     )
 
@@ -333,10 +333,10 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
   const assistantResults = isAssistant ? (detail.state as AssistantState)?.results : undefined
   const title = isAssistant
-    ? detail.firstMessage || "New chat"
+    ? detail.firstMessage || T`New chat`
     : isDashboard
-      ? dashState?.name || "New dashboard"
-      : (detail.state as DesignerState)?.definition?.name || "New integration"
+      ? dashState?.name || T`New dashboard`
+      : (detail.state as DesignerState)?.definition?.name || T`New integration`
   // A finished designer session has installed its integration; the card is the
   // handoff to it, since the transcript alone leaves the user without a next step
   const installed =
@@ -351,16 +351,16 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               until the agent names what it is building */}
           <h1>{title}</h1>
           {isDashboard && dashState?.saved && (
-            <a href={`#/dashboard/${detail.integrationId}`}>Saved v{dashState.saved.version}</a>
+            <a href={`#/dashboard/${detail.integrationId}`}>{T`Saved v${dashState.saved.version}`}</a>
           )}
           {/* Layers get their own pages, so this opens the first one; the
               details panel lists the rest */}
           {detail.scratchLayers.length > 0 && (
-            <a href={`#/layer/${detail.scratchLayers[0].id}?session=${detail.id}`}>Map preview</a>
+            <a href={`#/layer/${detail.scratchLayers[0].id}?session=${detail.id}`}>{T`Map preview`}</a>
           )}
           <span className="spacer" />
           <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
-            {showDetails ? "Hide details" : "Show Details"}
+            {showDetails ? T`Hide details` : T`Show Details`}
           </button>
         </div>
         <div className="messages">
@@ -382,23 +382,23 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         {question && <QuestionCard question={question} onAnswer={text => void send(text)} />}
         {installed && (
           <div className="question installed-card">
-            <b>Integration installed.</b>{" "}
+            <b>{T`Integration installed.`}</b>{" "}
             {installed.firstLoadStarted
-              ? "Its first data load started automatically — open it to see the data arrive."
-              : "Open it to see its data, runs, and schedule."}
+              ? T`Its first data load started automatically — open it to see the data arrive.`
+              : T`Open it to see its data, runs, and schedule.`}
             <div className="installed-actions">
-              <a href={`#/integration/${detail.integrationId}`}>Open Integration</a>
+              <a href={`#/integration/${detail.integrationId}`}>{T`Open Integration`}</a>
             </div>
           </div>
         )}
         {previewErrors.length > 0 && (
           <div className="error">
-            Preview error: {previewErrors[previewErrors.length - 1]} (attached to your next message)
+            {T`Preview error: ${previewErrors[previewErrors.length - 1]} (attached to your next message)`}
           </div>
         )}
         {error && <div className="error">{error}</div>}
         {!error && !busy && detail.error && (
-          <div className="error">The agent hit an error and stopped: {detail.error} — send a message to retry.</div>
+          <div className="error">{T`The agent hit an error and stopped: ${detail.error} — send a message to retry.`}</div>
         )}
         <form className="composer" onSubmit={onSend}>
           <textarea
@@ -412,22 +412,22 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
             }}
             placeholder={
               !canSend
-                ? "Viewers can watch but not send"
+                ? T`Viewers can watch but not send`
                 : busy
-                  ? "Steer the agent — your message lands after the current step…"
+                  ? T`Steer the agent — your message lands after the current step…`
                   : isAssistant
-                    ? "Ask about the data…"
-                    : "Describe what to build or change…"
+                    ? T`Ask about the data…`
+                    : T`Describe what to build or change…`
             }
             disabled={!canSend}
             rows={3}
           />
           {busy && input.trim() === "" ? (
             <button type="button" className="stop" onClick={() => void onStop()} disabled={!canSend || stopping}>
-              {stopping ? "Stopping…" : "Stop"}
+              {stopping ? T`Stopping…` : T`Stop`}
             </button>
           ) : (
-            <button type="submit" disabled={!canSend || !input.trim()}>Send</button>
+            <button type="submit" disabled={!canSend || !input.trim()}>{T`Send`}</button>
           )}
         </form>
       </div>
@@ -438,7 +438,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           onDoubleClick={onSplitReset}
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize preview"
+          aria-label={T`Resize preview`}
         />
       )}
       {isDashboard && (
@@ -458,7 +458,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               }
             />
           ) : (
-            <div className="preview-empty">The dashboard preview appears here after the first successful build.</div>
+            <div className="preview-empty">{T`The dashboard preview appears here after the first successful build.`}</div>
           )}
         </div>
       )}
@@ -466,7 +466,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         <>
           <div className="drawer-backdrop" onClick={() => setShowDetails(false)} />
           <div className="details-drawer">
-            <button className="drawer-close" onClick={() => setShowDetails(false)} aria-label="Close details">
+            <button className="drawer-close" onClick={() => setShowDetails(false)} aria-label={T`Close details`}>
               ×
             </button>
             <StatePanel detail={detail} />
@@ -495,7 +495,7 @@ function LiveBlock({ items, results }: LiveBlockProps) {
     // A completed assistant call renders as its block as soon as the mid-loop
     // state refetch delivers the stored result
     return (
-      <Suspense fallback={<div className="activity">Loading…</div>}>
+      <Suspense fallback={<div className="activity">{T`Loading…`}</div>}>
         <BlockRenderer tool={item.tool ?? ""} input={item.input} resultText={item.summary} results={results} />
       </Suspense>
     )
@@ -539,11 +539,11 @@ function QuestionCard({ question, onAnswer }: QuestionCardProps) {
               if (text.trim()) onAnswer(text.trim())
             }}
           >
-            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="Other…" />
-            <button type="submit" disabled={!text.trim()}>Send</button>
+            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={T`Other…`} />
+            <button type="submit" disabled={!text.trim()}>{T`Send`}</button>
           </form>
         ) : (
-          <button className="question-other-toggle" onClick={() => setOther(true)}>Other…</button>
+          <button className="question-other-toggle" onClick={() => setOther(true)}>{T`Other…`}</button>
         )}
       </div>
     </div>

@@ -27,7 +27,7 @@ interface BlockRendererProps {
 
 /** Quiet placeholder when a block's stored result is not available. */
 function Unavailable() {
-  return <div className="activity">result unavailable</div>
+  return <div className="activity">{T`result unavailable`}</div>
 }
 
 /** Renders one block by tool, themed for the host's color mode. */

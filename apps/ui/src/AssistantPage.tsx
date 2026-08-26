@@ -10,17 +10,21 @@ import { ConfirmDelete } from "./ConfirmDelete.js"
 import { WelcomeCompose } from "./WelcomeCompose.js"
 
 /** Human labels for session statuses. */
-const STATUS_LABEL: Record<string, string> = {
-  active: "working",
-  paused: "ready",
-  finished: "done"
+function statusLabels(): Record<string, string> {
+  return {
+    active: T`working`,
+    paused: T`ready`,
+    finished: T`done`
+  }
 }
 
 /** Example questions; deployment-neutral so they hold for any installed data. */
-const HINTS = [
-  "What data is available?",
-  "Chart monthly rainfall for the last 12 months"
-]
+function hints(): string[] {
+  return [
+    T`What data is available?`,
+    T`Chart monthly rainfall for the last 12 months`
+  ]
+}
 
 /** Trash icon for the per-row delete action. */
 function TrashIcon() {
@@ -70,36 +74,35 @@ export function AssistantPage() {
             <path d="M8 10.5h8M8 14h5" />
           </svg>
         }
-        title="Ask about the data"
-        blurb="Plain-language questions, answered from the platform's ingested data with tables, charts, and maps - every answer carries its SQL and a CSV download."
-        placeholder={
-          "Describe the data you want, e.g.:\n" +
-          "rainfall and groundwater levels for southern Madagascar over the last 6 months\n\n" +
-          "Name the place, the period, and the measurements you care about."
-        }
-        hints={HINTS}
-        submitLabel="Ask"
+        title={T`Ask about the data`}
+        blurb={T`Plain-language questions, answered from the platform's ingested data with tables, charts, and maps - every answer carries its SQL and a CSV download.`}
+        placeholder={T`Describe the data you want, e.g.:
+rainfall and groundwater levels for southern Madagascar over the last 6 months
+
+Name the place, the period, and the measurements you care about.`}
+        hints={hints()}
+        submitLabel={T`Ask`}
         onSubmit={start}
       />
       {error && <div className="error">{error}</div>}
       {chats !== null && chats.length > 0 && (
         <section className="assistant-history">
-          <h2>Past conversations</h2>
+          <h2>{T`Past conversations`}</h2>
           <table className="sessions">
             <thead>
-              <tr><th>Question</th><th>Status</th><th>Updated</th><th /></tr>
+              <tr><th>{T`Question`}</th><th>{T`Status`}</th><th>{T`Updated`}</th><th /></tr>
             </thead>
             <tbody>
               {chats.map(s => (
                 <tr key={s.id} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
-                  <td>{s.firstMessage ?? <span className="dim">(empty)</span>}</td>
-                  <td><span className={`chip chip-${s.status}`}>{STATUS_LABEL[s.status] ?? s.status}</span></td>
+                  <td>{s.firstMessage ?? <span className="dim">{T`(empty)`}</span>}</td>
+                  <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
                   <td>{new Date(s.updatedAt).toLocaleString()}</td>
                   <td className="row-delete-cell">
                     <button
                       className="row-delete"
-                      title="Delete chat"
-                      aria-label={`Delete chat: ${s.firstMessage ?? "(empty)"}`}
+                      title={T`Delete chat`}
+                      aria-label={T`Delete chat: ${s.firstMessage ?? T`(empty)`}`}
                       // The row navigates; the delete must not ride along
                       onClick={e => {
                         e.stopPropagation()
@@ -117,14 +120,16 @@ export function AssistantPage() {
       )}
       {doomed && (
         <ConfirmDelete
-          title="Delete this conversation?"
-          confirmLabel="Delete"
+          title={T`Delete this conversation?`}
+          confirmLabel={T`Delete`}
           onCancel={() => setDoomed(null)}
           onConfirm={() => void confirmDelete(doomed)}
         >
           <p>
-            {doomed.firstMessage ? <q>{doomed.firstMessage}</q> : "This chat"} and its answers, tables, and charts are
-            deleted for good. <b>This cannot be undone.</b>
+            {doomed.firstMessage
+              ? T`“${doomed.firstMessage}” and its answers, tables, and charts are deleted for good.`
+              : T`This chat and its answers, tables, and charts are deleted for good.`}{" "}
+            <b>{T`This cannot be undone.`}</b>
           </p>
         </ConfirmDelete>
       )}

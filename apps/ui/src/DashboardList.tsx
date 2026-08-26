@@ -43,20 +43,22 @@ export function DashboardList({ canDesign }: Props) {
   return (
     <main className="list-page">
       <div className="new-session">
-        <h1>Dashboards</h1>
-        {canDesign ? <button onClick={() => void newDashboard()}>New Dashboard</button> : null}
+        <h1>{T`Dashboards`}</h1>
+        {canDesign ? <button onClick={() => void newDashboard()}>{T`New Dashboard`}</button> : null}
       </div>
       {error ? <p className="error">{error}</p> : null}
       {dashboards && dashboards.length === 0 ? (
-        <p className="dim">No dashboards yet.{canDesign ? " Create one with the designer agent." : ""}</p>
+        <p className="dim">
+          {canDesign ? T`No dashboards yet. Create one with the designer agent.` : T`No dashboards yet.`}
+        </p>
       ) : null}
       {dashboards && dashboards.length > 0 ? (
         <table className="sessions">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Version</th>
-              <th>Updated</th>
+              <th>{T`Name`}</th>
+              <th>{T`Version`}</th>
+              <th>{T`Updated`}</th>
               {canDesign ? <th /> : null}
             </tr>
           </thead>
@@ -71,10 +73,10 @@ export function DashboardList({ canDesign }: Props) {
                 {canDesign ? (
                   <td className="row-actions">
                     <button className="secondary" onClick={() => void newDashboard(d.id)}>
-                      Edit with Agent
+                      {T`Edit with Agent`}
                     </button>
                     <button className="danger" onClick={() => setDoomed(d)}>
-                      Delete
+                      {T`Delete`}
                     </button>
                   </td>
                 ) : null}
@@ -85,16 +87,16 @@ export function DashboardList({ canDesign }: Props) {
       ) : null}
       {doomed ? (
         <ConfirmDelete
-          title={`Delete “${doomed.name}”?`}
+          title={T`Delete “${doomed.name}”?`}
           confirmToken={doomed.id}
           onCancel={() => setDoomed(null)}
           onConfirm={() => void confirmDelete(doomed)}
         >
           <p>
-            This permanently deletes the dashboard and all {doomed.currentVersion ?? 0} of its saved versions. Anyone
-            with a link to it will get a 404. <b>This cannot be undone.</b>
+            {T`This permanently deletes the dashboard and all ${doomed.currentVersion ?? 0} of its saved versions. Anyone with a link to it will get a 404.`}{" "}
+            <b>{T`This cannot be undone.`}</b>
           </p>
-          <p className="dim">Design sessions that built it are kept, with their link to this dashboard cleared.</p>
+          <p className="dim">{T`Design sessions that built it are kept, with their link to this dashboard cleared.`}</p>
         </ConfirmDelete>
       ) : null}
     </main>

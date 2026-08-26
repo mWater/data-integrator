@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useMemo, useState } from "react"
 import { getMe, logout, User } from "./api.js"
+import { applyLocale, getSavedLocale, loadCronLocale } from "./localization.js"
 import { ThemePreference, useAppTheme } from "./theme.js"
 import { AssistantPage } from "./AssistantPage.js"
 import { DashboardList } from "./DashboardList.js"
@@ -85,7 +86,7 @@ const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
 function ThemeToggle() {
   const { preference, setPreference } = useAppTheme()
   const label =
-    preference === "system" ? "Theme: system" : preference === "dark" ? "Theme: dark" : "Theme: light"
+    preference === "system" ? T`Theme: system` : preference === "dark" ? T`Theme: dark` : T`Theme: light`
   return (
     <button
       className="theme-toggle"
@@ -117,6 +118,18 @@ export function App() {
   const [route, setRoute] = useState(parseHash())
   const [user, setUser] = useState<User | null | "loading">("loading")
 
+  // Locale lives in state so switching re-renders every localized string;
+  // applyLocale repoints the global T before children render.
+  const [locale, setLocale] = useState(getSavedLocale)
+  useMemo(() => applyLocale(locale), [locale])
+
+  // Cron descriptions come from cronstrue's separately-loaded locale bundle;
+  // re-render once it arrives so schedules stop showing in English.
+  const [, setCronLoaded] = useState(0)
+  useEffect(() => {
+    loadCronLocale(locale).then(changed => changed && setCronLoaded(n => n + 1))
+  }, [locale])
+
   useEffect(() => {
     getMe().then(setUser)
     const onChange = () => setRoute(parseHash())
@@ -138,12 +151,12 @@ export function App() {
       <header className="topbar">
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
-          <a href="#/">Home</a>
-          <a href="#/data">Data</a>
-          <a href="#/assistant">Assistant</a>
-          <a href="#/integrations">Integrations</a>
-          <a href="#/library">Library</a>
-          <a href="#/dashboards">Dashboards</a>
+          <a href="#/">{T`Home`}</a>
+          <a href="#/data">{T`Data`}</a>
+          <a href="#/assistant">{T`Assistant`}</a>
+          <a href="#/integrations">{T`Integrations`}</a>
+          <a href="#/library">{T`Library`}</a>
+          <a href="#/dashboards">{T`Dashboards`}</a>
         </nav>
         <span style={{ flex: 1 }} />
         <ThemeToggle />
@@ -168,7 +181,7 @@ export function App() {
       ) : route.library ? (
         <Library user={user} />
       ) : route.settings ? (
-        <Settings user={user} />
+        <Settings user={user} locale={locale} onLocaleChange={setLocale} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (

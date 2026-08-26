@@ -1,22 +1,13 @@
 import { useEffect, useState } from "react"
-import cronstrue from "cronstrue"
 import { createSession, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
+import { cronText } from "./localization.js"
 
 /** Human-readable trigger summary. */
 export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): string {
   const parts = []
   if (trigger.cron) parts.push(cronText(trigger.cron))
-  if (trigger.webhook) parts.push("webhook")
-  return parts.join(" + ") || "manual"
-}
-
-/** Cron expression in plain language; unparseable expressions stay raw. */
-function cronText(cron: string): string {
-  try {
-    return cronstrue.toString(cron, { use24HourTimeFormat: true })
-  } catch {
-    return `cron ${cron}`
-  }
+  if (trigger.webhook) parts.push(T`webhook`)
+  return parts.join(" + ") || T`manual`
 }
 
 /** Props for the integration list. */
@@ -51,31 +42,31 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
 
   return (
     <main className="list-page">
-      <h1>Integrations</h1>
+      <h1>{T`Integrations`}</h1>
       {canDesign && (
         <div className="new-session">
-          <button onClick={onCreate}>New Integration</button>
+          <button onClick={onCreate}>{T`New Integration`}</button>
           <a className="dim-link" href="#/sessions">
-            Agent activity{openSessions > 0 ? ` (${openSessions} open)` : ""}
+            {openSessions > 0 ? T`Agent activity (${openSessions} open)` : T`Agent activity`}
           </a>
         </div>
       )}
       {error && <div className="error">{error}</div>}
       {integrations === null ? (
-        <p>Loading…</p>
+        <p>{T`Loading…`}</p>
       ) : integrations.length === 0 ? (
-        <p>Nothing installed yet. New Integration starts a design session; describe what to build there.</p>
+        <p>{T`Nothing installed yet. New Integration starts a design session; describe what to build there.`}</p>
       ) : (
         <table className="sessions">
           <thead>
-            <tr><th>Integration</th><th>Trigger</th><th>Last run</th></tr>
+            <tr><th>{T`Integration`}</th><th>{T`Trigger`}</th><th>{T`Last run`}</th></tr>
           </thead>
           <tbody>
             {integrations.map(i => (
               <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
                 <td>
                   <b>{i.name}</b>
-                  {i.status === "draft" && <span className="chip chip-draft">draft</span>}
+                  {i.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
                   <div className="dim">{i.id}</div>
                 </td>
                 <td>{triggerLabel(i.trigger)}</td>
@@ -86,7 +77,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
                       <span className="dim">{i.lastRunAt ? new Date(i.lastRunAt).toLocaleString() : ""}</span>
                     </>
                   ) : (
-                    <span className="dim">never</span>
+                    <span className="dim">{T`never`}</span>
                   )}
                 </td>
               </tr>

@@ -35,7 +35,7 @@ export function TableBlock({ resultId, result, title }: TableBlockProps) {
   return (
     <BlockShell
       title={title}
-      meta={`${result.rows.length} row${result.rows.length === 1 ? "" : "s"}`}
+      meta={result.rows.length === 1 ? T`${result.rows.length} row` : T`${result.rows.length} rows`}
       sql={result.sql}
       onDownloadCsv={() => downloadCsv(`${resultId}.csv`, result.columns, result.rows)}
     >

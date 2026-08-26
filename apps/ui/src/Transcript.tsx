@@ -119,7 +119,7 @@ export function Transcript({ messages, hideTrailingQuestion, results }: Transcri
         return group.label != null ? (
           <ToolBlock key={i} label={group.label} items={group.items} />
         ) : item.kind === "block" ? (
-          <Suspense key={i} fallback={<div className="activity">Loading…</div>}>
+          <Suspense key={i} fallback={<div className="activity">{T`Loading…`}</div>}>
             <BlockRenderer tool={item.tool ?? ""} input={item.input} resultText={item.result} results={results} />
           </Suspense>
         ) : item.kind === "assistant" || item.kind === "question" ? (

@@ -25,26 +25,26 @@ function since(iso: string | null): string | null {
   if (!iso) return null
   const ms = Date.now() - new Date(iso).getTime()
   const minutes = Math.round(ms / 60000)
-  if (minutes < 1) return "just now"
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 1) return T`just now`
+  if (minutes < 60) return T`${minutes}m ago`
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return T`${hours}h ago`
   const days = Math.round(hours / 24)
-  if (days === 1) return "yesterday"
-  if (days < 30) return `${days}d ago`
+  if (days === 1) return T`yesterday`
+  if (days < 30) return T`${days}d ago`
   return new Date(iso).toLocaleDateString(undefined, { month: "short", year: "numeric" })
 }
 
-/** "1 row" / "2 rows", so counts read as sentences. */
-function plural(n: number, one: string, many = `${one}s`): string {
+/** "1 row" / "2 rows", so counts read as sentences. Both forms are localized. */
+function plural(n: number, one: string, many: string): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
 /** A count in the status line: the number carries ink, the noun stays quiet. */
-function Count({ n, one, many }: { n: number; one: string; many?: string }) {
+function Count({ n, one, many }: { n: number; one: string; many: string }) {
   return (
     <>
-      <b>{n.toLocaleString()}</b> {n === 1 ? one : (many ?? `${one}s`)}
+      <b>{n.toLocaleString()}</b> {n === 1 ? one : many}
     </>
   )
 }
@@ -52,8 +52,8 @@ function Count({ n, one, many }: { n: number; one: string; many?: string }) {
 /** What a source holds: rows for tables, promoted snapshots for layers. */
 function contents(source: HomeSource): string {
   return source.kind === "table"
-    ? plural(source.rows ?? 0, "row")
-    : plural(source.snapshots ?? 0, "snapshot")
+    ? plural(source.rows ?? 0, T`row`, T`rows`)
+    : plural(source.snapshots ?? 0, T`snapshot`, T`snapshots`)
 }
 
 /** Status dot class for an integration's most recent run. */
@@ -66,7 +66,7 @@ function runTone(status: string | null): string {
 
 /** Past-tense verb for a run's terminal status, for the failure banner. */
 function ended(status: string): string {
-  return status === "timeout" ? "timed out" : "failed"
+  return status === "timeout" ? T`timed out` : T`failed`
 }
 
 /** Icon set, sized for the action cards and route cards. */
@@ -180,7 +180,7 @@ function ActionCard({
       <span className="card-title">{title}</span>
       <span className="card-desc">{description}</span>
       <span className="card-foot">
-        {busy ? "Starting…" : fact}
+        {busy ? T`Starting…` : fact}
         <Go />
       </span>
     </button>
@@ -213,7 +213,7 @@ function SourceRow({ source }: { source: HomeSource }) {
       <span className={`chip chip-${source.kind}`}>{source.kind}</span>
       <span className="grow">{source.name}</span>
       <span className="panel-fact">{contents(source)}</span>
-      <span className="panel-when">{since(source.updatedAt) ?? "never"}</span>
+      <span className="panel-when">{since(source.updatedAt) ?? T`never`}</span>
     </a>
   )
 }
@@ -222,13 +222,13 @@ function SourceRow({ source }: { source: HomeSource }) {
 function IntegrationRow({ integration }: { integration: HomeIntegration }) {
   const when = integration.lastRunStatus === "running" || integration.lastRunStatus === "queued"
     ? integration.lastRunStatus
-    : (since(integration.lastRunAt) ?? "never run")
+    : (since(integration.lastRunAt) ?? T`never run`)
   return (
     <a className="panel-row" href={`#/integration/${integration.id}`}>
       <span className={runTone(integration.lastRunStatus)} />
       <span className="grow">{integration.name}</span>
-      {integration.status === "draft" && <span className="chip chip-draft">draft</span>}
-      {!integration.enabled && <span className="chip chip-paused">paused</span>}
+      {integration.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
+      {!integration.enabled && <span className="chip chip-paused">{T`paused`}</span>}
       <span className="panel-when">{when}</span>
     </a>
   )
@@ -244,16 +244,17 @@ function Problems({ problems }: { problems: HomeProblem[] }) {
         <a className="home-alert" key={problem.id} href={`#/integration/${problem.id}`}>
           <span className="chip chip-failed">{problem.status}</span>
           <span className="grow">
-            <b>{problem.name}</b> {ended(problem.status)} {since(problem.failedAt) ?? "recently"}
+            <b>{problem.name}</b> {ended(problem.status)} {since(problem.failedAt) ?? T`recently`}
             {problem.error ? `. ${problem.error}` : ""}
           </span>
-          <span className="home-alert-action">Look at the run</span>
+          <span className="home-alert-action">{T`Look at the run`}</span>
         </a>
       ))}
       {problems.length > shown.length && (
         <a className="home-alert-more" href="#/integrations">
-          {problems.length - shown.length} more integration
-          {problems.length - shown.length === 1 ? " is" : "s are"} failing
+          {problems.length - shown.length === 1
+            ? T`${problems.length - shown.length} more integration is failing`
+            : T`${problems.length - shown.length} more integrations are failing`}
         </a>
       )}
     </div>
@@ -283,18 +284,16 @@ function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean })
 
   return (
     <main className="home home-welcome">
-      <h1>{waiting ? "No data yet" : "Let's get some data in"}</h1>
+      <h1>{waiting ? T`No data yet` : T`Let's get some data in`}</h1>
       <p className="home-lede">
         {waiting
-          ? `${plural(home.counts.integrations, "integration")} set up, but nothing has landed yet.
-             Data appears here after a run finishes.`
-          : `Nothing has been ingested yet. Data arrives through integrations: small pipelines that
-             fetch from a source and keep it current on a schedule.`}
+          ? T`${plural(home.counts.integrations, T`integration`, T`integrations`)} set up, but nothing has landed yet. Data appears here after a run finishes.`
+          : T`Nothing has been ingested yet. Data arrives through integrations: small pipelines that fetch from a source and keep it current on a schedule.`}
       </p>
       {error && <div className="error">{error}</div>}
 
       {waiting ? (
-        <Panel title="Your integrations" link="Manage" href="#/integrations">
+        <Panel title={T`Your integrations`} link={T`Manage`} href="#/integrations">
           {home.integrations.map(i => (
             <IntegrationRow key={i.id} integration={i} />
           ))}
@@ -307,25 +306,25 @@ function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean })
               onClick={() => void design()}
               busy={busy}
               icon="agent"
-              title="Describe what you need"
-              description="Say where the data lives. The agent writes the pipeline, tests it, and shows you the result before anything is saved."
-              fact="Works for any source"
+              title={T`Describe what you need`}
+              description={T`Say where the data lives. The agent writes the pipeline, tests it, and shows you the result before anything is saved.`}
+              fact={T`Works for any source`}
             />
           )}
           {canLibrary && (
             <LinkCard
               href="#/library"
               icon="library"
-              title="Start from a ready-made one"
-              description="Common sources are already written and tested: rainfall, population, river discharge, elevation."
-              fact={`${plural(home.counts.library ?? 0, "source")} ready to install`}
+              title={T`Start from a ready-made one`}
+              description={T`Common sources are already written and tested: rainfall, population, river discharge, elevation.`}
+              fact={T`${plural(home.counts.library ?? 0, T`source`, T`sources`)} ready to install`}
             />
           )}
           {!canAgent && !canLibrary && (
             <p className="dim">
               {canDesign
-                ? "No model is configured and this server has no library, so integrations have to be installed with the CLI."
-                : "Ask an editor or administrator to add an integration."}
+                ? T`No model is configured and this server has no library, so integrations have to be installed with the CLI.`
+                : T`Ask an editor or administrator to add an integration.`}
             </p>
           )}
         </div>
@@ -333,7 +332,7 @@ function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean })
 
       <div className="home-after">
         <FlowDiagram />
-        Once data is in, you can chart it, map it, or ask questions about it.
+        {T`Once data is in, you can chart it, map it, or ask questions about it.`}
       </div>
     </main>
   )
@@ -365,8 +364,11 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
       <header className="home-hello">
         <h1>{home.title}</h1>
         <p>
-          <Count n={counts.integrations} one="integration" /> keeping{" "}
-          <Count n={sources} one="data source" /> current
+          {T`${(
+            <Count n={counts.integrations} one={T`integration`} many={T`integrations`} />
+          )} keeping ${(
+            <Count n={sources} one={T`data source`} many={T`data sources`} />
+          )} current`}
         </p>
       </header>
 
@@ -377,9 +379,9 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
           <LinkCard
             href="#/assistant"
             icon="ask"
-            title="Ask a question"
-            description="Plain language, answered from your data, with the query it ran shown."
-            fact={`Reads all ${plural(sources, "data source")}`}
+            title={T`Ask a question`}
+            description={T`Plain language, answered from your data, with the query it ran shown.`}
+            fact={T`Reads all ${plural(sources, T`data source`, T`data sources`)}`}
           />
         )}
         {canBuildDashboard ? (
@@ -387,37 +389,37 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
             onClick={() => void newDashboard()}
             busy={busy}
             icon="chart"
-            title="Build a dashboard"
-            description="Charts, tables and maps you can come back to."
-            fact={counts.dashboards > 0 ? `${counts.dashboards} already built` : "None yet"}
+            title={T`Build a dashboard`}
+            description={T`Charts, tables and maps you can come back to.`}
+            fact={counts.dashboards > 0 ? T`${counts.dashboards} already built` : T`None yet`}
           />
         ) : counts.dashboards > 0 ? (
           <LinkCard
             href="#/dashboards"
             icon="chart"
-            title="View dashboards"
-            description="Charts, tables and maps built from your data."
-            fact={plural(counts.dashboards, "dashboard")}
+            title={T`View dashboards`}
+            description={T`Charts, tables and maps built from your data.`}
+            fact={plural(counts.dashboards, T`dashboard`, T`dashboards`)}
           />
         ) : null}
         <LinkCard
           href="#/data"
           icon="data"
-          title="Explore your data"
-          description="Browse the tables and layers directly, or open them on the map."
-          fact={`${plural(counts.tables, "table")} · ${plural(counts.rasters, "raster layer")}`}
+          title={T`Explore your data`}
+          description={T`Browse the tables and layers directly, or open them on the map.`}
+          fact={`${plural(counts.tables, T`table`, T`tables`)} · ${plural(counts.rasters, T`raster layer`, T`raster layers`)}`}
         />
       </div>
 
       <Problems problems={home.problems} />
 
       <div className="home-columns">
-        <Panel title="Your data" link={`All ${sources} sources`} href="#/data">
+        <Panel title={T`Your data`} link={T`All ${sources} sources`} href="#/data">
           {home.sources.map(source => (
             <SourceRow key={`${source.kind}:${source.id}`} source={source} />
           ))}
         </Panel>
-        <Panel title="Integrations" link="Manage" href="#/integrations">
+        <Panel title={T`Integrations`} link={T`Manage`} href="#/integrations">
           {home.integrations.map(integration => (
             <IntegrationRow key={integration.id} integration={integration} />
           ))}

@@ -43,10 +43,10 @@ export function UserMenu({ user, onSignOut }: { user: User; onSignOut: () => voi
       {open && (
         <div className="user-menu-list" role="menu">
           <a role="menuitem" href="#/settings" onClick={() => setOpen(false)}>
-            Settings
+            {T`Settings`}
           </a>
           <button role="menuitem" onClick={onSignOut}>
-            Sign Out
+            {T`Sign Out`}
           </button>
         </div>
       )}

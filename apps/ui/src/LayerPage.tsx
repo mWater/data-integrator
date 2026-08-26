@@ -31,8 +31,8 @@ function bandLabel(band: LayerBand): string {
 
 /** Human byte size, for the storage line. */
 function bytes(n: number): string {
-  if (n <= 0) return "unknown"
-  const units = ["B", "KB", "MB", "GB", "TB"]
+  if (n <= 0) return T`unknown`
+  const units = [T`B`, T`KB`, T`MB`, T`GB`, T`TB`]
   const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
   const value = n / 1024 ** i
   return `${value >= 100 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`
@@ -156,14 +156,17 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
 
         {layer.snapshots.length === 0 ? (
           <p className="dim">
-            No data yet. Snapshots appear here once{" "}
-            <a href={`#/integration/${layer.integrationId}`}>{layer.integrationName}</a> runs.
+            {T`No data yet. Snapshots appear here once ${(
+              <a key="integration" href={`#/integration/${layer.integrationId}`}>
+                {layer.integrationName}
+              </a>
+            )} runs.`}
           </p>
         ) : (
           <>
             {layer.bands.length > 1 && (
               <section className="layer-section">
-                <h2>Band</h2>
+                <h2>{T`Band`}</h2>
                 <div className="layer-bands">
                   {layer.bands.map(b => (
                     <button
@@ -181,10 +184,10 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
             )}
 
             <section className="layer-section">
-              <h2>{layer.snapshots.length > 1 ? "Time" : "Observed"}</h2>
+              <h2>{layer.snapshots.length > 1 ? T`Time` : T`Observed`}</h2>
               <div className="layer-when">{snapshotLabel(snapshot.observed_at, interval)}</div>
               {interval && snapshot.observed_end && (
-                <div className="dim">through {snapshotLabel(snapshot.observed_end, true)}</div>
+                <div className="dim">{T`through ${snapshotLabel(snapshot.observed_end, true)}`}</div>
               )}
               {layer.snapshots.length > 1 && (
                 <>
@@ -193,11 +196,11 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
                     min={0}
                     max={layer.snapshots.length - 1}
                     value={index}
-                    aria-label="Snapshot time"
+                    aria-label={T`Snapshot time`}
                     onChange={e => setIndex(Number(e.target.value))}
                   />
                   <div className="dim">
-                    {index + 1} of {layer.snapshots.length} snapshots
+                    {T`${index + 1} of ${layer.snapshots.length} snapshots`}
                   </div>
                 </>
               )}
@@ -208,40 +211,40 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
         )}
 
         <section className="layer-section">
-          <h2>Details</h2>
+          <h2>{T`Details`}</h2>
           <dl className="layer-facts">
-            <dt>From</dt>
+            <dt>{T`From`}</dt>
             <dd>
               <a href={`#/integration/${layer.integrationId}`}>{layer.integrationName}</a>
             </dd>
-            <dt>Kind</dt>
-            <dd>{layer.temporality === "time-series" ? "Time series" : "Current only"}</dd>
-            <dt>Bands</dt>
-            <dd>{layer.bands.map(bandLabel).join(", ") || "none declared"}</dd>
+            <dt>{T`Kind`}</dt>
+            <dd>{layer.temporality === "time-series" ? T`Time series` : T`Current only`}</dd>
+            <dt>{T`Bands`}</dt>
+            <dd>{layer.bands.map(bandLabel).join(", ") || T`none declared`}</dd>
             {/* A declared NaN cannot survive jsonb, so it arrives as null;
                 only a real sentinel value is worth a row */}
             {typeof band?.nodata === "number" && Number.isFinite(band.nodata) && (
               <>
-                <dt>No data</dt>
+                <dt>{T`No data`}</dt>
                 <dd>{band.nodata.toLocaleString()}</dd>
               </>
             )}
-            <dt>Snapshots</dt>
+            <dt>{T`Snapshots`}</dt>
             <dd>{layer.snapshots.length.toLocaleString()}</dd>
             {layer.crs && (
               <>
-                <dt>CRS</dt>
+                <dt>{T`CRS`}</dt>
                 <dd>{layer.crs}</dd>
               </>
             )}
-            <dt>Storage</dt>
+            <dt>{T`Storage`}</dt>
             <dd>{bytes(layer.sizeBytes)}</dd>
           </dl>
         </section>
       </aside>
       {layer.snapshots.length === 0 ? (
         <div className="layer-map layer-map-empty">
-          <p>Nothing to draw yet. This layer has no promoted snapshots.</p>
+          <p>{T`Nothing to draw yet. This layer has no promoted snapshots.`}</p>
         </div>
       ) : (
         <div ref={container} className="layer-map" />

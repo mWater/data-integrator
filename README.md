@@ -109,6 +109,11 @@ The project is complete when all of these exist.
 - **AI query assistant** - Plain-language questions answered through the documented
   API, using the same swappable model provider. Optional: the platform works without
   it.
+- **Localization** *(UI built)* - Every string in the web UI goes through `ez-localize`,
+  with the catalog and its tooling in the repository: `pnpm localize` re-extracts the
+  strings, translates missing ones with the configured model, and exports/imports XLSX
+  for human review. Operators pick their language in Settings. Server-generated text
+  and agent replies are still English.
 - **Deployment and compliance package** - Clean-room install path configured for the
   pilot countries, plus the open-source evidence: SPDX/SBOM checks in CI, security
   policy, documentation, and knowledge-transfer materials.

@@ -48,14 +48,13 @@ function SkillsSection() {
 
   return (
     <section className="skills-section">
-      <h2>Skills</h2>
+      <h2>{T`Skills`}</h2>
       <p className="dim">
-        Source and technique notes the designer agent reads while building an integration: publishing
-        quirks, file layouts, working snippets. Reference material, nothing to install.
+        {T`Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.`}
       </p>
       {error && <div className="error">{error}</div>}
       {skills === null ? (
-        <p className="dim">Loading…</p>
+        <p className="dim">{T`Loading…`}</p>
       ) : (
         <ul className="skill-list">
           {skills.map(skill => {
@@ -71,11 +70,11 @@ function SkillsSection() {
                   </span>
                   <span className="skill-name">{skill.name}</span>
                   <span className="skill-desc">{skill.description}</span>
-                  {skill.verified && <span className="skill-verified">checked {skill.verified}</span>}
+                  {skill.verified && <span className="skill-verified">{T`checked ${skill.verified}`}</span>}
                 </button>
                 {expanded && (
                   <div className="skill-body">
-                    {detail ? <Markdown text={detail.body} /> : <p className="dim">Loading…</p>}
+                    {detail ? <Markdown text={detail.body} /> : <p className="dim">{T`Loading…`}</p>}
                   </div>
                 )}
               </li>
@@ -87,11 +86,16 @@ function SkillsSection() {
   )
 }
 
-/** Human label for the entry's relationship to this deployment. */
-const STATUS_LABEL: Record<LibraryEntry["status"], string> = {
-  not_installed: "not installed",
-  installed: "installed",
-  update_available: "update available"
+/**
+ * Human label for the entry's relationship to this deployment. Built per call
+ * rather than once at module load, so a locale change reaches them.
+ */
+function statusLabels(): Record<LibraryEntry["status"], string> {
+  return {
+    not_installed: T`not installed`,
+    installed: T`installed`,
+    update_available: T`update available`
+  }
 }
 
 /**
@@ -137,26 +141,26 @@ export function Library({ user }: { user: User }) {
 
   return (
     <main className="list-page">
-      <h1>Library</h1>
+      <h1>{T`Library`}</h1>
       <p className="dim">
-        Ready-made integrations shipped with this deployment. Installing copies the entry's
-        settings into your integration; updates keep your area of interest, schedule, and limits.
+        {T`Ready-made integrations shipped with this deployment. Installing copies the entry's settings into your integration; updates keep your area of interest, schedule, and limits.`}
       </p>
       {error && <div className="error">{error}</div>}
       {installed && (
         <p>
-          Installed <a href={`#/integration/${installed.id}`}>{installed.id}</a> (v{installed.version})
-          {installed.ran ? "; first ingest started." : "."}
+          {installed.ran
+            ? T`Installed ${<a href={`#/integration/${installed.id}`}>{installed.id}</a>} (v${installed.version}); first ingest started.`
+            : T`Installed ${<a href={`#/integration/${installed.id}`}>{installed.id}</a>} (v${installed.version}).`}
         </p>
       )}
       {entries === null ? (
-        <p>Loading…</p>
+        <p>{T`Loading…`}</p>
       ) : entries.length === 0 ? (
-        <p>This deployment has no library configured.</p>
+        <p>{T`This deployment has no library configured.`}</p>
       ) : (
         <table className="sessions">
           <thead>
-            <tr><th>Integration</th><th>Cadence</th><th>Destinations</th><th>Status</th>{canDesign && <th />}</tr>
+            <tr><th>{T`Integration`}</th><th>{T`Cadence`}</th><th>{T`Destinations`}</th><th>{T`Status`}</th>{canDesign && <th />}</tr>
           </thead>
           <tbody>
             {entries.map(entry => (
@@ -183,7 +187,7 @@ export function Library({ user }: { user: User }) {
                   </td>
                   <td>
                     <span className={`chip ${entry.status === "installed" ? "chip-finished" : entry.status === "update_available" ? "chip-paused" : ""}`}>
-                      {STATUS_LABEL[entry.status]}
+                      {statusLabels()[entry.status]}
                       {entry.installedVersion !== null ? ` (v${entry.installedVersion})` : ""}
                     </span>
                   </td>
@@ -191,7 +195,7 @@ export function Library({ user }: { user: User }) {
                     <td>
                       {entry.status !== "installed" && (
                         <button onClick={() => { setConfirming(confirming === entry.id ? null : entry.id); setInstalled(null) }}>
-                          {entry.status === "not_installed" ? "Install" : "Update"}
+                          {entry.status === "not_installed" ? T`Install` : T`Update`}
                         </button>
                       )}
                     </td>
@@ -202,31 +206,31 @@ export function Library({ user }: { user: User }) {
                     <td colSpan={canDesign ? 5 : 4}>
                       <div className="library-confirm-body">
                         <div>
-                          <b>Schedule:</b> {triggerLabel(entry.trigger)}
-                          {entry.trigger.cron ? <span className="dim"> (cron {entry.trigger.cron})</span> : null}
+                          <b>{T`Schedule:`}</b> {triggerLabel(entry.trigger)}
+                          {entry.trigger.cron ? <span className="dim"> {T`(cron ${entry.trigger.cron})`}</span> : null}
                         </div>
                         <div>
-                          <b>Area of interest:</b>{" "}
+                          <b>{T`Area of interest:`}</b>{" "}
                           {entry.status === "update_available" ? (
-                            <span>unchanged — keeps the installed integration's area</span>
+                            <span>{T`unchanged — keeps the installed integration's area`}</span>
                           ) : defaultAoi ? (
                             <span>
-                              deployment default — {defaultAoi.name ?? "custom"} [{defaultAoi.bbox.map(v => v.toFixed(2)).join(", ")}]
+                              {T`deployment default — ${defaultAoi.name ?? T`custom`} [${defaultAoi.bbox.map(v => v.toFixed(2)).join(", ")}]`}
                             </span>
                           ) : (
-                            <span>none set — the source's full extent</span>
+                            <span>{T`none set — the source's full extent`}</span>
                           )}
                         </div>
                         <label>
-                          <input type="checkbox" checked={runNow} onChange={e => setRunNow(e.target.checked)} /> Run
-                          first ingest now
+                          <input type="checkbox" checked={runNow} onChange={e => setRunNow(e.target.checked)} />{" "}
+                          {T`Run first ingest now`}
                         </label>
                         <div className="aoi-actions">
                           <button disabled={busy} onClick={() => install(entry)}>
-                            {busy ? "Installing…" : entry.status === "not_installed" ? "Install" : "Update"}
+                            {busy ? T`Installing…` : entry.status === "not_installed" ? T`Install` : T`Update`}
                           </button>
                           <button className="secondary" onClick={() => setConfirming(null)}>
-                            Cancel
+                            {T`Cancel`}
                           </button>
                         </div>
                       </div>

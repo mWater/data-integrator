@@ -34,7 +34,7 @@ export function Login({ onLogin }: LoginProps) {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          placeholder="email"
+          placeholder={T`email`}
           autoComplete="username"
           required
           autoFocus
@@ -43,12 +43,12 @@ export function Login({ onLogin }: LoginProps) {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          placeholder="password"
+          placeholder={T`password`}
           autoComplete="current-password"
           required
         />
         {error && <div className="error">{error}</div>}
-        <button type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign In"}</button>
+        <button type="submit" disabled={busy}>{busy ? T`Signing in…` : T`Sign In`}</button>
       </form>
     </main>
   )

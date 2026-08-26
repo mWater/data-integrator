@@ -51,7 +51,7 @@ function Compact() {
       className="flow-svg flow-compact"
       viewBox="0 0 660 62"
       role="img"
-      aria-label="Integrations write to Data. Dashboards, the Assistant, and the Map and API read from Data."
+      aria-label={T`Integrations write to Data. Dashboards, the Assistant, and the Map and API read from Data.`}
     >
       <Arrows suffix="c" />
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -61,9 +61,9 @@ function Compact() {
       <rect x="253" y="16" width="112" height="34" rx="7" fill="var(--tint)" stroke="var(--accent)" strokeWidth="1.75" />
 
       <g fontFamily="inherit" textAnchor="middle" fill="currentColor">
-        <text x="71" y="38" fontSize="12.5">Integrations</text>
-        <text x="309" y="38" fontSize="12.5" fontWeight="600" fill="var(--accent)">Data</text>
-        <text x="564" y="38" fontSize="12.5">Dashboards, Assistant, Map</text>
+        <text x="71" y="38" fontSize="12.5">{T`Integrations`}</text>
+        <text x="309" y="38" fontSize="12.5" fontWeight="600" fill="var(--accent)">{T`Data`}</text>
+        <text x="564" y="38" fontSize="12.5">{T`Dashboards, Assistant, Map`}</text>
       </g>
 
       <g stroke="var(--accent)" strokeWidth="1.75" fill="none">
@@ -72,8 +72,8 @@ function Compact() {
       </g>
 
       <g fontFamily="var(--font-mono)" fontSize="9.5" letterSpacing="1" textAnchor="middle" fill="var(--accent)">
-        <text x="193" y="26">WRITES</text>
-        <text x="413" y="26">READ</text>
+        <text x="193" y="26">{T`WRITES`}</text>
+        <text x="413" y="26">{T`READ`}</text>
       </g>
     </svg>
   )
@@ -86,7 +86,7 @@ function Full() {
       className="flow-svg flow-full"
       viewBox="0 0 880 180"
       role="img"
-      aria-label="Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data."
+      aria-label={T`Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.`}
     >
       <Arrows suffix="f" />
 
@@ -104,18 +104,18 @@ function Full() {
 
       <g fontFamily="inherit" fill="currentColor" textAnchor="middle">
         <g opacity=".72">
-          <text x="90" y="45" fontSize="12.5">Describe what you need</text>
-          <text x="90" y="60" fontSize="11" opacity=".8">the agent builds and tests it</text>
-          <text x="90" y="127" fontSize="12.5">Install a ready-made one</text>
-          <text x="90" y="142" fontSize="11" opacity=".8">from the library</text>
+          <text x="90" y="45" fontSize="12.5">{T`Describe what you need`}</text>
+          <text x="90" y="60" fontSize="11" opacity=".8">{T`the agent builds and tests it`}</text>
+          <text x="90" y="127" fontSize="12.5">{T`Install a ready-made one`}</text>
+          <text x="90" y="142" fontSize="11" opacity=".8">{T`from the library`}</text>
         </g>
-        <text x="294" y="86" fontSize="14" fontWeight="600">Integrations</text>
-        <text x="294" y="104" fontSize="11.5" opacity=".72">fetch on a schedule</text>
-        <text x="516" y="86" fontSize="14" fontWeight="600" fill="var(--accent)">Data</text>
-        <text x="516" y="104" fontSize="11.5" fill="var(--accent)" opacity=".85">tables + raster layers</text>
-        <text x="760" y="41" fontSize="13">Dashboards</text>
-        <text x="760" y="95" fontSize="13">Assistant</text>
-        <text x="760" y="149" fontSize="13">Map and API</text>
+        <text x="294" y="86" fontSize="14" fontWeight="600">{T`Integrations`}</text>
+        <text x="294" y="104" fontSize="11.5" opacity=".72">{T`fetch on a schedule`}</text>
+        <text x="516" y="86" fontSize="14" fontWeight="600" fill="var(--accent)">{T`Data`}</text>
+        <text x="516" y="104" fontSize="11.5" fill="var(--accent)" opacity=".85">{T`tables + raster layers`}</text>
+        <text x="760" y="41" fontSize="13">{T`Dashboards`}</text>
+        <text x="760" y="95" fontSize="13">{T`Assistant`}</text>
+        <text x="760" y="149" fontSize="13">{T`Map and API`}</text>
       </g>
 
       <g stroke="currentColor" strokeWidth="1.5" fill="none" opacity=".62">
@@ -133,9 +133,9 @@ function Full() {
       </g>
 
       <g fontFamily="var(--font-mono)" fontSize="10.5" letterSpacing="1" textAnchor="middle">
-        <text x="90" y="16" fill="currentColor" opacity=".55">EITHER WAY, OPTIONAL</text>
-        <text x="406" y="80" fill="var(--accent)">WRITES</text>
-        <text x="612" y="80" fill="var(--accent)">READ</text>
+        <text x="90" y="16" fill="currentColor" opacity=".55">{T`EITHER WAY, OPTIONAL`}</text>
+        <text x="406" y="80" fill="var(--accent)">{T`WRITES`}</text>
+        <text x="612" y="80" fill="var(--accent)">{T`READ`}</text>
       </g>
     </svg>
   )

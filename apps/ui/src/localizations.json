@@ -1,0 +1,3631 @@
+{
+  "locales": [
+    {
+      "code": "en",
+      "name": "English"
+    },
+    {
+      "code": "fr",
+      "name": "Français"
+    },
+    {
+      "code": "pt",
+      "name": "Português"
+    },
+    {
+      "code": "es",
+      "name": "Español"
+    },
+    {
+      "code": "mg",
+      "name": "Malagasy"
+    },
+    {
+      "code": "sw",
+      "name": "Kiswahili"
+    }
+  ],
+  "strings": [
+    {
+      "_base": "en",
+      "en": "Running code",
+      "fr": "Exécution du code",
+      "pt": "Executando código",
+      "es": "Ejecutando código",
+      "mg": "Mandefa kaody",
+      "sw": "Inaendesha msimbo"
+    },
+    {
+      "_base": "en",
+      "en": "Ran code",
+      "fr": "Code exécuté",
+      "pt": "Código executado",
+      "es": "Código ejecutado",
+      "mg": "Vita ny fandefasana kaody",
+      "sw": "Imeendesha msimbo"
+    },
+    {
+      "_base": "en",
+      "en": "Updating the design",
+      "fr": "Mise à jour de la conception",
+      "pt": "Atualizando o design",
+      "es": "Actualizando el diseño",
+      "mg": "Manavao ny famolavolana",
+      "sw": "Inasasisha muundo"
+    },
+    {
+      "_base": "en",
+      "en": "Updated the design",
+      "fr": "Conception mise à jour",
+      "pt": "Design atualizado",
+      "es": "Diseño actualizado",
+      "mg": "Voaova ny famolavolana",
+      "sw": "Imesasisha muundo"
+    },
+    {
+      "_base": "en",
+      "en": "Reading the design",
+      "fr": "Lecture de la conception",
+      "pt": "Lendo o design",
+      "es": "Leyendo el diseño",
+      "mg": "Mamaky ny famolavolana",
+      "sw": "Inasoma muundo"
+    },
+    {
+      "_base": "en",
+      "en": "Read the design",
+      "fr": "Conception lue",
+      "pt": "Design lido",
+      "es": "Diseño leído",
+      "mg": "Voavaky ny famolavolana",
+      "sw": "Imesoma muundo"
+    },
+    {
+      "_base": "en",
+      "en": "Editing code",
+      "fr": "Modification du code",
+      "pt": "Editando código",
+      "es": "Editando código",
+      "mg": "Manova kaody",
+      "sw": "Inahariri msimbo"
+    },
+    {
+      "_base": "en",
+      "en": "Edited code",
+      "fr": "Code modifié",
+      "pt": "Código editado",
+      "es": "Código editado",
+      "mg": "Voaova ny kaody",
+      "sw": "Imehariri msimbo"
+    },
+    {
+      "_base": "en",
+      "en": "Checking data",
+      "fr": "Vérification des données",
+      "pt": "Verificando dados",
+      "es": "Comprobando datos",
+      "mg": "Manamarina angona",
+      "sw": "Inakagua data"
+    },
+    {
+      "_base": "en",
+      "en": "Checked data",
+      "fr": "Données vérifiées",
+      "pt": "Dados verificados",
+      "es": "Datos comprobados",
+      "mg": "Voamarina ny angona",
+      "sw": "Imekagua data"
+    },
+    {
+      "_base": "en",
+      "en": "Saving",
+      "fr": "Enregistrement",
+      "pt": "Salvando",
+      "es": "Guardando",
+      "mg": "Mitahiry",
+      "sw": "Inahifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Saved",
+      "fr": "Enregistré",
+      "pt": "Salvo",
+      "es": "Guardado",
+      "mg": "Voatahiry",
+      "sw": "Imehifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Reading the draft",
+      "fr": "Lecture du brouillon",
+      "pt": "Lendo o rascunho",
+      "es": "Leyendo el borrador",
+      "mg": "Mamaky ny volavolan-kevitra",
+      "sw": "Inasoma rasimu"
+    },
+    {
+      "_base": "en",
+      "en": "Read the draft",
+      "fr": "Brouillon lu",
+      "pt": "Rascunho lido",
+      "es": "Borrador leído",
+      "mg": "Voavaky ny volavolan-kevitra",
+      "sw": "Imesoma rasimu"
+    },
+    {
+      "_base": "en",
+      "en": "Writing the dashboard",
+      "fr": "Création du tableau de bord",
+      "pt": "Criando o painel",
+      "es": "Creando el panel",
+      "mg": "Manoratra ny tabilao fanaraha-maso",
+      "sw": "Inaandika dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Wrote the dashboard",
+      "fr": "Tableau de bord créé",
+      "pt": "Painel criado",
+      "es": "Panel creado",
+      "mg": "Voasoratra ny tabilao fanaraha-maso",
+      "sw": "Imeandika dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Editing the dashboard",
+      "fr": "Modification du tableau de bord",
+      "pt": "Editando o painel",
+      "es": "Editando el panel",
+      "mg": "Manova ny tabilao fanaraha-maso",
+      "sw": "Inahariri dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Edited the dashboard",
+      "fr": "Tableau de bord modifié",
+      "pt": "Painel editado",
+      "es": "Panel editado",
+      "mg": "Voaova ny tabilao fanaraha-maso",
+      "sw": "Imehariri dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Updating queries",
+      "fr": "Mise à jour des requêtes",
+      "pt": "Atualizando consultas",
+      "es": "Actualizando consultas",
+      "mg": "Manavao ny fangatahana",
+      "sw": "Inasasisha hoja"
+    },
+    {
+      "_base": "en",
+      "en": "Updated queries",
+      "fr": "Requêtes mises à jour",
+      "pt": "Consultas atualizadas",
+      "es": "Consultas actualizadas",
+      "mg": "Voaova ny fangatahana",
+      "sw": "Imesasisha hoja"
+    },
+    {
+      "_base": "en",
+      "en": "Exploring data",
+      "fr": "Exploration des données",
+      "pt": "Explorando dados",
+      "es": "Explorando datos",
+      "mg": "Mikaroka angona",
+      "sw": "Inavinjari data"
+    },
+    {
+      "_base": "en",
+      "en": "Explored data",
+      "fr": "Données explorées",
+      "pt": "Dados explorados",
+      "es": "Datos explorados",
+      "mg": "Vita ny fikarohana angona",
+      "sw": "Imevinjari data"
+    },
+    {
+      "_base": "en",
+      "en": "Reading the schema",
+      "fr": "Lecture du schéma",
+      "pt": "Lendo o esquema",
+      "es": "Leyendo el esquema",
+      "mg": "Mamaky ny skema",
+      "sw": "Inasoma skima"
+    },
+    {
+      "_base": "en",
+      "en": "Read the schema",
+      "fr": "Schéma lu",
+      "pt": "Esquema lido",
+      "es": "Esquema leído",
+      "mg": "Voavaky ny skema",
+      "sw": "Imesoma skima"
+    },
+    {
+      "_base": "en",
+      "en": "Investigating the data",
+      "fr": "Analyse des données",
+      "pt": "Investigando os dados",
+      "es": "Investigando los datos",
+      "mg": "Manadihady ny angona",
+      "sw": "Inachunguza data"
+    },
+    {
+      "_base": "en",
+      "en": "Investigated the data",
+      "fr": "Données analysées",
+      "pt": "Dados investigados",
+      "es": "Datos investigados",
+      "mg": "Vita ny fanadihadiana ny angona",
+      "sw": "Imechunguza data"
+    },
+    {
+      "_base": "en",
+      "en": "Building a table",
+      "fr": "Création d’un tableau",
+      "pt": "Criando uma tabela",
+      "es": "Creando una tabla",
+      "mg": "Mamorona tabilao",
+      "sw": "Inaunda jedwali"
+    },
+    {
+      "_base": "en",
+      "en": "Built a table",
+      "fr": "Tableau créé",
+      "pt": "Tabela criada",
+      "es": "Tabla creada",
+      "mg": "Voaforona ny tabilao",
+      "sw": "Imeunda jedwali"
+    },
+    {
+      "_base": "en",
+      "en": "Drawing a chart",
+      "fr": "Création d’un graphique",
+      "pt": "Desenhando um gráfico",
+      "es": "Creando un gráfico",
+      "mg": "Mamorona kisary",
+      "sw": "Inachora chati"
+    },
+    {
+      "_base": "en",
+      "en": "Drew a chart",
+      "fr": "Graphique créé",
+      "pt": "Gráfico desenhado",
+      "es": "Gráfico creado",
+      "mg": "Voaforona ny kisary",
+      "sw": "Imechora chati"
+    },
+    {
+      "_base": "en",
+      "en": "Drawing a map",
+      "fr": "Création d’une carte",
+      "pt": "Desenhando um mapa",
+      "es": "Creando un mapa",
+      "mg": "Manao sarintany",
+      "sw": "Inachora ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Drew a map",
+      "fr": "Carte créée",
+      "pt": "Mapa desenhado",
+      "es": "Mapa creado",
+      "mg": "Vita ny sarintany",
+      "sw": "Imechora ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Looking up a place",
+      "fr": "Recherche d’un lieu",
+      "pt": "Procurando um lugar",
+      "es": "Buscando un lugar",
+      "mg": "Mitady toerana",
+      "sw": "Inatafuta mahali"
+    },
+    {
+      "_base": "en",
+      "en": "Looked up a place",
+      "fr": "Lieu trouvé",
+      "pt": "Lugar encontrado",
+      "es": "Lugar consultado",
+      "mg": "Vita ny fitadiavana toerana",
+      "sw": "Imetafuta mahali"
+    },
+    {
+      "_base": "en",
+      "en": "Testing from a clean slate",
+      "fr": "Test à partir de zéro",
+      "pt": "Testando do zero",
+      "es": "Probando desde cero",
+      "mg": "Mitsapa hatrany am-boalohany",
+      "sw": "Inajaribu kuanzia mwanzo kabisa"
+    },
+    {
+      "_base": "en",
+      "en": "Tested from a clean slate",
+      "fr": "Test effectué à partir de zéro",
+      "pt": "Teste do zero concluído",
+      "es": "Prueba desde cero completada",
+      "mg": "Vita ny fitsapana hatrany am-boalohany",
+      "sw": "Imejaribu kuanzia mwanzo kabisa"
+    },
+    {
+      "_base": "en",
+      "en": "Testing the integration",
+      "fr": "Test de l’intégration",
+      "pt": "Testando a integração",
+      "es": "Probando la integración",
+      "mg": "Mitsapa ny fampidirana angona",
+      "sw": "Inajaribu ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Tested the integration",
+      "fr": "Intégration testée",
+      "pt": "Integração testada",
+      "es": "Prueba de integración completada",
+      "mg": "Vita ny fitsapana ny fampidirana angona",
+      "sw": "Imejaribu ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "working",
+      "fr": "en cours",
+      "pt": "trabalhando",
+      "es": "trabajando",
+      "mg": "miasa",
+      "sw": "inafanya kazi"
+    },
+    {
+      "_base": "en",
+      "en": "Theme: system",
+      "fr": "Thème : système",
+      "pt": "Tema: sistema",
+      "es": "Tema: sistema",
+      "mg": "Endrika: rafitra",
+      "sw": "Mandhari: mfumo"
+    },
+    {
+      "_base": "en",
+      "en": "Theme: dark",
+      "fr": "Thème : sombre",
+      "pt": "Tema: escuro",
+      "es": "Tema: oscuro",
+      "mg": "Endrika: maizina",
+      "sw": "Mandhari: nyeusi"
+    },
+    {
+      "_base": "en",
+      "en": "Theme: light",
+      "fr": "Thème : clair",
+      "pt": "Tema: claro",
+      "es": "Tema: claro",
+      "mg": "Endrika: mazava",
+      "sw": "Mandhari: nyeupe"
+    },
+    {
+      "_base": "en",
+      "en": "Home",
+      "fr": "Accueil",
+      "pt": "Início",
+      "es": "Inicio",
+      "mg": "Fandraisana",
+      "sw": "Mwanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Data",
+      "fr": "Données",
+      "pt": "Dados",
+      "es": "Datos",
+      "mg": "Angona",
+      "sw": "Data"
+    },
+    {
+      "_base": "en",
+      "en": "Assistant",
+      "fr": "Assistant",
+      "pt": "Assistente",
+      "es": "Asistente",
+      "mg": "Mpanampy",
+      "sw": "Msaidizi"
+    },
+    {
+      "_base": "en",
+      "en": "Integrations",
+      "fr": "Intégrations",
+      "pt": "Integrações",
+      "es": "Integraciones",
+      "mg": "Fampidirana angona",
+      "sw": "Miunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "Library",
+      "fr": "Bibliothèque",
+      "pt": "Biblioteca",
+      "es": "Biblioteca",
+      "mg": "Tranomboky",
+      "sw": "Maktaba"
+    },
+    {
+      "_base": "en",
+      "en": "Dashboards",
+      "fr": "Tableaux de bord",
+      "pt": "Painéis",
+      "es": "Paneles",
+      "mg": "Tabilao fanaraha-maso",
+      "sw": "Dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "ready",
+      "fr": "prêt",
+      "pt": "pronto",
+      "es": "listo",
+      "mg": "vonona",
+      "sw": "tayari"
+    },
+    {
+      "_base": "en",
+      "en": "done",
+      "fr": "terminé",
+      "pt": "concluído",
+      "es": "completado",
+      "mg": "vita",
+      "sw": "imekamilika"
+    },
+    {
+      "_base": "en",
+      "en": "What data is available?",
+      "fr": "Quelles données sont disponibles ?",
+      "pt": "Quais dados estão disponíveis?",
+      "es": "¿Qué datos hay disponibles?",
+      "mg": "Inona avy ireo angona azo ampiasaina?",
+      "sw": "Ni data gani inayopatikana?"
+    },
+    {
+      "_base": "en",
+      "en": "Chart monthly rainfall for the last 12 months",
+      "fr": "Tracer les précipitations mensuelles des 12 derniers mois",
+      "pt": "Crie um gráfico da precipitação mensal dos últimos 12 meses",
+      "es": "Graficar la precipitación mensual de los últimos 12 meses",
+      "mg": "Manaova kisary maneho ny rotsak'orana isam-bolana nandritra ny 12 volana farany",
+      "sw": "Chora chati ya mvua ya kila mwezi kwa miezi 12 iliyopita"
+    },
+    {
+      "_base": "en",
+      "en": "Ask about the data",
+      "fr": "Poser une question sur les données",
+      "pt": "Pergunte sobre os dados",
+      "es": "Preguntar sobre los datos",
+      "mg": "Mametraha fanontaniana momba ny angona",
+      "sw": "Uliza kuhusu data"
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions, answered from the platform's ingested data with tables, charts, and maps - every answer carries its SQL and a CSV download.",
+      "fr": "Des questions en langage courant, avec des réponses basées sur les données ingérées par la plateforme sous forme de tableaux, graphiques et cartes - chaque réponse inclut sa requête SQL et un téléchargement CSV.",
+      "pt": "Perguntas em linguagem simples, respondidas com base nos dados ingeridos pela plataforma por meio de tabelas, gráficos e mapas - cada resposta inclui o SQL e um CSV para download.",
+      "es": "Preguntas en lenguaje sencillo, respondidas a partir de los datos ingeridos por la plataforma con tablas, gráficos y mapas; cada respuesta incluye su SQL y una descarga en CSV.",
+      "mg": "Fanontaniana amin'ny teny tsotra, valiana avy amin'ny angona nampidirin'ny sehatra amin'ny tabilao, kisary ary sarintany - miaraka amin'ny SQL sy CSV azo alaina ny valiny rehetra.",
+      "sw": "Maswali ya lugha rahisi, yanayojibiwa kwa kutumia data iliyoingizwa kwenye jukwaa pamoja na majedwali, chati na ramani - kila jibu lina SQL yake na upakuaji wa CSV."
+    },
+    {
+      "_base": "en",
+      "en": "Describe the data you want, e.g.:\nrainfall and groundwater levels for southern Madagascar over the last 6 months\n\nName the place, the period, and the measurements you care about.",
+      "fr": "Décrivez les données souhaitées, par ex. :\nprécipitations et niveaux des eaux souterraines dans le sud de Madagascar au cours des 6 derniers mois\n\nIndiquez le lieu, la période et les mesures qui vous intéressent.",
+      "pt": "Descreva os dados que deseja, por exemplo:\nprecipitação e níveis de água subterrânea no sul de Madagascar nos últimos 6 meses\n\nIndique o local, o período e as medições de interesse.",
+      "es": "Describa los datos que desea, p. ej.:\nprecipitación y niveles de aguas subterráneas en el sur de Madagascar durante los últimos 6 meses\n\nIndique el lugar, el período y las mediciones que le interesan.",
+      "mg": "Farito ny angona tadiavinao, oh.:\nrotsak'orana sy haavon'ny rano ambanin'ny tany any atsimon'i Madagasikara nandritra ny 6 volana farany\n\nLazao ny toerana, ny fe-potoana ary ny fandrefesana ilainao.",
+      "sw": "Eleza data unayotaka, kwa mfano:\nkiwango cha mvua na maji ya ardhini kusini mwa Madagascar katika miezi 6 iliyopita\n\nTaja eneo, kipindi na vipimo unavyohitaji."
+    },
+    {
+      "_base": "en",
+      "en": "Ask",
+      "fr": "Demander",
+      "pt": "Perguntar",
+      "es": "Preguntar",
+      "mg": "Anontanio",
+      "sw": "Uliza"
+    },
+    {
+      "_base": "en",
+      "en": "Past conversations",
+      "fr": "Conversations précédentes",
+      "pt": "Conversas anteriores",
+      "es": "Conversaciones anteriores",
+      "mg": "Resaka teo aloha",
+      "sw": "Mazungumzo ya awali"
+    },
+    {
+      "_base": "en",
+      "en": "Question",
+      "fr": "Question",
+      "pt": "Pergunta",
+      "es": "Pregunta",
+      "mg": "Fanontaniana",
+      "sw": "Swali"
+    },
+    {
+      "_base": "en",
+      "en": "Status",
+      "fr": "Statut",
+      "pt": "Status",
+      "es": "Estado",
+      "mg": "Sata",
+      "sw": "Hali"
+    },
+    {
+      "_base": "en",
+      "en": "Updated",
+      "fr": "Mis à jour",
+      "pt": "Atualizado",
+      "es": "Actualizado",
+      "mg": "Nohavaozina",
+      "sw": "Imesasishwa"
+    },
+    {
+      "_base": "en",
+      "en": "(empty)",
+      "fr": "(vide)",
+      "pt": "(vazio)",
+      "es": "(vacío)",
+      "mg": "(foana)",
+      "sw": "(tupu)"
+    },
+    {
+      "_base": "en",
+      "en": "Delete chat",
+      "fr": "Supprimer la discussion",
+      "pt": "Excluir conversa",
+      "es": "Eliminar chat",
+      "mg": "Fafao ny resaka",
+      "sw": "Futa gumzo"
+    },
+    {
+      "_base": "en",
+      "en": "Delete chat: {0}",
+      "fr": "Supprimer la discussion : {0}",
+      "pt": "Excluir conversa: {0}",
+      "es": "Eliminar chat: {0}",
+      "mg": "Fafao ny resaka: {0}",
+      "sw": "Futa gumzo: {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Delete this conversation?",
+      "fr": "Supprimer cette conversation ?",
+      "pt": "Excluir esta conversa?",
+      "es": "¿Eliminar esta conversación?",
+      "mg": "Fafana ity resaka ity?",
+      "sw": "Ufute mazungumzo haya?"
+    },
+    {
+      "_base": "en",
+      "en": "Delete",
+      "fr": "Supprimer",
+      "pt": "Excluir",
+      "es": "Eliminar",
+      "mg": "Fafao",
+      "sw": "Futa"
+    },
+    {
+      "_base": "en",
+      "en": "This cannot be undone.",
+      "fr": "Cette action est irréversible.",
+      "pt": "Esta ação não pode ser desfeita.",
+      "es": "Esta acción no se puede deshacer.",
+      "mg": "Tsy azo averina izany.",
+      "sw": "Kitendo hiki hakiwezi kutenduliwa."
+    },
+    {
+      "_base": "en",
+      "en": "result unavailable",
+      "fr": "résultat indisponible",
+      "pt": "resultado indisponível",
+      "es": "resultado no disponible",
+      "mg": "tsy misy ny valiny",
+      "sw": "matokeo hayapatikani"
+    },
+    {
+      "_base": "en",
+      "en": "CSV",
+      "fr": "CSV",
+      "pt": "CSV",
+      "es": "CSV",
+      "mg": "CSV",
+      "sw": "CSV"
+    },
+    {
+      "_base": "en",
+      "en": "Hide SQL",
+      "fr": "Masquer SQL",
+      "pt": "Ocultar SQL",
+      "es": "Ocultar SQL",
+      "mg": "Afeno ny SQL",
+      "sw": "Ficha SQL"
+    },
+    {
+      "_base": "en",
+      "en": "SQL",
+      "fr": "SQL",
+      "pt": "SQL",
+      "es": "SQL",
+      "mg": "SQL",
+      "sw": "SQL"
+    },
+    {
+      "_base": "en",
+      "en": "{0} row",
+      "fr": "{0} ligne",
+      "pt": "{0} linha",
+      "es": "{0} fila",
+      "mg": "andalana {0}",
+      "sw": "safu mlalo {0}"
+    },
+    {
+      "_base": "en",
+      "en": "{0} rows",
+      "fr": "{0} lignes",
+      "pt": "{0} linhas",
+      "es": "{0} filas",
+      "mg": "andalana {0}",
+      "sw": "safu mlalo {0}"
+    },
+    {
+      "_base": "en",
+      "en": "New Dashboard",
+      "fr": "Nouveau tableau de bord",
+      "pt": "Novo painel",
+      "es": "Nuevo panel",
+      "mg": "Tabilao fanaraha-maso vaovao",
+      "sw": "Dashibodi mpya"
+    },
+    {
+      "_base": "en",
+      "en": "No dashboards yet. Create one with the designer agent.",
+      "fr": "Aucun tableau de bord pour le moment. Créez-en un avec l’agent de conception.",
+      "pt": "Ainda não há painéis. Crie um com o agente de criação.",
+      "es": "Aún no hay paneles. Cree uno con el agente de diseño.",
+      "mg": "Tsy mbola misy tabilao fanaraha-maso. Mamoròna iray amin'ny alalan'ny mpanampy mpamolavola.",
+      "sw": "Bado hakuna dashibodi. Unda moja kwa kutumia wakala wa usanifu."
+    },
+    {
+      "_base": "en",
+      "en": "No dashboards yet.",
+      "fr": "Aucun tableau de bord pour le moment.",
+      "pt": "Ainda não há painéis.",
+      "es": "Aún no hay paneles.",
+      "mg": "Tsy mbola misy tabilao fanaraha-maso.",
+      "sw": "Bado hakuna dashibodi."
+    },
+    {
+      "_base": "en",
+      "en": "Name",
+      "fr": "Nom",
+      "pt": "Nome",
+      "es": "Nombre",
+      "mg": "Anarana",
+      "sw": "Jina"
+    },
+    {
+      "_base": "en",
+      "en": "Version",
+      "fr": "Version",
+      "pt": "Versão",
+      "es": "Versión",
+      "mg": "Dika",
+      "sw": "Toleo"
+    },
+    {
+      "_base": "en",
+      "en": "Edit with Agent",
+      "fr": "Modifier avec l’agent",
+      "pt": "Editar com o agente",
+      "es": "Editar con el agente",
+      "mg": "Ovao miaraka amin'ny mpanampy",
+      "sw": "Hariri kwa kutumia wakala"
+    },
+    {
+      "_base": "en",
+      "en": "Delete “{0}”?",
+      "fr": "Supprimer « {0} » ?",
+      "pt": "Excluir “{0}”?",
+      "es": "¿Eliminar «{0}»?",
+      "mg": "Fafana i “{0}”?",
+      "sw": "Ufute “{0}”?"
+    },
+    {
+      "_base": "en",
+      "en": "This permanently deletes the dashboard and all {0} of its saved versions. Anyone with a link to it will get a 404.",
+      "fr": "Cette action supprime définitivement le tableau de bord et l’ensemble de ses {0} versions enregistrées. Toute personne disposant d’un lien vers celui-ci obtiendra une erreur 404.",
+      "pt": "Isso exclui permanentemente o painel e todas as {0} versões salvas. Quem tiver um link para ele receberá um erro 404.",
+      "es": "Esto eliminará permanentemente el panel y sus {0} versiones guardadas. Quienes tengan un enlace recibirán un error 404.",
+      "mg": "Hofafana tanteraka ny tabilao fanaraha-maso sy ireo dika {0} rehetra voatahiry. Hahazo 404 izay rehetra manana rohy mankany aminy.",
+      "sw": "Hii itafuta kabisa dashibodi na matoleo yake {0} yote yaliyohifadhiwa. Yeyote aliye na kiungo chake atapata hitilafu ya 404."
+    },
+    {
+      "_base": "en",
+      "en": "Design sessions that built it are kept, with their link to this dashboard cleared.",
+      "fr": "Les sessions de conception qui l’ont créé sont conservées, mais leur lien vers ce tableau de bord est supprimé.",
+      "pt": "As sessões de design que o criaram são mantidas, mas o vínculo delas com este painel é removido.",
+      "es": "Se conservan las sesiones de diseño que lo crearon, pero se elimina su vínculo con este panel.",
+      "mg": "Tazonina ireo fotoam-pandrafetana nananganana azy, fa foanana ny rohin’izy ireo amin’ity tabilao ity.",
+      "sw": "Vipindi vya usanifu vilivyoiunda vinahifadhiwa, lakini viungo vyake kwenye dashibodi hii vinaondolewa."
+    },
+    {
+      "_base": "en",
+      "en": "Integrations write to Data. Dashboards, the Assistant, and the Map and API read from Data.",
+      "fr": "Les intégrations écrivent dans les Données. Les tableaux de bord, l’Assistant, la Carte et l’API lisent les Données.",
+      "pt": "As integrações gravam em Dados. Os painéis, o Assistente, o Mapa e a API leem de Dados.",
+      "es": "Las integraciones escriben en Datos. Los paneles, el Asistente, el Mapa y la API leen de Datos.",
+      "mg": "Ny fampidirana no manoratra ao amin’ny Angona. Ny tabilao, ny Mpanampy, ary ny Sarintany sy API no mamaky avy ao amin’ny Angona.",
+      "sw": "Miunganisho huandika kwenye Data. Dashibodi, Msaidizi, Ramani na API husoma kutoka Data."
+    },
+    {
+      "_base": "en",
+      "en": "Dashboards, Assistant, Map",
+      "fr": "Tableaux de bord, Assistant, Carte",
+      "pt": "Painéis, Assistente, Mapa",
+      "es": "Paneles, Asistente, Mapa",
+      "mg": "Tabilao, Mpanampy, Sarintany",
+      "sw": "Dashibodi, Msaidizi, Ramani"
+    },
+    {
+      "_base": "en",
+      "en": "WRITES",
+      "fr": "ÉCRIVENT",
+      "pt": "ESCREVE",
+      "es": "ESCRIBE",
+      "mg": "MANORATRA",
+      "sw": "HUANDIKA"
+    },
+    {
+      "_base": "en",
+      "en": "READ",
+      "fr": "LISENT",
+      "pt": "LEEM",
+      "es": "LEEN",
+      "mg": "MAMAKY",
+      "sw": "HUSOMA"
+    },
+    {
+      "_base": "en",
+      "en": "webhook",
+      "fr": "webhook",
+      "pt": "webhook",
+      "es": "webhook",
+      "mg": "webhook",
+      "sw": "webhook"
+    },
+    {
+      "_base": "en",
+      "en": "manual",
+      "fr": "manuel",
+      "pt": "manual",
+      "es": "manual",
+      "mg": "an-tanana",
+      "sw": "kwa mkono"
+    },
+    {
+      "_base": "en",
+      "en": "New Integration",
+      "fr": "Nouvelle intégration",
+      "pt": "Nova integração",
+      "es": "Nueva integración",
+      "mg": "Fampidirana vaovao",
+      "sw": "Muunganisho mpya"
+    },
+    {
+      "_base": "en",
+      "en": "Agent activity ({0} open)",
+      "fr": "Activité de l’agent ({0} en cours)",
+      "pt": "Atividade do agente ({0} em aberto)",
+      "es": "Actividad del agente ({0} abiertas)",
+      "mg": "Hetsiky ny agent ({0} misokatra)",
+      "sw": "Shughuli za ajenti ({0} wazi)"
+    },
+    {
+      "_base": "en",
+      "en": "Agent activity",
+      "fr": "Activité de l’agent",
+      "pt": "Atividade do agente",
+      "es": "Actividad del agente",
+      "mg": "Hetsiky ny agent",
+      "sw": "Shughuli za ajenti"
+    },
+    {
+      "_base": "en",
+      "en": "Loading…",
+      "fr": "Chargement…",
+      "pt": "Carregando…",
+      "es": "Cargando…",
+      "mg": "Mampiditra…",
+      "sw": "Inapakia…"
+    },
+    {
+      "_base": "en",
+      "en": "Nothing installed yet. New Integration starts a design session; describe what to build there.",
+      "fr": "Rien n’est encore installé. Nouvelle intégration lance une session de conception ; décrivez-y ce qu’il faut créer.",
+      "pt": "Nada instalado ainda. Nova integração inicia uma sessão de design; descreva nela o que deseja criar.",
+      "es": "Aún no hay nada instalado. Nueva integración inicia una sesión de diseño; describa allí qué quiere crear.",
+      "mg": "Tsy mbola misy napetraka. Ny Fampidirana vaovao dia manomboka fotoam-pandrafetana; farito ao izay hatsangana.",
+      "sw": "Hakuna kilichosakinishwa bado. Muunganisho mpya huanzisha kipindi cha usanifu; eleza cha kuunda humo."
+    },
+    {
+      "_base": "en",
+      "en": "Integration",
+      "fr": "Intégration",
+      "pt": "Integração",
+      "es": "Integración",
+      "mg": "Fampidirana",
+      "sw": "Muunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "Trigger",
+      "fr": "Déclencheur",
+      "pt": "Gatilho",
+      "es": "Activador",
+      "mg": "Fanombohana",
+      "sw": "Kichochezi"
+    },
+    {
+      "_base": "en",
+      "en": "Last run",
+      "fr": "Dernière exécution",
+      "pt": "Última execução",
+      "es": "Última ejecución",
+      "mg": "Fampandehanana farany",
+      "sw": "Uendeshaji wa mwisho"
+    },
+    {
+      "_base": "en",
+      "en": "draft",
+      "fr": "brouillon",
+      "pt": "rascunho",
+      "es": "borrador",
+      "mg": "volavola",
+      "sw": "rasimu"
+    },
+    {
+      "_base": "en",
+      "en": "never",
+      "fr": "jamais",
+      "pt": "nunca",
+      "es": "nunca",
+      "mg": "tsy mbola",
+      "sw": "haijawahi"
+    },
+    {
+      "_base": "en",
+      "en": "paused",
+      "fr": "en pause",
+      "pt": "pausada",
+      "es": "en pausa",
+      "mg": "naato",
+      "sw": "imesitishwa"
+    },
+    {
+      "_base": "en",
+      "en": "Paused integrations are skipped by the scheduler",
+      "fr": "Les intégrations en pause sont ignorées par le planificateur",
+      "pt": "Integrações pausadas são ignoradas pelo agendador",
+      "es": "El planificador omite las integraciones en pausa",
+      "mg": "Tsy ampandehanin’ny mpandrindra fandaharam-potoana ireo fampidirana naato",
+      "sw": "Miunganisho iliyositishwa haitekelezwi na kipanga ratiba"
+    },
+    {
+      "_base": "en",
+      "en": "Pause",
+      "fr": "Mettre en pause",
+      "pt": "Pausar",
+      "es": "Pausar",
+      "mg": "Aato",
+      "sw": "Sitisha"
+    },
+    {
+      "_base": "en",
+      "en": "Resume",
+      "fr": "Reprendre",
+      "pt": "Retomar",
+      "es": "Reanudar",
+      "mg": "Tohizo",
+      "sw": "Endelea"
+    },
+    {
+      "_base": "en",
+      "en": "Running…",
+      "fr": "Exécution…",
+      "pt": "Executando…",
+      "es": "Ejecutando…",
+      "mg": "Mandeha…",
+      "sw": "Inaendeshwa…"
+    },
+    {
+      "_base": "en",
+      "en": "Run Now",
+      "fr": "Exécuter maintenant",
+      "pt": "Executar agora",
+      "es": "Ejecutar ahora",
+      "mg": "Alefaso izao",
+      "sw": "Endesha sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Design with Agent",
+      "fr": "Concevoir avec l’agent",
+      "pt": "Criar com o agente",
+      "es": "Diseñar con el agente",
+      "mg": "Rafeto miaraka amin’ny agent",
+      "sw": "Sanifu na Ajenti"
+    },
+    {
+      "_base": "en",
+      "en": "table",
+      "fr": "table",
+      "pt": "tabela",
+      "es": "tabla",
+      "mg": "tabilao",
+      "sw": "jedwali"
+    },
+    {
+      "_base": "en",
+      "en": "raster layer",
+      "fr": "couche raster",
+      "pt": "camada raster",
+      "es": "capa ráster",
+      "mg": "sosona raster",
+      "sw": "tabaka la rasta"
+    },
+    {
+      "_base": "en",
+      "en": "first run in progress…",
+      "fr": "première exécution en cours…",
+      "pt": "primeira execução em andamento…",
+      "es": "primera ejecución en curso…",
+      "mg": "mandeha ny fampandehanana voalohany…",
+      "sw": "uendeshaji wa kwanza unaendelea…"
+    },
+    {
+      "_base": "en",
+      "en": "no data yet — Run Now loads it",
+      "fr": "pas encore de données — Exécuter maintenant pour les charger",
+      "pt": "ainda sem dados — use Executar agora para carregá-los",
+      "es": "aún no hay datos — Ejecutar ahora los carga",
+      "mg": "tsy mbola misy angona — Alefaso izao hampidirana azy",
+      "sw": "bado hakuna data — Endesha sasa huipakia"
+    },
+    {
+      "_base": "en",
+      "en": "no data yet",
+      "fr": "pas encore de données",
+      "pt": "ainda sem dados",
+      "es": "aún no hay datos",
+      "mg": "tsy mbola misy angona",
+      "sw": "bado hakuna data"
+    },
+    {
+      "_base": "en",
+      "en": "{0} snapshots",
+      "fr": "{0} instantanés",
+      "pt": "{0} instantâneos",
+      "es": "{0} instantáneas",
+      "mg": "dika voatahiry {0}",
+      "sw": "nakala {0} za wakati"
+    },
+    {
+      "_base": "en",
+      "en": "View on map",
+      "fr": "Voir sur la carte",
+      "pt": "Ver no mapa",
+      "es": "Ver en el mapa",
+      "mg": "Jereo amin’ny sarintany",
+      "sw": "Tazama kwenye ramani"
+    },
+    {
+      "_base": "en",
+      "en": "No runs yet.",
+      "fr": "Aucune exécution pour l’instant.",
+      "pt": "Nenhuma execução ainda.",
+      "es": "Aún no hay ejecuciones.",
+      "mg": "Tsy mbola nisy fampandehanana.",
+      "sw": "Bado hakuna uendeshaji."
+    },
+    {
+      "_base": "en",
+      "en": "When",
+      "fr": "Date",
+      "pt": "Quando",
+      "es": "Cuándo",
+      "mg": "Oviana",
+      "sw": "Wakati"
+    },
+    {
+      "_base": "en",
+      "en": "Result",
+      "fr": "Résultat",
+      "pt": "Resultado",
+      "es": "Resultado",
+      "mg": "Vokatra",
+      "sw": "Matokeo"
+    },
+    {
+      "_base": "en",
+      "en": "queued",
+      "fr": "en attente",
+      "pt": "na fila",
+      "es": "en cola",
+      "mg": "miandry filaharana",
+      "sw": "kwenye foleni"
+    },
+    {
+      "_base": "en",
+      "en": "{0} in {1}s",
+      "fr": "{0} en {1} s",
+      "pt": "{0} em {1}s",
+      "es": "{0} en {1} s",
+      "mg": "{0} tao anatin’ny {1}s",
+      "sw": "{0} ndani ya sekunde {1}"
+    },
+    {
+      "_base": "en",
+      "en": "No change.",
+      "fr": "Aucun changement.",
+      "pt": "Sem alterações.",
+      "es": "Sin cambios.",
+      "mg": "Tsy misy fiovana.",
+      "sw": "Hakuna mabadiliko."
+    },
+    {
+      "_base": "en",
+      "en": "Saved as version {0}.",
+      "fr": "Enregistré comme version {0}.",
+      "pt": "Salvo como versão {0}.",
+      "es": "Guardado como versión {0}.",
+      "mg": "Voatahiry ho kinova {0}.",
+      "sw": "Imehifadhiwa kama toleo la {0}."
+    },
+    {
+      "_base": "en",
+      "en": "Schedule",
+      "fr": "Planification",
+      "pt": "Agendamento",
+      "es": "Programación",
+      "mg": "Fandaharam-potoana",
+      "sw": "Ratiba"
+    },
+    {
+      "_base": "en",
+      "en": "Current:",
+      "fr": "Actuel :",
+      "pt": "Atual:",
+      "es": "Actual:",
+      "mg": "Ankehitriny:",
+      "sw": "Ya sasa:"
+    },
+    {
+      "_base": "en",
+      "en": "(cron {0})",
+      "fr": "(cron {0})",
+      "pt": "(cron {0})",
+      "es": "(cron {0})",
+      "mg": "(cron {0})",
+      "sw": "(cron {0})"
+    },
+    {
+      "_base": "en",
+      "en": "cron (UTC; empty for manual only)",
+      "fr": "cron (UTC ; vide pour exécution manuelle uniquement)",
+      "pt": "cron (UTC; vazio somente para execução manual)",
+      "es": "cron (UTC; vacío para ejecución solo manual)",
+      "mg": "cron (UTC; avela banga raha amin’ny tanana ihany)",
+      "sw": "cron (UTC; acha tupu kwa uendeshaji wa mikono pekee)"
+    },
+    {
+      "_base": "en",
+      "en": "Accept webhook events",
+      "fr": "Accepter les événements webhook",
+      "pt": "Aceitar eventos de webhook",
+      "es": "Aceptar eventos de webhook",
+      "mg": "Raiso ny hetsika webhook",
+      "sw": "Kubali matukio ya webhook"
+    },
+    {
+      "_base": "en",
+      "en": "Save",
+      "fr": "Enregistrer",
+      "pt": "Salvar",
+      "es": "Guardar",
+      "mg": "Tehirizo",
+      "sw": "Hifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Saving archives a new definition version. Pause instead to stop runs temporarily.",
+      "fr": "L’enregistrement archive une nouvelle version de la définition. Mettez plutôt en pause pour suspendre temporairement les exécutions.",
+      "pt": "Ao salvar, uma nova versão da definição é arquivada. Para interromper temporariamente as execuções, pause.",
+      "es": "Al guardar, se archiva una nueva versión de la definición. Para detener temporalmente las ejecuciones, póngala en pausa.",
+      "mg": "Ny fitahirizana dia mandrakitra kinova vaovaon’ny famaritana. Ajanony vetivety kosa mba hampitsahatra vonjimaika ny fampandehanana.",
+      "sw": "Kuhifadhi huweka toleo jipya la ufafanuzi kwenye kumbukumbu. Sitisha badala yake ili kusimamisha uendeshaji kwa muda."
+    },
+    {
+      "_base": "en",
+      "en": "Deployment default",
+      "fr": "Valeur par défaut du déploiement",
+      "pt": "Padrão da implantação",
+      "es": "Valor predeterminado del despliegue",
+      "mg": "Sanda mahazatran’ny fametrahana",
+      "sw": "Chaguo-msingi la usakinishaji"
+    },
+    {
+      "_base": "en",
+      "en": "custom",
+      "fr": "personnalisé",
+      "pt": "personalizada",
+      "es": "personalizado",
+      "mg": "manokana",
+      "sw": "maalum"
+    },
+    {
+      "_base": "en",
+      "en": "none set, so the source's full extent",
+      "fr": "aucune définie, donc toute l’étendue de la source",
+      "pt": "nenhuma definida; portanto, toda a extensão da fonte",
+      "es": "sin definir; se usa la extensión completa de la fuente",
+      "mg": "tsy misy voafaritra, ka ny velarana manontolon’ny loharano",
+      "sw": "hakuna lililowekwa, hivyo eneo lote la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Full source extent",
+      "fr": "Toute l’étendue de la source",
+      "pt": "Toda a extensão da fonte",
+      "es": "Extensión completa de la fuente",
+      "mg": "Velarana manontolon’ny loharano",
+      "sw": "Eneo lote la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Custom box",
+      "fr": "Emprise personnalisée",
+      "pt": "Caixa personalizada",
+      "es": "Cuadro personalizado",
+      "mg": "Efajoro manokana",
+      "sw": "Kisanduku maalum"
+    },
+    {
+      "_base": "en",
+      "en": "Pick a country first",
+      "fr": "Sélectionnez d’abord un pays",
+      "pt": "Selecione um país primeiro",
+      "es": "Seleccione primero un país",
+      "mg": "Misafidiana firenena aloha",
+      "sw": "Chagua nchi kwanza"
+    },
+    {
+      "_base": "en",
+      "en": "All four bbox values are required",
+      "fr": "Les quatre valeurs bbox sont obligatoires",
+      "pt": "Os quatro valores da caixa delimitadora são obrigatórios",
+      "es": "Se requieren los cuatro valores del cuadro delimitador",
+      "mg": "Ilaina avokoa ny sanda bbox efatra",
+      "sw": "Thamani zote nne za bbox zinahitajika"
+    },
+    {
+      "_base": "en",
+      "en": "Saved as version {0}; future runs use it.",
+      "fr": "Enregistré comme version {0} ; les prochaines exécutions l’utiliseront.",
+      "pt": "Salva como versão {0}; as próximas execuções usarão essa versão.",
+      "es": "Guardada como versión {0}; se usará en futuras ejecuciones.",
+      "mg": "Voatahiry ho kinova {0}; io no hampiasain’ny fampandehanana manaraka.",
+      "sw": "Imehifadhiwa kama toleo {0}; uendeshaji wa baadaye utalitumia."
+    },
+    {
+      "_base": "en",
+      "en": "Area of interest",
+      "fr": "Zone d’intérêt",
+      "pt": "Área de interesse",
+      "es": "Área de interés",
+      "mg": "Faritra mahaliana",
+      "sw": "Eneo la matumizi"
+    },
+    {
+      "_base": "en",
+      "en": "Country",
+      "fr": "Pays",
+      "pt": "País",
+      "es": "País",
+      "mg": "Firenena",
+      "sw": "Nchi"
+    },
+    {
+      "_base": "en",
+      "en": "Custom bounding box",
+      "fr": "Emprise personnalisée",
+      "pt": "Caixa delimitadora personalizada",
+      "es": "Cuadro delimitador personalizado",
+      "mg": "Efajoro mamaritra manokana",
+      "sw": "Kisanduku maalum cha mipaka"
+    },
+    {
+      "_base": "en",
+      "en": "Pick a country…",
+      "fr": "Sélectionnez un pays…",
+      "pt": "Selecione um país…",
+      "es": "Seleccione un país…",
+      "mg": "Misafidiana firenena…",
+      "sw": "Chagua nchi…"
+    },
+    {
+      "_base": "en",
+      "en": "Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.",
+      "fr": "L’enregistrement archive une nouvelle version de la définition. Les données existantes ne sont pas affectées ; l’élargissement de la zone nécessite un rechargement historique.",
+      "pt": "Ao salvar, uma nova versão da definição é arquivada. Os dados existentes não são afetados; ampliar a área exige uma recarga retroativa.",
+      "es": "Al guardar, se archiva una nueva versión de la definición. Los datos existentes no se ven afectados; ampliar el área requiere una carga histórica.",
+      "mg": "Ny fitahirizana dia mandrakitra kinova vaovaon’ny famaritana. Tsy voakasika ny angona efa misy; mila famenoana ny angona taloha ny fanitarana ny faritra.",
+      "sw": "Kuhifadhi huweka toleo jipya la ufafanuzi kwenye kumbukumbu. Data zilizopo haziathiriki; kupanua eneo kunahitaji kujaza data za nyuma."
+    },
+    {
+      "_base": "en",
+      "en": "Versions",
+      "fr": "Versions",
+      "pt": "Versões",
+      "es": "Versiones",
+      "mg": "Kinova",
+      "sw": "Matoleo"
+    },
+    {
+      "_base": "en",
+      "en": "definition history, newest first",
+      "fr": "historique des définitions, plus récentes en premier",
+      "pt": "histórico da definição, da mais recente para a mais antiga",
+      "es": "historial de definiciones, más recientes primero",
+      "mg": "tantaran’ny famaritana, ny vaovao indrindra aloha",
+      "sw": "historia ya ufafanuzi, mapya kwanza"
+    },
+    {
+      "_base": "en",
+      "en": "By",
+      "fr": "Par",
+      "pt": "Por",
+      "es": "Por",
+      "mg": "Mpanao",
+      "sw": "Na"
+    },
+    {
+      "_base": "en",
+      "en": "v{0}",
+      "fr": "v{0}",
+      "pt": "v{0}",
+      "es": "v{0}",
+      "mg": "v{0}",
+      "sw": "v{0}"
+    },
+    {
+      "_base": "en",
+      "en": "current",
+      "fr": "actuelle",
+      "pt": "atual",
+      "es": "actual",
+      "mg": "ankehitriny",
+      "sw": "la sasa"
+    },
+    {
+      "_base": "en",
+      "en": "system",
+      "fr": "système",
+      "pt": "sistema",
+      "es": "sistema",
+      "mg": "rafitra",
+      "sw": "mfumo"
+    },
+    {
+      "_base": "en",
+      "en": "deployment default",
+      "fr": "valeur par défaut du déploiement",
+      "pt": "padrão da implantação",
+      "es": "valor predeterminado del despliegue",
+      "mg": "sanda mahazatran’ny fametrahana",
+      "sw": "chaguo-msingi la usakinishaji"
+    },
+    {
+      "_base": "en",
+      "en": "full source extent",
+      "fr": "toute l’étendue de la source",
+      "pt": "toda a extensão da fonte",
+      "es": "extensión completa de la fuente",
+      "mg": "velarana manontolon’ny loharano",
+      "sw": "eneo lote la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Source",
+      "fr": "Source",
+      "pt": "Fonte",
+      "es": "Fuente",
+      "mg": "Loharano",
+      "sw": "Chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "table · {0} on {1}",
+      "fr": "table · {0} sur {1}",
+      "pt": "tabela · {0} em {1}",
+      "es": "tabla · {0} en {1}",
+      "mg": "tabilao · {0} ao amin’ny {1}",
+      "sw": "jedwali · {0} kwenye {1}"
+    },
+    {
+      "_base": "en",
+      "en": "table · {0}",
+      "fr": "table · {0}",
+      "pt": "tabela · {0}",
+      "es": "tabla · {0}",
+      "mg": "tabilao · {0}",
+      "sw": "jedwali · {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Column",
+      "fr": "Colonne",
+      "pt": "Coluna",
+      "es": "Columna",
+      "mg": "Tsanganana",
+      "sw": "Safu wima"
+    },
+    {
+      "_base": "en",
+      "en": "Type",
+      "fr": "Type",
+      "pt": "Tipo",
+      "es": "Tipo",
+      "mg": "Karazana",
+      "sw": "Aina"
+    },
+    {
+      "_base": "en",
+      "en": "Units",
+      "fr": "Unités",
+      "pt": "Unidades",
+      "es": "Unidades",
+      "mg": "Ventin-drefy",
+      "sw": "Vipimo"
+    },
+    {
+      "_base": "en",
+      "en": "raster · {0}",
+      "fr": "raster · {0}",
+      "pt": "raster · {0}",
+      "es": "ráster · {0}",
+      "mg": "raster · {0}",
+      "sw": "rasta · {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Band",
+      "fr": "Bande",
+      "pt": "Banda",
+      "es": "Banda",
+      "mg": "Tarika",
+      "sw": "Bendi"
+    },
+    {
+      "_base": "en",
+      "en": "Cannot delete",
+      "fr": "Suppression impossible",
+      "pt": "Não é possível excluir",
+      "es": "No se puede eliminar",
+      "mg": "Tsy azo fafana",
+      "sw": "Haiwezi kufutwa"
+    },
+    {
+      "_base": "en",
+      "en": "“{0}” cannot be deleted yet",
+      "fr": "“{0}” ne peut pas encore être supprimée",
+      "pt": "“{0}” ainda não pode ser excluída",
+      "es": "“{0}” aún no se puede eliminar",
+      "mg": "Tsy mbola azo fafana ny “{0}”",
+      "sw": "“{0}” haiwezi kufutwa bado"
+    },
+    {
+      "_base": "en",
+      "en": "Other integrations read its data and would break:",
+      "fr": "D’autres intégrations lisent ses données et cesseraient de fonctionner :",
+      "pt": "Outras integrações leem seus dados e deixariam de funcionar:",
+      "es": "Otras integraciones leen sus datos y dejarían de funcionar:",
+      "mg": "Mamaky ny angonany ny fampidirana hafa ka tsy hiasa:",
+      "sw": "Miunganisho mingine husoma data zake na itaacha kufanya kazi:"
+    },
+    {
+      "_base": "en",
+      "en": "reads",
+      "fr": "lit",
+      "pt": "lê",
+      "es": "lee",
+      "mg": "mamaky",
+      "sw": "husoma"
+    },
+    {
+      "_base": "en",
+      "en": "Delete or edit those integrations first.",
+      "fr": "Supprimez ou modifiez d’abord ces intégrations.",
+      "pt": "Exclua ou edite essas integrações primeiro.",
+      "es": "Elimine o edite primero esas integraciones.",
+      "mg": "Fafao na ovay aloha ireo fampidirana ireo.",
+      "sw": "Futa au hariri miunganisho hiyo kwanza."
+    },
+    {
+      "_base": "en",
+      "en": "Close",
+      "fr": "Fermer",
+      "pt": "Fechar",
+      "es": "Cerrar",
+      "mg": "Akatona",
+      "sw": "Funga"
+    },
+    {
+      "_base": "en",
+      "en": "unknown",
+      "fr": "inconnu",
+      "pt": "desconhecido",
+      "es": "desconocido",
+      "mg": "tsy fantatra",
+      "sw": "haijulikani"
+    },
+    {
+      "_base": "en",
+      "en": "B",
+      "fr": "o",
+      "pt": "B",
+      "es": "B",
+      "mg": "B",
+      "sw": "B"
+    },
+    {
+      "_base": "en",
+      "en": "KB",
+      "fr": "Ko",
+      "pt": "KB",
+      "es": "KB",
+      "mg": "KB",
+      "sw": "KB"
+    },
+    {
+      "_base": "en",
+      "en": "MB",
+      "fr": "Mo",
+      "pt": "MB",
+      "es": "MB",
+      "mg": "MB",
+      "sw": "MB"
+    },
+    {
+      "_base": "en",
+      "en": "GB",
+      "fr": "Go",
+      "pt": "GB",
+      "es": "GB",
+      "mg": "GB",
+      "sw": "GB"
+    },
+    {
+      "_base": "en",
+      "en": "TB",
+      "fr": "To",
+      "pt": "TB",
+      "es": "TB",
+      "mg": "TB",
+      "sw": "TB"
+    },
+    {
+      "_base": "en",
+      "en": "No data yet. Snapshots appear here once {0} runs.",
+      "fr": "Aucune donnée pour l’instant. Les instantanés apparaîtront ici après l’exécution de {0}.",
+      "pt": "Ainda não há dados. Os instantâneos aparecerão aqui após a execução de {0}.",
+      "es": "Aún no hay datos. Las instantáneas aparecerán aquí cuando se ejecute {0}.",
+      "mg": "Tsy mbola misy angona. Hiseho eto ny dika voatahiry rehefa mandeha ny {0}.",
+      "sw": "Bado hakuna data. Snapshots zitaonekana hapa baada ya {0} kuendeshwa."
+    },
+    {
+      "_base": "en",
+      "en": "Time",
+      "fr": "Temps",
+      "pt": "Tempo",
+      "es": "Hora",
+      "mg": "Fotoana",
+      "sw": "Muda"
+    },
+    {
+      "_base": "en",
+      "en": "Observed",
+      "fr": "Observé",
+      "pt": "Observado",
+      "es": "Observado",
+      "mg": "Voamarika",
+      "sw": "Iliyorekodiwa"
+    },
+    {
+      "_base": "en",
+      "en": "through {0}",
+      "fr": "jusqu’au {0}",
+      "pt": "até {0}",
+      "es": "hasta {0}",
+      "mg": "hatramin'ny {0}",
+      "sw": "hadi {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Snapshot time",
+      "fr": "Date de l’instantané",
+      "pt": "Data e hora do instantâneo",
+      "es": "Hora de la instantánea",
+      "mg": "Fotoanan'ny dika voatahiry",
+      "sw": "Muda wa snapshot"
+    },
+    {
+      "_base": "en",
+      "en": "{0} of {1} snapshots",
+      "fr": "{0} instantanés sur {1}",
+      "pt": "{0} de {1} instantâneos",
+      "es": "{0} de {1} instantáneas",
+      "mg": "Dika voatahiry {0} amin'ny {1}",
+      "sw": "Snapshots {0} kati ya {1}"
+    },
+    {
+      "_base": "en",
+      "en": "Details",
+      "fr": "Détails",
+      "pt": "Detalhes",
+      "es": "Detalles",
+      "mg": "Antsipiriany",
+      "sw": "Maelezo"
+    },
+    {
+      "_base": "en",
+      "en": "From",
+      "fr": "De",
+      "pt": "De",
+      "es": "Desde",
+      "mg": "Avy amin'ny",
+      "sw": "Kutoka"
+    },
+    {
+      "_base": "en",
+      "en": "Kind",
+      "fr": "Type",
+      "pt": "Tipo",
+      "es": "Tipo",
+      "mg": "Karazana",
+      "sw": "Aina"
+    },
+    {
+      "_base": "en",
+      "en": "Time series",
+      "fr": "Série chronologique",
+      "pt": "Série temporal",
+      "es": "Serie temporal",
+      "mg": "Andiam-potoana",
+      "sw": "Mfululizo wa muda"
+    },
+    {
+      "_base": "en",
+      "en": "Current only",
+      "fr": "Données actuelles uniquement",
+      "pt": "Somente o atual",
+      "es": "Solo actual",
+      "mg": "Ankehitriny ihany",
+      "sw": "Ya sasa pekee"
+    },
+    {
+      "_base": "en",
+      "en": "Bands",
+      "fr": "Bandes",
+      "pt": "Bandas",
+      "es": "Bandas",
+      "mg": "Tarika",
+      "sw": "Bendi"
+    },
+    {
+      "_base": "en",
+      "en": "none declared",
+      "fr": "aucune déclarée",
+      "pt": "nenhuma declarada",
+      "es": "ninguna declarada",
+      "mg": "tsy misy voalaza",
+      "sw": "hakuna zilizobainishwa"
+    },
+    {
+      "_base": "en",
+      "en": "No data",
+      "fr": "Aucune donnée",
+      "pt": "Sem dados",
+      "es": "Sin datos",
+      "mg": "Tsy misy angona",
+      "sw": "Hakuna data"
+    },
+    {
+      "_base": "en",
+      "en": "Snapshots",
+      "fr": "Instantanés",
+      "pt": "Instantâneos",
+      "es": "Instantáneas",
+      "mg": "Dika voatahiry",
+      "sw": "Snapshots"
+    },
+    {
+      "_base": "en",
+      "en": "CRS",
+      "fr": "SCR",
+      "pt": "CRS",
+      "es": "SRC",
+      "mg": "CRS",
+      "sw": "CRS"
+    },
+    {
+      "_base": "en",
+      "en": "Storage",
+      "fr": "Stockage",
+      "pt": "Armazenamento",
+      "es": "Almacenamiento",
+      "mg": "Fitehirizana",
+      "sw": "Hifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Nothing to draw yet. This layer has no promoted snapshots.",
+      "fr": "Rien à afficher pour l’instant. Cette couche ne comporte aucun instantané publié.",
+      "pt": "Ainda não há nada para exibir. Esta camada não tem instantâneos promovidos.",
+      "es": "Aún no hay nada que mostrar. Esta capa no tiene instantáneas publicadas.",
+      "mg": "Tsy mbola misy azo aseho. Tsy manana dika voatahiry voafidy hampiasaina ity sosona ity.",
+      "sw": "Bado hakuna cha kuchora. Tabaka hili halina snapshots zilizochapishwa."
+    },
+    {
+      "_base": "en",
+      "en": "waiting for you",
+      "fr": "en attente de votre intervention",
+      "pt": "aguardando você",
+      "es": "te espera",
+      "mg": "miandry anao",
+      "sw": "inakusubiri"
+    },
+    {
+      "_base": "en",
+      "en": "No design sessions yet. Start one with New Integration on the Integrations page.",
+      "fr": "Aucune session de conception pour l’instant. Lancez-en une avec Nouvelle intégration sur la page Intégrations.",
+      "pt": "Ainda não há sessões de criação. Inicie uma com Nova integração na página Integrações.",
+      "es": "Aún no hay sesiones de diseño. Inicia una con Nueva integración en la página Integraciones.",
+      "mg": "Tsy mbola misy fotoam-pandrafetana. Manomboha iray amin'ny Fampidirana vaovao eo amin'ny pejy Fampidirana angona.",
+      "sw": "Bado hakuna vipindi vya usanifu. Anzisha kimoja kwa Ujumuishaji mpya kwenye ukurasa wa Ujumuishaji."
+    },
+    {
+      "_base": "en",
+      "en": "Steps",
+      "fr": "Étapes",
+      "pt": "Etapas",
+      "es": "Pasos",
+      "mg": "Dingana",
+      "sw": "Hatua"
+    },
+    {
+      "_base": "en",
+      "en": "(new)",
+      "fr": "(nouveau)",
+      "pt": "(novo)",
+      "es": "(nuevo)",
+      "mg": "(vaovao)",
+      "sw": "(mpya)"
+    },
+    {
+      "_base": "en",
+      "en": "unknown error",
+      "fr": "erreur inconnue",
+      "pt": "erro desconhecido",
+      "es": "error desconocido",
+      "mg": "hadisoana tsy fantatra",
+      "sw": "hitilafu isiyojulikana"
+    },
+    {
+      "_base": "en",
+      "en": "New chat",
+      "fr": "Nouvelle discussion",
+      "pt": "Novo chat",
+      "es": "Nuevo chat",
+      "mg": "Resaka vaovao",
+      "sw": "Gumzo jipya"
+    },
+    {
+      "_base": "en",
+      "en": "New dashboard",
+      "fr": "Nouveau tableau de bord",
+      "pt": "Novo painel",
+      "es": "Nuevo panel",
+      "mg": "Tabilao fanaraha-maso vaovao",
+      "sw": "Dashibodi mpya"
+    },
+    {
+      "_base": "en",
+      "en": "New integration",
+      "fr": "Nouvelle intégration",
+      "pt": "Nova integração",
+      "es": "Nueva integración",
+      "mg": "Fampidirana angona vaovao",
+      "sw": "Ujumuishaji mpya"
+    },
+    {
+      "_base": "en",
+      "en": "Saved v{0}",
+      "fr": "Enregistré v{0}",
+      "pt": "Versão {0} salva",
+      "es": "Guardado v{0}",
+      "mg": "Voatahiry v{0}",
+      "sw": "Imehifadhiwa v{0}"
+    },
+    {
+      "_base": "en",
+      "en": "Map preview",
+      "fr": "Aperçu de la carte",
+      "pt": "Prévia do mapa",
+      "es": "Vista previa del mapa",
+      "mg": "Topi-maso ny sarintany",
+      "sw": "Onyesho la awali la ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Hide details",
+      "fr": "Masquer les détails",
+      "pt": "Ocultar detalhes",
+      "es": "Ocultar detalles",
+      "mg": "Afeno ny antsipiriany",
+      "sw": "Ficha maelezo"
+    },
+    {
+      "_base": "en",
+      "en": "Show Details",
+      "fr": "Afficher les détails",
+      "pt": "Mostrar detalhes",
+      "es": "Mostrar detalles",
+      "mg": "Asehoy ny antsipiriany",
+      "sw": "Onyesha maelezo"
+    },
+    {
+      "_base": "en",
+      "en": "Integration installed.",
+      "fr": "Intégration installée.",
+      "pt": "Integração instalada.",
+      "es": "Integración instalada.",
+      "mg": "Voapetraka ny fampidirana angona.",
+      "sw": "Ujumuishaji umesakinishwa."
+    },
+    {
+      "_base": "en",
+      "en": "Its first data load started automatically — open it to see the data arrive.",
+      "fr": "Son premier chargement de données a démarré automatiquement — ouvrez-la pour voir les données arriver.",
+      "pt": "O primeiro carregamento de dados foi iniciado automaticamente — abra a integração para acompanhar a chegada dos dados.",
+      "es": "Su primera carga de datos se inició automáticamente. Ábrela para ver cómo llegan los datos.",
+      "mg": "Nanomboka ho azy ny fampidirana voalohany ny angonany — sokafy izany hahitana ny fahatongavan'ny angona.",
+      "sw": "Upakiaji wake wa kwanza wa data umeanza kiotomatiki — ufungue ili kuona data ikiingia."
+    },
+    {
+      "_base": "en",
+      "en": "Open it to see its data, runs, and schedule.",
+      "fr": "Ouvrez-la pour consulter ses données, ses exécutions et sa planification.",
+      "pt": "Abra a integração para ver seus dados, execuções e agendamento.",
+      "es": "Ábrela para ver sus datos, ejecuciones y programación.",
+      "mg": "Sokafy izany hahitana ny angonany, ny fampandehanana ary ny fandaharam-potoany.",
+      "sw": "Ufungue ili kuona data yake, uendeshaji wake na ratiba yake."
+    },
+    {
+      "_base": "en",
+      "en": "Open Integration",
+      "fr": "Ouvrir l’intégration",
+      "pt": "Abrir integração",
+      "es": "Abrir integración",
+      "mg": "Sokafy ny fampidirana angona",
+      "sw": "Fungua ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Preview error: {0} (attached to your next message)",
+      "fr": "Erreur d’aperçu : {0} (jointe à votre prochain message)",
+      "pt": "Erro na pré-visualização: {0} (anexado à sua próxima mensagem)",
+      "es": "Error de vista previa: {0} (se adjuntará a tu próximo mensaje)",
+      "mg": "Hadisoana tamin'ny topi-maso: {0} (hampiarahina amin'ny hafatrao manaraka)",
+      "sw": "Hitilafu ya onyesho la awali: {0} (itaambatishwa kwenye ujumbe wako unaofuata)"
+    },
+    {
+      "_base": "en",
+      "en": "The agent hit an error and stopped: {0} — send a message to retry.",
+      "fr": "L’agent a rencontré une erreur et s’est arrêté : {0} — envoyez un message pour réessayer.",
+      "pt": "O agente encontrou um erro e parou: {0} — envie uma mensagem para tentar novamente.",
+      "es": "El agente encontró un error y se detuvo: {0} — envía un mensaje para reintentar.",
+      "mg": "Nisy hadisoana tamin'ilay mpanampy ka nijanona: {0} — mandefasa hafatra hanandramana indray.",
+      "sw": "Ajenti alipata hitilafu na akasimama: {0} — tuma ujumbe ili ujaribu tena."
+    },
+    {
+      "_base": "en",
+      "en": "Viewers can watch but not send",
+      "fr": "Les lecteurs peuvent suivre, mais pas envoyer de message",
+      "pt": "Os visualizadores podem acompanhar, mas não enviar",
+      "es": "Los espectadores pueden ver, pero no enviar",
+      "mg": "Mahazo mijery ny mpijery fa tsy mahazo mandefa",
+      "sw": "Watazamaji wanaweza kufuatilia lakini hawawezi kutuma"
+    },
+    {
+      "_base": "en",
+      "en": "Steer the agent — your message lands after the current step…",
+      "fr": "Guidez l’agent — votre message lui parviendra après l’étape en cours…",
+      "pt": "Oriente o agente — sua mensagem será recebida após a etapa atual…",
+      "es": "Orienta al agente — tu mensaje se enviará después del paso actual…",
+      "mg": "Tariho ilay mpanampy — halefa aorian'ny dingana ankehitriny ny hafatrao…",
+      "sw": "Elekeza ajenti — ujumbe wako utawasilishwa baada ya hatua ya sasa…"
+    },
+    {
+      "_base": "en",
+      "en": "Ask about the data…",
+      "fr": "Interroger les données…",
+      "pt": "Pergunte sobre os dados…",
+      "es": "Pregunta sobre los datos…",
+      "mg": "Mametraha fanontaniana momba ny angona…",
+      "sw": "Uliza kuhusu data…"
+    },
+    {
+      "_base": "en",
+      "en": "Describe what to build or change…",
+      "fr": "Décrivez ce qu’il faut créer ou modifier…",
+      "pt": "Descreva o que criar ou alterar…",
+      "es": "Describe qué crear o cambiar…",
+      "mg": "Farito izay haorina na hovana…",
+      "sw": "Eleza cha kuunda au kubadilisha…"
+    },
+    {
+      "_base": "en",
+      "en": "Stopping…",
+      "fr": "Arrêt en cours…",
+      "pt": "Parando…",
+      "es": "Deteniendo…",
+      "mg": "Ajanona…",
+      "sw": "Inasimamisha…"
+    },
+    {
+      "_base": "en",
+      "en": "Stop",
+      "fr": "Arrêter",
+      "pt": "Parar",
+      "es": "Detener",
+      "mg": "Atsaharo",
+      "sw": "Simamisha"
+    },
+    {
+      "_base": "en",
+      "en": "Send",
+      "fr": "Envoyer",
+      "pt": "Enviar",
+      "es": "Enviar",
+      "mg": "Alefaso",
+      "sw": "Tuma"
+    },
+    {
+      "_base": "en",
+      "en": "Resize preview",
+      "fr": "Redimensionner l’aperçu",
+      "pt": "Redimensionar pré-visualização",
+      "es": "Cambiar tamaño de la vista previa",
+      "mg": "Ovao ny haben'ny topi-maso",
+      "sw": "Badilisha ukubwa wa onyesho la awali"
+    },
+    {
+      "_base": "en",
+      "en": "The dashboard preview appears here after the first successful build.",
+      "fr": "L’aperçu du tableau de bord apparaît ici après la première création réussie.",
+      "pt": "A pré-visualização do painel aparecerá aqui após a primeira criação bem-sucedida.",
+      "es": "La vista previa del panel aparecerá aquí después de la primera compilación correcta.",
+      "mg": "Hiseho eto ny topi-mason'ny tabilao rehefa vita soa aman-tsara ny fanamboarana voalohany.",
+      "sw": "Onyesho la awali la dashibodi litaonekana hapa baada ya uundaji wa kwanza uliofaulu."
+    },
+    {
+      "_base": "en",
+      "en": "Close details",
+      "fr": "Fermer les détails",
+      "pt": "Fechar detalhes",
+      "es": "Cerrar detalles",
+      "mg": "Akatona ny antsipiriany",
+      "sw": "Funga maelezo"
+    },
+    {
+      "_base": "en",
+      "en": "Other…",
+      "fr": "Autre…",
+      "pt": "Outro…",
+      "es": "Otro…",
+      "mg": "Hafa…",
+      "sw": "Nyingine…"
+    },
+    {
+      "_base": "en",
+      "en": "Deployment name",
+      "fr": "Nom du déploiement",
+      "pt": "Nome da implantação",
+      "es": "Nombre de la implementación",
+      "mg": "Anaran'ny fametrahana",
+      "sw": "Jina la utekelezaji"
+    },
+    {
+      "_base": "en",
+      "en": "The heading on the home page. Name it after the deployment, for example \"Madagascar Data Integrator\".",
+      "fr": "Le titre de la page d’accueil. Utilisez le nom du déploiement, par exemple « Madagascar Data Integrator ».",
+      "pt": "O título da página inicial. Use o nome da implantação, por exemplo, \"Madagascar Data Integrator\".",
+      "es": "El encabezado de la página de inicio. Usa el nombre de la implementación, por ejemplo, \"Madagascar Data Integrator\".",
+      "mg": "Ny lohateny eo amin'ny pejy fandraisana. Omeo ny anaran'ny fametrahana, ohatra \"Madagascar Data Integrator\".",
+      "sw": "Kichwa kwenye ukurasa wa mwanzo. Kipe jina la utekelezaji, kwa mfano \"Madagascar Data Integrator\"."
+    },
+    {
+      "_base": "en",
+      "en": "(default)",
+      "fr": "(par défaut)",
+      "pt": "(padrão)",
+      "es": "(predeterminado)",
+      "mg": "(mahazatra)",
+      "sw": "(chaguo-msingi)"
+    },
+    {
+      "_base": "en",
+      "en": "Leave blank to use “{0}”.",
+      "fr": "Laissez vide pour utiliser « {0} ».",
+      "pt": "Deixe em branco para usar “{0}”.",
+      "es": "Déjalo en blanco para usar “{0}”.",
+      "mg": "Avelao ho banga raha hampiasa ny “{0}”.",
+      "sw": "Acha wazi ili utumie “{0}”."
+    },
+    {
+      "_base": "en",
+      "en": "Only administrators can change settings.",
+      "fr": "Seuls les administrateurs peuvent modifier les paramètres.",
+      "pt": "Somente administradores podem alterar as configurações.",
+      "es": "Solo los administradores pueden cambiar la configuración.",
+      "mg": "Ny mpitantana ihany no afaka manova ny fikirana.",
+      "sw": "Wasimamizi pekee wanaweza kubadilisha mipangilio."
+    },
+    {
+      "_base": "en",
+      "en": "Language",
+      "fr": "Langue",
+      "pt": "Idioma",
+      "es": "Idioma",
+      "mg": "Fiteny",
+      "sw": "Lugha"
+    },
+    {
+      "_base": "en",
+      "en": "Changes the interface language for you on this device only.",
+      "fr": "Modifie la langue de l’interface uniquement pour vous, sur cet appareil.",
+      "pt": "Altera o idioma da interface apenas para você neste dispositivo.",
+      "es": "Cambia el idioma de la interfaz solo para ti en este dispositivo.",
+      "mg": "Manova ny fitenin'ny seha-pifandraisana ho anao amin'ity fitaovana ity ihany.",
+      "sw": "Hubadilisha lugha ya kiolesura kwa ajili yako kwenye kifaa hiki pekee."
+    },
+    {
+      "_base": "en",
+      "en": "Saved. Future runs of integrations without their own AOI use this area.",
+      "fr": "Enregistré. Les prochaines exécutions d’intégrations sans zone d’intérêt utiliseront cette zone.",
+      "pt": "Salvo. As futuras execuções de integrações sem uma área de interesse própria usarão esta área.",
+      "es": "Guardado. Las futuras ejecuciones de integraciones sin AOI propio usarán esta área.",
+      "mg": "Voatahiry. Ity faritra ity no hampiasain'ny fampandehanana ho avy amin'ireo fampidirana angona tsy manana faritra kendrena azy manokana.",
+      "sw": "Imehifadhiwa. Uendeshaji wa baadaye wa miunganisho isiyo na eneo lake la kuzingatia utatumia eneo hili."
+    },
+    {
+      "_base": "en",
+      "en": "Cleared. Integrations without an AOI ingest their source's full extent.",
+      "fr": "Effacé. Les intégrations sans zone d’intérêt ingèrent toute l’emprise de leur source.",
+      "pt": "Área removida. As integrações sem uma área de interesse ingerem toda a extensão da fonte.",
+      "es": "Borrado. Las integraciones sin AOI ingieren la extensión completa de su fuente.",
+      "mg": "Voafafa. Mampiditra angona avy amin'ny velarana manontolon'ny loharanony ireo fampidirana angona tsy manana faritra kendrena.",
+      "sw": "Imefutwa. Miunganisho isiyo na eneo la kuzingatia huingiza data kutoka eneo lote la chanzo chake."
+    },
+    {
+      "_base": "en",
+      "en": "Settings",
+      "fr": "Paramètres",
+      "pt": "Configurações",
+      "es": "Configuración",
+      "mg": "Fikirana",
+      "sw": "Mipangilio"
+    },
+    {
+      "_base": "en",
+      "en": "Default area of interest",
+      "fr": "Zone d’intérêt par défaut",
+      "pt": "Área de interesse padrão",
+      "es": "Área de interés predeterminada",
+      "mg": "Faritra kendrena mahazatra",
+      "sw": "Eneo chaguo-msingi la kuzingatia"
+    },
+    {
+      "_base": "en",
+      "en": "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",
+      "fr": "Les intégrations installées sans zone d’intérêt sont découpées selon celle-ci lors de l’exécution. Définissez-la une fois pour cibler votre pays avec toutes les intégrations de la bibliothèque.",
+      "pt": "As integrações instaladas sem uma área de interesse são recortadas para esta área durante a execução. Configure-a uma vez para direcionar todas as integrações da biblioteca ao seu país.",
+      "es": "Las integraciones instaladas sin un área de interés se recortan a esta área durante la ejecución. Configúrala una vez para que todas las integraciones de la biblioteca apunten a tu país.",
+      "mg": "Ferana ho amin'ity faritra ity mandritra ny fampandehanana ireo fampidirana angona napetraka tsy misy faritra kendrena. Farito indray mandeha izy mba hampifantoka amin'ny firenenao ny fampidirana angona rehetra ao amin'ny katalaogy.",
+      "sw": "Miunganisho inayosakinishwa bila eneo la kuzingatia huwekewa mipaka ya eneo hili wakati wa uendeshaji. Liweke mara moja ili miunganisho yote ya maktaba ilenge nchi yako."
+    },
+    {
+      "_base": "en",
+      "en": "none — integrations ingest their source's full extent",
+      "fr": "aucune — les intégrations ingèrent toute l’emprise de leur source",
+      "pt": "nenhuma — as integrações ingerem toda a extensão da fonte",
+      "es": "ninguna — las integraciones ingieren la extensión completa de su fuente",
+      "mg": "tsy misy — mampiditra angona avy amin'ny velarana manontolon'ny loharanony ireo fampidirana angona",
+      "sw": "hakuna — miunganisho huingiza data kutoka eneo lote la chanzo chake"
+    },
+    {
+      "_base": "en",
+      "en": "west",
+      "fr": "ouest",
+      "pt": "oeste",
+      "es": "oeste",
+      "mg": "andrefana",
+      "sw": "magharibi"
+    },
+    {
+      "_base": "en",
+      "en": "south",
+      "fr": "sud",
+      "pt": "sul",
+      "es": "sur",
+      "mg": "atsimo",
+      "sw": "kusini"
+    },
+    {
+      "_base": "en",
+      "en": "east",
+      "fr": "est",
+      "pt": "leste",
+      "es": "este",
+      "mg": "atsinanana",
+      "sw": "mashariki"
+    },
+    {
+      "_base": "en",
+      "en": "north",
+      "fr": "nord",
+      "pt": "norte",
+      "es": "norte",
+      "mg": "avaratra",
+      "sw": "kaskazini"
+    },
+    {
+      "_base": "en",
+      "en": "Clear",
+      "fr": "Effacer",
+      "pt": "Limpar",
+      "es": "Borrar",
+      "mg": "Fafao",
+      "sw": "Futa"
+    },
+    {
+      "_base": "en",
+      "en": "Password must be at least 8 characters",
+      "fr": "Le mot de passe doit comporter au moins 8 caractères",
+      "pt": "A senha deve ter pelo menos 8 caracteres",
+      "es": "La contraseña debe tener al menos 8 caracteres",
+      "mg": "Tokony hisy tarehintsoratra 8 farafahakeliny ny tenimiafina",
+      "sw": "Nenosiri lazima liwe na angalau vibambo 8"
+    },
+    {
+      "_base": "en",
+      "en": "New passwords do not match",
+      "fr": "Les nouveaux mots de passe ne correspondent pas",
+      "pt": "As novas senhas não coincidem",
+      "es": "Las contraseñas nuevas no coinciden",
+      "mg": "Tsy mitovy ireo tenimiafina vaovao",
+      "sw": "Manenosiri mapya hayalingani"
+    },
+    {
+      "_base": "en",
+      "en": "Password changed.",
+      "fr": "Mot de passe modifié.",
+      "pt": "Senha alterada.",
+      "es": "Contraseña cambiada.",
+      "mg": "Voaova ny tenimiafina.",
+      "sw": "Nenosiri limebadilishwa."
+    },
+    {
+      "_base": "en",
+      "en": "Change password",
+      "fr": "Modifier le mot de passe",
+      "pt": "Alterar senha",
+      "es": "Cambiar contraseña",
+      "mg": "Hanova tenimiafina",
+      "sw": "Badilisha nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "Current password",
+      "fr": "Mot de passe actuel",
+      "pt": "Senha atual",
+      "es": "Contraseña actual",
+      "mg": "Tenimiafina ankehitriny",
+      "sw": "Nenosiri la sasa"
+    },
+    {
+      "_base": "en",
+      "en": "New password",
+      "fr": "Nouveau mot de passe",
+      "pt": "Nova senha",
+      "es": "Nueva contraseña",
+      "mg": "Tenimiafina vaovao",
+      "sw": "Nenosiri jipya"
+    },
+    {
+      "_base": "en",
+      "en": "Confirm new password",
+      "fr": "Confirmer le nouveau mot de passe",
+      "pt": "Confirmar nova senha",
+      "es": "Confirmar nueva contraseña",
+      "mg": "Hamafiso ny tenimiafina vaovao",
+      "sw": "Thibitisha nenosiri jipya"
+    },
+    {
+      "_base": "en",
+      "en": "Change Password",
+      "fr": "Modifier le mot de passe",
+      "pt": "Alterar senha",
+      "es": "Cambiar contraseña",
+      "mg": "Ovao ny tenimiafina",
+      "sw": "Badilisha nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "definition",
+      "fr": "définition",
+      "pt": "definição",
+      "es": "definición",
+      "mg": "famaritana",
+      "sw": "ufafanuzi"
+    },
+    {
+      "_base": "en",
+      "en": "code",
+      "fr": "code",
+      "pt": "código",
+      "es": "código",
+      "mg": "kaody",
+      "sw": "msimbo"
+    },
+    {
+      "_base": "en",
+      "en": "status",
+      "fr": "statut",
+      "pt": "status",
+      "es": "estado",
+      "mg": "sata",
+      "sw": "hali"
+    },
+    {
+      "_base": "en",
+      "en": "source",
+      "fr": "source",
+      "pt": "fonte",
+      "es": "fuente",
+      "mg": "loharano",
+      "sw": "chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "queries",
+      "fr": "requêtes",
+      "pt": "consultas",
+      "es": "consultas",
+      "mg": "fangatahana",
+      "sw": "hoja"
+    },
+    {
+      "_base": "en",
+      "en": "(no code yet)",
+      "fr": "(aucun code pour l’instant)",
+      "pt": "(ainda sem código)",
+      "es": "(aún no hay código)",
+      "mg": "(mbola tsy misy kaody)",
+      "sw": "(bado hakuna msimbo)"
+    },
+    {
+      "_base": "en",
+      "en": "Certified",
+      "fr": "Certifiée",
+      "pt": "Certificada",
+      "es": "Certificada",
+      "mg": "Voamarina",
+      "sw": "Imethibitishwa"
+    },
+    {
+      "_base": "en",
+      "en": "yes (cold run {0})",
+      "fr": "oui (exécution à froid {0})",
+      "pt": "sim (execução a frio {0})",
+      "es": "sí (ejecución en frío {0})",
+      "mg": "eny (fampandehanana manomboka amin'ny banga {0})",
+      "sw": "ndiyo (uendeshaji safi {0})"
+    },
+    {
+      "_base": "en",
+      "en": "no",
+      "fr": "non",
+      "pt": "não",
+      "es": "no",
+      "mg": "tsia",
+      "sw": "hapana"
+    },
+    {
+      "_base": "en",
+      "en": "cold {0}",
+      "fr": "à froid {0}",
+      "pt": "a frio {0}",
+      "es": "en frío {0}",
+      "mg": "manomboka amin'ny banga {0}",
+      "sw": "safi {0}"
+    },
+    {
+      "_base": "en",
+      "en": "warm {0}",
+      "fr": "à chaud {0}",
+      "pt": "a quente {0}",
+      "es": "incremental {0}",
+      "mg": "mitohy {0}",
+      "sw": "endelevu {0}"
+    },
+    {
+      "_base": "en",
+      "en": "none",
+      "fr": "aucune",
+      "pt": "nenhum",
+      "es": "ninguna",
+      "mg": "tsy misy",
+      "sw": "hakuna"
+    },
+    {
+      "_base": "en",
+      "en": "Preview layers",
+      "fr": "Couches d’aperçu",
+      "pt": "Visualizar camadas",
+      "es": "Vista previa de capas",
+      "mg": "Topazo maso ny sosona",
+      "sw": "Tabaka za onyesho la awali"
+    },
+    {
+      "_base": "en",
+      "en": "Model calls",
+      "fr": "Appels au modèle",
+      "pt": "Chamadas ao modelo",
+      "es": "Llamadas al modelo",
+      "mg": "Antso amin'ny modely",
+      "sw": "Miito ya modeli"
+    },
+    {
+      "_base": "en",
+      "en": "Tokens",
+      "fr": "Jetons",
+      "pt": "Tokens",
+      "es": "Tokens",
+      "mg": "Token",
+      "sw": "Tokeni"
+    },
+    {
+      "_base": "en",
+      "en": "{0} in / {1} out",
+      "fr": "{0} en entrée / {1} en sortie",
+      "pt": "{0} de entrada / {1} de saída",
+      "es": "{0} de entrada / {1} de salida",
+      "mg": "{0} miditra / {1} mivoaka",
+      "sw": "{0} zinazoingia / {1} zinazotoka"
+    },
+    {
+      "_base": "en",
+      "en": "Query results",
+      "fr": "Résultats de la requête",
+      "pt": "Resultados das consultas",
+      "es": "Resultados de consultas",
+      "mg": "Valin'ny fangatahana",
+      "sw": "Matokeo ya hoja"
+    },
+    {
+      "_base": "en",
+      "en": "(no source yet)",
+      "fr": "(aucune source pour l’instant)",
+      "pt": "(ainda sem fonte)",
+      "es": "(aún no hay fuente)",
+      "mg": "(mbola tsy misy loharano)",
+      "sw": "(bado hakuna chanzo)"
+    },
+    {
+      "_base": "en",
+      "en": "(no queries yet)",
+      "fr": "(aucune requête pour l’instant)",
+      "pt": "(ainda sem consultas)",
+      "es": "(aún no hay consultas)",
+      "mg": "(mbola tsy misy fangatahana)",
+      "sw": "(bado hakuna hoja)"
+    },
+    {
+      "_base": "en",
+      "en": "tiles",
+      "fr": "tuiles",
+      "pt": "blocos",
+      "es": "teselas",
+      "mg": "taila",
+      "sw": "vigae"
+    },
+    {
+      "_base": "en",
+      "en": "max {0} rows",
+      "fr": "{0} lignes max.",
+      "pt": "máx. de {0} linhas",
+      "es": "máx. {0} filas",
+      "mg": "andalana {0} fara-fahabetsany",
+      "sw": "hadi safu mlalo {0}"
+    },
+    {
+      "_base": "en",
+      "en": "admin",
+      "fr": "administrateur",
+      "pt": "administrador",
+      "es": "administrador",
+      "mg": "mpitantana",
+      "sw": "msimamizi"
+    },
+    {
+      "_base": "en",
+      "en": "editor",
+      "fr": "éditeur",
+      "pt": "editor",
+      "es": "editor",
+      "mg": "mpanitsy",
+      "sw": "mhariri"
+    },
+    {
+      "_base": "en",
+      "en": "viewer",
+      "fr": "lecteur",
+      "pt": "visualizador",
+      "es": "lector",
+      "mg": "mpijery",
+      "sw": "mtazamaji"
+    },
+    {
+      "_base": "en",
+      "en": "Cancel",
+      "fr": "Annuler",
+      "pt": "Cancelar",
+      "es": "Cancelar",
+      "mg": "Foano",
+      "sw": "Ghairi"
+    },
+    {
+      "_base": "en",
+      "en": "Password for {0} — shown once, copy it now and hand it over securely.",
+      "fr": "Mot de passe de {0} — affiché une seule fois, copiez-le maintenant et transmettez-le de façon sécurisée.",
+      "pt": "Senha de {0} — exibida uma única vez. Copie-a agora e entregue-a com segurança.",
+      "es": "Contraseña de {0} — se muestra una sola vez; cópiela ahora y entréguela de forma segura.",
+      "mg": "Tenimiafin'i {0} — aseho indray mandeha, adikao izao ary ampitao aminy amin'ny fomba azo antoka.",
+      "sw": "Nenosiri la {0} — linaonyeshwa mara moja, linakili sasa na umkabidhi kwa usalama."
+    },
+    {
+      "_base": "en",
+      "en": "Copied",
+      "fr": "Copié",
+      "pt": "Copiado",
+      "es": "Copiado",
+      "mg": "Voadika",
+      "sw": "Imenakiliwa"
+    },
+    {
+      "_base": "en",
+      "en": "Copy",
+      "fr": "Copier",
+      "pt": "Copiar",
+      "es": "Copiar",
+      "mg": "Adika",
+      "sw": "Nakili"
+    },
+    {
+      "_base": "en",
+      "en": "Done",
+      "fr": "Terminé",
+      "pt": "Concluído",
+      "es": "Listo",
+      "mg": "Vita",
+      "sw": "Tayari"
+    },
+    {
+      "_base": "en",
+      "en": "Reset password",
+      "fr": "Réinitialiser le mot de passe",
+      "pt": "Redefinir senha",
+      "es": "Restablecer contraseña",
+      "mg": "Avereno ny tenimiafina",
+      "sw": "Weka upya nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "Generate a new password for {0}? Their current password stops working immediately.",
+      "fr": "Générer un nouveau mot de passe pour {0} ? Son mot de passe actuel cessera immédiatement de fonctionner.",
+      "pt": "Gerar uma nova senha para {0}? A senha atual deixará de funcionar imediatamente.",
+      "es": "¿Generar una nueva contraseña para {0}? La contraseña actual dejará de funcionar de inmediato.",
+      "mg": "Hamorona tenimiafina vaovao ho an'i {0}? Tsy hiasa avy hatrany intsony ny tenimiafiny ankehitriny.",
+      "sw": "Uzalishiwe {0} nenosiri jipya? Nenosiri lake la sasa litaacha kufanya kazi mara moja."
+    },
+    {
+      "_base": "en",
+      "en": "Reset Password",
+      "fr": "Réinitialiser le mot de passe",
+      "pt": "Redefinir senha",
+      "es": "Restablecer contraseña",
+      "mg": "Avereno ny tenimiafina",
+      "sw": "Weka upya nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "Disable user",
+      "fr": "Désactiver l’utilisateur",
+      "pt": "Desativar usuário",
+      "es": "Deshabilitar usuario",
+      "mg": "Atsaharo ny mpampiasa",
+      "sw": "Lemaza mtumiaji"
+    },
+    {
+      "_base": "en",
+      "en": "Disable {0}? Their sessions end immediately and sign-in is blocked until re-enabled.",
+      "fr": "Désactiver {0} ? Ses sessions prendront fin immédiatement et la connexion sera bloquée jusqu’à sa réactivation.",
+      "pt": "Desativar {0}? As sessões serão encerradas imediatamente e o acesso ficará bloqueado até a reativação.",
+      "es": "¿Deshabilitar a {0}? Sus sesiones finalizarán de inmediato y no podrá iniciar sesión hasta que se vuelva a habilitar.",
+      "mg": "Atsahatra i {0}? Hifarana avy hatrany ny fotoam-piasany ary hosakanana ny fidirany mandra-pamerenana azy ho mavitrika.",
+      "sw": "Ulemaze {0}? Vipindi vyake vitaisha mara moja na kuingia kutazuiwa hadi akaunti iwezeshwe tena."
+    },
+    {
+      "_base": "en",
+      "en": "Disable",
+      "fr": "Désactiver",
+      "pt": "Desativar",
+      "es": "Deshabilitar",
+      "mg": "Atsaharo",
+      "sw": "Lemaza"
+    },
+    {
+      "_base": "en",
+      "en": "Users",
+      "fr": "Utilisateurs",
+      "pt": "Usuários",
+      "es": "Usuarios",
+      "mg": "Mpampiasa",
+      "sw": "Watumiaji"
+    },
+    {
+      "_base": "en",
+      "en": "New and reset passwords are generated and shown once. Disabling a user keeps their history but blocks sign-in; there is no delete.",
+      "fr": "Les mots de passe nouveaux et réinitialisés sont générés et affichés une seule fois. Désactiver un utilisateur conserve son historique, mais bloque la connexion ; aucune suppression n’est possible.",
+      "pt": "Senhas novas e redefinidas são geradas e exibidas uma única vez. Desativar um usuário mantém o histórico, mas bloqueia o acesso; não é possível excluir.",
+      "es": "Las contraseñas nuevas y restablecidas se generan y se muestran una sola vez. Deshabilitar un usuario conserva su historial, pero bloquea el inicio de sesión; no se pueden eliminar usuarios.",
+      "mg": "Foronina sy aseho indray mandeha ny tenimiafina vaovao sy ny tenimiafina naverina. Ny fampiatoana mpampiasa dia mitahiry ny tantarany fa manakana azy tsy hiditra; tsy misy famafana.",
+      "sw": "Manenosiri mapya na yaliyowekwa upya huzalishwa na kuonyeshwa mara moja. Kulemaza mtumiaji huhifadhi historia yake lakini huzuia kuingia; hakuna chaguo la kufuta."
+    },
+    {
+      "_base": "en",
+      "en": "Add User",
+      "fr": "Ajouter un utilisateur",
+      "pt": "Adicionar usuário",
+      "es": "Añadir usuario",
+      "mg": "Hanampy mpampiasa",
+      "sw": "Ongeza mtumiaji"
+    },
+    {
+      "_base": "en",
+      "en": "Email",
+      "fr": "E-mail",
+      "pt": "E-mail",
+      "es": "Correo electrónico",
+      "mg": "Imailaka",
+      "sw": "Barua pepe"
+    },
+    {
+      "_base": "en",
+      "en": "Role",
+      "fr": "Rôle",
+      "pt": "Função",
+      "es": "Rol",
+      "mg": "Anjara asa",
+      "sw": "Jukumu"
+    },
+    {
+      "_base": "en",
+      "en": "Created",
+      "fr": "Créé le",
+      "pt": "Criado",
+      "es": "Creado",
+      "mg": "Noforonina",
+      "sw": "Imeundwa"
+    },
+    {
+      "_base": "en",
+      "en": "(you)",
+      "fr": "(vous)",
+      "pt": "(você)",
+      "es": "(tú)",
+      "mg": "(ianao)",
+      "sw": "(wewe)"
+    },
+    {
+      "_base": "en",
+      "en": "disabled",
+      "fr": "désactivé",
+      "pt": "desativado",
+      "es": "deshabilitado",
+      "mg": "tsy alefa",
+      "sw": "imezimwa"
+    },
+    {
+      "_base": "en",
+      "en": "active",
+      "fr": "actif",
+      "pt": "ativo",
+      "es": "activo",
+      "mg": "mavitrika",
+      "sw": "inatumika"
+    },
+    {
+      "_base": "en",
+      "en": "Enable",
+      "fr": "Activer",
+      "pt": "Ativar",
+      "es": "Habilitar",
+      "mg": "Alefaso",
+      "sw": "Washa"
+    },
+    {
+      "_base": "en",
+      "en": "Starting…",
+      "fr": "Démarrage…",
+      "pt": "Iniciando…",
+      "es": "Iniciando…",
+      "mg": "Manomboka…",
+      "sw": "Inaanza…"
+    },
+    {
+      "_base": "en",
+      "en": "“{0}” and its answers, tables, and charts are deleted for good.",
+      "fr": "« {0} », ainsi que ses réponses, tableaux et graphiques, seront supprimés définitivement.",
+      "pt": "“{0}” e suas respostas, tabelas e gráficos serão excluídos permanentemente.",
+      "es": "“{0}” y sus respuestas, tablas y gráficos se eliminarán definitivamente.",
+      "mg": "Voafafa tanteraka i “{0}” sy ny valiny, tabilao ary kisary ao aminy.",
+      "sw": "“{0}” pamoja na majibu, majedwali na chati zake vitafutwa kabisa."
+    },
+    {
+      "_base": "en",
+      "en": "This chat and its answers, tables, and charts are deleted for good.",
+      "fr": "Cette conversation, ainsi que ses réponses, tableaux et graphiques, sera supprimée définitivement.",
+      "pt": "Este chat e suas respostas, tabelas e gráficos serão excluídos permanentemente.",
+      "es": "Este chat y sus respuestas, tablas y gráficos se eliminarán definitivamente.",
+      "mg": "Voafafa tanteraka ity resaka ity sy ny valiny, tabilao ary kisary ao aminy.",
+      "sw": "Gumzo hili pamoja na majibu, majedwali na chati zake vitafutwa kabisa."
+    },
+    {
+      "_base": "en",
+      "en": "Type this to confirm:",
+      "fr": "Saisissez ceci pour confirmer :",
+      "pt": "Digite isto para confirmar:",
+      "es": "Escriba esto para confirmar:",
+      "mg": "Soraty ity hanamafisana:",
+      "sw": "Andika hivi ili kuthibitisha:"
+    },
+    {
+      "_base": "en",
+      "en": "Delete Forever",
+      "fr": "Supprimer définitivement",
+      "pt": "Excluir permanentemente",
+      "es": "Eliminar definitivamente",
+      "mg": "Fafao tanteraka",
+      "sw": "Futa Kabisa"
+    },
+    {
+      "_base": "en",
+      "en": "integration",
+      "fr": "intégration",
+      "pt": "integração",
+      "es": "integración",
+      "mg": "fampidirana",
+      "sw": "muunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "No data yet. Data sources appear here once an {0} runs.",
+      "fr": "Aucune donnée pour le moment. Les sources de données apparaissent ici après l’exécution de {0}.",
+      "pt": "Ainda não há dados. As fontes de dados aparecerão aqui quando uma {0} for executada.",
+      "es": "Aún no hay datos. Las fuentes de datos aparecerán aquí cuando se ejecute {0}.",
+      "mg": "Tsy mbola misy angona. Hiseho eto ny loharanon'angona rehefa mandeha ny {0}.",
+      "sw": "Bado hakuna data. Vyanzo vya data vitaonekana hapa baada ya {0} kuendeshwa."
+    },
+    {
+      "_base": "en",
+      "en": "Contents",
+      "fr": "Contenu",
+      "pt": "Conteúdo",
+      "es": "Contenido",
+      "mg": "Votoatiny",
+      "sw": "Yaliyomo"
+    },
+    {
+      "_base": "en",
+      "en": "from {0}",
+      "fr": "de {0}",
+      "pt": "de {0}",
+      "es": "de {0}",
+      "mg": "avy amin'ny {0}",
+      "sw": "kutoka {0}"
+    },
+    {
+      "_base": "en",
+      "en": "{0} rows · {1} columns",
+      "fr": "{0} lignes · {1} colonnes",
+      "pt": "{0} linhas · {1} colunas",
+      "es": "{0} filas · {1} columnas",
+      "mg": "andalana {0} · tsanganana {1}",
+      "sw": "{0} safu mlalo · {1} safu wima"
+    },
+    {
+      "_base": "en",
+      "en": "{0} snapshot",
+      "fr": "{0} instantané",
+      "pt": "{0} instantâneo",
+      "es": "{0} instantánea",
+      "mg": "dika voatahiry {0}",
+      "sw": "{0} toleo la wakati"
+    },
+    {
+      "_base": "en",
+      "en": "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.",
+      "fr": "Deux méthodes facultatives permettent d’ajouter une intégration : la décrire à l’agent ou en installer une prête à l’emploi depuis la bibliothèque. Toutes deux alimentent Intégrations. Les intégrations écrivent dans Données. Les tableaux de bord, l’Assistant, la Carte et l’API lisent les données depuis Données.",
+      "pt": "Duas formas opcionais de adicionar uma integração — descrevê-la ao agente ou instalar uma pronta da biblioteca — levam a Integrações. As integrações gravam em Dados. Painéis, o Assistente, o Mapa e a API leem de Dados.",
+      "es": "Dos formas opcionales de añadir una integración, describirla al agente o instalar una ya preparada desde la biblioteca, llevan a Integraciones. Las integraciones escriben en Datos. Los Paneles, el Asistente, y el Mapa y la API leen de Datos.",
+      "mg": "Misy fomba roa tsy voatery hanampiana fampidirana: mamaritra izany amin'ny mpikirakira AI na mametraka iray efa vonona avy ao amin'ny tranomboky; samy miditra ao amin'ny Fampidirana izy ireo. Manoratra ao amin'ny Angona ny Fampidirana. Mamaky avy ao amin'ny Angona avokoa ny Tabilao fanaraha-maso, ny Mpanampy, ny Sarintany ary ny API.",
+      "sw": "Njia mbili za hiari za kuongeza muunganisho—kuuelezea ajenti au kusakinisha ulio tayari kutoka maktabani—zote huingia kwenye Miunganisho. Miunganisho huandika kwenye Data. Dashibodi, Msaidizi, Ramani na API zote husoma kutoka Data."
+    },
+    {
+      "_base": "en",
+      "en": "Describe what you need",
+      "fr": "Décrivez votre besoin",
+      "pt": "Descreva o que você precisa",
+      "es": "Describa lo que necesita",
+      "mg": "Lazao izay ilainao",
+      "sw": "Eleza unachohitaji"
+    },
+    {
+      "_base": "en",
+      "en": "the agent builds and tests it",
+      "fr": "l’agent la crée et la teste",
+      "pt": "o agente cria e testa",
+      "es": "el agente la crea y la prueba",
+      "mg": "ny mpikirakira AI no manangana sy mitsapa azy",
+      "sw": "ajenti anaunda na kuujaribu"
+    },
+    {
+      "_base": "en",
+      "en": "Install a ready-made one",
+      "fr": "Installer une intégration prête à l’emploi",
+      "pt": "Instale uma pronta",
+      "es": "Instale una ya preparada",
+      "mg": "Mametraha iray efa vonona",
+      "sw": "Sakinisha ulio tayari"
+    },
+    {
+      "_base": "en",
+      "en": "from the library",
+      "fr": "depuis la bibliothèque",
+      "pt": "da biblioteca",
+      "es": "desde la biblioteca",
+      "mg": "avy ao amin'ny tranomboky",
+      "sw": "kutoka maktabani"
+    },
+    {
+      "_base": "en",
+      "en": "fetch on a schedule",
+      "fr": "récupération planifiée",
+      "pt": "buscar dados de forma programada",
+      "es": "obtener datos de forma programada",
+      "mg": "maka araka ny fandaharam-potoana",
+      "sw": "leta data kwa ratiba"
+    },
+    {
+      "_base": "en",
+      "en": "tables + raster layers",
+      "fr": "tableaux + couches raster",
+      "pt": "tabelas + camadas raster",
+      "es": "tablas + capas ráster",
+      "mg": "tabilao + sosona raster",
+      "sw": "majedwali + tabaka za raster"
+    },
+    {
+      "_base": "en",
+      "en": "Map and API",
+      "fr": "Carte et API",
+      "pt": "Mapa e API",
+      "es": "Mapa y API",
+      "mg": "Sarintany sy API",
+      "sw": "Ramani na API"
+    },
+    {
+      "_base": "en",
+      "en": "EITHER WAY, OPTIONAL",
+      "fr": "DANS LES DEUX CAS, FACULTATIF",
+      "pt": "EM AMBOS OS CASOS, OPCIONAL",
+      "es": "EN AMBOS CASOS, OPCIONAL",
+      "mg": "NA NY IRAY NA NY IRAY, TSY VOATERY",
+      "sw": "KWA NJIA YOYOTE, NI HIARI"
+    },
+    {
+      "_base": "en",
+      "en": "just now",
+      "fr": "à l’instant",
+      "pt": "agora mesmo",
+      "es": "ahora mismo",
+      "mg": "vao izao",
+      "sw": "sasa hivi"
+    },
+    {
+      "_base": "en",
+      "en": "{0}m ago",
+      "fr": "il y a {0} min",
+      "pt": "há {0} min",
+      "es": "hace {0} min",
+      "mg": "{0} min lasa",
+      "sw": "dakika {0} zilizopita"
+    },
+    {
+      "_base": "en",
+      "en": "{0}h ago",
+      "fr": "il y a {0} h",
+      "pt": "há {0} h",
+      "es": "hace {0} h",
+      "mg": "{0} ora lasa",
+      "sw": "saa {0} zilizopita"
+    },
+    {
+      "_base": "en",
+      "en": "yesterday",
+      "fr": "hier",
+      "pt": "ontem",
+      "es": "ayer",
+      "mg": "omaly",
+      "sw": "jana"
+    },
+    {
+      "_base": "en",
+      "en": "{0}d ago",
+      "fr": "il y a {0} j",
+      "pt": "há {0} d",
+      "es": "hace {0} d",
+      "mg": "{0} andro lasa",
+      "sw": "siku {0} zilizopita"
+    },
+    {
+      "_base": "en",
+      "en": "row",
+      "fr": "ligne",
+      "pt": "linha",
+      "es": "fila",
+      "mg": "andalana",
+      "sw": "safu mlalo"
+    },
+    {
+      "_base": "en",
+      "en": "rows",
+      "fr": "lignes",
+      "pt": "linhas",
+      "es": "filas",
+      "mg": "andalana",
+      "sw": "safu mlalo"
+    },
+    {
+      "_base": "en",
+      "en": "snapshot",
+      "fr": "instantané",
+      "pt": "instantâneo",
+      "es": "instantánea",
+      "mg": "dika voatahiry",
+      "sw": "toleo la wakati"
+    },
+    {
+      "_base": "en",
+      "en": "snapshots",
+      "fr": "instantanés",
+      "pt": "instantâneos",
+      "es": "instantáneas",
+      "mg": "dika voatahiry",
+      "sw": "matoleo ya wakati"
+    },
+    {
+      "_base": "en",
+      "en": "timed out",
+      "fr": "délai d’attente dépassé",
+      "pt": "tempo esgotado",
+      "es": "tiempo de espera agotado",
+      "mg": "tapitra ny fe-potoana",
+      "sw": "muda umeisha"
+    },
+    {
+      "_base": "en",
+      "en": "failed",
+      "fr": "échec",
+      "pt": "falhou",
+      "es": "falló",
+      "mg": "tsy nahomby",
+      "sw": "imeshindwa"
+    },
+    {
+      "_base": "en",
+      "en": "never run",
+      "fr": "jamais exécutée",
+      "pt": "nunca executada",
+      "es": "nunca ejecutada",
+      "mg": "mbola tsy nandeha",
+      "sw": "haijawahi kuendeshwa"
+    },
+    {
+      "_base": "en",
+      "en": "recently",
+      "fr": "récemment",
+      "pt": "recentemente",
+      "es": "recientemente",
+      "mg": "vao haingana",
+      "sw": "hivi karibuni"
+    },
+    {
+      "_base": "en",
+      "en": "Look at the run",
+      "fr": "Voir l’exécution",
+      "pt": "Ver a execução",
+      "es": "Ver la ejecución",
+      "mg": "Jereo ny fampandehanana",
+      "sw": "Angalia uendeshaji"
+    },
+    {
+      "_base": "en",
+      "en": "{0} more integration is failing",
+      "fr": "{0} autre intégration est en échec",
+      "pt": "Mais {0} integração está falhando",
+      "es": "Hay {0} integración más con errores",
+      "mg": "Fampidirana {0} hafa no tsy mahomby",
+      "sw": "Muunganisho {0} zaidi unashindwa"
+    },
+    {
+      "_base": "en",
+      "en": "{0} more integrations are failing",
+      "fr": "{0} autres intégrations sont en échec",
+      "pt": "Mais {0} integrações estão falhando",
+      "es": "Hay {0} integraciones más con errores",
+      "mg": "Fampidirana {0} hafa no tsy mahomby",
+      "sw": "Miunganisho {0} zaidi inashindwa"
+    },
+    {
+      "_base": "en",
+      "en": "No data yet",
+      "fr": "Aucune donnée pour le moment",
+      "pt": "Ainda não há dados",
+      "es": "Aún no hay datos",
+      "mg": "Tsy mbola misy angona",
+      "sw": "Bado hakuna data"
+    },
+    {
+      "_base": "en",
+      "en": "Let's get some data in",
+      "fr": "Ajoutons des données",
+      "pt": "Vamos adicionar alguns dados",
+      "es": "Incorporar datos",
+      "mg": "Andao hampiditra angona",
+      "sw": "Hebu tuingize data"
+    },
+    {
+      "_base": "en",
+      "en": "integrations",
+      "fr": "intégrations",
+      "pt": "integrações",
+      "es": "integraciones",
+      "mg": "fampidirana",
+      "sw": "miunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "{0} set up, but nothing has landed yet. Data appears here after a run finishes.",
+      "fr": "Il y en a {0} en place, mais aucune donnée n’est encore arrivée. Les données apparaîtront ici à la fin d’une exécution.",
+      "pt": "Há {0} configuradas, mas ainda não chegaram dados. Eles aparecerão aqui após a conclusão de uma execução.",
+      "es": "Hay {0} configuradas, pero aún no se han cargado datos. Los datos aparecen aquí cuando finaliza una ejecución.",
+      "mg": "Fampidirana {0} no voarindra, saingy tsy mbola misy angona tonga. Miseho eto ny angona rehefa vita ny fampandehanana.",
+      "sw": "{0} imewekwa, lakini bado hakuna data iliyoingia. Data huonekana hapa baada ya utekelezaji kukamilika."
+    },
+    {
+      "_base": "en",
+      "en": "Nothing has been ingested yet. Data arrives through integrations: small pipelines that fetch from a source and keep it current on a schedule.",
+      "fr": "Aucune donnée n’a encore été ingérée. Les données arrivent par des intégrations : de petits flux qui les récupèrent depuis une source et les maintiennent à jour selon un calendrier.",
+      "pt": "Ainda não foram ingeridos dados. Os dados chegam por meio de integrações: pequenos fluxos que buscam dados de uma fonte e os mantêm atualizados conforme uma programação.",
+      "es": "Aún no se ha ingerido ningún dato. Los datos llegan mediante integraciones: pequeños flujos que los obtienen de una fuente y los mantienen actualizados según una programación.",
+      "mg": "Tsy mbola nisy angona nampidirina. Tonga amin’ny alalan’ny fampidirana ny angona: rojo fikirakirana kely izay maka angona avy amina loharano ary manavao azy ara-potoana.",
+      "sw": "Bado hakuna data iliyoingizwa. Data huwasili kupitia miunganisho: mitiririko midogo inayochukua data kutoka chanzo na kuisasisha kwa ratiba."
+    },
+    {
+      "_base": "en",
+      "en": "Your integrations",
+      "fr": "Vos intégrations",
+      "pt": "Suas integrações",
+      "es": "Tus integraciones",
+      "mg": "Ireo fampidiranao",
+      "sw": "Miunganisho yako"
+    },
+    {
+      "_base": "en",
+      "en": "Manage",
+      "fr": "Gérer",
+      "pt": "Gerenciar",
+      "es": "Gestionar",
+      "mg": "Tantano",
+      "sw": "Dhibiti"
+    },
+    {
+      "_base": "en",
+      "en": "Say where the data lives. The agent writes the pipeline, tests it, and shows you the result before anything is saved.",
+      "fr": "Indiquez où se trouvent les données. L’agent crée le pipeline, le teste et vous montre le résultat avant tout enregistrement.",
+      "pt": "Informe onde estão os dados. O agente cria o fluxo, testa e mostra o resultado antes de salvar qualquer coisa.",
+      "es": "Indica dónde están los datos. El agente crea el flujo, lo prueba y muestra el resultado antes de guardar nada.",
+      "mg": "Lazao ny toerana misy ny angona. Ny AI no manoratra sy mitsapa ny rojo fikirakirana, ary mampiseho aminao ny valiny alohan’ny hitahirizana na inona na inona.",
+      "sw": "Eleza data ilipo. Wakala huandika mtiririko, huujaribu, na kukuonyesha matokeo kabla ya chochote kuhifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Works for any source",
+      "fr": "Fonctionne avec toutes les sources",
+      "pt": "Funciona com qualquer fonte",
+      "es": "Funciona con cualquier fuente",
+      "mg": "Miasa amin’ny loharano rehetra",
+      "sw": "Hufanya kazi na chanzo chochote"
+    },
+    {
+      "_base": "en",
+      "en": "Start from a ready-made one",
+      "fr": "Partir d’une intégration prête à l’emploi",
+      "pt": "Comece com uma opção pronta para uso",
+      "es": "Empezar con una integración lista para usar",
+      "mg": "Atombohy amin’ny efa voaomana",
+      "sw": "Anza na muunganisho uliotayarishwa tayari"
+    },
+    {
+      "_base": "en",
+      "en": "Common sources are already written and tested: rainfall, population, river discharge, elevation.",
+      "fr": "Les intégrations pour les sources courantes sont déjà créées et testées : précipitations, population, débit des cours d’eau, altitude.",
+      "pt": "As fontes mais comuns já estão configuradas e testadas: precipitação, população, vazão dos rios e elevação.",
+      "es": "Las fuentes comunes ya están configuradas y probadas: precipitación, población, caudal de ríos y elevación.",
+      "mg": "Efa voaomana sy voasedra ireo loharano mahazatra: rotsak’orana, mponina, fikorianan’ny renirano, haavo.",
+      "sw": "Vyanzo vya kawaida tayari vimeandaliwa na kujaribiwa: mvua, idadi ya watu, mtiririko wa mto, mwinuko."
+    },
+    {
+      "_base": "en",
+      "en": "sources",
+      "fr": "sources",
+      "pt": "fontes",
+      "es": "fuentes",
+      "mg": "loharano",
+      "sw": "vyanzo"
+    },
+    {
+      "_base": "en",
+      "en": "{0} ready to install",
+      "fr": "{0} prêtes à installer",
+      "pt": "{0} prontas para instalar",
+      "es": "{0} listas para instalar",
+      "mg": "{0} vonona hapetraka",
+      "sw": "{0} tayari kusakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "No model is configured and this server has no library, so integrations have to be installed with the CLI.",
+      "fr": "Comme aucun modèle n’est configuré et que ce serveur ne dispose d’aucun catalogue, les intégrations doivent être installées avec la CLI.",
+      "pt": "Nenhum modelo está configurado e este servidor não tem biblioteca. Portanto, as integrações precisam ser instaladas pela CLI.",
+      "es": "No hay ningún modelo configurado y este servidor no tiene biblioteca, por lo que las integraciones deben instalarse con la CLI.",
+      "mg": "Tsy misy modely voarindra ary tsy manana katalaogy ity lohamilina ity, ka tsy maintsy apetraka amin’ny CLI ny fampidirana.",
+      "sw": "Hakuna modeli iliyosanidiwa na seva hii haina maktaba, kwa hivyo ni lazima miunganisho isakinishwe kwa CLI."
+    },
+    {
+      "_base": "en",
+      "en": "Ask an editor or administrator to add an integration.",
+      "fr": "Demandez à un éditeur ou à un administrateur d’ajouter une intégration.",
+      "pt": "Peça a um editor ou administrador para adicionar uma integração.",
+      "es": "Pide a un editor o administrador que añada una integración.",
+      "mg": "Angataho ny mpanitsy na mpitantana hanampy fampidirana.",
+      "sw": "Mwombe mhariri au msimamizi aongeze muunganisho."
+    },
+    {
+      "_base": "en",
+      "en": "Once data is in, you can chart it, map it, or ask questions about it.",
+      "fr": "Une fois les données chargées, vous pouvez créer des graphiques et des cartes, ou les interroger.",
+      "pt": "Quando os dados estiverem disponíveis, você poderá criar gráficos, mapeá-los ou fazer perguntas sobre eles.",
+      "es": "Una vez incorporados los datos, puedes representarlos en gráficos o mapas, o hacer preguntas sobre ellos.",
+      "mg": "Rehefa tafiditra ny angona, dia azonao atao ny mamorona kisary, mampiseho azy amin’ny sarintany, na mametraka fanontaniana momba azy.",
+      "sw": "Data ikiingia, unaweza kuitengenezea chati, kuiweka kwenye ramani, au kuuliza maswali kuihusu."
+    },
+    {
+      "_base": "en",
+      "en": "data source",
+      "fr": "source de données",
+      "pt": "fonte de dados",
+      "es": "fuente de datos",
+      "mg": "loharanon-drakitra",
+      "sw": "chanzo cha data"
+    },
+    {
+      "_base": "en",
+      "en": "data sources",
+      "fr": "sources de données",
+      "pt": "fontes de dados",
+      "es": "fuentes de datos",
+      "mg": "loharanon-drakitra",
+      "sw": "vyanzo vya data"
+    },
+    {
+      "_base": "en",
+      "en": "{0} keeping {1} current",
+      "fr": "Mise à jour de {1} par {0}",
+      "pt": "{0} mantendo {1} atualizado",
+      "es": "{0} mantienen {1} actualizadas",
+      "mg": "{0} mitazona an’i {1} ho vaovao hatrany",
+      "sw": "{0} inasasisha {1}"
+    },
+    {
+      "_base": "en",
+      "en": "Ask a question",
+      "fr": "Poser une question",
+      "pt": "Fazer uma pergunta",
+      "es": "Hacer una pregunta",
+      "mg": "Mametraha fanontaniana",
+      "sw": "Uliza swali"
+    },
+    {
+      "_base": "en",
+      "en": "Plain language, answered from your data, with the query it ran shown.",
+      "fr": "Posez la question en langage courant : la réponse s’appuie sur vos données et affiche la requête exécutée.",
+      "pt": "Pergunte em linguagem simples e receba uma resposta com base nos seus dados, junto com a consulta executada.",
+      "es": "Preguntas en lenguaje natural, respondidas con tus datos y mostrando la consulta ejecutada.",
+      "mg": "Fiteny tsotra, valiana avy amin’ny angonao, ary aseho ny fangatahana nampandehanina.",
+      "sw": "Lugha ya kawaida, jibu kutoka kwenye data yako, pamoja na hoja iliyotekelezwa."
+    },
+    {
+      "_base": "en",
+      "en": "Reads all {0}",
+      "fr": "Consulte l’ensemble des {0}",
+      "pt": "Lê todos os {0}",
+      "es": "Consulta las {0} fuentes",
+      "mg": "Mamaky ny {0} rehetra",
+      "sw": "Husoma {0} zote"
+    },
+    {
+      "_base": "en",
+      "en": "Build a dashboard",
+      "fr": "Créer un tableau de bord",
+      "pt": "Criar um painel",
+      "es": "Crear un panel",
+      "mg": "Mamoròna tabilao fanaraha-maso",
+      "sw": "Unda dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Charts, tables and maps you can come back to.",
+      "fr": "Des graphiques, tableaux et cartes à consulter à tout moment.",
+      "pt": "Gráficos, tabelas e mapas para consultar depois.",
+      "es": "Gráficos, tablas y mapas que puedes volver a consultar.",
+      "mg": "Kisary, tabilao ary sarintany azonao iverenana.",
+      "sw": "Chati, majedwali na ramani unazoweza kurejea."
+    },
+    {
+      "_base": "en",
+      "en": "{0} already built",
+      "fr": "{0} déjà en place",
+      "pt": "{0} já criados",
+      "es": "{0} ya creados",
+      "mg": "{0} efa voaforona",
+      "sw": "{0} tayari zimeundwa"
+    },
+    {
+      "_base": "en",
+      "en": "None yet",
+      "fr": "Aucun pour le moment",
+      "pt": "Nenhum ainda",
+      "es": "Ninguno todavía",
+      "mg": "Tsy mbola misy",
+      "sw": "Bado hakuna"
+    },
+    {
+      "_base": "en",
+      "en": "View dashboards",
+      "fr": "Voir les tableaux de bord",
+      "pt": "Ver painéis",
+      "es": "Ver paneles",
+      "mg": "Jereo ny tabilao fanaraha-maso",
+      "sw": "Tazama dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Charts, tables and maps built from your data.",
+      "fr": "Graphiques, tableaux et cartes créés à partir de vos données.",
+      "pt": "Gráficos, tabelas e mapas criados com seus dados.",
+      "es": "Gráficos, tablas y mapas creados con tus datos.",
+      "mg": "Kisary, tabilao ary sarintany noforonina avy amin’ny angonao.",
+      "sw": "Chati, majedwali na ramani zilizoundwa kutoka kwenye data yako."
+    },
+    {
+      "_base": "en",
+      "en": "dashboard",
+      "fr": "tableau de bord",
+      "pt": "painel",
+      "es": "panel",
+      "mg": "tabilao fanaraha-maso",
+      "sw": "dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "dashboards",
+      "fr": "tableaux de bord",
+      "pt": "painéis",
+      "es": "paneles",
+      "mg": "tabilao fanaraha-maso",
+      "sw": "dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Explore your data",
+      "fr": "Explorer vos données",
+      "pt": "Explorar seus dados",
+      "es": "Explorar tus datos",
+      "mg": "Zaha ny angonao",
+      "sw": "Chunguza data yako"
+    },
+    {
+      "_base": "en",
+      "en": "Browse the tables and layers directly, or open them on the map.",
+      "fr": "Parcourez directement les tables et les couches, ou ouvrez-les sur la carte.",
+      "pt": "Consulte diretamente as tabelas e camadas ou abra-as no mapa.",
+      "es": "Consulta directamente las tablas y capas, o ábrelas en el mapa.",
+      "mg": "Tsidiho mivantana ireo tabilao sy sosona, na sokafy eo amin’ny sarintany.",
+      "sw": "Vinjari majedwali na safu moja kwa moja, au vifungue kwenye ramani."
+    },
+    {
+      "_base": "en",
+      "en": "tables",
+      "fr": "tables",
+      "pt": "tabelas",
+      "es": "tablas",
+      "mg": "tabilao",
+      "sw": "majedwali"
+    },
+    {
+      "_base": "en",
+      "en": "raster layers",
+      "fr": "couches raster",
+      "pt": "camadas raster",
+      "es": "capas ráster",
+      "mg": "sosona raster",
+      "sw": "safu za rasta"
+    },
+    {
+      "_base": "en",
+      "en": "Your data",
+      "fr": "Vos données",
+      "pt": "Seus dados",
+      "es": "Tus datos",
+      "mg": "Ny angonao",
+      "sw": "Data yako"
+    },
+    {
+      "_base": "en",
+      "en": "All {0} sources",
+      "fr": "Toutes les sources ({0})",
+      "pt": "Todas as {0} fontes",
+      "es": "Las {0} fuentes",
+      "mg": "Ireo loharano {0} rehetra",
+      "sw": "Vyanzo vyote {0}"
+    },
+    {
+      "_base": "en",
+      "en": "data",
+      "fr": "données",
+      "pt": "dados",
+      "es": "datos",
+      "mg": "angona",
+      "sw": "data"
+    },
+    {
+      "_base": "en",
+      "en": "runs",
+      "fr": "exécutions",
+      "pt": "execuções",
+      "es": "ejecuciones",
+      "mg": "fampandehanana",
+      "sw": "utekelezaji"
+    },
+    {
+      "_base": "en",
+      "en": "Integrations own their data, so deleting this integration permanently deletes the data itself, not just the pipeline.",
+      "fr": "Chaque intégration gère ses propres données : supprimer cette intégration efface donc définitivement les données elles-mêmes, pas seulement le pipeline.",
+      "pt": "As integrações são responsáveis pelos próprios dados. Portanto, excluir esta integração exclui permanentemente os dados, não apenas o fluxo.",
+      "es": "Las integraciones son propietarias de sus datos, por lo que eliminar esta integración elimina permanentemente los datos, no solo el flujo.",
+      "mg": "An’ny fampidirana ny angonany, ka ny famafana ity fampidirana ity dia mamafa tanteraka ny angona mihitsy, fa tsy ny rojo fikirakirana ihany.",
+      "sw": "Miunganisho inamiliki data yake, hivyo kufuta muunganisho huu hufuta kabisa data yenyewe, si mtiririko pekee."
+    },
+    {
+      "_base": "en",
+      "en": "This cannot be undone, and data from sources that no longer publish history cannot be re-ingested.",
+      "fr": "Cette action est irréversible, et les données des sources qui ne publient plus d’historique ne pourront pas être chargées à nouveau.",
+      "pt": "Esta ação não pode ser desfeita, e os dados de fontes que não publicam mais o histórico não poderão ser ingeridos novamente.",
+      "es": "Esta acción no se puede deshacer, y los datos de fuentes que ya no publican el historial no se pueden volver a ingerir.",
+      "mg": "Tsy azo averina izany, ary tsy azo ampidirina indray ny angona avy amin’ireo loharano tsy mamoaka ny tahiry taloha intsony.",
+      "sw": "Hili haliwezi kutenduliwa, na data kutoka vyanzo ambavyo havichapishi tena data za kihistoria haiwezi kuingizwa upya."
+    },
+    {
+      "_base": "en",
+      "en": "This will delete:",
+      "fr": "Ceci supprimera :",
+      "pt": "Isto excluirá:",
+      "es": "Esto eliminará:",
+      "mg": "Hamafa ireto izany:",
+      "sw": "Hii itafuta:"
+    },
+    {
+      "_base": "en",
+      "en": "{0} snapshots (files included)",
+      "fr": "{0} instantanés (fichiers inclus)",
+      "pt": "{0} instantâneos (arquivos incluídos)",
+      "es": "{0} instantáneas (archivos incluidos)",
+      "mg": "Dika voatahiry {0} (anisan’izany ny rakitra)",
+      "sw": "{0} nakala za wakati fulani (pamoja na faili)"
+    },
+    {
+      "_base": "en",
+      "en": "{0} run of history and any pending webhook events",
+      "fr": "{0} exécution de l’historique et tous les événements webhook en attente",
+      "pt": "{0} execução do histórico e todos os eventos de webhook pendentes",
+      "es": "{0} ejecución del historial y cualquier evento de webhook pendiente",
+      "mg": "Fampandehanana {0} tao amin’ny tantara sy izay hetsika webhook mbola miandry",
+      "sw": "{0} rekodi ya utekelezaji wa awali na matukio yoyote ya webhook yanayosubiri"
+    },
+    {
+      "_base": "en",
+      "en": "{0} runs of history and any pending webhook events",
+      "fr": "{0} exécutions de l’historique et tous les événements webhook en attente",
+      "pt": "{0} execuções do histórico e todos os eventos de webhook pendentes",
+      "es": "{0} ejecuciones del historial y cualquier evento de webhook pendiente",
+      "mg": "Fampandehanana {0} tao amin’ny tantara sy izay hetsika webhook mbola miandry",
+      "sw": "{0} rekodi za utekelezaji wa awali na matukio yoyote ya webhook yanayosubiri"
+    },
+    {
+      "_base": "en",
+      "en": "A dashboard appears to query this data and will break: {0}.",
+      "fr": "Un tableau de bord semble interroger ces données et cessera de fonctionner : {0}.",
+      "pt": "Um painel parece consultar estes dados e deixará de funcionar: {0}.",
+      "es": "Parece que un panel consulta estos datos y dejará de funcionar: {0}.",
+      "mg": "Misy tabilao fanaraha-maso iray toa maka ity angona ity ka tsy hiasa intsony: {0}.",
+      "sw": "Dashibodi inaonekana kuuliza data hii na itaacha kufanya kazi: {0}."
+    },
+    {
+      "_base": "en",
+      "en": "{0} dashboards appear to query this data and will break: {1}.",
+      "fr": "{0} tableaux de bord semblent interroger ces données et cesseront de fonctionner : {1}.",
+      "pt": "{0} painéis parecem consultar estes dados e deixarão de funcionar: {1}.",
+      "es": "Parece que {0} paneles consultan estos datos y dejarán de funcionar: {1}.",
+      "mg": "Misy tabilao fanaraha-maso {0} toa maka ity angona ity ka tsy hiasa intsony: {1}.",
+      "sw": "Dashibodi {0} zinaonekana kuuliza data hii na zitaacha kufanya kazi: {1}."
+    },
+    {
+      "_base": "en",
+      "en": "Design sessions that built it are kept, with their link to this integration cleared.",
+      "fr": "Les sessions de conception qui l’ont créée sont conservées, mais leur lien avec cette intégration est supprimé.",
+      "pt": "As sessões de criação usadas para construí-la são mantidas, mas o vínculo com esta integração é removido.",
+      "es": "Las sesiones de diseño que la crearon se conservan, pero se elimina su enlace a esta integración.",
+      "mg": "Hotazonina ireo fotoam-pamolavolana namorona azy, fa hofoanana ny rohin’izy ireo amin’ity fampidirana angona ity.",
+      "sw": "Vipindi vya usanifu vilivyouunda vinahifadhiwa, huku viungo vyake kwa muunganisho huu vikiondolewa."
+    },
+    {
+      "_base": "en",
+      "en": "Skills",
+      "fr": "Compétences",
+      "pt": "Conhecimentos",
+      "es": "Conocimientos",
+      "mg": "Fahaiza-manao",
+      "sw": "Ujuzi"
+    },
+    {
+      "_base": "en",
+      "en": "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
+      "fr": "Notes sur les sources et les techniques consultées par l’agent de conception lors de la création d’une intégration : particularités de publication, organisation des fichiers, extraits fonctionnels. Documentation de référence, rien à installer.",
+      "pt": "Notas sobre fontes e técnicas que o agente de criação consulta ao construir uma integração: peculiaridades de publicação, estruturas de arquivos e trechos funcionais. Material de referência, nada para instalar.",
+      "es": "Notas sobre la fuente y la técnica que el agente de diseño consulta al crear una integración: particularidades de publicación, estructuras de archivos y fragmentos funcionales. Material de referencia, nada que instalar.",
+      "mg": "Fanamarihana momba ny loharano sy ny teknika vakin’ilay agent mpamorona rehefa manangana fampidirana angona: ny mampiavaka ny famoahana, ny firafitry ny rakitra ary sombin-kaody miasa. Fitaovana fanovozan-kevitra fotsiny, tsy misy hapetraka.",
+      "sw": "Madokezo kuhusu chanzo na mbinu ambayo wakala wa usanifu husoma anapounda muunganisho: hali maalum za uchapishaji, miundo ya faili, vipande vya msimbo vinavyofanya kazi. Nyenzo za marejeleo, hakuna cha kusakinisha."
+    },
+    {
+      "_base": "en",
+      "en": "checked {0}",
+      "fr": "vérifié {0}",
+      "pt": "verificado {0}",
+      "es": "comprobado {0}",
+      "mg": "nojerena {0}",
+      "sw": "imekaguliwa {0}"
+    },
+    {
+      "_base": "en",
+      "en": "not installed",
+      "fr": "non installé",
+      "pt": "não instalada",
+      "es": "no instalada",
+      "mg": "tsy voapetraka",
+      "sw": "haijasakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "installed",
+      "fr": "installé",
+      "pt": "instalada",
+      "es": "instalada",
+      "mg": "voapetraka",
+      "sw": "imesakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "update available",
+      "fr": "mise à jour disponible",
+      "pt": "atualização disponível",
+      "es": "actualización disponible",
+      "mg": "misy fanavaozana",
+      "sw": "sasisho linapatikana"
+    },
+    {
+      "_base": "en",
+      "en": "Ready-made integrations shipped with this deployment. Installing copies the entry's settings into your integration; updates keep your area of interest, schedule, and limits.",
+      "fr": "Intégrations prêtes à l’emploi fournies avec ce déploiement. L’installation copie les paramètres de l’entrée dans votre intégration ; les mises à jour conservent votre zone d’intérêt, votre calendrier et vos limites.",
+      "pt": "Integrações prontas incluídas nesta implantação. A instalação copia as configurações da entrada para sua integração; as atualizações mantêm a área de interesse, a programação e os limites.",
+      "es": "Integraciones listas para usar incluidas en este despliegue. Al instalar, se copia la configuración de la entrada en su integración; las actualizaciones conservan el área de interés, la programación y los límites.",
+      "mg": "Fampidirana angona efa vonona miaraka amin’ity rafitra ity. Rehefa apetraka dia adika ao amin’ny fampidirana angonao ny firafitr’ilay singa; rehefa havaozina dia tazonina ny faritra mahaliana anao, ny fandaharam-potoana ary ny fetra.",
+      "sw": "Miunganisho iliyo tayari inayotolewa na usakinishaji huu. Kusakinisha hunakili mipangilio ya ingizo kwenye muunganisho wako; masasisho huhifadhi eneo lako la kuzingatia, ratiba na vikomo."
+    },
+    {
+      "_base": "en",
+      "en": "Installed {0} (v{1}); first ingest started.",
+      "fr": "{0} (v{1}) installé ; première ingestion lancée.",
+      "pt": "Instalação de {0} (v{1}) concluída; primeira ingestão iniciada.",
+      "es": "Se instaló {0} (v{1}); se inició la primera ingesta.",
+      "mg": "Voapetraka ny {0} (v{1}); natomboka ny fampidirana angona voalohany.",
+      "sw": "{0} (v{1}) imesakinishwa; uingizaji wa kwanza umeanza."
+    },
+    {
+      "_base": "en",
+      "en": "Installed {0} (v{1}).",
+      "fr": "{0} (v{1}) installé.",
+      "pt": "Instalação de {0} (v{1}) concluída.",
+      "es": "Se instaló {0} (v{1}).",
+      "mg": "Voapetraka ny {0} (v{1}).",
+      "sw": "{0} (v{1}) imesakinishwa."
+    },
+    {
+      "_base": "en",
+      "en": "This deployment has no library configured.",
+      "fr": "Aucune bibliothèque n’est configurée pour ce déploiement.",
+      "pt": "Nenhuma biblioteca está configurada nesta implantação.",
+      "es": "Este despliegue no tiene ninguna biblioteca configurada.",
+      "mg": "Tsy misy katalaogy voarindra amin’ity rafitra ity.",
+      "sw": "Usakinishaji huu hauna maktaba iliyosanidiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Cadence",
+      "fr": "Fréquence",
+      "pt": "Frequência",
+      "es": "Frecuencia",
+      "mg": "Fiverimberenana",
+      "sw": "Marudio"
+    },
+    {
+      "_base": "en",
+      "en": "Destinations",
+      "fr": "Destinations",
+      "pt": "Destinos",
+      "es": "Destinos",
+      "mg": "Toerana handefasana",
+      "sw": "Mahali lengwa"
+    },
+    {
+      "_base": "en",
+      "en": "Install",
+      "fr": "Installer",
+      "pt": "Instalar",
+      "es": "Instalar",
+      "mg": "Apetraho",
+      "sw": "Sakinisha"
+    },
+    {
+      "_base": "en",
+      "en": "Update",
+      "fr": "Mettre à jour",
+      "pt": "Atualizar",
+      "es": "Actualizar",
+      "mg": "Havaozy",
+      "sw": "Sasisha"
+    },
+    {
+      "_base": "en",
+      "en": "Schedule:",
+      "fr": "Calendrier :",
+      "pt": "Programação:",
+      "es": "Programación:",
+      "mg": "Fandaharam-potoana:",
+      "sw": "Ratiba:"
+    },
+    {
+      "_base": "en",
+      "en": "Area of interest:",
+      "fr": "Zone d’intérêt :",
+      "pt": "Área de interesse:",
+      "es": "Área de interés:",
+      "mg": "Faritra mahaliana:",
+      "sw": "Eneo la kuzingatia:"
+    },
+    {
+      "_base": "en",
+      "en": "unchanged — keeps the installed integration's area",
+      "fr": "inchangée — conserve la zone de l’intégration installée",
+      "pt": "sem alteração — mantém a área da integração instalada",
+      "es": "sin cambios — conserva el área de la integración instalada",
+      "mg": "tsy ovaina — mitazona ny faritry ny fampidirana angona voapetraka",
+      "sw": "halijabadilishwa — huhifadhi eneo la muunganisho uliosakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "deployment default — {0} [{1}]",
+      "fr": "valeur par défaut du déploiement — {0} [{1}]",
+      "pt": "padrão da implantação — {0} [{1}]",
+      "es": "valor predeterminado del despliegue — {0} [{1}]",
+      "mg": "sanda mahazatra amin’ny rafitra — {0} [{1}]",
+      "sw": "chaguo-msingi la usakinishaji — {0} [{1}]"
+    },
+    {
+      "_base": "en",
+      "en": "none set — the source's full extent",
+      "fr": "aucune définie — étendue complète de la source",
+      "pt": "nenhuma definida — toda a extensão da fonte",
+      "es": "sin configurar — toda la extensión de la fuente",
+      "mg": "tsy misy voafaritra — ny velarana manontolon’ny loharano",
+      "sw": "hakuna lililowekwa — eneo lote la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Run first ingest now",
+      "fr": "Lancer la première ingestion maintenant",
+      "pt": "Executar a primeira ingestão agora",
+      "es": "Ejecutar ahora la primera ingesta",
+      "mg": "Alefaso izao ny fampidirana angona voalohany",
+      "sw": "Endesha uingizaji wa kwanza sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Installing…",
+      "fr": "Installation…",
+      "pt": "Instalando…",
+      "es": "Instalando…",
+      "mg": "Mametraka…",
+      "sw": "Inasakinisha…"
+    },
+    {
+      "_base": "en",
+      "en": "email",
+      "fr": "e-mail",
+      "pt": "e-mail",
+      "es": "correo electrónico",
+      "mg": "mailaka",
+      "sw": "barua pepe"
+    },
+    {
+      "_base": "en",
+      "en": "password",
+      "fr": "mot de passe",
+      "pt": "senha",
+      "es": "contraseña",
+      "mg": "tenimiafina",
+      "sw": "nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "Signing in…",
+      "fr": "Connexion…",
+      "pt": "Entrando…",
+      "es": "Iniciando sesión…",
+      "mg": "Miditra…",
+      "sw": "Inaingia…"
+    },
+    {
+      "_base": "en",
+      "en": "Sign In",
+      "fr": "Se connecter",
+      "pt": "Entrar",
+      "es": "Iniciar sesión",
+      "mg": "Midira",
+      "sw": "Ingia"
+    },
+    {
+      "_base": "en",
+      "en": "No table \"{0}\"",
+      "fr": "Aucune table \"{0}\"",
+      "pt": "Tabela \"{0}\" inexistente",
+      "es": "No existe la tabla \"{0}\"",
+      "mg": "Tsy misy tabilao \"{0}\"",
+      "sw": "Hakuna jedwali \"{0}\""
+    },
+    {
+      "_base": "en",
+      "en": "From integration “{0}”",
+      "fr": "De l’intégration “{0}”",
+      "pt": "Da integração “{0}”",
+      "es": "De la integración “{0}”",
+      "mg": "Avy amin’ny fampidirana angona “{0}”",
+      "sw": "Kutoka kwenye muunganisho “{0}”"
+    },
+    {
+      "_base": "en",
+      "en": "updated {0}",
+      "fr": "mis à jour {0}",
+      "pt": "atualizado {0}",
+      "es": "actualizado {0}",
+      "mg": "nohavaozina {0}",
+      "sw": "imesasishwa {0}"
+    },
+    {
+      "_base": "en",
+      "en": "No rows yet.",
+      "fr": "Aucune ligne pour le moment.",
+      "pt": "Ainda não há linhas.",
+      "es": "Aún no hay filas.",
+      "mg": "Tsy mbola misy andalana.",
+      "sw": "Bado hakuna safu mlalo."
+    },
+    {
+      "_base": "en",
+      "en": "Newest {0} rows",
+      "fr": "{0} lignes les plus récentes",
+      "pt": "{0} linhas mais recentes",
+      "es": "{0} filas más recientes",
+      "mg": "Andalana {0} vaovao indrindra",
+      "sw": "Safu mlalo {0} mpya zaidi"
+    },
+    {
+      "_base": "en",
+      "en": "Sign Out",
+      "fr": "Se déconnecter",
+      "pt": "Sair",
+      "es": "Cerrar sesión",
+      "mg": "Mivoaha",
+      "sw": "Ondoka"
+    },
+    {
+      "_base": "en",
+      "en": "{0} · required",
+      "fr": "{0} · requis",
+      "pt": "{0} · obrigatório",
+      "es": "{0} · obligatorio",
+      "mg": "{0} · takina",
+      "sw": "{0} · lazima"
+    },
+    {
+      "_base": "en",
+      "en": "raster",
+      "fr": "raster",
+      "pt": "raster",
+      "es": "ráster",
+      "mg": "raster",
+      "sw": "rasta"
+    }
+  ],
+  "unused": []
+}

@@ -12,6 +12,18 @@ import {
 /** Assignable roles, least privilege first. */
 const ROLES: AdminUser["role"][] = ["viewer", "editor", "admin"]
 
+/** A role's display label, translated at call time. */
+function roleLabel(role: AdminUser["role"]): string {
+  switch (role) {
+    case "admin":
+      return T`admin`
+    case "editor":
+      return T`editor`
+    default:
+      return T`viewer`
+  }
+}
+
 /** A pending confirmation for a user action. */
 interface PendingConfirm {
   /** Dialog heading */
@@ -44,7 +56,7 @@ function ConfirmAction({ confirm, onCancel }: { confirm: PendingConfirm; onCance
         <p>{confirm.body}</p>
         <div className="confirm-actions">
           <button className="secondary" onClick={onCancel}>
-            Cancel
+            {T`Cancel`}
           </button>
           <button className={confirm.danger ? "danger" : undefined} autoFocus onClick={confirm.run}>
             {confirm.actionLabel}
@@ -74,10 +86,10 @@ function PasswordRevealDialog({ email, password, onClose }: { email: string; pas
   return (
     <>
       <div className="modal-backdrop" />
-      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="New password">
-        <h2>New password</h2>
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`New password`}>
+        <h2>{T`New password`}</h2>
         <p>
-          Password for <b>{email}</b> — shown once, copy it now and hand it over securely.
+          {T`Password for ${<b key="email">{email}</b>} — shown once, copy it now and hand it over securely.`}
         </p>
         <div className="password-box">
           <input
@@ -88,11 +100,11 @@ function PasswordRevealDialog({ email, password, onClose }: { email: string; pas
             onFocus={e => e.target.select()}
           />
           <button className="secondary" onClick={copy}>
-            {copied ? "Copied" : "Copy"}
+            {copied ? T`Copied` : T`Copy`}
           </button>
         </div>
         <div className="confirm-actions">
-          <button onClick={onClose}>Done</button>
+          <button onClick={onClose}>{T`Done`}</button>
         </div>
       </div>
     </>
@@ -144,9 +156,9 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
 
   function confirmReset(u: AdminUser) {
     setConfirm({
-      title: "Reset password",
-      body: `Generate a new password for ${u.email}? Their current password stops working immediately.`,
-      actionLabel: "Reset Password",
+      title: T`Reset password`,
+      body: T`Generate a new password for ${u.email}? Their current password stops working immediately.`,
+      actionLabel: T`Reset Password`,
       run: () => {
         setConfirm(null)
         void mutate(async () => {
@@ -159,9 +171,9 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
 
   function confirmDisable(u: AdminUser) {
     setConfirm({
-      title: "Disable user",
-      body: `Disable ${u.email}? Their sessions end immediately and sign-in is blocked until re-enabled.`,
-      actionLabel: "Disable",
+      title: T`Disable user`,
+      body: T`Disable ${u.email}? Their sessions end immediately and sign-in is blocked until re-enabled.`,
+      actionLabel: T`Disable`,
       danger: true,
       run: () => {
         setConfirm(null)
@@ -172,10 +184,9 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
 
   return (
     <section className="settings-section">
-      <h2>Users</h2>
+      <h2>{T`Users`}</h2>
       <p className="dim">
-        New and reset passwords are generated and shown once. Disabling a user keeps their history
-        but blocks sign-in; there is no delete.
+        {T`New and reset passwords are generated and shown once. Disabling a user keeps their history but blocks sign-in; there is no delete.`}
       </p>
       {error && <div className="error">{error}</div>}
       <form className="user-add-form" onSubmit={addUser}>
@@ -189,22 +200,22 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
         <select value={role} onChange={e => setRole(e.target.value as AdminUser["role"])}>
           {ROLES.map(r => (
             <option key={r} value={r}>
-              {r}
+              {roleLabel(r)}
             </option>
           ))}
         </select>
-        <button disabled={busy || !email.trim()}>Add User</button>
+        <button disabled={busy || !email.trim()}>{T`Add User`}</button>
       </form>
       {users === null ? (
-        <p>Loading…</p>
+        <p>{T`Loading…`}</p>
       ) : (
         <table className="sessions users">
           <thead>
             <tr>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Created</th>
+              <th>{T`Email`}</th>
+              <th>{T`Role`}</th>
+              <th>{T`Status`}</th>
+              <th>{T`Created`}</th>
               <th />
             </tr>
           </thead>
@@ -214,7 +225,7 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
               return (
                 <tr key={u.id}>
                   <td>
-                    {u.email} {isSelf && <span className="dim">(you)</span>}
+                    {u.email} {isSelf && <span className="dim">{T`(you)`}</span>}
                   </td>
                   <td>
                     <select
@@ -224,30 +235,30 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
                     >
                       {ROLES.map(r => (
                         <option key={r} value={r}>
-                          {r}
+                          {roleLabel(r)}
                         </option>
                       ))}
                     </select>
                   </td>
                   <td>
                     <span className={u.disabled ? "chip chip-paused" : "chip chip-active"}>
-                      {u.disabled ? "disabled" : "active"}
+                      {u.disabled ? T`disabled` : T`active`}
                     </span>
                   </td>
                   <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="row-actions">
                       <button className="secondary" disabled={busy} onClick={() => confirmReset(u)}>
-                        Reset Password
+                        {T`Reset Password`}
                       </button>
                       {u.disabled ? (
                         <button className="secondary" disabled={busy} onClick={() => void mutate(() => setUserDisabled(u.id, false))}>
-                          Enable
+                          {T`Enable`}
                         </button>
                       ) : (
                         !isSelf && (
                           <button className="danger" disabled={busy} onClick={() => confirmDisable(u)}>
-                            Disable
+                            {T`Disable`}
                           </button>
                         )
                       )}

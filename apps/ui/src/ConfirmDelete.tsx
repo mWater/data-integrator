@@ -35,7 +35,7 @@ export function ConfirmDelete({ title, children, confirmToken, confirmLabel, onC
         {confirmToken !== undefined && (
           <label>
             <span>
-              Type <code>{confirmToken}</code> to confirm:
+              {T`Type this to confirm:`} <code>{confirmToken}</code>
             </span>
             <input
               autoFocus
@@ -50,10 +50,10 @@ export function ConfirmDelete({ title, children, confirmToken, confirmLabel, onC
         )}
         <div className="confirm-actions">
           <button className="secondary" onClick={onCancel}>
-            Cancel
+            {T`Cancel`}
           </button>
           <button className="danger" disabled={!armed} onClick={onConfirm}>
-            {confirmLabel ?? "Delete Forever"}
+            {confirmLabel ?? T`Delete Forever`}
           </button>
         </div>
       </div>

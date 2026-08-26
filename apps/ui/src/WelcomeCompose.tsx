@@ -75,7 +75,7 @@ export function WelcomeCompose({ icon, title, blurb, placeholder, hints, submitL
       )}
       {error && <div className="error">{error}</div>}
       <button type="submit" className="welcome-submit" disabled={busy || !text.trim()}>
-        {busy ? "Starting…" : submitLabel}
+        {busy ? T`Starting…` : submitLabel}
       </button>
     </form>
   )

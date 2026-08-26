@@ -11,6 +11,7 @@ import {
   IntegrationDetail,
   IntegrationUsage,
   listCountries,
+  RunSummary,
   setIntegrationAoi,
   setIntegrationEnabled,
   setIntegrationTrigger,
@@ -20,6 +21,16 @@ import {
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
+
+/** What a finished run produced, as "sites: 412, readings: 9k in 3.4s". */
+function runStatsText(stats: NonNullable<RunSummary["stats"]>): string {
+  const rows = Object.entries(stats.rows ?? {})
+    .map(([table, count]) => `${table}: ${count}`)
+    .join(", ")
+  const produced = rows || T`${stats.snapshots ?? 0} snapshots`
+  const seconds = ((stats.durationMs ?? 0) / 1000).toFixed(1)
+  return T`${produced} in ${seconds}s`
+}
 
 /** Props for the integration detail view. */
 interface IntegrationViewProps {
@@ -117,7 +128,7 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
     }
   }
 
-  if (!detail) return <main className="list-page">{error ? <div className="error">{error}</div> : "Loading…"}</main>
+  if (!detail) return <main className="list-page">{error ? <div className="error">{error}</div> : T`Loading…`}</main>
 
   const { definition } = detail
   const tableIds = detail.destinations.filter(d => d.kind === "table").map(d => d.id)
@@ -127,24 +138,24 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
     <main className="list-page wide">
       <div className="session-head">
         <h1>{definition.name}</h1>
-        {detail.status === "draft" && <span className="chip chip-draft">draft</span>}
+        {detail.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
         <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
-        {!detail.enabled && <span className="chip chip-paused">paused</span>}
+        {!detail.enabled && <span className="chip chip-paused">{T`paused`}</span>}
         <span style={{ flex: 1 }} />
         {canDesign && (
-          <button className="secondary" onClick={onToggleEnabled} title="Paused integrations are skipped by the scheduler">
-            {detail.enabled ? "Pause" : "Resume"}
+          <button className="secondary" onClick={onToggleEnabled} title={T`Paused integrations are skipped by the scheduler`}>
+            {detail.enabled ? T`Pause` : T`Resume`}
           </button>
         )}
         {canDesign && (
           <button className="secondary" onClick={onRun} disabled={running}>
-            {running ? "Running…" : "Run Now"}
+            {running ? T`Running…` : T`Run Now`}
           </button>
         )}
-        {canDesign && <button onClick={onDesign}>Design with Agent</button>}
+        {canDesign && <button onClick={onDesign}>{T`Design with Agent`}</button>}
         {canDesign && (
           <button className="danger" onClick={() => void onDeleteOpen()}>
-            Delete
+            {T`Delete`}
           </button>
         )}
       </div>
@@ -161,18 +172,20 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
       <div className="dest-cards">
         {detail.destinations.map(d => (
           <div key={d.id} className="dest-card">
-            <div className="dim">{d.kind === "table" ? "table" : "raster layer"}</div>
+            <div className="dim">{d.kind === "table" ? T`table` : T`raster layer`}</div>
             <b>{d.id}</b>
             <div>
               {d.count === null
                 ? running
-                  ? "first run in progress…"
+                  ? T`first run in progress…`
                   : canDesign
-                    ? "no data yet — Run Now loads it"
-                    : "no data yet"
-                : `${d.count.toLocaleString()} ${d.kind === "table" ? "rows" : "snapshots"}`}
+                    ? T`no data yet — Run Now loads it`
+                    : T`no data yet`
+                : d.kind === "table"
+                  ? T`${d.count.toLocaleString()} rows`
+                  : T`${d.count.toLocaleString()} snapshots`}
             </div>
-            {d.kind === "raster" && d.count !== null && <a href={`#/layer/${d.id}`}>View on map</a>}
+            {d.kind === "raster" && d.count !== null && <a href={`#/layer/${d.id}`}>{T`View on map`}</a>}
           </div>
         ))}
       </div>
@@ -180,30 +193,30 @@ export function IntegrationView({ integrationId, canDesign }: IntegrationViewPro
       <div className="tabs">
         {([...(tableIds.length ? ["data" as const] : []), "runs", "definition", "code"] as Tab[]).map(t => (
           <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setPicked(t)}>
-            {t}
+            {t === "data" ? T`data` : t === "runs" ? T`runs` : t === "definition" ? T`definition` : T`code`}
           </button>
         ))}
       </div>
 
       {tab === "runs" &&
         (detail.runs.length === 0 ? (
-          <p>No runs yet.</p>
+          <p>{T`No runs yet.`}</p>
         ) : (
           <table className="sessions">
             <thead>
-              <tr><th>When</th><th>Trigger</th><th>Status</th><th>Result</th></tr>
+              <tr><th>{T`When`}</th><th>{T`Trigger`}</th><th>{T`Status`}</th><th>{T`Result`}</th></tr>
             </thead>
             <tbody>
               {detail.runs.map(run => (
                 <tr key={run.id}>
-                  <td>{run.startedAt ? new Date(run.startedAt).toLocaleString() : "queued"}</td>
+                  <td>{run.startedAt ? new Date(run.startedAt).toLocaleString() : T`queued`}</td>
                   <td>{run.trigger}</td>
                   <td><span className={`chip chip-${run.status}`}>{run.status}</span></td>
                   <td className="dim">
                     {run.error
                       ? run.error.slice(0, 120)
                       : run.stats
-                        ? `${Object.entries(run.stats.rows ?? {}).map(([t, n]) => `${t}: ${n}`).join(", ") || `${run.stats.snapshots ?? 0} snapshots`} in ${((run.stats.durationMs ?? 0) / 1000).toFixed(1)}s`
+                        ? runStatsText(run.stats)
                         : ""}
                   </td>
                 </tr>
@@ -258,7 +271,7 @@ function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps)
     try {
       const result = await setIntegrationTrigger(detail.id, { cron: cron.trim() === "" ? null : cron.trim(), webhook })
       setNotice(
-        result.version === detail.version ? "No change." : `Saved as version ${result.version}.`
+        result.version === detail.version ? T`No change.` : T`Saved as version ${result.version}.`
       )
       onChanged()
     } catch (err) {
@@ -268,17 +281,17 @@ function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps)
 
   return (
     <div className="aoi-section">
-      <h3>Schedule</h3>
+      <h3>{T`Schedule`}</h3>
       <p>
-        Current: <b>{triggerLabel(trigger)}</b>
-        {trigger.cron && <span className="dim"> (cron {trigger.cron})</span>}
+        {T`Current:`} <b>{triggerLabel(trigger)}</b>
+        {trigger.cron && <span className="dim"> {T`(cron ${trigger.cron})`}</span>}
       </p>
       {error && <div className="error">{error}</div>}
       {canDesign && (
         <div className="aoi-editor">
           <div className="aoi-bbox">
             <label>
-              cron (UTC; empty for manual only)
+              {T`cron (UTC; empty for manual only)`}
               <input
                 type="text"
                 style={{ width: 220 }}
@@ -289,12 +302,11 @@ function ScheduleSection({ detail, canDesign, onChanged }: ScheduleSectionProps)
             </label>
           </div>
           <label>
-            <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> Accept webhook
-            events
+            <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> {T`Accept webhook events`}
           </label>
           <div className="aoi-actions">
-            <button onClick={save}>Save</button>
-            <span className="dim">Saving archives a new definition version. Pause instead to stop runs temporarily.</span>
+            <button onClick={save}>{T`Save`}</button>
+            <span className="dim">{T`Saving archives a new definition version. Pause instead to stop runs temporarily.`}</span>
           </div>
           {notice && <p className="dim">{notice}</p>}
         </div>
@@ -347,18 +359,18 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
   const current =
     !aoiPresent ? (
       <>
-        Deployment default
+        {T`Deployment default`}
         {defaultAoi ? (
-          <span className="dim"> — {defaultAoi.name ?? "custom"} {formatBbox(defaultAoi.bbox)}</span>
+          <span className="dim"> — {defaultAoi.name ?? T`custom`} {formatBbox(defaultAoi.bbox)}</span>
         ) : (
-          <span className="dim"> — none set, so the source's full extent</span>
+          <span className="dim"> — {T`none set, so the source's full extent`}</span>
         )}
       </>
     ) : aoi === null ? (
-      <>Full source extent</>
+      <>{T`Full source extent`}</>
     ) : (
       <>
-        {countryNames(aoi.countries) ?? "Custom box"} {formatBbox(aoi.bbox)}
+        {countryNames(aoi.countries) ?? T`Custom box`} {formatBbox(aoi.bbox)}
       </>
     )
 
@@ -369,17 +381,17 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
       let body: Parameters<typeof setIntegrationAoi>[1]
       if (choice === "inherit" || choice === "full") body = { mode: choice }
       else if (choice === "country") {
-        if (!selected) throw new Error("Pick a country first")
+        if (!selected) throw new Error(T`Pick a country first`)
         body = { mode: "box", aoi: { bbox: selected.bbox, countries: [selected.iso3] } }
       } else {
         const values = [custom.west, custom.south, custom.east, custom.north].map(Number)
         if (values.some(v => !Number.isFinite(v)) || [custom.west, custom.south, custom.east, custom.north].some(v => v === "")) {
-          throw new Error("All four bbox values are required")
+          throw new Error(T`All four bbox values are required`)
         }
         body = { mode: "box", aoi: { bbox: values as [number, number, number, number] } }
       }
       const { version } = await setIntegrationAoi(detail.id, body)
-      setNotice(version === detail.version ? "No change." : `Saved as version ${version}; future runs use it.`)
+      setNotice(version === detail.version ? T`No change.` : T`Saved as version ${version}; future runs use it.`)
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -388,9 +400,9 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
 
   return (
     <div className="aoi-section">
-      <h3>Area of interest</h3>
+      <h3>{T`Area of interest`}</h3>
       <p>
-        Current: <b>{current}</b>
+        {T`Current:`} <b>{current}</b>
       </p>
       {error && <div className="error">{error}</div>}
       {canDesign && (
@@ -398,10 +410,10 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
           <div className="aoi-mode">
             {(
               [
-                ["inherit", "Deployment default"],
-                ["country", "Country"],
-                ["custom", "Custom bounding box"],
-                ["full", "Full source extent"]
+                ["inherit", T`Deployment default`],
+                ["country", T`Country`],
+                ["custom", T`Custom bounding box`],
+                ["full", T`Full source extent`]
               ] as [AoiChoice, string][]
             ).map(([value, label]) => (
               <label key={value}>
@@ -411,7 +423,7 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
           </div>
           {choice === "country" && (
             <select value={iso3} onChange={e => setIso3(e.target.value)}>
-              <option value="">Pick a country…</option>
+              <option value="">{T`Pick a country…`}</option>
               {countries.map(c => (
                 <option key={c.iso3} value={c.iso3}>
                   {c.name}
@@ -423,7 +435,7 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
             <div className="aoi-bbox">
               {(["west", "south", "east", "north"] as const).map(edge => (
                 <label key={edge}>
-                  {edge}
+                  {edge === "west" ? T`west` : edge === "south" ? T`south` : edge === "east" ? T`east` : T`north`}
                   <input
                     type="number"
                     step="any"
@@ -435,8 +447,8 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
             </div>
           )}
           <div className="aoi-actions">
-            <button onClick={save}>Save</button>
-            <span className="dim">Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.</span>
+            <button onClick={save}>{T`Save`}</button>
+            <span className="dim">{T`Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.`}</span>
           </div>
           {notice && <p className="dim">{notice}</p>}
         </div>
@@ -465,27 +477,27 @@ function VersionsSection({ integrationId, currentVersion }: VersionsSectionProps
   return (
     <div className="dest-def">
       <h3>
-        Versions <span className="dim">definition history, newest first</span>
+        {T`Versions`} <span className="dim">{T`definition history, newest first`}</span>
       </h3>
       <table className="sessions">
         <thead>
-          <tr><th>Version</th><th>When</th><th>By</th><th>Area of interest</th></tr>
+          <tr><th>{T`Version`}</th><th>{T`When`}</th><th>{T`By`}</th><th>{T`Area of interest`}</th></tr>
         </thead>
         <tbody>
           {versions.map(v => (
             <tr key={v.version}>
               <td>
-                v{v.version}
-                {v.version === currentVersion && <span className="chip chip-certified" style={{ marginLeft: 8 }}>current</span>}
+                {T`v${v.version}`}
+                {v.version === currentVersion && <span className="chip chip-certified" style={{ marginLeft: 8 }}>{T`current`}</span>}
               </td>
               <td>{new Date(v.createdAt).toLocaleString()}</td>
-              <td>{v.createdBy ?? <span className="dim">system</span>}</td>
+              <td>{v.createdBy ?? <span className="dim">{T`system`}</span>}</td>
               <td className="dim">
                 {v.aoiMode === "inherit"
-                  ? "deployment default"
+                  ? T`deployment default`
                   : v.aoiMode === "full"
-                    ? "full source extent"
-                    : `${v.aoi?.countries?.join(", ") ?? "custom"} ${v.aoi ? formatBbox(v.aoi.bbox) : ""}`}
+                    ? T`full source extent`
+                    : `${v.aoi?.countries?.join(", ") ?? T`custom`} ${v.aoi ? formatBbox(v.aoi.bbox) : ""}`}
               </td>
             </tr>
           ))}
@@ -553,7 +565,7 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
       <dl className="facts">
         {source?.name && (
           <>
-            <dt>Source</dt>
+            <dt>{T`Source`}</dt>
             <dd>
               {source.url ? (
                 <a href={source.url} target="_blank" rel="noreferrer">{source.name}</a>
@@ -564,7 +576,7 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
             </dd>
           </>
         )}
-        <dt>Schedule</dt>
+        <dt>{T`Schedule`}</dt>
         <dd>{triggerLabel((definition.trigger ?? {}) as { cron?: string })}</dd>
       </dl>
       {destinations.map(dest =>
@@ -573,13 +585,14 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
             <h3>
               {dest.tableId}{" "}
               <span className="dim">
-                table · {dest.action}
-                {dest.mergeColumns ? ` on ${dest.mergeColumns.join(", ")}` : ""}
+                {dest.mergeColumns
+                  ? T`table · ${dest.action} on ${dest.mergeColumns.join(", ")}`
+                  : T`table · ${dest.action}`}
               </span>
             </h3>
             <table className="sessions">
               <thead>
-                <tr><th>Column</th><th>Type</th><th>Units</th></tr>
+                <tr><th>{T`Column`}</th><th>{T`Type`}</th><th>{T`Units`}</th></tr>
               </thead>
               <tbody>
                 {dest.columns.map(column => (
@@ -603,11 +616,11 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
         ) : (
           <div key={dest.layerId} className="dest-def">
             <h3>
-              {dest.name ?? dest.layerId} <span className="dim">raster · {dest.temporality}</span>
+              {dest.name ?? dest.layerId} <span className="dim">{T`raster · ${dest.temporality}`}</span>
             </h3>
             <table className="sessions">
               <thead>
-                <tr><th>Band</th><th>Units</th></tr>
+                <tr><th>{T`Band`}</th><th>{T`Units`}</th></tr>
               </thead>
               <tbody>
                 {dest.bands.map(band => (
@@ -648,19 +661,19 @@ function DeleteIntegrationDialog({ detail, usage, onCancel, onConfirm }: DeleteI
     return (
       <>
         <div className="drawer-backdrop" onClick={onCancel} />
-        <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Cannot delete">
-          <h2>“{detail.definition.name}” cannot be deleted yet</h2>
-          <p>Other integrations read its data and would break:</p>
+        <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Cannot delete`}>
+          <h2>{T`“${detail.definition.name}” cannot be deleted yet`}</h2>
+          <p>{T`Other integrations read its data and would break:`}</p>
           <ul>
             {usage.dependents.map(d => (
               <li key={`${d.id}-${d.via}`}>
-                <b>{d.id}</b> reads <code>{d.via}</code>
+                <b>{d.id}</b> {T`reads`} <code>{d.via}</code>
               </li>
             ))}
           </ul>
-          <p className="dim">Delete or edit those integrations first.</p>
+          <p className="dim">{T`Delete or edit those integrations first.`}</p>
           <div className="confirm-actions">
-            <button className="secondary" onClick={onCancel}>Close</button>
+            <button className="secondary" onClick={onCancel}>{T`Close`}</button>
           </div>
         </div>
       </>
@@ -670,36 +683,44 @@ function DeleteIntegrationDialog({ detail, usage, onCancel, onConfirm }: DeleteI
   const rasters = detail.destinations.filter(d => d.kind === "raster")
   return (
     <ConfirmDelete
-      title={`Delete “${detail.definition.name}”?`}
+      title={T`Delete “${detail.definition.name}”?`}
       confirmToken={detail.id}
       onCancel={onCancel}
       onConfirm={onConfirm}
     >
       <p>
-        Integrations own their data, so deleting this integration <b>permanently deletes the data itself</b>, not just
-        the pipeline. <b>This cannot be undone</b>, and data from sources that no longer publish history cannot be
-        re-ingested. This will delete:
+        <b>
+          {T`Integrations own their data, so deleting this integration permanently deletes the data itself, not just the pipeline.`}
+        </b>{" "}
+        {T`This cannot be undone, and data from sources that no longer publish history cannot be re-ingested.`}{" "}
+        {T`This will delete:`}
       </p>
       <ul>
         {tables.map(t => (
           <li key={t.id}>
-            table <code>{t.id}</code>{t.count !== null ? ` — ${t.count.toLocaleString()} rows` : ""}
+            {T`table`} <code>{t.id}</code>{t.count !== null ? ` — ${T`${t.count.toLocaleString()} rows`}` : ""}
           </li>
         ))}
         {rasters.map(r => (
           <li key={r.id}>
-            raster layer <code>{r.id}</code>{r.count !== null ? ` — ${r.count.toLocaleString()} snapshots (files included)` : ""}
+            {T`raster layer`} <code>{r.id}</code>{r.count !== null ? ` — ${T`${r.count.toLocaleString()} snapshots (files included)`}` : ""}
           </li>
         ))}
-        <li>{usage.runs.toLocaleString()} run{usage.runs === 1 ? "" : "s"} of history and any pending webhook events</li>
+        <li>
+          {usage.runs === 1
+            ? T`${usage.runs.toLocaleString()} run of history and any pending webhook events`
+            : T`${usage.runs.toLocaleString()} runs of history and any pending webhook events`}
+        </li>
       </ul>
       {usage.dashboards.length > 0 && (
         <p>
-          ⚠ {usage.dashboards.length === 1 ? "A dashboard appears" : `${usage.dashboards.length} dashboards appear`} to
-          query this data and will break: {usage.dashboards.map(d => d.name).join(", ")}.
+          ⚠{" "}
+          {usage.dashboards.length === 1
+            ? T`A dashboard appears to query this data and will break: ${usage.dashboards.map(d => d.name).join(", ")}.`
+            : T`${usage.dashboards.length} dashboards appear to query this data and will break: ${usage.dashboards.map(d => d.name).join(", ")}.`}
         </p>
       )}
-      <p className="dim">Design sessions that built it are kept, with their link to this integration cleared.</p>
+      <p className="dim">{T`Design sessions that built it are kept, with their link to this integration cleared.`}</p>
     </ConfirmDelete>
   )
 }

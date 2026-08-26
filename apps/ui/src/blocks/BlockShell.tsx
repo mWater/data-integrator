@@ -27,12 +27,12 @@ export function BlockShell({ title, meta, sql, onDownloadCsv, children }: BlockS
         <span className="spacer" />
         {onDownloadCsv && (
           <button type="button" className="block-action" onClick={onDownloadCsv}>
-            CSV
+            {T`CSV`}
           </button>
         )}
         {sql && (
           <button type="button" className="block-action" onClick={() => setShowSql(v => !v)}>
-            {showSql ? "Hide SQL" : "SQL"}
+            {showSql ? T`Hide SQL` : T`SQL`}
           </button>
         )}
       </div>

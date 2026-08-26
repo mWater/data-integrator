@@ -19,7 +19,7 @@ export function TablePage({ tableId }: TablePageProps) {
     listSources().then(r => {
       const found = r.sources.find(s => s.kind === "table" && s.id === tableId)
       if (found) setSource(found)
-      else setError(`No table "${tableId}"`)
+      else setError(T`No table "${tableId}"`)
     }, err => setError(err.message))
   }, [tableId])
 
@@ -27,19 +27,19 @@ export function TablePage({ tableId }: TablePageProps) {
     <main className="list-page wide">
       <div className="session-head">
         <h1>{source?.name ?? tableId}</h1>
-        {source && <span className="chip chip-table">table</span>}
+        {source && <span className="chip chip-table">{T`table`}</span>}
         <span style={{ flex: 1 }} />
-        {source && <a href={`#/integration/${source.integrationId}`}>From integration “{source.integrationName}”</a>}
+        {source && <a href={`#/integration/${source.integrationId}`}>{T`From integration “${source.integrationName}”`}</a>}
       </div>
       {source && (
         <p className="dim">
           {source.id}
-          {source.rows !== null ? ` · ${source.rows.toLocaleString()} rows` : ""}
-          {source.updatedAt ? ` · updated ${new Date(source.updatedAt).toLocaleString()}` : ""}
+          {source.rows !== null ? ` · ${T`${source.rows.toLocaleString()} rows`}` : ""}
+          {source.updatedAt ? ` · ${T`updated ${new Date(source.updatedAt).toLocaleString()}`}` : ""}
         </p>
       )}
       {error && <div className="error">{error}</div>}
-      {!source && !error && <p>Loading…</p>}
+      {!source && !error && <p>{T`Loading…`}</p>}
       {source && <DataTab integrationId={source.integrationId} tableIds={[tableId]} running={false} />}
     </main>
   )
@@ -77,8 +77,8 @@ export function DataTab({ integrationId, tableIds, running }: DataTabProps) {
         </select>
       )}
       {error && <div className="error">{error}</div>}
-      {!preview && !error && <p>Loading…</p>}
-      {preview && preview.rows.length === 0 && <p>No rows yet.</p>}
+      {!preview && !error && <p>{T`Loading…`}</p>}
+      {preview && preview.rows.length === 0 && <p>{T`No rows yet.`}</p>}
       {preview && preview.rows.length > 0 && (
         <div className="data-scroll">
           <table className="sessions data-table">
@@ -95,7 +95,7 @@ export function DataTab({ integrationId, tableIds, running }: DataTabProps) {
               ))}
             </tbody>
           </table>
-          <p className="dim">Newest {preview.rows.length} rows</p>
+          <p className="dim">{T`Newest ${preview.rows.length} rows`}</p>
         </div>
       )}
     </div>

@@ -178,6 +178,54 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/tables
 
 See [API.md](API.md) and `GET /api/openapi.json` for the full interface.
 
+## Translate the interface
+
+Users pick their language under Settings; the choice is per browser. The
+catalog lives at `apps/ui/src/localizations.json` and ships with the app, so no
+configuration is needed to *use* a translation.
+
+To add strings or languages, work from `apps/ui`:
+
+```sh
+pnpm localize                            # re-extract T`...` strings from src/
+pnpm localize --translate all            # fill every missing translation
+pnpm localize --translate fr,pt          # or just these locales
+```
+
+Translation uses the same model configuration as the agent
+(`OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY`, optionally `AGENT_MODEL`), read
+from the environment or the repository-root `.env`. Extraction needs no key.
+
+Run `pnpm localize` after any change that adds or edits UI text, and commit the
+updated `localizations.json` alongside it. Strings the extractor no longer finds
+are listed under `unused` rather than deleted, so a temporarily removed string
+keeps its translations.
+
+For human review, round-trip a spreadsheet:
+
+```sh
+pnpm localize --export fr                # writes localizations-fr.xlsx at the repo root
+pnpm localize --import fr --file ../../localizations-fr.xlsx
+```
+
+To add a language, append it to the `locales` array in
+`apps/ui/src/localizations.json` and run `pnpm localize --translate <code>`.
+Translator guidance and the product glossary live in
+`apps/ui/scripts/translation-context.md`; edit that first if a term is coming
+out wrong across a whole locale.
+
+In UI code, always write strings as tagged templates so the extractor sees them:
+
+```tsx
+<button>{T`Run now`}</button>
+setNotice(T`Installed ${name}.`)
+```
+
+Never build a localized string at module scope: a language switch re-renders
+the tree but does not re-evaluate modules, so a top-level `const LABEL = T\`…\``
+would stay in the old language. Put it in a function instead (see
+`apps/ui/src/activity.ts`).
+
 ## Tests
 
 ```sh
