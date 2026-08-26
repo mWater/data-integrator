@@ -6,7 +6,7 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
-import { BandSpec } from "@data-integrator/definitions"
+import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
@@ -721,6 +721,54 @@ async function route(
       runId = await runs.start(libraryInstallMatch[1]).catch(() => null)
     }
     json(res, 200, { version: result.version, runId })
+    return
+  }
+
+  // Export: the definition is the whole integration, so sharing is one JSON
+  // file. The AOI stays home (deployment-owned); the importer's applies.
+  const exportMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/export$/)
+  if (exportMatch && req.method === "GET") {
+    const row = await pool.query("SELECT definition FROM app.integrations WHERE id = $1", [exportMatch[1]])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const { aoi: _aoi, ...definition } = row.rows[0].definition
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "content-disposition": `attachment; filename="${exportMatch[1]}.integration.json"`
+    })
+    res.end(JSON.stringify(definition, null, 2))
+    return
+  }
+
+  // Import installs a shared definition paused, so the operator can read the
+  // code and run it manually before the scheduler touches it
+  if (pathname === "/api/integrations/import" && req.method === "POST") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot import integrations" })
+      return
+    }
+    const body = await readJsonBody(req)
+    if (typeof body.id !== "string" || typeof body.code !== "string" || typeof body.runtime !== "string") {
+      json(res, 400, { error: "Not an integration definition (id, runtime, and code are required)" })
+      return
+    }
+    const exists = await pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [body.id])
+    if (exists.rows.length > 0) {
+      json(res, 409, { error: `Integration ${body.id} is already installed` })
+      return
+    }
+    let version: number
+    try {
+      version = (await installIntegration(pool, body as unknown as IntegrationDefinition, "ready", user.id)).version
+    } catch (err) {
+      // Validation failures and destination-ownership conflicts alike
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    await pool.query("UPDATE app.integrations SET enabled = false WHERE id = $1", [body.id])
+    json(res, 200, { id: body.id, version, enabled: false })
     return
   }
 

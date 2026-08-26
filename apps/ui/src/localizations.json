@@ -3670,6 +3670,42 @@
       "es": "Ventana de procesamiento por lotes en segundos (0 ejecuta de inmediato; los eventos que llegan dentro de la ventana comparten una misma ejecución)",
       "mg": "Fe-potoana fanangonana amin'ny segondra (0: mandeha avy hatrany; ny hetsika tonga ao anatin'io fe-potoana io dia miara-mandeha indray mandeha)",
       "sw": "Muda wa kukusanya kwa sekunde (0 huendesha mara moja; matukio yanayowasili ndani ya muda huu huendeshwa pamoja mara moja)"
+    },
+    {
+      "_base": "en",
+      "en": "Install a definition file exported from another deployment; it arrives paused for review",
+      "fr": "Installer un fichier de définition exporté depuis un autre déploiement ; il est mis en pause pour vérification",
+      "pt": "Instale um arquivo de definição exportado de outra implantação; ele será importado pausado para revisão",
+      "es": "Instalar un archivo de definición exportado desde otra implementación; se importará en pausa para su revisión",
+      "mg": "Mametraha rakitra famaritana naondrana avy amin'ny fametrahana hafa; hapetraka ho miato aloha izany mba hojerena",
+      "sw": "Sakinisha faili ya ufafanuzi iliyohamishwa kutoka usakinishaji mwingine; itawasili ikiwa imesitishwa ili ikaguliwe"
+    },
+    {
+      "_base": "en",
+      "en": "Import",
+      "fr": "Importer",
+      "pt": "Importar",
+      "es": "Importar",
+      "mg": "Hanafatra",
+      "sw": "Ingiza"
+    },
+    {
+      "_base": "en",
+      "en": "Download the definition as a file another deployment can import",
+      "fr": "Télécharger la définition sous forme de fichier importable par un autre déploiement",
+      "pt": "Baixe a definição como um arquivo que outra implantação possa importar",
+      "es": "Descargar la definición como un archivo que otra implementación pueda importar",
+      "mg": "Ampidino ho rakitra ny famaritana mba hahafahan'ny fametrahana hafa manafatra azy",
+      "sw": "Pakua ufafanuzi kama faili ambayo usakinishaji mwingine unaweza kuingiza"
+    },
+    {
+      "_base": "en",
+      "en": "Export",
+      "fr": "Exporter",
+      "pt": "Exportar",
+      "es": "Exportar",
+      "mg": "Hanondrana",
+      "sw": "Hamisha"
     }
   ],
   "unused": []

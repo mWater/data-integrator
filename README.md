@@ -42,7 +42,9 @@ one-click install/update (updates keep the deployment's area of interest,
 schedule, and limits), and definitions are versioned with attribution: the
 definition is the integration's single specification, every change archives a
 version, and the integration page shows the history and an area-of-interest
-editor. A deployment default AOI (Settings page, baked-in country list) scopes
+editor. Integrations export as a single definition file and import on
+another deployment (paused, AOI stripped), so sharing needs no common
+library. A deployment default AOI (Settings page, baked-in country list) scopes
 AOI-less integrations at run time, and runs record the AOI they executed with.
 Promoted raster snapshots are mirrored as tiled out-db PostGIS rasters
 referencing the COGs, so SQL joins raster values with vector rows (per-point

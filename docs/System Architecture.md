@@ -477,7 +477,9 @@ interfaces, which is the property competitive procurement requires.
 
 - **New data sources** are new library definitions, authorable by the AI
   designer with a human in the loop, shareable across deployments through
-  the library.
+  the library or directly: any integration exports as a single definition
+  file that another deployment imports, arriving paused for review with the
+  importer's area of interest applying.
 - **New derived analytics** are ordinary integrations over `inputs`.
 - **New languages** are new runtime images implementing the harness
   contract.

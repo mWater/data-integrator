@@ -57,6 +57,13 @@ curl -H "Authorization: Bearer $TOKEN" \
   batches events into one run per window. Also a versioned definition edit.
 - `PUT /api/integrations/:id/enabled` - `{enabled: boolean}` (editor/admin).
   Pauses/resumes scheduling; operational state, not versioned.
+- `GET /api/integrations/:id/export` - the current definition as a
+  downloadable JSON file, with the deployment-owned AOI stripped so the
+  importing deployment's default applies.
+- `POST /api/integrations/import` - install an exported definition
+  (editor/admin). Validates, rejects id and destination collisions, and
+  installs paused so the operator can review and run manually before
+  enabling the schedule.
 
 ## Webhooks
 

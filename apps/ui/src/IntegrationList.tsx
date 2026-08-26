@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { createSession, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
+import { useEffect, useRef, useState } from "react"
+import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
 import { cronText } from "./localization.js"
 
 /** Human-readable trigger summary. */
@@ -21,6 +21,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
   const [openSessions, setOpenSessions] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     listIntegrations().then(r => setIntegrations(r.integrations), err => setError(err.message))
@@ -29,6 +30,18 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       () => {}
     )
   }, [])
+
+  /** Imports a definition file exported by another deployment; it lands paused. */
+  async function onImportFile(file: File) {
+    setError(null)
+    try {
+      const definition = JSON.parse(await file.text())
+      const { id } = await importIntegration(definition)
+      window.location.hash = `#/integration/${id}`
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   async function onCreate() {
     setError(null)
@@ -46,6 +59,24 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       {canDesign && (
         <div className="new-session">
           <button onClick={onCreate}>{T`New Integration`}</button>
+          <button
+            className="secondary"
+            title={T`Install a definition file exported from another deployment; it arrives paused for review`}
+            onClick={() => fileInput.current?.click()}
+          >
+            {T`Import`}
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={e => {
+              const file = e.target.files?.[0]
+              e.target.value = ""
+              if (file) void onImportFile(file)
+            }}
+          />
           <a className="dim-link" href="#/sessions">
             {openSessions > 0 ? T`Agent activity (${openSessions} open)` : T`Agent activity`}
           </a>

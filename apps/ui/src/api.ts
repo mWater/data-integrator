@@ -913,6 +913,15 @@ export function installLibraryEntry(id: string, runNow: boolean): Promise<{ vers
   })
 }
 
+/** Imports a shared integration definition; it installs paused. */
+export function importIntegration(definition: unknown): Promise<{ id: string; version: number }> {
+  return request("/api/integrations/import", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(definition)
+  })
+}
+
 /** Reads the webhook capability URL parts (editor or admin). */
 export function getWebhookToken(id: string): Promise<{ token: string; path: string }> {
   return request(`/api/integrations/${id}/webhook-token`)

@@ -156,6 +156,15 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
             {running ? T`Running…` : T`Run Now`}
           </button>
         )}
+        <button
+          className="secondary"
+          title={T`Download the definition as a file another deployment can import`}
+          onClick={() => {
+            window.location.href = `/api/integrations/${detail.id}/export`
+          }}
+        >
+          {T`Export`}
+        </button>
         {canDesign && <button onClick={onDesign}>{T`Design with Agent`}</button>}
         {canDesign && (
           <button className="danger" onClick={() => void onDeleteOpen()}>
