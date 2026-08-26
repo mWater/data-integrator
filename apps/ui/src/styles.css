@@ -91,6 +91,19 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
   color: var(--topbar-dim); cursor: pointer; display: flex; align-items: center;
 }
 .theme-toggle:hover { color: var(--topbar-ink); background: rgba(255, 255, 255, 0.08) }
+.lang-picker {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 6px; border-radius: 6px;
+  color: var(--topbar-dim); cursor: pointer;
+}
+.lang-picker:hover { color: var(--topbar-ink); background: rgba(255, 255, 255, 0.08) }
+.lang-picker select {
+  background: none; border: 0; margin: 0; padding: 2px 8px;
+  font: inherit; color: inherit; cursor: pointer; appearance: none;
+}
+.lang-picker select:focus-visible { outline: 2px solid var(--topbar-ink); outline-offset: 2px }
+/* The dropdown itself is painted by the OS, so it needs page colors, not topbar ones. */
+.lang-picker option { background: var(--surface); color: var(--ink) }
 .user-menu { position: relative; display: flex }
 .user-menu-trigger {
   background: none; border: 0; padding: 5px 8px; border-radius: 6px; font-size: 13px;

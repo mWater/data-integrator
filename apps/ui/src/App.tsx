@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react"
 import { getMe, logout, User } from "./api.js"
-import { applyLocale, getSavedLocale, loadCronLocale } from "./localization.js"
-import { ThemePreference, useAppTheme } from "./theme.js"
+import { applyLocale, availableLocales, getSavedLocale, loadCronLocale } from "./localization.js"
 import { AssistantPage } from "./AssistantPage.js"
 import { DashboardList } from "./DashboardList.js"
 import { DashboardView } from "./DashboardView.js"
@@ -75,41 +74,29 @@ function parseHash(): Route {
   }
 }
 
-/** Cycle order for the theme toggle. */
-const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
-  light: "dark",
-  dark: "system",
-  system: "light"
-}
-
-/** Navbar theme toggle: cycles light, dark, system. */
-function ThemeToggle() {
-  const { preference, setPreference } = useAppTheme()
-  const label =
-    preference === "system" ? T`Theme: system` : preference === "dark" ? T`Theme: dark` : T`Theme: light`
+/** Navbar language picker: switches the interface locale for this browser. */
+function LanguageToggle({
+  locale,
+  onLocaleChange
+}: {
+  locale: string
+  onLocaleChange: (code: string) => void
+}) {
   return (
-    <button
-      className="theme-toggle"
-      title={label}
-      aria-label={label}
-      onClick={() => setPreference(NEXT_PREFERENCE[preference])}
-    >
-      {preference === "light" ? (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="12" cy="12" r="4.5" />
-          <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" />
-        </svg>
-      ) : preference === "dark" ? (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
-          <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />
-        </svg>
-      ) : (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="13" rx="2" />
-          <path d="M9 21h6M12 17v4" />
-        </svg>
-      )}
-    </button>
+    <label className="lang-picker" title={T`Language`}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18" />
+        <path d="M12 3c2.5 2.4 3.9 5.6 3.9 9s-1.4 6.6-3.9 9c-2.5-2.4-3.9-5.6-3.9-9s1.4-6.6 3.9-9Z" />
+      </svg>
+      <select value={locale} onChange={e => onLocaleChange(e.target.value)} aria-label={T`Language`}>
+        {availableLocales().map(l => (
+          <option key={l.code} value={l.code}>
+            {l.name}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -159,7 +146,7 @@ export function App() {
           <a href="#/dashboards">{T`Dashboards`}</a>
         </nav>
         <span style={{ flex: 1 }} />
-        <ThemeToggle />
+        <LanguageToggle locale={locale} onLocaleChange={setLocale} />
         <UserMenu user={user} onSignOut={() => logout().finally(() => setUser(null))} />
       </header>
       {route.sessionId ? (
@@ -181,7 +168,7 @@ export function App() {
       ) : route.library ? (
         <Library user={user} />
       ) : route.settings ? (
-        <Settings user={user} locale={locale} onLocaleChange={setLocale} />
+        <Settings user={user} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (

@@ -379,33 +379,6 @@
     },
     {
       "_base": "en",
-      "en": "Theme: system",
-      "fr": "Thème : système",
-      "pt": "Tema: sistema",
-      "es": "Tema: sistema",
-      "mg": "Endrika: rafitra",
-      "sw": "Mandhari: mfumo"
-    },
-    {
-      "_base": "en",
-      "en": "Theme: dark",
-      "fr": "Thème : sombre",
-      "pt": "Tema: escuro",
-      "es": "Tema: oscuro",
-      "mg": "Endrika: maizina",
-      "sw": "Mandhari: nyeusi"
-    },
-    {
-      "_base": "en",
-      "en": "Theme: light",
-      "fr": "Thème : clair",
-      "pt": "Tema: claro",
-      "es": "Tema: claro",
-      "mg": "Endrika: mazava",
-      "sw": "Mandhari: nyeupe"
-    },
-    {
-      "_base": "en",
       "en": "Home",
       "fr": "Accueil",
       "pt": "Início",
@@ -1996,15 +1969,6 @@
       "es": "Idioma",
       "mg": "Fiteny",
       "sw": "Lugha"
-    },
-    {
-      "_base": "en",
-      "en": "Changes the interface language for you on this device only.",
-      "fr": "Modifie la langue de l’interface uniquement pour vous, sur cet appareil.",
-      "pt": "Altera o idioma da interface apenas para você neste dispositivo.",
-      "es": "Cambia el idioma de la interfaz solo para ti en este dispositivo.",
-      "mg": "Manova ny fitenin'ny seha-pifandraisana ho anao amin'ity fitaovana ity ihany.",
-      "sw": "Hubadilisha lugha ya kiolesura kwa ajili yako kwenye kifaa hiki pekee."
     },
     {
       "_base": "en",
@@ -3625,7 +3589,51 @@
       "es": "ráster",
       "mg": "raster",
       "sw": "rasta"
+    },
+    {
+      "_base": "en",
+      "en": "Theme",
+      "fr": "Thème",
+      "pt": "Tema",
+      "es": "Tema",
+      "mg": "Endrika",
+      "sw": "Mandhari"
+    },
+    {
+      "_base": "en",
+      "en": "Changes the appearance for you on this device only.",
+      "fr": "Modifie l’apparence pour vous, uniquement sur cet appareil.",
+      "pt": "Altera a aparência apenas para você neste dispositivo.",
+      "es": "Cambia la apariencia solo para usted en este dispositivo.",
+      "mg": "Manova ny endrika ho anao amin’ity fitaovana ity ihany.",
+      "sw": "Hubadilisha mwonekano kwako kwenye kifaa hiki pekee."
+    },
+    {
+      "_base": "en",
+      "en": "Light",
+      "fr": "Clair",
+      "pt": "Claro",
+      "es": "Claro",
+      "mg": "Mazava",
+      "sw": "Angavu"
+    },
+    {
+      "_base": "en",
+      "en": "Dark",
+      "fr": "Sombre",
+      "pt": "Escuro",
+      "es": "Oscuro",
+      "mg": "Maizina",
+      "sw": "Giza"
+    },
+    {
+      "_base": "en",
+      "en": "Match system",
+      "fr": "Utiliser le thème du système",
+      "pt": "Usar configuração do sistema",
+      "es": "Usar configuración del sistema",
+      "mg": "Mifanaraka amin’ny rafitra",
+      "sw": "Fuata mfumo"
     }
-  ],
-  "unused": []
+  ]
 }

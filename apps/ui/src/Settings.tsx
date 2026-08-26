@@ -10,7 +10,7 @@ import {
   setSiteTitle,
   User
 } from "./api.js"
-import { availableLocales } from "./localization.js"
+import { ThemePreference, useAppTheme } from "./theme.js"
 import { UsersSection } from "./UsersSection.js"
 
 /** Shown as the home page title when the deployment has not set one. */
@@ -76,24 +76,21 @@ function formatBbox(bbox: [number, number, number, number]): string {
   return `[${bbox.map(v => v.toFixed(2)).join(", ")}]`
 }
 
-/** Interface language, applied immediately and remembered on this device. */
-function LanguageSection({
-  locale,
-  onLocaleChange
-}: {
-  locale: string
-  onLocaleChange: (code: string) => void
-}) {
+/** Interface theme, applied immediately and remembered on this device. */
+function ThemeSection() {
+  const { preference, setPreference } = useAppTheme()
   return (
     <section className="settings-section">
-      <h2>{T`Language`}</h2>
-      <p className="dim">{T`Changes the interface language for you on this device only.`}</p>
-      <select value={locale} onChange={e => onLocaleChange(e.target.value)} aria-label={T`Language`}>
-        {availableLocales().map(l => (
-          <option key={l.code} value={l.code}>
-            {l.name}
-          </option>
-        ))}
+      <h2>{T`Theme`}</h2>
+      <p className="dim">{T`Changes the appearance for you on this device only.`}</p>
+      <select
+        value={preference}
+        onChange={e => setPreference(e.target.value as ThemePreference)}
+        aria-label={T`Theme`}
+      >
+        <option value="light">{T`Light`}</option>
+        <option value="dark">{T`Dark`}</option>
+        <option value="system">{T`Match system`}</option>
       </select>
     </section>
   )
@@ -104,17 +101,7 @@ function LanguageSection({
  * installed without an AOI of its own; admins pick a country from the built-in
  * list or enter a custom bounding box.
  */
-export function Settings({
-  user,
-  locale,
-  onLocaleChange
-}: {
-  user: User
-  /** Active interface locale code. */
-  locale: string
-  /** Switch the interface locale. */
-  onLocaleChange: (code: string) => void
-}) {
+export function Settings({ user }: { user: User }) {
   const [current, setCurrent] = useState<DefaultAoi | null>(null)
   const [siteTitle, setSiteTitleState] = useState<string | null>(null)
   const [countries, setCountries] = useState<CountryBox[]>([])
@@ -263,8 +250,8 @@ export function Settings({
           )}
         </>
       )}
-      <LanguageSection locale={locale} onLocaleChange={onLocaleChange} />
       {isAdmin && <UsersSection currentUser={user} />}
+      <ThemeSection />
       <ChangePasswordSection />
     </main>
   )
