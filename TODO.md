@@ -15,7 +15,8 @@ Tracked at the level of what is left, not what exists; see README status and the
   cache; orphan GC for raster store files whose commit never landed; scratch
   areas of abandoned design sessions (cleanupScratch on stale non-finished
   sessions).
-- /work disk quota enforcement per integration.
+- Metadata-only definition edits (band nodata, rendering) still pay a full
+  cold re-ingest for certification; scope certification to what changed.
 
 ## Designer agent
 

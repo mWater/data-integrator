@@ -1,0 +1,78 @@
+{
+  "id": "copernicus_dem_glo30",
+  "code": "",
+  "name": "Copernicus DEM GLO-30",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 7200000
+  },
+  "source": {
+    "url": "https://copernicus-dem-30m.s3.amazonaws.com/",
+    "name": "Copernicus DEM GLO-30",
+    "license": "Copernicus DEM licence",
+    "provider": "Copernicus Programme / European Space Agency",
+    "documentation": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model"
+  },
+  "runtime": "python3.12",
+  "trigger": {},
+  "contract": 2,
+  "description": "Static Copernicus GLO-30 digital surface model, mosaicked from source tiles and clipped to the deployment area of interest.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "Elevation",
+      "bands": [
+        {
+          "id": "elevation",
+          "name": "Elevation",
+          "units": "m",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#1b5e20",
+                "value": 0
+              },
+              {
+                "color": "#4f8a3a",
+                "value": 250
+              },
+              {
+                "color": "#a6b94a",
+                "value": 750
+              },
+              {
+                "color": "#c8a96b",
+                "value": 1200
+              },
+              {
+                "color": "#8b5a3c",
+                "value": 1700
+              },
+              {
+                "color": "#8f8f8f",
+                "value": 2200
+              },
+              {
+                "color": "#d6d6d6",
+                "value": 2600
+              },
+              {
+                "color": "#ffffff",
+                "value": 2900
+              }
+            ],
+            "resampling": "average",
+            "defaultRange": {
+              "max": 2900,
+              "min": 0
+            }
+          }
+        }
+      ],
+      "layerId": "elevation",
+      "temporality": "current-only"
+    }
+  ]
+}
