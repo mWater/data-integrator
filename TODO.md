@@ -31,9 +31,10 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Access layer
 
-- AI query assistant (FUC-5): plain-language queries answered through the
-  query API, same swappable provider as the designer. The API and OpenAPI
-  contract it needs are built.
+- AI query assistant (FUC-5) is built: assistant sessions over the query API on
+  the same swappable provider as the designer, open to viewers, degrades to
+  absent when no model is configured. Nothing outstanding beyond the CHIRPS
+  nodata entry below, which its raster answers surfaced.
 - Analytical dashboards: core built per Dashboards.md (kit v0, in-server build,
   sql_engine execution, viewer + side-by-side design session UI, dashboard
   agent, live-fired). MapView has a proxied OpenFreeMap basemap + GeoJSON
@@ -46,6 +47,12 @@ Tracked at the level of what is left, not what exists; see README status and the
 - STAC-compatible representation of the raster catalog.
 - UI odds and ends: token management page, remove the redundant static /map
   page, code-split the maplibre chunk.
+- No automated tests for `apps/ui` at all (~6k lines of React); every suite in
+  the repo is server, runner, or runtime. At minimum, smoke coverage of the
+  routes and the API client.
+- Localization stops at the UI catalog: server-generated text and agent replies
+  are English only. Both are operator-facing in Angola (pt) and Madagascar
+  (fr/mg), so decide whether they are in scope before the pilots.
 - Accessibility pass over the UI (promised in the ToR).
 - OIDC as an optional bolt-on for ministries with identity providers.
 
@@ -66,8 +73,9 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Deployment and compliance (OS-1..9, deliverable 5)
 
-- GitHub remote + CI verified green (workflow exists, never run).
-- SPDX/SBOM dependency checks in CI, security policy, exceptions register.
+- SPDX/SBOM dependency checks in CI, and the exceptions register they feed.
+  (CI itself runs green on every push to main; LICENSE, NOTICE, SECURITY.md,
+  and CONTRIBUTING.md now exist.)
 - Clean-room deployment guide (podman/gVisor install, migrate, users, systemd),
   configuration manual, admin/user guides, knowledge-transfer materials.
 - TLS guidance and reverse-proxy reference config (cookie Secure flag already

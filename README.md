@@ -102,11 +102,11 @@ The project is complete when all of these exist.
   and code views, streaming job logs, run results.
 - **Dashboard UI** *(core flows built)* - Pipeline health, run history and lineage, data
   browser, and map view. Follows web accessibility conventions.
-- **Analytical dashboards** - Agent-designed dashboards: React over frozen,
+- **Analytical dashboards** *(core built)* - Agent-designed dashboards: React over frozen,
   parameterized SQL, compiled once and rendered in a sandboxed iframe (see
   Dashboards.md). Ship in the library like integrations; viewable with no AI
   configured.
-- **AI query assistant** - Plain-language questions answered through the documented
+- **AI query assistant** *(built)* - Plain-language questions answered through the documented
   API, using the same swappable model provider. Optional: the platform works without
   it.
 - **Localization** *(UI built)* - Every string in the web UI goes through `ez-localize`,
@@ -118,6 +118,12 @@ The project is complete when all of these exist.
   pilot countries, plus the open-source evidence: SPDX/SBOM checks in CI, security
   policy, documentation, and knowledge-transfer materials.
 
+## Contributing and security
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setup, code conventions, and how pull
+requests are handled. Report vulnerabilities privately per
+[SECURITY.md](SECURITY.md), never through an issue.
+
 ## License
 
-Apache 2.0
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
