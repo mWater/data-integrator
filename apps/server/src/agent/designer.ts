@@ -99,7 +99,11 @@ Every raster band MUST declare nodata (matching the value written into the
 COG) and a rendering.colorMap with value stops spanning the data range - the
 map draws nothing without a colorMap, and SQL statistics count sentinel
 pixels without nodata. Make nodata transparent by relying on it (it always
-renders transparent) rather than adding a stop for it.
+renders transparent) rather than adding a stop for it. Derive colorMap stops
+and defaultRange from the values actually ingested for this deployment's
+area (check statistics on a produced raster before finishing), NOT from the
+variable's theoretical global range: a global-scale ramp renders a small
+region's data as one flat color.
 
 # Code contract
 One file, entrypoint run(ctx).
