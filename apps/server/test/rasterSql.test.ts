@@ -151,16 +151,22 @@ test("registerMissingRasters backfills and prune drops non-promoted", async () =
   await pool.query("UPDATE app.raster_snapshots SET status = 'promoted' WHERE id = $1", [SNAPSHOT])
 })
 
-test("non-EPSG CRS is refused with a clear message", async () => {
-  await assert.rejects(
-    registerRasterSql(pool, {
-      snapshotId: SNAPSHOT,
-      layerId: "rsql_layer",
-      observedAt: "2026-08-01T00:00:00Z",
-      observedEnd: null,
-      crs: "unknown",
-      absolutePath: tifPath
-    }),
-    /non-EPSG/
-  )
+test("unknown CRS is refused; ESRI authority codes resolve via spatial_ref_sys", async () => {
+  const ref = {
+    snapshotId: SNAPSHOT,
+    layerId: "rsql_layer",
+    observedAt: "2026-08-01T00:00:00Z",
+    observedEnd: null,
+    absolutePath: tifPath
+  }
+  await assert.rejects(registerRasterSql(pool, { ...ref, crs: "unknown" }), /unparseable CRS/)
+  await assert.rejects(registerRasterSql(pool, { ...ref, crs: "EPSG:999999" }), /unknown to spatial_ref_sys/)
+
+  // Mollweide (equal-area grids like GHSL) registers under the ESRI SRID
+  await pool.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
+  await registerRasterSql(pool, { ...ref, crs: "ESRI:54009" })
+  const srid = await pool.query("SELECT DISTINCT ST_SRID(rast) AS srid FROM data.rasters WHERE snapshot_id = $1", [
+    SNAPSHOT
+  ])
+  assert.deepEqual(srid.rows, [{ srid: 54009 }])
 })

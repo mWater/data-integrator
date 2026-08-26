@@ -31,7 +31,7 @@ export interface SnapshotRef {
   /** ISO timestamps */
   observedAt: string
   observedEnd: string | null
-  /** "EPSG:nnnn"; anything else cannot be registered */
+  /** "AUTH:code" (e.g. "EPSG:4326", "ESRI:54009"); must resolve in spatial_ref_sys */
   crs: string
   /** Absolute path of the stored COG, as the database server must see it */
   absolutePath: string
@@ -48,26 +48,59 @@ export async function enableOutDbSession(client: pg.ClientBase): Promise<void> {
 }
 
 /**
- * Registers one snapshot inside the caller's transaction, replacing any
- * previous registration. Throws with a clear message when the file has no
- * EPSG CRS, gdalinfo fails, or the database rejects out-db access. Call
- * enableOutDbSession on the client before opening the transaction.
+ * Resolves an "AUTH:code" CRS to the database's SRID via spatial_ref_sys
+ * (EPSG codes are their own SRID; ESRI and other authorities ship with
+ * PostGIS under their own numbers). Throws when the database does not know
+ * the CRS.
  */
-export async function registerRasterSqlInTx(client: pg.ClientBase, ref: SnapshotRef): Promise<void> {
-  const epsg = ref.crs.match(/^EPSG:(\d+)$/)
-  if (!epsg) throw new Error(`Snapshot ${ref.snapshotId} has non-EPSG CRS "${ref.crs}"; not registering`)
-  const srid = Number(epsg[1])
+export async function resolveSrid(client: pg.ClientBase, snapshotId: string, crs: string): Promise<number> {
+  const match = crs.match(/^([A-Za-z][A-Za-z0-9_]*):(\d+)$/)
+  if (!match) throw new Error(`Snapshot ${snapshotId} has unparseable CRS "${crs}"; not registering`)
+  const found = await client.query("SELECT srid FROM spatial_ref_sys WHERE auth_name = $1 AND auth_srid = $2", [
+    match[1].toUpperCase(),
+    Number(match[2])
+  ])
+  if (found.rows.length === 0) {
+    throw new Error(`Snapshot ${snapshotId} has CRS "${crs}" unknown to spatial_ref_sys; not registering`)
+  }
+  return found.rows[0].srid
+}
 
-  const { stdout } = await execFileP("gdalinfo", ["-json", ref.absolutePath], { maxBuffer: 16 * 1024 * 1024 })
+/** gdalinfo facts registration needs; throws when the file cannot be described. */
+async function describeRaster(snapshotId: string, absolutePath: string) {
+  const { stdout } = await execFileP("gdalinfo", ["-json", absolutePath], { maxBuffer: 16 * 1024 * 1024 })
   const info = JSON.parse(stdout) as {
     size: [number, number]
     geoTransform?: number[]
     bands?: unknown[]
   }
-  const [width, height] = info.size
-  const gt = info.geoTransform
-  if (!gt) throw new Error(`Snapshot ${ref.snapshotId} has no geotransform; not registering`)
-  const bandCount = info.bands?.length ?? 1
+  if (!info.geoTransform) throw new Error(`Snapshot ${snapshotId} has no geotransform; not registering`)
+  return { width: info.size[0], height: info.size[1], gt: info.geoTransform, bandCount: info.bands?.length ?? 1 }
+}
+
+/**
+ * Proves a snapshot would register (CRS resolvable, file describable)
+ * without inserting anything. Scratch runs call this so certification
+ * catches registration failures during design, not on the first
+ * production run.
+ */
+export async function validateRasterSqlRef(
+  client: pg.ClientBase,
+  ref: Pick<SnapshotRef, "snapshotId" | "crs" | "absolutePath">
+): Promise<void> {
+  await resolveSrid(client, ref.snapshotId, ref.crs)
+  await describeRaster(ref.snapshotId, ref.absolutePath)
+}
+
+/**
+ * Registers one snapshot inside the caller's transaction, replacing any
+ * previous registration. Throws with a clear message when the CRS is not in
+ * spatial_ref_sys, gdalinfo fails, or the database rejects out-db access.
+ * Call enableOutDbSession on the client before opening the transaction.
+ */
+export async function registerRasterSqlInTx(client: pg.ClientBase, ref: SnapshotRef): Promise<void> {
+  const srid = await resolveSrid(client, ref.snapshotId, ref.crs)
+  const { width, height, gt, bandCount } = await describeRaster(ref.snapshotId, ref.absolutePath)
 
   await client.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [ref.snapshotId])
   await client.query(

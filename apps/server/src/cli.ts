@@ -332,6 +332,27 @@ async function main(): Promise<number> {
             const stop = await controller.sendMessage(sessionId, text, printEvent)
             if (stop.reason === "finished") {
               console.log("Session finished.")
+              // finish may have started the first production load in this
+              // process; wait for it so exiting does not strand the run
+              const detail = await service.getSession(sessionId)
+              if (detail?.integrationId) {
+                for (;;) {
+                  const active = await pool.query(
+                    "SELECT status FROM app.runs WHERE integration_id = $1 AND status IN ('queued', 'running')",
+                    [detail.integrationId]
+                  )
+                  if (active.rows.length === 0) break
+                  console.log("Waiting for the first data load to complete…")
+                  await new Promise(resolve => setTimeout(resolve, 5000))
+                }
+                const last = await pool.query(
+                  "SELECT status, error FROM app.runs WHERE integration_id = $1 ORDER BY scheduled_at DESC LIMIT 1",
+                  [detail.integrationId]
+                )
+                if (last.rows.length > 0) {
+                  console.log(`First load: ${last.rows[0].status}${last.rows[0].error ? ` (${last.rows[0].error.split("\n")[0]})` : ""}`)
+                }
+              }
               return 0
             }
             if (stop.reason === "step_limit") {

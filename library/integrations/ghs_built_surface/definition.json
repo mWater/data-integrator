@@ -1,0 +1,66 @@
+{
+  "id": "ghs_built_surface",
+  "code": "",
+  "name": "GHSL Built-up Surface",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS",
+    "name": "GHS-BUILT-S R2023A",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "documentation": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS"
+  },
+  "runtime": "python3.12",
+  "trigger": {},
+  "contract": 2,
+  "description": "Ingests the 2020 observational epoch of the EC JRC GHS-BUILT-S R2023A total built-up surface at its native 100 m resolution, clipped to the deployment area of interest.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "Built-up surface",
+      "bands": [
+        {
+          "id": "built_up_area",
+          "name": "Built-up surface",
+          "units": "m² per cell",
+          "nodata": 65535,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#00000000",
+                "value": 0
+              },
+              {
+                "color": "#fff3d1cc",
+                "value": 1
+              },
+              {
+                "color": "#fdb863dd",
+                "value": 1000
+              },
+              {
+                "color": "#e34a33ee",
+                "value": 5000
+              },
+              {
+                "color": "#7f0000ff",
+                "value": 10000
+              }
+            ],
+            "resampling": "average",
+            "defaultRange": {
+              "max": 10000,
+              "min": 0
+            }
+          }
+        }
+      ],
+      "layerId": "built_up_surface",
+      "temporality": "current-only"
+    }
+  ]
+}

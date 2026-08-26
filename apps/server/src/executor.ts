@@ -21,7 +21,7 @@ import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 import { getDefaultAoi } from "./settings.js"
-import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx } from "./rasterSql.js"
+import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx, validateRasterSqlRef } from "./rasterSql.js"
 
 const execFileP = promisify(execFile)
 
@@ -348,22 +348,24 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         // SQL is a first-class consumer of raster data: a snapshot the
         // database cannot register out-db fails the run (and rolls back the
         // promotion) instead of silently missing from the query surface.
-        // Scratch previews stay out of the public query surface.
-        if (!scratch) {
-          try {
-            await registerRasterSqlInTx(client, {
-              snapshotId: stored.snapshotId,
-              layerId: layerRowFor(artifact.layerId),
-              observedAt: artifact.timestamp,
-              observedEnd: artifact.timestampEnd ?? null,
-              crs: stored.info.crs,
-              absolutePath: path.resolve(deps.store.absolute(stored.relPath))
-            })
-          } catch (err) {
-            throw new Error(
-              `raster SQL registration failed for ${artifact.layerId}: ${err instanceof Error ? err.message : err}`
-            )
+        // Scratch previews stay out of the public query surface but are
+        // validated the same way, so certification catches registration
+        // failures during design rather than on the first production run.
+        try {
+          const ref = {
+            snapshotId: stored.snapshotId,
+            layerId: layerRowFor(artifact.layerId),
+            observedAt: artifact.timestamp,
+            observedEnd: artifact.timestampEnd ?? null,
+            crs: stored.info.crs,
+            absolutePath: path.resolve(deps.store.absolute(stored.relPath))
           }
+          if (scratch) await validateRasterSqlRef(client, ref)
+          else await registerRasterSqlInTx(client, ref)
+        } catch (err) {
+          throw new Error(
+            `raster SQL registration failed for ${artifact.layerId}: ${err instanceof Error ? err.message : err}`
+          )
         }
       }
       if (webhookEvents.rows.length > 0) {
