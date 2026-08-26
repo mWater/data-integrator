@@ -432,3 +432,32 @@ test("scratch run: session schema, preview layer, no install, cleanup", { skip: 
   assert.equal((await pool.query("SELECT 1 FROM app.raster_layers WHERE session_id = $1", [sessionId])).rows.length, 0)
   await assert.rejects(() => access(deps.store.absolute(snapshot.rows[0].path)))
 }, { timeout: 180_000 })
+
+test("disk monitor kills a job that overruns its /work quota", { skip: !AVAILABLE }, async () => {
+  await installIntegration(pool, {
+    id: "e2e_hog",
+    name: "Disk hog",
+    trigger: {},
+    runtime: "python3.12",
+    limits: { workDiskMb: 5, timeoutMs: 120_000 },
+    destinations: [{ kind: "table", tableId: "hog_rows", action: "replace", columns: [{ id: "n", type: "integer" }] }],
+    code: `import time
+
+def run(ctx):
+    with open(f"{ctx.work_dir}/blob", "wb") as f:
+        f.write(b"x" * (20 * 1024 * 1024))
+    time.sleep(120)
+    return {"data": {"hog_rows": []}}
+`,
+    contract: 2
+  })
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_hog', 'manual', 'queued')`)
+  const run = await claimNextRun(pool, "test-worker")
+  assert.ok(run)
+  const started = Date.now()
+  await executeRun({ ...deps, diskMonitorMs: 500 }, run!)
+  const row = await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [run!.id])
+  assert.equal(row.rows[0].status, "failed")
+  assert.match(row.rows[0].error, /\/work reached \d+ MB, over the 5 MB quota/)
+  assert.ok(Date.now() - started < 60_000, "killed well before the sleep ended")
+}, { timeout: 120_000 })

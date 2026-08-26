@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, statfs } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
@@ -38,10 +38,41 @@ export interface ExecutorDeps {
   images: Record<string, string>
   /** Connection URL for tools that cannot use the pool (ogr2ogr extracts) */
   databaseUrl: string
+  /** /work ceiling and default in MB; absent or 0 leaves only workDiskMb */
+  workQuotaMb?: number
+  /** Free-space floor in MB on the work root and raster store; absent or 0 disables */
+  minFreeDiskMb?: number
+  /** Disk monitor poll interval; tests shorten it (default 30s) */
+  diskMonitorMs?: number
 }
 
 /** How often a running worker refreshes its lease. */
 const HEARTBEAT_MS = 15_000
+
+/** Free megabytes on the filesystem holding the path; null when unknowable. */
+export async function freeDiskMb(target: string): Promise<number | null> {
+  try {
+    const stats = await statfs(target)
+    return Math.floor((stats.bavail * stats.bsize) / (1024 * 1024))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The /work quota a run executes under: the definition's workDiskMb capped by
+ * the deployment ceiling, or the ceiling itself when the definition declares
+ * nothing. Null means unlimited (no ceiling configured, nothing declared).
+ */
+export function effectiveWorkQuotaMb(
+  definition: IntegrationDefinition,
+  deps: Pick<ExecutorDeps, "workQuotaMb">
+): number | null {
+  const declared = definition.limits?.workDiskMb ?? null
+  const ceiling = deps.workQuotaMb || null
+  if (ceiling === null) return declared
+  return declared === null ? ceiling : Math.min(declared, ceiling)
+}
 
 /** One row of app.runs the executor cares about. */
 interface RunRow {
@@ -212,7 +243,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     await mkdir(workDir, { recursive: true })
     // The /work quota is a between-runs check, not a kernel limit: a job over
     // quota does not start, and /work is a cache, so a cold run clears it
-    const workQuotaMb = definition.limits?.workDiskMb ?? null
+    const workQuotaMb = effectiveWorkQuotaMb(definition, deps)
     if (workQuotaMb !== null) {
       const usedMb = await dirUsageMb(workDir)
       if (usedMb !== null && usedMb > workQuotaMb) {
@@ -221,10 +252,23 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         )
       }
     }
+    const floorMb = deps.minFreeDiskMb || null
+    if (floorMb !== null) {
+      for (const target of [deps.workRoot, deps.store.root]) {
+        const freeMb = await freeDiskMb(target)
+        if (freeMb !== null && freeMb < floorMb) {
+          throw new Error(`Only ${freeMb} MB free under ${target}, below the ${floorMb} MB floor; not starting`)
+        }
+      }
+    }
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
 
     const logParts: string[] = []
     const started = Date.now()
+    // Disk guard: polls while the job runs and kills it when /work crosses its
+    // quota or the free-space floor is breached, so a runaway download cannot
+    // exhaust the disk between the pre-run check and the next one
+    let diskTimer: ReturnType<typeof setInterval> | null = null
     const jobResult = await deps.runner.run(
       {
         image,
@@ -244,9 +288,39 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         onStderrLine: line => {
           logParts.push(line)
           opts?.onLogLine?.(line)
+        },
+        onStart: handle => {
+          const floorMb = deps.minFreeDiskMb || null
+          if (workQuotaMb === null && floorMb === null) return
+          let checking = false
+          diskTimer = setInterval(async () => {
+            if (checking) return
+            checking = true
+            try {
+              if (workQuotaMb !== null) {
+                const usedMb = await dirUsageMb(workDir)
+                if (usedMb !== null && usedMb > workQuotaMb) {
+                  handle.abort(`/work reached ${usedMb} MB, over the ${workQuotaMb} MB quota`)
+                  return
+                }
+              }
+              if (floorMb !== null) {
+                for (const target of [deps.workRoot, deps.store.root]) {
+                  const freeMb = await freeDiskMb(target)
+                  if (freeMb !== null && freeMb < floorMb) {
+                    handle.abort(`Only ${freeMb} MB free under ${target}, below the ${floorMb} MB floor`)
+                    return
+                  }
+                }
+              }
+            } finally {
+              checking = false
+            }
+          }, deps.diskMonitorMs ?? 30_000)
         }
       }
     )
+    if (diskTimer !== null) clearInterval(diskTimer)
     let workUsedMb: number | null = null
     if (workQuotaMb !== null) {
       workUsedMb = await dirUsageMb(workDir)
@@ -260,7 +334,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
 
     if (jobResult.status !== "succeeded") {
       await finishRun(deps.pool, run.id, jobResult.status === "timeout" ? "timeout" : "failed", {
-        error: jobResult.stderrTail.slice(-2000) || `exit code ${jobResult.exitCode}`,
+        error: jobResult.abortedReason ?? (jobResult.stderrTail.slice(-2000) || `exit code ${jobResult.exitCode}`),
         log
       })
       return

@@ -106,6 +106,16 @@ test("timeout kills the job", { skip: !AVAILABLE }, async () => {
   assert.ok(result.durationMs < 30_000)
 }, { timeout: 60_000 })
 
+test("abort handle kills the job with its reason", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run(
+    { image: ALPINE, payload: null, command: ["sleep", "30"], limits: { timeoutMs: 60_000 } },
+    { onStart: handle => setTimeout(() => handle.abort("disk quota exceeded (test)"), 1000) }
+  )
+  assert.equal(result.status, "failed")
+  assert.equal(result.abortedReason, "disk quota exceeded (test)")
+  assert.ok(result.durationMs < 30_000)
+})
+
 test("mounts: /in readable+readonly, /out writable and collected", { skip: !AVAILABLE }, async () => {
   const inDir = await mkdtemp(path.join(tmpdir(), "job-in-"))
   const outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))

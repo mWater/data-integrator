@@ -93,8 +93,13 @@ Destinations:
   "number"|"integer"|"boolean"|"date"|"datetime"|"geometry"|"enum"|"json",
   enumValues? [{id, name}] when type is "enum", units?}]}
 - {kind: "raster", layerId, name?, temporality: "time-series"|"current-only", bands:
-  [{id, name?, units?, rendering? {resampling: "nearest"|"average", defaultRange?
+  [{id, name?, units?, nodata?, rendering? {resampling: "nearest"|"average", defaultRange?
   {min, max}, colorMap? [{value, color: "#rrggbb" or "#rrggbbaa"}]}}]}
+Every raster band MUST declare nodata (matching the value written into the
+COG) and a rendering.colorMap with value stops spanning the data range - the
+map draws nothing without a colorMap, and SQL statistics count sentinel
+pixels without nodata. Make nodata transparent by relying on it (it always
+renders transparent) rather than adding a stop for it.
 
 # Code contract
 One file, entrypoint run(ctx).

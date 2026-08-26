@@ -19,6 +19,7 @@
 import { hostname } from "node:os"
 import { dropOrphanStagedTables } from "./destinations.js"
 import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns } from "./executor.js"
+import { TileRenderer } from "./tiles.js"
 import { cronMatches, parseCron } from "./cron.js"
 
 /** Scheduler tuning; defaults suit a single-server deployment. */
@@ -29,6 +30,10 @@ export interface SchedulerOptions {
   reapMs?: number
   /** Concurrent run executors (default 2) */
   workers?: number
+  /** Tile renderer whose cache the maintenance tick keeps within tileCacheMb */
+  tiles?: TileRenderer
+  /** Tile + basemap cache budget in MB; absent or 0 skips eviction */
+  tileCacheMb?: number
 }
 
 /** A running scheduler; stop() resolves once all loops have wound down. */
@@ -123,6 +128,14 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       if (stopped) break
       await reapStaleRuns(deps.pool).catch(err => console.error("scheduler reap failed:", err))
       await dropOrphanStagedTables(deps.pool).catch(err => console.error("staging cleanup failed:", err))
+      if (options.tiles && options.tileCacheMb) {
+        await options.tiles
+          .evictToBudget(options.tileCacheMb)
+          .then(evicted => {
+            if (evicted > 0) console.log(`tile cache: evicted ${evicted} files to stay under ${options.tileCacheMb} MB`)
+          })
+          .catch(err => console.error("tile cache eviction failed:", err))
+      }
     }
   })()
 

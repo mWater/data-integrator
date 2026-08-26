@@ -32,6 +32,12 @@ export interface AppConfig {
   secretKey: Buffer | null
   /** RUNTIME_IMAGE_PYTHON / RUNTIME_IMAGE_NODE job images */
   runtimeImages: { python: string; node: string }
+  /** WORK_QUOTA_MB: /work ceiling and default per integration; 0 disables */
+  workQuotaMb: number
+  /** MIN_FREE_DISK_MB: free-space floor on work root and raster store; 0 disables */
+  minFreeDiskMb: number
+  /** TILE_CACHE_MB: tile + basemap cache budget, evicted oldest-first; 0 disables */
+  tileCacheMb: number
   /** Agent model wiring; both keys null means no model (core runs AI-free) */
   agent: {
     openrouterKey: string | null
@@ -74,6 +80,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     }
   }
 
+  const quota = (name: string, fallback: number): number => {
+    const raw = env[name] ?? String(fallback)
+    const value = Number(raw)
+    if (!Number.isInteger(value) || value < 0) {
+      problems.push(`${name} must be a non-negative integer of megabytes, got "${raw}"`)
+      return fallback
+    }
+    return value
+  }
+  const workQuotaMb = quota("WORK_QUOTA_MB", 20480)
+  const minFreeDiskMb = quota("MIN_FREE_DISK_MB", 2048)
+  const tileCacheMb = quota("TILE_CACHE_MB", 1024)
+
   const effortRaw = env.AGENT_EFFORT
   if (effortRaw && !AGENT_EFFORTS.includes(effortRaw as AgentEffort)) {
     problems.push(`AGENT_EFFORT must be one of ${AGENT_EFFORTS.join(", ")}, got "${effortRaw}"`)
@@ -95,6 +114,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     libraryPath: env.LIBRARY_PATH ?? "./library",
     uiDistPath: env.UI_DIST_PATH ?? null,
     secretKey,
+    workQuotaMb,
+    minFreeDiskMb,
+    tileCacheMb,
     runtimeImages: {
       python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
       node: env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"

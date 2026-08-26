@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { promisify } from "node:util"
-import { mkdir, readFile, writeFile, rm, access } from "node:fs/promises"
+import { mkdir, readFile, writeFile, rm, access, readdir, stat, unlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
@@ -66,7 +67,11 @@ export class TileRenderer {
     x: number,
     y: number
   ): Promise<Buffer> {
-    const cached = path.join(this.cacheDir, layerId, snapshotId, bandId, String(z), String(x), `${y}.png`)
+    // The rendering config is part of the key: restyling a band must not
+    // serve tiles drawn under the old ramp (stale entries age out via the
+    // cache budget)
+    const style = createHash("sha1").update(JSON.stringify(rendering)).digest("hex").slice(0, 8)
+    const cached = path.join(this.cacheDir, layerId, snapshotId, `${bandId}-${style}`, String(z), String(x), `${y}.png`)
     try {
       await access(cached)
       return await readFile(cached)
@@ -104,5 +109,49 @@ export class TileRenderer {
   /** Removes a layer's whole cache subtree (all snapshots); missing is fine. */
   async dropLayer(layerId: string): Promise<void> {
     await rm(path.join(this.cacheDir, layerId), { recursive: true, force: true })
+  }
+
+  /**
+   * Evicts oldest-modified cache files until the cache fits the budget.
+   * Covers rendered tiles and the proxied basemap alike (both live under the
+   * cache directory). Returns how many files were removed.
+   */
+  async evictToBudget(budgetMb: number): Promise<number> {
+    if (budgetMb <= 0) return 0
+    const files: { path: string; size: number; mtimeMs: number }[] = []
+    const walk = async (dir: string): Promise<void> => {
+      let entries
+      try {
+        entries = await readdir(dir, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        const target = path.join(dir, entry.name)
+        if (entry.isDirectory()) await walk(target)
+        else if (entry.isFile()) {
+          try {
+            const info = await stat(target)
+            files.push({ path: target, size: info.size, mtimeMs: info.mtimeMs })
+          } catch {
+            // deleted underneath us; a cache never minds
+          }
+        }
+      }
+    }
+    await walk(this.cacheDir)
+
+    let total = files.reduce((sum, file) => sum + file.size, 0)
+    const budget = budgetMb * 1024 * 1024
+    if (total <= budget) return 0
+    files.sort((a, b) => a.mtimeMs - b.mtimeMs)
+    let evicted = 0
+    for (const file of files) {
+      if (total <= budget) break
+      await unlink(file.path).catch(() => {})
+      total -= file.size
+      evicted++
+    }
+    return evicted
   }
 }

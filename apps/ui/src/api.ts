@@ -333,6 +333,18 @@ export interface LayerSnapshot {
   observed_end: string | null
 }
 
+/**
+ * Cache-busting token for tile URLs, derived from the band's rendering
+ * config: tile URLs are served immutable, so restyled bands must change URL
+ * or browsers keep the old pixels forever.
+ */
+export function styleToken(rendering: unknown): string {
+  const text = JSON.stringify(rendering ?? {})
+  let hash = 5381
+  for (let i = 0; i < text.length; i++) hash = ((hash * 33) ^ text.charCodeAt(i)) >>> 0
+  return hash.toString(36)
+}
+
 /** One catalog layer as /layers reports it. */
 export interface MapLayer {
   /** Layer id */
@@ -345,6 +357,8 @@ export interface MapLayer {
   current_snapshot_id: string | null
   /** Observation time of the current snapshot (ISO) */
   observed_at: string | null
+  /** Band declarations, rendering config included */
+  bands?: LayerBand[]
   /** Envelope of the current snapshot as GeoJSON */
   footprint: { coordinates: number[][][] } | null
   /** Promoted snapshots ascending by time */

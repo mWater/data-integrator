@@ -74,7 +74,9 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
     images: {
       "python3.12": config.runtimeImages.python,
       node22: config.runtimeImages.node
-    }
+    },
+    workQuotaMb: config.workQuotaMb,
+    minFreeDiskMb: config.minFreeDiskMb
   }
 }
 
@@ -388,7 +390,7 @@ async function main(): Promise<number> {
         // itself (browse, query, design) stands without one
         try {
           await deps.runner.ensureReady()
-          startScheduler(deps)
+          startScheduler(deps, { tiles, tileCacheMb: config.tileCacheMb })
           console.log("Scheduler running (cron enqueue, queue workers, stale-run reaper)")
         } catch (err) {
           console.log(`No job runner available; scheduler disabled (${err instanceof Error ? err.message : err})`)

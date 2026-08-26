@@ -9,12 +9,13 @@ import { useEffect, useRef, useState } from "react"
 import { GeoJSONSourceSpecification, LngLatBounds, Map as MapLibreMap, Popup } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme, type GeoJsonFeature, type GeoJsonFeatureCollection, type GeoJsonGeometry } from "@data-integrator/kit"
-import { AssistantResult, listLayers, MapLayer } from "../api.js"
+import { AssistantResult, listLayers, MapLayer, styleToken } from "../api.js"
 import { BlockShell } from "./BlockShell.js"
 import { ShowMapInput, ShowMapOverlay } from "./types.js"
 
 /** Tile URL for a layer pinned to one snapshot. */
-const tileUrl = (layerId: string, snapshotId: string) => `/tiles/${layerId}/${snapshotId}/{z}/{x}/{y}.png`
+const tileUrl = (layer: MapLayer, snapshotId: string) =>
+  `/tiles/${layer.id}/${snapshotId}/{z}/{x}/{y}.png?s=${styleToken(layer.bands?.[0]?.rendering)}`
 
 /** One overlay resolved to a FeatureCollection. */
 interface ResolvedOverlay {
@@ -173,8 +174,8 @@ export function MapBlock({ spec, results }: MapBlockProps) {
       for (const layer of spec.layers ?? []) {
         const entry = catalog.find(l => l.id === layer.layerId)
         const snapshotId = entry ? resolveSnapshot(entry, layer.at) : null
-        if (!snapshotId) continue
-        map.addSource(layer.layerId, { type: "raster", tiles: [tileUrl(layer.layerId, snapshotId)], tileSize: 256 })
+        if (!entry || !snapshotId) continue
+        map.addSource(layer.layerId, { type: "raster", tiles: [tileUrl(entry, snapshotId)], tileSize: 256 })
         map.addLayer({
           id: layer.layerId,
           type: "raster",

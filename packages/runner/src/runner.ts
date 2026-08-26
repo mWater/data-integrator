@@ -161,6 +161,15 @@ export class Runner {
       execFile(this.opts.podmanPath, ["rm", "-f", name], () => {})
     }, limits.timeoutMs)
 
+    let abortedReason: string | null = null
+    hooks?.onStart?.({
+      abort: reason => {
+        if (abortedReason !== null || timedOut) return
+        abortedReason = reason
+        execFile(this.opts.podmanPath, ["rm", "-f", name], () => {})
+      }
+    })
+
     const exitCode = await new Promise<number | null>(resolve => {
       child.on("close", code => resolve(code))
       child.on("error", () => resolve(null))
@@ -169,13 +178,14 @@ export class Runner {
     if (lineBuffer && hooks?.onStderrLine) hooks.onStderrLine(lineBuffer)
 
     return {
-      status: timedOut ? "timeout" : exitCode === 0 ? "succeeded" : "failed",
+      status: timedOut ? "timeout" : abortedReason !== null ? "failed" : exitCode === 0 ? "succeeded" : "failed",
       exitCode,
       stdout,
       stdoutTruncated,
       stdoutLimitBytes: this.opts.stdoutLimitBytes,
       stderrTail,
-      durationMs: Date.now() - started
+      durationMs: Date.now() - started,
+      ...(abortedReason !== null ? { abortedReason } : {})
     }
   }
 

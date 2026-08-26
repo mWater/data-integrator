@@ -7,11 +7,11 @@
 import { useEffect, useRef, useState } from "react"
 import { LngLatBounds, Map as MapLibreMap, RasterTileSource } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
-import { getLayer, LayerBand, LayerDetail } from "./api.js"
+import { getLayer, LayerBand, LayerDetail, styleToken } from "./api.js"
 
-/** Tile URL for one layer, snapshot and band. */
-const tileUrl = (layerId: string, snapshotId: string, bandId: string) =>
-  `/tiles/${layerId}/${snapshotId}/${bandId}/{z}/{x}/{y}.png`
+/** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
+const tileUrl = (layerId: string, snapshotId: string, band: LayerBand) =>
+  `/tiles/${layerId}/${snapshotId}/${band.id}/{z}/{x}/{y}.png?s=${styleToken(band.rendering)}`
 
 /** Id of the single maplibre layer this page draws into. */
 const RASTER_LAYER = "raster"
@@ -106,7 +106,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     map.on("load", () => {
       map.addSource(RASTER_LAYER, {
         type: "raster",
-        tiles: [tileUrl(layer.id, layer.snapshots[index].id, bandId)],
+        tiles: [tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])],
         tileSize: 256
       })
       map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": 0.85 } })
@@ -125,7 +125,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     const map = mapRef.current
     if (!map || !layer || !bandId || !map.getSource(RASTER_LAYER)) return
     const source = map.getSource(RASTER_LAYER) as RasterTileSource
-    source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, bandId)])
+    source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])])
   }, [layer, bandId, index])
 
   useEffect(() => () => {

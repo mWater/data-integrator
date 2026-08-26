@@ -59,6 +59,8 @@ export interface JobResult {
   stderrTail: string
   /** Wall-clock duration of the run in ms */
   durationMs: number
+  /** Reason the job was aborted through its handle, when it was */
+  abortedReason?: string
 }
 
 /** Configuration of a Runner instance. */
@@ -83,8 +85,16 @@ export interface RunnerOptions {
   stderrLimitBytes?: number
 }
 
+/** Live handle to an executing job. */
+export interface JobHandle {
+  /** Kills the container now; the result reports "failed" with this reason */
+  abort: (reason: string) => void
+}
+
 /** Callbacks invoked during a run. */
 export interface RunHooks {
   /** Called for each complete line of stderr as it streams */
   onStderrLine?: (line: string) => void
+  /** Called once the container has been spawned, with its abort handle */
+  onStart?: (handle: JobHandle) => void
 }
