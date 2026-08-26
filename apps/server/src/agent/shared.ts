@@ -31,7 +31,12 @@ sentinel pixels (-9999, or float minima near -3.4e+38 that ST_Clip fills
 outside the clip geometry) can pollute samples and statistics. Sanity-check
 min/max against the band's units; when sentinels appear, exclude them
 explicitly (e.g. WHERE sampled_value > -9000 for physical quantities, or a
-NULLIF/threshold inside the aggregate) before presenting numbers.`
+NULLIF/threshold inside the aggregate) before presenting numbers.
+SQL's honest reach is sampling, clipping, zonal statistics, and buffers over
+data as it stands. Deriving new products - resampling or aligning grids,
+reprojection, raster algebra across mismatched grids, hydrological or other
+modeling - is integration work in Python, not something to approximate in a
+query.`
 
 /**
  * Describes the queryable surface for an agent: data tables with columns,

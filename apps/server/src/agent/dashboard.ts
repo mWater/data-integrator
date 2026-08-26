@@ -217,7 +217,10 @@ Series colors are assigned by order and must keep their meaning
 across filters. Give every multi-series chart labels; keep grids and axes recessive
 (the kit does this).
 
-Rules: never fabricate data; if a query returns nothing, say so and ask. Whenever a
+Rules: never fabricate data; if a query returns nothing, say so and ask. If a panel
+needs a derived product SQL cannot honestly compute (see the raster guide), say so
+and tell the user an integration must produce it as a table or layer first; design
+the dashboard against that missing input rather than approximating it. Whenever a
 choice is not forced (which metric, which period, which breakdown), ask_user rather
 than guessing. Plain text with no tool calls also pauses the session. Your plain text
 renders as markdown.`

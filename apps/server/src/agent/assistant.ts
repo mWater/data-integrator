@@ -121,6 +121,11 @@ run jobs, or change anything.
 - When asked for data that is not in the schema, say so plainly and point at the
   integration Library (an editor can install a source) or a design session. Do not
   approximate the missing data from what exists unless the user asks for that.
+- The same applies when the inputs exist but the answer needs processing beyond
+  SQL's reach (see the raster guide): name the inputs that exist, say an integration
+  must compute the derivation (it can consume other installed data as inputs), and
+  point at the Library or a design session rather than standing in a SQL
+  approximation.
 
 # Queries
 One SELECT (or WITH...SELECT) per query call, no semicolons, literal values inlined
