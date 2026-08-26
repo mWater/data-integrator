@@ -87,6 +87,30 @@ ssh root@<ip> journalctl -u data-integrator -f
 `setup.sh` is also safe to re-run; it keeps the existing env file (and secret
 key) and skips work already done.
 
+## Real hostname via Cloudflare Tunnel
+
+For a named public instance (e.g. `integrator-demo.mwater.co` on the
+Cloudflare-managed zone), swap Caddy for a Cloudflare Tunnel: TLS terminates
+at Cloudflare, `cloudflared` dials out and proxies to the app on
+127.0.0.1:8080, and the server keeps no inbound ports open besides SSH.
+
+1. In the Cloudflare Zero Trust dashboard (Networks -> Tunnels), create a
+   tunnel with the Cloudflared connector and copy its token.
+2. On the tunnel's Public Hostname tab, add the hostname pointing to
+   `HTTP://127.0.0.1:8080`. This also creates the DNS record.
+3. On the server:
+
+   ```sh
+   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/data-integrator/deploy/upcloud/cloudflare-tunnel.sh
+   ```
+
+The script installs `cloudflared` as a systemd service, stops Caddy, and
+closes 80/443 in ufw. Skip any Zero Trust Access policy on the hostname if
+the site should be reachable by the world; the app's own logins are the
+gate. Session cookies stay `Secure` because Cloudflare sets
+`X-Forwarded-Proto` just as Caddy did, and the SSE heartbeat already keeps
+idle designer streams alive through the Cloudflare proxy.
+
 ## Tear down
 
 ```sh
@@ -101,6 +125,6 @@ upctl server delete --delete-storages integrator-test
   equivalent and `systemctl reload caddy`.
 - Session cookies work correctly behind the proxy — the server marks them
   `Secure` based on `X-Forwarded-Proto`, which Caddy sets.
-- When a real (sub)domain becomes available, point an A record at the server,
-  replace the hostname in `/etc/caddy/Caddyfile`, and reload — nothing else
-  changes.
+- For a real (sub)domain, prefer the Cloudflare Tunnel section above. A plain
+  A record also works (swap the hostname in `/etc/caddy/Caddyfile` and reload)
+  but leaves the origin IP public.

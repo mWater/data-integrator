@@ -59,8 +59,13 @@ Tracked at the level of what is left, not what exists; see README status and the
   deployments must install the update and re-promote (re-run) for SQL
   statistics to stop counting sentinels. The agent prompt teaches the interim
   workaround.
-- Remaining ToR sources: GloFAS, SPI, FPAR, DEM/FABDEM, GHSL, HydroSHEDS, SAR,
-  in-situ sensors, UNICEF datasources.
+- Remaining ToR sources: standardized design-session prompts, scoping
+  decisions, and acceptance checks are in `library/prompts/` (GHSL, DEM
+  GLO-30, HydroSHEDS, SPI, GloFAS, FPAR, GFM flood extent, in-situ
+  webhook). Run them in the README's sequence, logging RESULTS.md; each
+  doubles as a live-fire validation of the designer agent. FABDEM parked
+  on its non-commercial license; UNICEF datasources parked on the
+  Deliverable 2 consultations.
 - More skills (`library/skills/` is built: index in the designer prompt,
   read_skill on demand): per-source know-how for the remaining ToR sources
   as they are researched, whether or not a finished entry ships.
