@@ -30,26 +30,30 @@ export interface WebhookReceipt {
  */
 export async function receiveWebhook(pool: pg.Pool, token: string, payload: unknown): Promise<WebhookReceipt | null> {
   const integration = await pool.query(
-    `SELECT id, enabled, status FROM app.integrations
+    `SELECT id, enabled, status,
+            COALESCE((definition->'trigger'->>'webhookDelaySeconds')::int, 0) AS delay
+     FROM app.integrations
      WHERE webhook_token = $1 AND definition->'trigger'->>'webhook' = 'true'`,
     [token]
   )
   if (integration.rows.length === 0) return null
-  const { id, enabled, status } = integration.rows[0]
+  const { id, enabled, status, delay } = integration.rows[0]
 
   const event = await pool.query(
     "INSERT INTO app.webhook_events (integration_id, payload) VALUES ($1, $2) RETURNING id",
     [id, JSON.stringify(payload ?? null)]
   )
 
-  // The one-queued unique index coalesces bursts: concurrent receipts share
-  // the queued run, and each event still rides in its batch
+  // The one-queued unique index coalesces bursts: the first event opens the
+  // batch window (scheduled_at = now + webhookDelaySeconds) and later events
+  // conflict into the same run, so constant traffic cannot starve it
   let runId: string | null = null
   if (enabled && status === "ready") {
     const run = await pool.query(
-      `INSERT INTO app.runs (integration_id, trigger, status) VALUES ($1, 'webhook', 'queued')
+      `INSERT INTO app.runs (integration_id, trigger, status, scheduled_at)
+       VALUES ($1, 'webhook', 'queued', now() + make_interval(secs => $2))
        ON CONFLICT DO NOTHING RETURNING id`,
-      [id]
+      [id, delay]
     )
     runId = run.rows[0]?.id ?? null
   }

@@ -265,9 +265,10 @@ interface ScheduleSectionProps {
  * definition change.
  */
 function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSectionProps) {
-  const trigger = (detail.definition.trigger ?? {}) as { cron?: string; webhook?: boolean }
+  const trigger = (detail.definition.trigger ?? {}) as { cron?: string; webhook?: boolean; webhookDelaySeconds?: number }
   const [cron, setCron] = useState(trigger.cron ?? "")
   const [webhook, setWebhook] = useState(trigger.webhook === true)
+  const [delay, setDelay] = useState(String(trigger.webhookDelaySeconds ?? 0))
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [hookPath, setHookPath] = useState<string | null>(null)
@@ -295,7 +296,12 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
     setError(null)
     setNotice(null)
     try {
-      const result = await setIntegrationTrigger(detail.id, { cron: cron.trim() === "" ? null : cron.trim(), webhook })
+      const delaySeconds = webhook ? Number(delay) || 0 : 0
+      const result = await setIntegrationTrigger(detail.id, {
+        cron: cron.trim() === "" ? null : cron.trim(),
+        webhook,
+        webhookDelaySeconds: delaySeconds
+      })
       setNotice(
         result.version === detail.version ? T`No change.` : T`Saved as version ${result.version}.`
       )
@@ -330,6 +336,12 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
           <label>
             <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> {T`Accept webhook events`}
           </label>
+          {webhook && (
+            <label>
+              {T`Batch window in seconds (0 runs immediately; events arriving inside the window share one run)`}
+              <input type="number" min={0} max={86400} style={{ width: 100 }} value={delay} onChange={e => setDelay(e.target.value)} />
+            </label>
+          )}
           {hookPath && (
             <p className="dim">
               {T`Webhook URL:`} <code>{`${location.origin}${hookPath}`}</code>{" "}

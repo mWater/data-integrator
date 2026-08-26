@@ -79,7 +79,7 @@ that ingests external data into Postgres tables and/or the raster catalog.
 
 # Definition format (contract 2)
 Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
-license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true}, or {} for
+license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true, webhookDelaySeconds?}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
 (omit aoi to inherit the deployment default at run time; explicit null means the source's full extent;
 when writing an explicit aoi, take coordinates from lookup_country — never from memory, so agent-authored

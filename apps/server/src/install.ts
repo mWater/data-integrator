@@ -38,6 +38,10 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   if (definition.aoi != null) parseAoi(definition.aoi)
   // The scheduler evaluates trigger.cron every minute; reject bad expressions here
   if (definition.trigger?.cron !== undefined) parseCron(definition.trigger.cron)
+  const delay = definition.trigger?.webhookDelaySeconds
+  if (delay !== undefined && (!Number.isInteger(delay) || delay < 0 || delay > 86400)) {
+    throw new Error("webhookDelaySeconds must be an integer between 0 and 86400")
+  }
   const inputIds = new Set(Object.keys(definition.inputs ?? {}))
   for (const inputId of inputIds) {
     if (badId(inputId)) throw new Error(`Invalid input id: ${inputId}`)

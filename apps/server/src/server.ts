@@ -757,7 +757,7 @@ async function route(
       return
     }
     const body = await readJsonBody(req)
-    const trigger: { cron?: string; webhook?: boolean } = {}
+    const trigger: { cron?: string; webhook?: boolean; webhookDelaySeconds?: number } = {}
     try {
       if (typeof body.cron === "string" && body.cron.trim() !== "") {
         parseCron(body.cron)
@@ -765,7 +765,16 @@ async function route(
       } else if (body.cron !== undefined && body.cron !== null && body.cron !== "") {
         throw new Error("cron must be a string or null")
       }
-      if (body.webhook === true) trigger.webhook = true
+      if (body.webhook === true) {
+        trigger.webhook = true
+        const delay = body.webhookDelaySeconds
+        if (delay !== undefined && delay !== null && delay !== 0) {
+          if (typeof delay !== "number" || !Number.isInteger(delay) || delay < 0 || delay > 86400) {
+            throw new Error("webhookDelaySeconds must be an integer between 0 and 86400")
+          }
+          trigger.webhookDelaySeconds = delay
+        }
+      }
     } catch (err) {
       json(res, 400, { error: err instanceof Error ? err.message : String(err) })
       return

@@ -26,6 +26,12 @@ const HOOKED: IntegrationDefinition = {
   code: "export default async function run() { return {} }",
   contract: 2
 }
+const DELAYED: IntegrationDefinition = {
+  ...HOOKED,
+  id: "delayed",
+  trigger: { webhook: true, webhookDelaySeconds: 600 },
+  destinations: [{ kind: "table", tableId: "delayed_rows", action: "replace", columns: [{ id: "name", type: "text" }] }]
+}
 const CRON_ONLY: IntegrationDefinition = {
   ...HOOKED,
   id: "cron_only",
@@ -54,6 +60,7 @@ before(async () => {
   adminBearer = await createApiToken(pool, admin.id, "admin-token")
 
   await installIntegration(pool, HOOKED)
+  await installIntegration(pool, DELAYED)
   await installIntegration(pool, CRON_ONLY)
 
   server = createApiServer(pool, new TileRenderer(new RasterStore("/nonexistent"), "/nonexistent"))
@@ -104,6 +111,26 @@ test("webhook receipt stores the event and enqueues one coalesced run", async ()
   const runs = await pool.query("SELECT trigger, status FROM app.runs WHERE integration_id = 'hooked'")
   assert.equal(runs.rows.length, 1)
   assert.deepEqual(runs.rows[0], { trigger: "webhook", status: "queued" })
+})
+
+test("webhookDelaySeconds opens a batch window the first event anchors", async () => {
+  const first = await post(await token("delayed"), JSON.stringify({ n: 1 }))
+  assert.equal(first.status, 202)
+
+  // The run sits at the end of the window, out of claimNextRun's reach
+  const queued = await pool.query(
+    `SELECT scheduled_at > now() + interval '9 minutes' AS windowed
+     FROM app.runs WHERE integration_id = 'delayed' AND status = 'queued'`
+  )
+  assert.equal(queued.rows.length, 1)
+  assert.equal(queued.rows[0].windowed, true)
+
+  // A later event joins the batch without moving the window
+  const stamp = await pool.query("SELECT scheduled_at FROM app.runs WHERE integration_id = 'delayed'")
+  await post(await token("delayed"), JSON.stringify({ n: 2 }))
+  const after = await pool.query("SELECT scheduled_at FROM app.runs WHERE integration_id = 'delayed'")
+  assert.equal(after.rows.length, 1)
+  assert.deepEqual(after.rows[0].scheduled_at, stamp.rows[0].scheduled_at)
 })
 
 test("receipts for paused integrations buffer without enqueueing", async () => {

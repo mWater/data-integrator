@@ -3661,6 +3661,15 @@
       "es": "Regenerar",
       "mg": "Forony indray",
       "sw": "Unda upya"
+    },
+    {
+      "_base": "en",
+      "en": "Batch window in seconds (0 runs immediately; events arriving inside the window share one run)",
+      "fr": "Fenêtre de regroupement en secondes (0 lance l’exécution immédiatement ; les événements reçus pendant la fenêtre partagent la même exécution)",
+      "pt": "Janela de processamento em lote em segundos (0 executa imediatamente; eventos recebidos durante a janela compartilham uma única execução)",
+      "es": "Ventana de procesamiento por lotes en segundos (0 ejecuta de inmediato; los eventos que llegan dentro de la ventana comparten una misma ejecución)",
+      "mg": "Fe-potoana fanangonana amin'ny segondra (0: mandeha avy hatrany; ny hetsika tonga ao anatin'io fe-potoana io dia miara-mandeha indray mandeha)",
+      "sw": "Muda wa kukusanya kwa sekunde (0 huendesha mara moja; matukio yanayowasili ndani ya muda huu huendeshwa pamoja mara moja)"
     }
   ],
   "unused": []

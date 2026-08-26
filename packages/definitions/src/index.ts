@@ -79,6 +79,8 @@ export interface Trigger {
   cron?: string
   /** Accept webhook payloads, buffered and batched into ctx.webhookData (all pending events, oldest first) */
   webhook?: boolean
+  /** Batch window in seconds: the first event schedules the run this far out and later events join it (default 0: immediate) */
+  webhookDelaySeconds?: number
 }
 
 /** Area of interest that ingestion and input extracts are clipped to. */

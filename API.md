@@ -52,8 +52,9 @@ curl -H "Authorization: Bearer $TOKEN" \
   full extent), or `{mode: "box", aoi: {bbox, countries?}}`. Archives a new
   attributed definition version; an unchanged state is a no-op.
 - `PUT /api/integrations/:id/trigger` - change the schedule (editor/admin).
-  Body `{cron?: string|null, webhook?: boolean}`; cron is standard 5-field,
-  UTC, validated. Also a versioned definition edit.
+  Body `{cron?: string|null, webhook?: boolean, webhookDelaySeconds?: number}`;
+  cron is standard 5-field, UTC, validated; the delay (0-86400, webhook only)
+  batches events into one run per window. Also a versioned definition edit.
 - `PUT /api/integrations/:id/enabled` - `{enabled: boolean}` (editor/admin).
   Pauses/resumes scheduling; operational state, not versioned.
 
@@ -63,8 +64,11 @@ curl -H "Authorization: Bearer $TOKEN" \
   token in the URL is the credential; no session or bearer token applies.
   JSON bodies only (1 MB cap); the payload is buffered verbatim and the next
   run receives every pending event oldest-first in `ctx.webhookData`. A
-  receipt enqueues a run immediately (bursts coalesce into one queued run);
-  events for a paused or draft integration buffer until it runs again.
+  receipt enqueues a run: immediately by default, or at the end of a batch
+  window when the trigger sets `webhookDelaySeconds` (the first event anchors
+  the window and later events join its run - suits high-frequency sensor
+  feeds). Events for a paused or draft integration buffer until it runs
+  again.
   Returns `202 {eventId}`. Unknown tokens and integrations whose trigger
   does not accept webhooks 404 alike.
 - `GET /api/integrations/:id/webhook-token` - the token and `/hooks` path

@@ -55,8 +55,10 @@ UTC), workers drain the queue, and a reaper fails stale runs; schedules are
 editable in the UI as versioned definition changes, with a Pause toggle for
 the operational off-switch. Webhook triggers are live: each integration has a
 capability URL (`POST /hooks/<token>`, shown on the integration page, admin
-rotation) that buffers the JSON payload and enqueues a run; events for paused
-integrations wait for re-enable. Agent compaction and cost governance are not
+rotation) that buffers the JSON payload and enqueues a run, immediately or at
+the end of a per-integration batch window (webhookDelaySeconds) so
+high-frequency feeds share one run per window; events for paused integrations
+wait for re-enable. Agent compaction and cost governance are not
 started.
 
 - [Quickstart.md](Quickstart.md) - prerequisites to running server in ten minutes

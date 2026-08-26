@@ -926,8 +926,8 @@ export function rotateWebhookToken(id: string): Promise<{ token: string; path: s
 /** Changes the schedule (definition content: archives a new version). */
 export function setIntegrationTrigger(
   id: string,
-  trigger: { cron?: string | null; webhook?: boolean }
-): Promise<{ version: number; trigger: { cron?: string; webhook?: boolean } }> {
+  trigger: { cron?: string | null; webhook?: boolean; webhookDelaySeconds?: number }
+): Promise<{ version: number; trigger: { cron?: string; webhook?: boolean; webhookDelaySeconds?: number } }> {
   return request(`/api/integrations/${id}/trigger`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
