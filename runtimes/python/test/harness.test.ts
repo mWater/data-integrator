@@ -87,6 +87,27 @@ test("run mode: entrypoint, mounts, result JSON, print-redirect", { skip: !AVAIL
   assert.doesNotMatch(result.stdout, /log line/)
 }, { timeout: 120_000 })
 
+test("run mode: subprocess stdout cannot corrupt the result channel", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      definition: {
+        code: `import subprocess
+def run(ctx):
+    subprocess.run(["sh", "-c", "echo CONTAMINANT"], check=True)  # inherits fd 1
+    return {"state": {"ok": True}}
+`
+      }
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  const output = parseJobOutput<{ state: { ok: boolean } }>(result)
+  assert.equal(output.state.ok, true)
+  assert.doesNotMatch(result.stdout, /CONTAMINANT/)
+  assert.match(result.stderrTail, /CONTAMINANT/)
+}, { timeout: 120_000 })
+
 test("snippet mode: prints go to stdout", { skip: !AVAILABLE }, async () => {
   const result = await runner.run({
     image: IMAGE,

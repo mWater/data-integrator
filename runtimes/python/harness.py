@@ -4,13 +4,14 @@ Runtime harness: maps the job payload onto the integration entrypoint.
 
 stdin:  JSON { mode?, definition?, code?, secrets?, previousState?, webhookData?, params? }
 stdout: run mode: the JSON-serialized return value of run(ctx). Reserved for the result;
-        user print() output is redirected to stderr.
+        prints and subprocess output are redirected to stderr (fd-level).
         snippet mode: whatever the code prints (returned raw to the agent).
 stderr: logs and tracebacks.
 exit:   0 success, 1 failure.
 """
 import importlib.util
 import json
+import os
 import sys
 import traceback
 from types import SimpleNamespace
@@ -46,25 +47,27 @@ def main():
         exec(compile(code, "snippet.py", "exec"), {"ctx": ctx, "__name__": "__main__"})
         return 0
 
-    # run mode: stdout is the result channel, so user prints become stderr logs
-    real_stdout = sys.stdout
+    # run mode: stdout is the result channel. Redirect fd 1 to stderr at the
+    # OS level so subprocess output (GDAL progress and the like) physically
+    # cannot reach it; the saved descriptor carries the result out.
+    result_fd = os.dup(1)
+    os.dup2(2, 1)
     sys.stdout = sys.stderr
-    try:
-        spec = importlib.util.spec_from_file_location("integration", CODE_PATH)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        if not hasattr(module, "run"):
-            print("harness: integration must define run(ctx)", file=sys.stderr)
-            return 1
-        result = module.run(ctx)
-    finally:
-        sys.stdout = real_stdout
+    spec = importlib.util.spec_from_file_location("integration", CODE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if not hasattr(module, "run"):
+        print("harness: integration must define run(ctx)", file=sys.stderr)
+        return 1
+    result = module.run(ctx)
 
     try:
-        json.dump(result if result is not None else {}, sys.stdout)
+        serialized = json.dumps(result if result is not None else {})
     except (TypeError, ValueError) as err:
         print(f"harness: run() result is not JSON-serializable: {err}", file=sys.stderr)
         return 1
+    with os.fdopen(result_fd, "w") as out:
+        out.write(serialized)
     return 0
 
 

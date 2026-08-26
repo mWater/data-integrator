@@ -75,6 +75,28 @@ test("run mode: entrypoint, curated lib import, mounts, print-redirect", { skip:
   assert.doesNotMatch(result.stdout, /log line/)
 }, { timeout: 120_000 })
 
+test("run mode: child stdio inherit cannot corrupt the result channel", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      definition: {
+        code: `import { spawnSync } from "node:child_process"
+export default async function run() {
+  spawnSync("sh", ["-c", "echo CONTAMINANT"], { stdio: "inherit" })
+  return { state: { ok: true } }
+}
+`
+      }
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  const output = parseJobOutput<{ state: { ok: boolean } }>(result)
+  assert.equal(output.state.ok, true)
+  assert.doesNotMatch(result.stdout, /CONTAMINANT/)
+  assert.match(result.stderrTail, /CONTAMINANT/)
+}, { timeout: 120_000 })
+
 test("snippet mode: prints go to stdout", { skip: !AVAILABLE }, async () => {
   const result = await runner.run({
     image: IMAGE,
