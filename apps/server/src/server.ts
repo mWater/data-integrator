@@ -267,12 +267,6 @@ async function route(
 
   // Everything below is either the static shell (public) or data (auth required)
   if (!user) {
-    if (req.method === "GET" && pathname === "/map") {
-      const html = await readFile(path.join(STATIC_DIR, "map.html"))
-      res.writeHead(200, { "content-type": "text/html" })
-      res.end(html)
-      return
-    }
     if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
       if (await serveUi(url, res, uiDist)) return
     }
@@ -951,13 +945,6 @@ async function route(
 
   if (pathname.startsWith("/api/sessions")) {
     await routeSessions(pool, agent, dashboardAgent, assistantAgent, user, req, res, url)
-    return
-  }
-
-  if (pathname === "/map") {
-    const html = await readFile(path.join(STATIC_DIR, "map.html"))
-    res.writeHead(200, { "content-type": "text/html" })
-    res.end(html)
     return
   }
 

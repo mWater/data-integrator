@@ -65,7 +65,9 @@ def run(ctx):
             print(f"{year}-{month:02d} not published yet, stopping")
             break
         out_name = f"precip-{year}-{month:02d}.tif"
-        cmd = ["gdal_translate", "-q"]
+        with rasterio.open(src) as src_ds:
+            nodata = src_ds.nodata if src_ds.nodata is not None else -9999.0
+        cmd = ["gdal_translate", "-q", "-a_nodata", str(nodata)]
         if aoi:
             west, south, east, north = aoi
             cmd += ["-projwin", str(west), str(north), str(east), str(south)]

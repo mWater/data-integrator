@@ -41,12 +41,10 @@ Tracked at the level of what is left, not what exists; see README status and the
   overlays, verified in-browser both modes. Remaining: library distribution of
   dashboards, headless render test for the install path, MapView against a real
   raster catalog layer, ThemeTokens branding, content-hashed kit asset names
-  (immutable cache makes dev reloads stale), fix dashboard-session transcript
-  doubling in SessionView (mid-loop refetch overlaps live SSE echoes; keep
-  stored messages frozen until the loop ends).
+  (immutable cache makes dev reloads stale; today KIT_VERSION is bumped by
+  hand).
 - STAC-compatible representation of the raster catalog.
-- UI odds and ends: token management page, remove the redundant static /map
-  page, code-split the maplibre chunk.
+- UI odds and ends: token management page.
 - No automated tests for `apps/ui` at all (~6k lines of React); every suite in
   the repo is server, runner, or runtime. At minimum, smoke coverage of the
   routes and the API client.
@@ -58,11 +56,11 @@ Tracked at the level of what is left, not what exists; see README status and the
 
 ## Integration library
 
-- CHIRPS COGs do not declare a NODATA value, so -9999 sentinels (and ST_Clip
-  fill) leak into SQL statistics; set nodata in the library entry's outputs
-  and re-promote. (Surfaced by assistant raster queries 2026-08-10; the agent
-  prompt now teaches the workaround.)
-
+- CHIRPS nodata: the library entry now tags NODATA on its COGs and declares
+  -9999 on the band, but snapshots promoted before the fix still lack it -
+  deployments must install the update and re-promote (re-run) for SQL
+  statistics to stop counting sentinels. The agent prompt teaches the interim
+  workaround.
 - Remaining ToR sources: GloFAS, SPI, FPAR, DEM/FABDEM, GHSL, HydroSHEDS, SAR,
   in-situ sensors, UNICEF datasources.
 - More skills (`library/skills/` is built: index in the designer prompt,

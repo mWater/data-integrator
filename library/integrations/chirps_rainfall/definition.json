@@ -23,6 +23,7 @@
           "id": "precip",
           "name": "Precipitation",
           "units": "mm/month",
+          "nodata": -9999,
           "rendering": {
             "resampling": "average",
             "defaultRange": { "min": 0, "max": 600 },
