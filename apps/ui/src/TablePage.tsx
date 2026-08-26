@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react"
-import { DataSource, getTableRows, listSources } from "./api.js"
+import { lazy, Suspense, useEffect, useState } from "react"
+import { DataSource, getTableGeometry, getTableRows, listSources } from "./api.js"
+
+// The map owns the maplibre chunk; keep it out of the first paint
+const TableMap = lazy(() => import("./TableMap.js").then(m => ({ default: m.TableMap })))
 
 /** Props for the table page. */
 interface TablePageProps {
@@ -11,10 +14,18 @@ interface TablePageProps {
 export function TablePage({ tableId }: TablePageProps) {
   const [source, setSource] = useState<DataSource | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [geometry, setGeometry] = useState<{
+    geometryColumn: string | null
+    extent: [number, number, number, number] | null
+  } | null>(null)
+  const [view, setView] = useState<"data" | "map">("data")
 
   useEffect(() => {
     setSource(null)
     setError(null)
+    setGeometry(null)
+    setView("data")
+    getTableGeometry(tableId).then(setGeometry, () => setGeometry(null))
     // The catalog resolves the owning integration, which the rows API needs
     listSources().then(r => {
       const found = r.sources.find(s => s.kind === "table" && s.id === tableId)
@@ -40,7 +51,23 @@ export function TablePage({ tableId }: TablePageProps) {
       )}
       {error && <div className="error">{error}</div>}
       {!source && !error && <p>{T`Loading…`}</p>}
-      {source && <DataTab integrationId={source.integrationId} tableIds={[tableId]} running={false} />}
+      {source && geometry?.geometryColumn && (
+        <div className="view-toggle">
+          <button className={view === "data" ? "" : "secondary"} onClick={() => setView("data")}>
+            {T`Data`}
+          </button>
+          <button className={view === "map" ? "" : "secondary"} onClick={() => setView("map")}>
+            {T`Map`}
+          </button>
+        </div>
+      )}
+      {source && view === "map" && geometry?.geometryColumn ? (
+        <Suspense fallback={<p>{T`Loading map…`}</p>}>
+          <TableMap tableId={tableId} extent={geometry.extent} />
+        </Suspense>
+      ) : (
+        source && <DataTab integrationId={source.integrationId} tableIds={[tableId]} running={false} />
+      )}
     </main>
   )
 }

@@ -1,4 +1,5 @@
 import pg from "pg"
+import { ident } from "./destinations.js"
 
 /** One data source in the catalog: a destination table or a raster layer. */
 export interface DataSource {
@@ -82,4 +83,45 @@ export async function listSources(pool: pg.Pool): Promise<DataSource[]> {
   }
 
   return sources.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
+}
+
+/** Geometry facts of one managed destination table, for map views. */
+export interface TableGeometry {
+  /** First declared geometry column; null when the table has none */
+  geometryColumn: string | null
+  /** [west, south, east, north] of the data, null when empty or no geometry */
+  extent: [number, number, number, number] | null
+}
+
+/**
+ * Reports whether (and where) a destination table carries geometry, plus the
+ * data extent for initial map framing. Null for tables the platform does not
+ * manage or that do not exist yet.
+ */
+export async function tableGeometry(pool: pg.Pool, tableId: string): Promise<TableGeometry | null> {
+  const managed = await pool.query("SELECT 1 FROM app.data_tables WHERE id = $1", [tableId])
+  if (managed.rows.length === 0) return null
+  const column = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'data' AND table_name = $1 AND udt_name = 'geometry'
+     ORDER BY ordinal_position LIMIT 1`,
+    [tableId]
+  )
+  if (column.rows.length === 0) {
+    const exists = await pool.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'data' AND table_name = $1",
+      [tableId]
+    )
+    return exists.rows.length === 0 ? null : { geometryColumn: null, extent: null }
+  }
+  const name = column.rows[0].column_name as string
+  const extent = await pool.query(
+    `SELECT ST_XMin(e) w, ST_YMin(e) s, ST_XMax(e) e2, ST_YMax(e) n
+     FROM (SELECT ST_Extent(${ident(name)}) AS e FROM data.${ident(tableId)}) _x WHERE e IS NOT NULL`
+  )
+  const row = extent.rows[0]
+  return {
+    geometryColumn: name,
+    extent: row ? [row.w, row.s, row.e2, row.n] : null
+  }
 }

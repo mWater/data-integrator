@@ -927,6 +927,13 @@ export function installLibraryEntry(id: string, runNow: boolean): Promise<{ vers
   })
 }
 
+/** Geometry facts of a destination table, for the map view. */
+export function getTableGeometry(
+  tableId: string
+): Promise<{ geometryColumn: string | null; extent: [number, number, number, number] | null }> {
+  return request(`/api/tables/${tableId}/geometry`)
+}
+
 /** Imports a shared integration definition; it installs paused. */
 export function importIntegration(definition: unknown): Promise<{ id: string; version: number }> {
   return request("/api/integrations/import", {

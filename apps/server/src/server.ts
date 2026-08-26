@@ -16,7 +16,7 @@ import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary } from "./library.js"
 import { parseCron } from "./cron.js"
 import { loadSkill, loadSkillsIndex, skillsDir } from "./skills.js"
-import { listSources } from "./sources.js"
+import { listSources, tableGeometry } from "./sources.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
@@ -29,7 +29,7 @@ import {
   listDashboards,
   saveDashboard
 } from "./dashboards/service.js"
-import { DashboardQuery, executeStoredQuery, executeTileQuery } from "./dashboards/queries.js"
+import { DashboardQuery, executeStoredQuery, executeTableTileQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
 import {
   DEFAULT_AOI_KEY,
@@ -493,6 +493,32 @@ async function route(
 
   if (pathname === "/api/tables") {
     json(res, 200, { tables: await listTables(pool) })
+    return
+  }
+
+  // Map view of a destination table: geometry facts, then MVT vector tiles
+  const tableGeomMatch = pathname.match(/^\/api\/tables\/([a-z][a-z0-9_]*)\/geometry$/)
+  if (tableGeomMatch && req.method === "GET") {
+    const geometry = await tableGeometry(pool, tableGeomMatch[1])
+    if (!geometry) json(res, 404, { error: "unknown table" })
+    else json(res, 200, geometry)
+    return
+  }
+  const tableTileMatch = pathname.match(/^\/api\/tables\/([a-z][a-z0-9_]*)\/tiles\/(\d+)\/(\d+)\/(\d+)\.mvt$/)
+  if (tableTileMatch && req.method === "GET") {
+    const [, tableId, z, x, y] = tableTileMatch
+    const geometry = await tableGeometry(pool, tableId)
+    if (!geometry?.geometryColumn) {
+      json(res, 404, { error: "no geometry to map" })
+      return
+    }
+    try {
+      const mvt = await executeTableTileQuery(pool, tableId, geometry.geometryColumn, Number(z), Number(x), Number(y))
+      res.writeHead(200, { "content-type": MVT_CONTENT_TYPE, "cache-control": "private, max-age=60" })
+      res.end(mvt)
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
     return
   }
 

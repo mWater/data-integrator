@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react"
 import { LngLatBounds, Map as MapLibreMap, RasterTileSource } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
+import "./maplibre"
 import { getLayer, LayerBand, LayerDetail, styleToken } from "./api.js"
 
 /** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */

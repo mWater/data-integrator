@@ -3706,6 +3706,24 @@
       "es": "Exportar",
       "mg": "Hanondrana",
       "sw": "Hamisha"
+    },
+    {
+      "_base": "en",
+      "en": "Map",
+      "fr": "Carte",
+      "pt": "Mapa",
+      "es": "Mapa",
+      "mg": "Sarintany",
+      "sw": "Ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Loading map…",
+      "fr": "Chargement de la carte…",
+      "pt": "Carregando mapa…",
+      "es": "Cargando mapa…",
+      "mg": "Mampiditra ny sarintany…",
+      "sw": "Inapakia ramani…"
     }
   ],
   "unused": []

@@ -762,3 +762,9 @@ table.users tbody tr:hover { background: none }
   padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface); color: var(--ink); cursor: pointer
 }
+
+/* Table map view */
+.view-toggle { display: flex; gap: 6px; margin: 8px 0 }
+.map-popup-table { font-size: 12px; border-collapse: collapse }
+.map-popup-table th { text-align: left; padding-right: 8px; color: #555; font-weight: 600; vertical-align: top }
+.map-popup-table td { word-break: break-word }

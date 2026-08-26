@@ -5,6 +5,7 @@
  */
 
 import pg from "pg"
+import { ident } from "../destinations.js"
 
 /** Absolute row cap; per-query maxRows may only lower it. */
 const MAX_ROWS = 10_000
@@ -229,4 +230,48 @@ export async function executeTileQuery(
       `tile ${z}/${x}/${y} of query ${query.name} exceeds ${MAX_TILE_BYTES} bytes; aggregate or thin features at this zoom`
     )
   return mvt
+}
+
+/** MVT layer name table map tiles are encoded under; the UI's source-layer. */
+export const TABLE_TILE_LAYER = "features"
+
+/** Most features one table map tile carries; largest-first, so zooming completes the picture. */
+const TABLE_TILE_FEATURE_CAP = 2048
+
+/**
+ * Vector tiles straight off a destination table: every declared column rides
+ * as feature properties, the geometry column feeds the tile. Same wrapper,
+ * clip, and sql_engine execution as dashboard tile queries.
+ */
+export async function executeTableTileQuery(
+  pool: pg.Pool,
+  tableId: string,
+  geometryColumn: string,
+  z: number,
+  x: number,
+  y: number
+): Promise<Buffer> {
+  const columns = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'data' AND table_name = $1 ORDER BY ordinal_position`,
+    [tableId]
+  )
+  const props = columns.rows
+    .map(r => r.column_name as string)
+    .filter(name => name !== geometryColumn && name !== "geom" && name !== "_id" && name !== "_run_id")
+  // Two thinning levers keep arbitrary tables under the tile byte cap:
+  // one MVT cell of simplification tolerance (finer detail cannot survive
+  // quantization), and a per-tile cap keeping the spatially largest features
+  // first, so a 55k-feature river network shows its major reaches at country
+  // zoom and fills in as tiles shrink. With no declared params, the wrapper
+  // binds $1..$3 to z/x/y, so the envelope is addressable here.
+  const tolerance = 360 / (2 ** z * MVT_EXTENT)
+  const margin = MVT_BUFFER / MVT_EXTENT
+  const geom = ident(geometryColumn)
+  const sql = `SELECT ${props.map(ident).join(", ")}${props.length ? ", " : ""}ST_SimplifyPreserveTopology(${geom}, ${tolerance}) AS geom
+     FROM data.${ident(tableId)}
+     WHERE ${geom} && ST_Transform(ST_TileEnvelope($1::int, $2::int, $3::int, margin => ${margin}), 4326)
+     ORDER BY GREATEST(ST_XMax(${geom}) - ST_XMin(${geom}), ST_YMax(${geom}) - ST_YMin(${geom})) DESC
+     LIMIT ${TABLE_TILE_FEATURE_CAP}`
+  return executeTileQuery(pool, { name: TABLE_TILE_LAYER, sql, params: [], tile: true }, {}, z, x, y)
 }
