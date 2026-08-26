@@ -106,10 +106,10 @@ export async function storeArtifact(
   artifact: RasterArtifact,
   bandIds: string[],
   layerRowId: string = artifact.layerId
-): Promise<{ snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[] }> {
+): Promise<{ snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[]; sizeBytes: number }> {
   const file = resolveArtifactPath(outDir, artifact.path)
-  const present = await stat(file).then(s => s.isFile(), () => false)
-  if (!present) {
+  const stats = await stat(file).catch(() => null)
+  if (!stats?.isFile()) {
     const listing = await readdir(outDir, { recursive: true }).catch(() => [] as string[])
     throw new Error(
       `Declared raster "${artifact.path}" not found in /out. ` +
@@ -121,7 +121,7 @@ export async function storeArtifact(
   const snapshotId = randomUUID()
   const relPath = `${layerRowId}/${snapshotId}.tif`
   await store.put(file, relPath)
-  return { snapshotId, relPath, info, bandIds }
+  return { snapshotId, relPath, info, bandIds, sizeBytes: stats.size }
 }
 
 /**
@@ -134,14 +134,14 @@ export async function registerSnapshot(
   client: pg.ClientBase,
   runId: string,
   artifact: RasterArtifact,
-  stored: { snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[] },
+  stored: { snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[]; sizeBytes: number },
   temporality: "time-series" | "current-only",
   layerRowId: string = artifact.layerId
 ): Promise<void> {
   await client.query(
     `INSERT INTO app.raster_snapshots
-       (id, layer_id, observed_at, observed_end, footprint, crs, path, bands, run_id, status)
-     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, $9, 'promoted')`,
+       (id, layer_id, observed_at, observed_end, footprint, crs, path, bands, run_id, status, size_bytes)
+     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, $9, 'promoted', $10)`,
     [
       stored.snapshotId,
       layerRowId,
@@ -151,7 +151,8 @@ export async function registerSnapshot(
       stored.info.crs,
       stored.relPath,
       JSON.stringify(stored.bandIds),
-      runId
+      runId,
+      stored.sizeBytes
     ]
   )
   if (temporality === "current-only") {

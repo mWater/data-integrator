@@ -21,6 +21,7 @@ import {
   VersionSummary
 } from "./api.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
+import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
 
@@ -275,7 +276,7 @@ interface ScheduleSectionProps {
  */
 function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSectionProps) {
   const trigger = (detail.definition.trigger ?? {}) as { cron?: string; webhook?: boolean; webhookDelaySeconds?: number }
-  const [cron, setCron] = useState(trigger.cron ?? "")
+  const [cronDraft, setCronDraft] = useState(() => toCronDraft(trigger.cron))
   const [webhook, setWebhook] = useState(trigger.webhook === true)
   const [delay, setDelay] = useState(String(trigger.webhookDelaySeconds ?? 0))
   const [error, setError] = useState<string | null>(null)
@@ -307,7 +308,7 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
     try {
       const delaySeconds = webhook ? Number(delay) || 0 : 0
       const result = await setIntegrationTrigger(detail.id, {
-        cron: cron.trim() === "" ? null : cron.trim(),
+        cron: fromCronDraft(cronDraft),
         webhook,
         webhookDelaySeconds: delaySeconds
       })
@@ -323,25 +324,15 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
   return (
     <div className="aoi-section">
       <h3>{T`Schedule`}</h3>
-      <p>
-        {T`Current:`} <b>{triggerLabel(trigger)}</b>
-        {trigger.cron && <span className="dim"> {T`(cron ${trigger.cron})`}</span>}
-      </p>
+      {!canDesign && (
+        <p>
+          {T`Current:`} <b>{triggerLabel(trigger)}</b>
+        </p>
+      )}
       {error && <div className="error">{error}</div>}
       {canDesign && (
         <div className="aoi-editor">
-          <div className="aoi-bbox">
-            <label>
-              {T`cron (UTC; empty for manual only)`}
-              <input
-                type="text"
-                style={{ width: 220 }}
-                placeholder="0 6 5 * *"
-                value={cron}
-                onChange={e => setCron(e.target.value)}
-              />
-            </label>
-          </div>
+          <CronEditor draft={cronDraft} onChange={setCronDraft} />
           <label>
             <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> {T`Accept webhook events`}
           </label>

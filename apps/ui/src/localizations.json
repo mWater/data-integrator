@@ -3724,7 +3724,162 @@
       "es": "Cargando mapa…",
       "mg": "Mampiditra ny sarintany…",
       "sw": "Inapakia ramani…"
+    },
+    {
+      "_base": "en",
+      "en": "Sunday",
+      "fr": "Dimanche",
+      "pt": "Domingo",
+      "es": "Domingo",
+      "mg": "Alahady",
+      "sw": "Jumapili"
+    },
+    {
+      "_base": "en",
+      "en": "Monday",
+      "fr": "Lundi",
+      "pt": "Segunda-feira",
+      "es": "Lunes",
+      "mg": "Alatsinainy",
+      "sw": "Jumatatu"
+    },
+    {
+      "_base": "en",
+      "en": "Tuesday",
+      "fr": "Mardi",
+      "pt": "Terça-feira",
+      "es": "Martes",
+      "mg": "Talata",
+      "sw": "Jumanne"
+    },
+    {
+      "_base": "en",
+      "en": "Wednesday",
+      "fr": "Mercredi",
+      "pt": "Quarta-feira",
+      "es": "Miércoles",
+      "mg": "Alarobia",
+      "sw": "Jumatano"
+    },
+    {
+      "_base": "en",
+      "en": "Thursday",
+      "fr": "Jeudi",
+      "pt": "Quinta-feira",
+      "es": "Jueves",
+      "mg": "Alakamisy",
+      "sw": "Alhamisi"
+    },
+    {
+      "_base": "en",
+      "en": "Friday",
+      "fr": "Vendredi",
+      "pt": "Sexta-feira",
+      "es": "Viernes",
+      "mg": "Zoma",
+      "sw": "Ijumaa"
+    },
+    {
+      "_base": "en",
+      "en": "Saturday",
+      "fr": "Samedi",
+      "pt": "Sábado",
+      "es": "Sábado",
+      "mg": "Asabotsy",
+      "sw": "Jumamosi"
+    },
+    {
+      "_base": "en",
+      "en": "Manual only",
+      "fr": "Manuellement uniquement",
+      "pt": "Somente manual",
+      "es": "Solo manual",
+      "mg": "Amin'ny tanana ihany",
+      "sw": "Kwa mikono tu"
+    },
+    {
+      "_base": "en",
+      "en": "Hourly",
+      "fr": "Toutes les heures",
+      "pt": "A cada hora",
+      "es": "Cada hora",
+      "mg": "Isan'ora",
+      "sw": "Kila saa"
+    },
+    {
+      "_base": "en",
+      "en": "Daily",
+      "fr": "Tous les jours",
+      "pt": "Diariamente",
+      "es": "Diariamente",
+      "mg": "Isan'andro",
+      "sw": "Kila siku"
+    },
+    {
+      "_base": "en",
+      "en": "Weekly",
+      "fr": "Toutes les semaines",
+      "pt": "Semanalmente",
+      "es": "Semanalmente",
+      "mg": "Isan-kerinandro",
+      "sw": "Kila wiki"
+    },
+    {
+      "_base": "en",
+      "en": "Monthly",
+      "fr": "Tous les mois",
+      "pt": "Mensalmente",
+      "es": "Mensualmente",
+      "mg": "Isam-bolana",
+      "sw": "Kila mwezi"
+    },
+    {
+      "_base": "en",
+      "en": "Custom (cron)",
+      "fr": "Personnalisé (cron)",
+      "pt": "Personalizado (cron)",
+      "es": "Personalizado (cron)",
+      "mg": "Manokana (cron)",
+      "sw": "Maalum (cron)"
+    },
+    {
+      "_base": "en",
+      "en": "at minute",
+      "fr": "à la minute",
+      "pt": "no minuto",
+      "es": "en el minuto",
+      "mg": "amin'ny minitra",
+      "sw": "katika dakika ya"
+    },
+    {
+      "_base": "en",
+      "en": "on day",
+      "fr": "le jour",
+      "pt": "no dia",
+      "es": "el día",
+      "mg": "amin'ny andro",
+      "sw": "siku ya"
+    },
+    {
+      "_base": "en",
+      "en": "at",
+      "fr": "à",
+      "pt": "às",
+      "es": "a las",
+      "mg": "amin'ny",
+      "sw": "saa"
+    },
+    {
+      "_base": "en",
+      "en": "Days past 28 are skipped in shorter months.",
+      "fr": "Les jours après le 28 sont ignorés dans les mois plus courts.",
+      "pt": "Dias após o dia 28 são ignorados em meses mais curtos.",
+      "es": "Los días posteriores al 28 se omiten en los meses más cortos.",
+      "mg": "Ny andro mihoatra ny faha-28 dia dinganina amin'ny volana fohy kokoa.",
+      "sw": "Tarehe zinazozidi 28 zinarukwa katika miezi mifupi."
     }
   ],
-  "unused": []
+  "unused": [
+    "cron (UTC; empty for manual only)"
+  ]
 }

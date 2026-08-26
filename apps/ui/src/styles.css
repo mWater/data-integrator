@@ -768,3 +768,19 @@ table.users tbody tr:hover { background: none }
 .map-popup-table { font-size: 12px; border-collapse: collapse }
 .map-popup-table th { text-align: left; padding-right: 8px; color: #555; font-weight: 600; vertical-align: top }
 .map-popup-table td { word-break: break-word }
+
+/* Structured schedule editor: one aligned row of same-height controls */
+.cron-editor { display: flex; flex-direction: column; gap: 6px }
+.cron-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.cron-row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
+.aoi-editor .cron-row select,
+.cron-row select {
+  min-width: 0; width: auto; margin-bottom: 0;
+  padding: 6px 10px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
+}
+.cron-row input {
+  padding: 6px 8px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
+}
+.cron-row input[type="number"] { width: 64px }
+.cron-editor p { margin: 0 }
+.cron-editor code { color: var(--ink-muted) }
