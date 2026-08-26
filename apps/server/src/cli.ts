@@ -331,11 +331,15 @@ async function main(): Promise<number> {
               if (Number.isInteger(n) && n >= 1 && n <= pending.options.length) text = pending.options[n - 1]
               pending = null
             }
+            const messageSentAt = new Date()
             const stop = await controller.sendMessage(sessionId, text, printEvent)
             if (stop.reason === "finished") {
               console.log("Session finished.")
               // finish may have started the first production load in this
-              // process; wait for it so exiting does not strand the run
+              // process; wait for it so exiting does not strand the run. Only
+              // runs created after the finish count: an edit of an installed
+              // integration enqueues nothing, and reporting its previous run
+              // as "First load" misleads.
               const detail = await service.getSession(sessionId)
               if (detail?.integrationId) {
                 for (;;) {
@@ -348,11 +352,13 @@ async function main(): Promise<number> {
                   await new Promise(resolve => setTimeout(resolve, 5000))
                 }
                 const last = await pool.query(
-                  "SELECT status, error FROM app.runs WHERE integration_id = $1 ORDER BY scheduled_at DESC LIMIT 1",
-                  [detail.integrationId]
+                  "SELECT status, error FROM app.runs WHERE integration_id = $1 AND COALESCE(started_at, scheduled_at) >= $2 ORDER BY scheduled_at DESC LIMIT 1",
+                  [detail.integrationId, messageSentAt]
                 )
                 if (last.rows.length > 0) {
                   console.log(`First load: ${last.rows[0].status}${last.rows[0].error ? ` (${last.rows[0].error.split("\n")[0]})` : ""}`)
+                } else {
+                  console.log("No data load was queued by this session; run the integration manually or wait for its schedule.")
                 }
               }
               return 0

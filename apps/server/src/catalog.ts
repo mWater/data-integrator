@@ -161,6 +161,15 @@ export async function registerSnapshot(
        WHERE layer_id = $1 AND status = 'promoted' AND id <> $2`,
       [layerRowId, stored.snapshotId]
     )
+  } else {
+    // One promoted snapshot per observation time: re-ingesting a date
+    // (revised source data, a source switch) replaces rather than duplicates
+    await client.query(
+      `UPDATE app.raster_snapshots SET status = 'superseded'
+       WHERE layer_id = $1 AND status = 'promoted' AND id <> $2
+         AND observed_at = $3 AND observed_end IS NOT DISTINCT FROM $4`,
+      [layerRowId, stored.snapshotId, artifact.timestamp, artifact.timestampEnd ?? null]
+    )
   }
   await client.query(
     `UPDATE app.raster_layers SET current_snapshot_id = (

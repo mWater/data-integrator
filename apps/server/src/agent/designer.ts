@@ -111,6 +111,9 @@ Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webho
 ctx.params, ctx.in_dir, ctx.work_dir, ctx.out_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
 params, inDir, workDir, outDir}).
+webhookData is the batch of deliveries since the last run. Never fail the whole
+batch on a malformed event: load the valid events, skip the bad ones, and report
+each rejection loudly in the log with a rejected count in the result.
 Return: {data?: {tableId: [row objects matching declared columns]}, tables?: [{tableId,
 path (relative to /out), format? "geojson"|"fgb"|"gpkg"|"csv"}], rasters?: [{layerId,
 path (relative to /out, e.g. "pop_2023.tif"), timestamp, timestampEnd?, footprint?

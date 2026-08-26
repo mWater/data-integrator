@@ -36,10 +36,12 @@ date is newer than the cursor.
 - `GDO_GPCC_...` - GPCC-precipitation-based, **natively monthly**, global
   1 degree, reference period 1981-2010. The right default when the ask is
   monthly; coarse (a country AOI is only a handful of cells).
-- `GDO_ERA5_...` - ERA5-based, dekadal (three per month), much finer grid.
-  Use when resolution matters more than native-monthly semantics, but you
-  must then choose one dekad per month - that is a scope decision to
-  surface, not bury.
+- `GDO_ERA5_...` - ERA5-based, dekadal (three per month), global 0.25
+  degree (verified: `ver2-0-0/spa03_m_gdo_YYYY0101_YYYYMMDD_t.nc` - note
+  the different prefix and `_t` suffix vs GPCC's `_m`). Use when resolution
+  matters more than native-monthly semantics, but you must then choose one
+  dekad per month (e.g. the 21st-day dekad as the month's value) - that is
+  a scope decision to surface, not bury.
 
 ## Data conventions
 
