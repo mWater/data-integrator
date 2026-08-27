@@ -37,13 +37,11 @@ export async function cleanupScratch(
   sessionId: string
 ): Promise<void> {
   await pool.query(`DROP SCHEMA IF EXISTS ${draftSchema(sessionId)} CASCADE`)
-  const snapshots = await pool.query(
-    `SELECT s.id, s.path FROM app.raster_snapshots s
-     JOIN app.raster_layers l ON l.id = s.layer_id WHERE l.session_id = $1`,
-    [sessionId]
-  )
-  for (const row of snapshots.rows) {
-    await store.delete(row.path)
+  // Remove each preview layer's whole store directory, not just row-referenced
+  // files: failed runs can leave artifacts no snapshot row points to.
+  const layers = await pool.query("SELECT id FROM app.raster_layers WHERE session_id = $1", [sessionId])
+  for (const row of layers.rows) {
+    await rm(store.absolute(row.id), { recursive: true, force: true })
   }
   await pool.query("UPDATE app.raster_layers SET current_snapshot_id = NULL WHERE session_id = $1", [sessionId])
   await pool.query(

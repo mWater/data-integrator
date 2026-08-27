@@ -1,7 +1,7 @@
 import { createServer, Server, IncomingMessage, ServerResponse } from "node:http"
 import { BasemapProxy } from "./basemap.js"
 import { createReadStream } from "node:fs"
-import { readFile, stat } from "node:fs/promises"
+import { readFile, rm, stat } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -972,7 +972,12 @@ async function route(
       }
       // Best-effort file cleanup; orphans are disk-only and harmless
       for (const relPath of result.snapshotPaths) await store?.delete(relPath).catch(() => {})
-      for (const layerId of result.layerIds) await tiles.dropLayer(layerId).catch(() => {})
+      // Remove each layer's whole store directory: failed runs can leave
+      // artifacts no snapshot row points to
+      for (const layerId of result.layerIds) {
+        if (store) await rm(store.absolute(layerId), { recursive: true, force: true }).catch(() => {})
+        await tiles.dropLayer(layerId).catch(() => {})
+      }
       await runs?.removeWorkDir(integrationMatch[1]).catch(() => {})
       json(res, 200, { tables: result.tables, snapshots: result.snapshots, runs: result.runs, sessions: result.sessions })
       return
