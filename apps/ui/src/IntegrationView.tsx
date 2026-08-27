@@ -22,6 +22,7 @@ import {
 } from "./api.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
+import { SecretsSection } from "./SecretsSection.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
 
@@ -242,6 +243,13 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
       {tab === "definition" && (
         <>
           <ScheduleSection detail={detail} canDesign={canDesign} isAdmin={isAdmin} onChanged={refresh} />
+          {canDesign && (
+            <SecretsSection
+              integrationId={integrationId}
+              declared={(definition.secrets as string[] | undefined) ?? []}
+              isAdmin={isAdmin}
+            />
+          )}
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <DefinitionTab definition={definition} />
           <VersionsSection integrationId={integrationId} currentVersion={detail.version} />

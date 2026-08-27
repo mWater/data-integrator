@@ -3877,6 +3877,87 @@
       "es": "Los días posteriores al 28 se omiten en los meses más cortos.",
       "mg": "Ny andro mihoatra ny faha-28 dia dinganina amin'ny volana fohy kokoa.",
       "sw": "Tarehe zinazozidi 28 zinarukwa katika miezi mifupi."
+    },
+    {
+      "_base": "en",
+      "en": "Credentials",
+      "fr": "Identifiants",
+      "pt": "Credenciais",
+      "es": "Credenciales",
+      "mg": "Antontan-kevitra fidirana",
+      "sw": "Taarifa za uthibitishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Secret values are stored encrypted with this integration and are write-only: they can be replaced but never read back.",
+      "fr": "Les valeurs secrètes sont stockées sous forme chiffrée avec cette intégration et sont accessibles en écriture seule : elles peuvent être remplacées, mais jamais relues.",
+      "pt": "Os valores secretos são armazenados de forma criptografada nesta integração e são somente para gravação: podem ser substituídos, mas nunca lidos novamente.",
+      "es": "Los valores secretos se almacenan cifrados con esta integración y son de solo escritura: se pueden reemplazar, pero nunca volver a consultar.",
+      "mg": "Tehirizina voaaro amin’ny fanafenana miaraka amin’ity fampidirana ity ireo sanda miafina ary azo soratana ihany: azo soloina izy ireo fa tsy azo vakina intsony.",
+      "sw": "Thamani za siri huhifadhiwa zikiwa zimesimbwa kwa njia fiche pamoja na muunganisho huu na ni za kuandikwa pekee: zinaweza kubadilishwa lakini haziwezi kusomwa tena."
+    },
+    {
+      "_base": "en",
+      "en": "(not declared)",
+      "fr": "(non déclaré)",
+      "pt": "(não declarado)",
+      "es": "(no declarado)",
+      "mg": "(tsy nambara)",
+      "sw": "(haijabainishwa)"
+    },
+    {
+      "_base": "en",
+      "en": "set {0}",
+      "fr": "défini {0}",
+      "pt": "definido em {0}",
+      "es": "establecido: {0}",
+      "mg": "apetraho {0}",
+      "sw": "weka {0}"
+    },
+    {
+      "_base": "en",
+      "en": "missing",
+      "fr": "manquant",
+      "pt": "ausente",
+      "es": "faltante",
+      "mg": "tsy misy",
+      "sw": "haipo"
+    },
+    {
+      "_base": "en",
+      "en": "Paste the value (plain text or JSON)",
+      "fr": "Collez la valeur (texte brut ou JSON)",
+      "pt": "Cole o valor (texto simples ou JSON)",
+      "es": "Pegue el valor (texto sin formato o JSON)",
+      "mg": "Apetaho ny sanda (lahatsoratra tsotra na JSON)",
+      "sw": "Bandika thamani (maandishi wazi au JSON)"
+    },
+    {
+      "_base": "en",
+      "en": "Replace",
+      "fr": "Remplacer",
+      "pt": "Substituir",
+      "es": "Reemplazar",
+      "mg": "Soloy",
+      "sw": "Badilisha"
+    },
+    {
+      "_base": "en",
+      "en": "Set",
+      "fr": "Définir",
+      "pt": "Definir",
+      "es": "Establecer",
+      "mg": "Apetraho",
+      "sw": "Weka"
+    },
+    {
+      "_base": "en",
+      "en": "Copy from…",
+      "fr": "Copier depuis…",
+      "pt": "Copiar de…",
+      "es": "Copiar de…",
+      "mg": "Adika avy amin’ny…",
+      "sw": "Nakili kutoka…"
     }
   ],
   "unused": [

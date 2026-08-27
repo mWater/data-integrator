@@ -973,3 +973,46 @@ export function setIntegrationEnabled(id: string, enabled: boolean): Promise<{ e
     body: JSON.stringify({ enabled })
   })
 }
+
+/** A stored secret's name and last update; values are write-only. */
+export interface SecretInfo {
+  /** The name the definition references */
+  name: string
+  /** Owning integration */
+  integrationId: string
+  /** Last set or replaced, ISO 8601 */
+  updatedAt: string
+}
+
+/** Lists one integration's stored secret names (editors and admins). */
+export function listIntegrationSecrets(integrationId: string): Promise<{ secrets: SecretInfo[] }> {
+  return request(`/api/integrations/${integrationId}/secrets`)
+}
+
+/** Lists every integration's stored secret names (admin only). */
+export function listAllSecrets(): Promise<{ secrets: SecretInfo[] }> {
+  return request("/api/secrets")
+}
+
+/** Sets or replaces one integration's secret value (admin only). */
+export function setSecretValue(integrationId: string, name: string, value: string): Promise<{ name: string }> {
+  return request(`/api/integrations/${integrationId}/secrets/${name}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ value })
+  })
+}
+
+/** Copies a secret value from another integration server-side (admin only). */
+export function copySecretValue(integrationId: string, name: string, fromIntegrationId: string): Promise<{ name: string }> {
+  return request(`/api/integrations/${integrationId}/secrets/${name}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ copyFrom: fromIntegrationId })
+  })
+}
+
+/** Deletes one integration's secret (admin only). */
+export function deleteSecretValue(integrationId: string, name: string): Promise<{ deleted: string }> {
+  return request(`/api/integrations/${integrationId}/secrets/${name}`, { method: "DELETE" })
+}

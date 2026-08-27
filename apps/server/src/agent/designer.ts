@@ -184,7 +184,9 @@ this integration's own destinations.
    run so data begins loading immediately. It is rejected unless the current
    code passed a cold run unchanged.
 
-Rules: never fabricate data. Reference secrets by name only. Prefer incremental state
+Rules: never fabricate data. Reference secrets by name only; values are stored per
+integration, so when a credential is missing tell the operator to set it under
+Credentials on this integration's page (definition tab). Prefer incremental state
 over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
 year, aggregation), ask_user rather than guessing. Plain text with no tool calls also
 pauses the session, for open-ended questions. Your plain text renders as markdown.`
@@ -631,7 +633,7 @@ ${index}`
     if (names.length === 0) return {}
     if (!this.deps.secretKey) return "Error: definition declares secrets but INTEGRATOR_SECRET_KEY is not configured"
     try {
-      return await getSecrets(this.deps.pool, this.deps.secretKey, names)
+      return await getSecrets(this.deps.pool, this.deps.secretKey, state.definition.id, names)
     } catch (err) {
       return `Error loading secrets: ${err instanceof Error ? err.message : String(err)}`
     }

@@ -17,6 +17,7 @@ import { installLibraryEntry, listLibrary } from "./library.js"
 import { parseCron } from "./cron.js"
 import { loadSkill, loadSkillsIndex, skillsDir } from "./skills.js"
 import { listSources, tableGeometry } from "./sources.js"
+import { copySecret, deleteSecret, listAllSecrets, listSecrets, loadSecretKey, setSecret } from "./secrets.js"
 import { RunService } from "./runService.js"
 import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
@@ -309,6 +310,65 @@ async function route(
   // Baked-in country boxes for AOI pickers (Natural Earth derived)
   if (pathname === "/api/countries" && req.method === "GET") {
     json(res, 200, { countries: COUNTRIES })
+    return
+  }
+
+  // Secrets: per-integration write-only credential store. Names and update
+  // times are visible to editors and admins; values are set or replaced by
+  // admins and never readable back through any interface.
+  if (pathname === "/api/secrets" && req.method === "GET") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can view the deployment secret list" })
+      return
+    }
+    json(res, 200, { secrets: await listAllSecrets(pool) })
+    return
+  }
+  const intSecretsMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/secrets$/)
+  if (intSecretsMatch && req.method === "GET") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Only editors can view secret names" })
+      return
+    }
+    json(res, 200, { secrets: await listSecrets(pool, intSecretsMatch[1]) })
+    return
+  }
+  const intSecretMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/secrets\/([a-z][a-z0-9_]{0,63})$/)
+  if (intSecretMatch && (req.method === "PUT" || req.method === "DELETE")) {
+    const [, integrationId, name] = intSecretMatch
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can manage secrets" })
+      return
+    }
+    if (!(await getIntegration(pool, integrationId))) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    if (req.method === "DELETE") {
+      if (await deleteSecret(pool, integrationId, name)) json(res, 200, { deleted: name })
+      else json(res, 404, { error: "no such secret" })
+      return
+    }
+    let secretKey
+    try {
+      secretKey = loadSecretKey()
+    } catch {
+      json(res, 503, { error: "INTEGRATOR_SECRET_KEY is not configured on this deployment" })
+      return
+    }
+    const body = await readJsonBody(req)
+    if (typeof body.copyFrom === "string") {
+      if (await copySecret(pool, secretKey, body.copyFrom, integrationId, name)) json(res, 200, { name })
+      else json(res, 404, { error: "the source integration has no such secret" })
+      return
+    }
+    const value = String(body.value ?? "")
+    if (value.length === 0 || value.length > 65536) {
+      json(res, 400, { error: "value must be 1 to 65536 characters" })
+      return
+    }
+    await setSecret(pool, secretKey, integrationId, name, value)
+    json(res, 200, { name })
     return
   }
 

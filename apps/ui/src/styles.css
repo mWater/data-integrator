@@ -784,3 +784,9 @@ table.users tbody tr:hover { background: none }
 .cron-row input[type="number"] { width: 64px }
 .cron-editor p { margin: 0 }
 .cron-editor code { color: var(--ink-muted) }
+
+/* Per-integration credentials panel */
+.secrets-table td { padding: 6px 14px 6px 0; vertical-align: middle }
+.secrets-actions { display: flex; gap: 8px; align-items: center }
+.secrets-editor { display: flex; gap: 8px; align-items: flex-start }
+.secrets-editor textarea { width: 340px; font-family: monospace; font-size: 12px; padding: 6px 8px; border: 1px solid var(--control-border); border-radius: 6px }

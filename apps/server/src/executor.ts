@@ -211,7 +211,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     if (!image) throw new Error(`No image configured for runtime ${definition.runtime}`)
 
     const secrets = definition.secrets?.length
-      ? await getSecrets(deps.pool, requireKey(deps), definition.secrets)
+      ? await getSecrets(deps.pool, requireKey(deps), definition.id, definition.secrets)
       : {}
     let previousState: unknown = null
     if (!opts?.cold) {

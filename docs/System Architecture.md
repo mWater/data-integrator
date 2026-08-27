@@ -144,7 +144,8 @@ An integration is described entirely by one machine-readable definition:
   events, or both. Webhook triggers may declare a batch window so
   high-frequency feeds are processed in batches rather than per event.
 - `secrets` names the credentials the code needs. Values are never part of
-  the definition; the deployment supplies them.
+  the definition: the deployment stores them with the integration (write-only,
+  encrypted), and importing a definition prompts for them.
 - `aoi` is the area of interest. It is tri-state: an explicit bounding box
   clips ingestion to it, an explicit null means the source's full extent, and
   omission inherits the deployment's default AOI at run time.
@@ -420,7 +421,7 @@ the data and the host against untrusted inputs, misbehaving integration code
 | Authorization | Admin, editor, and viewer roles enforced server-side on every route |
 | Integration code | Rootless containers plus a syscall-isolation layer, read-only rootfs, no capabilities, resource limits |
 | Network egress | Public internet only from jobs; private, link-local, and metadata ranges blocked in the job's network namespace |
-| Secrets | Encrypted at rest with a deployment key, injected into jobs via stdin only, never in images, environment, or definitions |
+| Secrets | Stored per integration and encrypted at rest with a deployment key; injected via stdin only into the owning integration's runs, so an imported definition cannot receive another integration's credential; never in images, environment, or definitions |
 | Webhooks | Unguessable per-integration capability URLs, JSON-only with size caps, admin-rotatable |
 | Analytical SQL | Frozen at design time where applicable, always executed under a read-only role scoped to destination data |
 | Transport | TLS terminated by the deployer's reverse proxy, with secure-cookie behavior keyed to forwarded protocol |
