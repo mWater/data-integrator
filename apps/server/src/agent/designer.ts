@@ -79,7 +79,7 @@ that ingests external data into Postgres tables and/or the raster catalog.
 
 # Definition format (contract 2)
 Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
-license?, documentation?}, trigger ({cron: "..."} and/or {webhook: true, webhookDelaySeconds?}, or {} for
+license?, documentation?, limitations?}, trigger ({cron: "..."} and/or {webhook: true, webhookDelaySeconds?}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
 (omit aoi to inherit the deployment default at run time; explicit null means the source's full extent;
 when writing an explicit aoi, take coordinates from lookup_country — never from memory, so agent-authored
@@ -88,11 +88,14 @@ runtime ("python3.12" | "node22"), limits? {timeoutMs?, memoryMb?, cpus?},
 destinations [below], validation?, code (via edit_code, not write_definition), contract: 2.
 
 Destinations:
-- {kind: "table", tableId, action: "replace"|"append"|"merge", mergeColumns?
-  [required for merge, must name declared columns], columns: [{id, name?, type: "text"|
+- {kind: "table", tableId, name? [human-readable display name], action:
+  "replace"|"append"|"merge", mergeColumns?
+  [required for merge, must name declared columns], description? [one sentence on what
+  the table contains, shown in the data catalog], columns: [{id, name?, type: "text"|
   "number"|"integer"|"boolean"|"date"|"datetime"|"geometry"|"enum"|"json",
   enumValues? [{id, name}] when type is "enum", units?}]}
-- {kind: "raster", layerId, name?, temporality: "time-series"|"current-only", bands:
+- {kind: "raster", layerId, name?, description? [one sentence on what the layer
+  shows, shown in the data catalog], temporality: "time-series"|"current-only", bands:
   [{id, name?, units?, nodata?, rendering? {resampling: "nearest"|"average", defaultRange?
   {min, max}, colorMap? [{value, color: "#rrggbb" or "#rrggbbaa"}]}}]}
 Every raster band MUST declare nodata (matching the value written into the
@@ -104,6 +107,12 @@ and defaultRange from the values actually ingested for this deployment's
 area (check statistics on a produced raster before finishing), NOT from the
 variable's theoretical global range: a global-scale ramp renders a small
 region's data as one flat color.
+Fill source.limitations with the caveats a data consumer needs to interpret
+this dataset correctly: resolution and coverage limits, known biases or
+calibration gaps, revision/timeliness behavior, and what absence of data does
+NOT mean (e.g. no observation is not "no flood"). State only what the source
+documents or what you verified against the ingested data, in 1-3 plain
+sentences.
 
 # Code contract
 One file, entrypoint run(ctx).
@@ -320,7 +329,7 @@ ${index}`
       case "get_definition":
         return this.getDefinition(state, args.includeCode === true)
       case "write_definition":
-        return await this.writeDefinition(state, String(args.definitionJson ?? ""), events)
+        return await this.writeDefinition(state, String(args.definitionJson ?? ""), events, sessionId)
       case "edit_code":
         return this.editCode(state, String(args.oldString ?? ""), String(args.newString ?? ""))
       case "run_snippet":
@@ -358,7 +367,8 @@ ${index}`
   private async writeDefinition(
     state: DesignerState,
     definitionJson: string,
-    events: AgentEventListener
+    events: AgentEventListener,
+    sessionId: string
   ): Promise<ToolOutcome<DesignerState>> {
     let incoming: IntegrationDefinition
     try {
@@ -384,6 +394,22 @@ ${index}`
       validateDefinition(definition)
     } catch (err) {
       validation = `INVALID: ${err instanceof Error ? err.message : String(err)}`
+    }
+    // A valid draft materializes as a draft-status integration row, so
+    // per-integration credentials can be attached while the session is still
+    // designing (the row is what secrets reference). Later edits update the
+    // draft in place; finish archives the final version and flips it ready.
+    if (validation === "valid") {
+      const existing = await this.deps.pool.query("SELECT status FROM app.integrations WHERE id = $1", [id])
+      if (existing.rows.length === 0) {
+        const session = await this.deps.pool.query("SELECT user_id FROM app.agent_sessions WHERE id = $1", [sessionId])
+        await installIntegration(this.deps.pool, definition, "draft", session.rows[0]?.user_id ?? null)
+      } else if (existing.rows[0].status === "draft") {
+        await this.deps.pool.query("UPDATE app.integrations SET definition = $2, updated_at = now() WHERE id = $1", [
+          id,
+          JSON.stringify(definition)
+        ])
+      }
     }
     return { result: `Draft saved. Validation: ${validation}`, state: { ...state, definition } }
   }

@@ -40,9 +40,8 @@ export function DataSources() {
               <tr key={`${source.kind}:${source.id}`} onClick={() => open(source)}>
                 <td>
                   <b>{source.name}</b>
-                  <div className="dim">
-                    {source.kind === "table" ? source.id + " · " : ""}{T`from ${source.integrationName}`}
-                  </div>
+                  {source.description && <div className="source-description">{source.description}</div>}
+                  <div className="source-from">{T`from ${source.integrationName}`}</div>
                 </td>
                 <td><span className={`chip chip-${source.kind}`}>{kindLabel(source.kind)}</span></td>
                 <td>

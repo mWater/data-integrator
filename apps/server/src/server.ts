@@ -663,6 +663,8 @@ async function route(
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
               l.integration_id, i.definition->>'name' AS integration_name,
+              i.definition->>'description' AS integration_description,
+              i.definition->'source' AS source,
               s.observed_at, s.observed_end, s.crs,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
               COALESCE(sn.snapshots, '[]'::json) AS snapshots,
@@ -698,7 +700,9 @@ async function route(
       crs: row.crs,
       footprint: row.footprint,
       snapshots: row.snapshots,
-      sizeBytes: Number(row.size_bytes)
+      sizeBytes: Number(row.size_bytes),
+      description: row.integration_description,
+      source: row.source
     })
     return
   }

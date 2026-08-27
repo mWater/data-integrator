@@ -217,6 +217,52 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
           </>
         )}
 
+        {(layer.description || layer.source) && (
+          <section className="layer-section">
+            <h2>{T`Source`}</h2>
+            {layer.description && <p className="layer-description">{layer.description}</p>}
+            {layer.source && (
+              <dl className="layer-facts">
+                <dt>{T`Dataset`}</dt>
+                <dd>
+                  {layer.source.url ? (
+                    <a href={layer.source.url} target="_blank" rel="noreferrer">
+                      {layer.source.name}
+                    </a>
+                  ) : (
+                    layer.source.name
+                  )}
+                </dd>
+                {layer.source.provider && (
+                  <>
+                    <dt>{T`Provider`}</dt>
+                    <dd>{layer.source.provider}</dd>
+                  </>
+                )}
+                {layer.source.license && (
+                  <>
+                    <dt>{T`License`}</dt>
+                    <dd>{layer.source.license}</dd>
+                  </>
+                )}
+                {layer.source.documentation && (
+                  <>
+                    <dt>{T`Docs`}</dt>
+                    <dd>
+                      <a href={layer.source.documentation} target="_blank" rel="noreferrer">
+                        {T`Documentation`}
+                      </a>
+                    </dd>
+                  </>
+                )}
+              </dl>
+            )}
+            {layer.source?.limitations && (
+              <p className="layer-limitations">{layer.source.limitations}</p>
+            )}
+          </section>
+        )}
+
         <section className="layer-section">
           <h2>{T`Details`}</h2>
           <dl className="layer-facts">

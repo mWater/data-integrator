@@ -3958,6 +3958,51 @@
       "es": "Copiar de…",
       "mg": "Adika avy amin’ny…",
       "sw": "Nakili kutoka…"
+    },
+    {
+      "_base": "en",
+      "en": "Dataset",
+      "fr": "Jeu de données",
+      "pt": "Conjunto de dados",
+      "es": "Conjunto de datos",
+      "mg": "Angon-drakitra",
+      "sw": "Seti ya data"
+    },
+    {
+      "_base": "en",
+      "en": "Provider",
+      "fr": "Fournisseur",
+      "pt": "Fornecedor",
+      "es": "Proveedor",
+      "mg": "Mpamatsy",
+      "sw": "Mtoa huduma"
+    },
+    {
+      "_base": "en",
+      "en": "License",
+      "fr": "Licence",
+      "pt": "Licença",
+      "es": "Licencia",
+      "mg": "Fahazoan-dalana",
+      "sw": "Leseni"
+    },
+    {
+      "_base": "en",
+      "en": "Docs",
+      "fr": "Docs",
+      "pt": "Documentos",
+      "es": "Documentos",
+      "mg": "Tahirin-kevitra",
+      "sw": "Nyaraka"
+    },
+    {
+      "_base": "en",
+      "en": "Documentation",
+      "fr": "Documentation",
+      "pt": "Documentação",
+      "es": "Documentación",
+      "mg": "Tahirin-kevitra",
+      "sw": "Nyaraka"
     }
   ],
   "unused": [

@@ -71,6 +71,8 @@ export interface SourceInfo {
   license?: string
   /** Link to source documentation */
   documentation?: string
+  /** Known caveats a data consumer should see: accuracy, coverage, timeliness, interpretation pitfalls */
+  limitations?: string
 }
 
 /** How runs of the integration are triggered. */
@@ -225,10 +227,14 @@ export interface TableDestination {
   kind: "table"
   /** Destination table, created/managed by the server; snake_case, becomes the table name in the data schema */
   tableId: string
+  /** Human-readable display name */
+  name?: string
   /** How incoming rows are applied */
   action: "replace" | "append" | "merge"
   /** Key columns identifying a row; required when action is "merge" */
   mergeColumns?: string[]
+  /** One-sentence summary of what the table contains, shown in the data catalog */
+  description?: string
   /** Schema of the destination table */
   columns: ColumnSpec[]
 }
@@ -255,6 +261,8 @@ export interface RasterLayerDestination {
   layerId: string
   /** Human-readable display name */
   name?: string
+  /** One-sentence summary of what the layer shows, shown in the data catalog */
+  description?: string
   /** time-series retains promoted snapshots as history; current-only prunes superseded */
   temporality: "time-series" | "current-only"
   /** Bands of the layer */

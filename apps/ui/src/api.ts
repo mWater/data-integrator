@@ -430,6 +430,26 @@ export interface LayerDetail {
   snapshots: LayerSnapshot[]
   /** Total bytes across promoted snapshots */
   sizeBytes: number
+  /** Owning integration's prose description */
+  description: string | null
+  /** Provenance of the external source, if declared */
+  source: LayerSource | null
+}
+
+/** Provenance block from the owning integration's definition. */
+export interface LayerSource {
+  /** Source name */
+  name: string
+  /** Primary URL of the source or its API */
+  url?: string
+  /** Organization publishing the data */
+  provider?: string
+  /** License of the source data */
+  license?: string
+  /** Link to source documentation */
+  documentation?: string
+  /** Known caveats a data consumer should see */
+  limitations?: string
 }
 
 /** Fetches one raster layer; sessionId scopes to a design session's scratch layers. */
@@ -449,6 +469,8 @@ export interface DataSource {
   integrationId: string
   /** Owning integration display name */
   integrationName: string
+  /** Destination description, falling back to the integration's description */
+  description: string | null
   /** Row count (tables); null before first run */
   rows: number | null
   /** Declared column count (tables) */
