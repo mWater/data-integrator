@@ -180,7 +180,7 @@ export function Library({ user }: { user: User }) {
                   <td>{triggerLabel(entry.trigger)}</td>
                   <td>
                     {entry.destinations.map(d => (
-                      <span key={`${d.kind}:${d.id}`} className={`chip chip-${d.kind}`} style={{ marginRight: 4 }}>
+                      <span key={`${d.kind}:${d.id}`} className="chip" style={{ marginRight: 4 }}>
                         {d.id}
                       </span>
                     ))}

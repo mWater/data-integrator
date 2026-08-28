@@ -39,7 +39,12 @@ export default function BlockRenderer({ tool, input, resultText, results }: Bloc
     const result = id ? results?.[id] : undefined
     content =
       id && result ? (
-        <TableBlock resultId={id} result={result} title={(input as ShowTableInput).title} />
+        <TableBlock
+          resultId={id}
+          result={result}
+          title={(input as ShowTableInput).title}
+          labels={(input as ShowTableInput).labels}
+        />
       ) : (
         <Unavailable />
       )

@@ -23,12 +23,21 @@ interface TableBlockProps {
   result: AssistantResult
   /** Title above the table */
   title?: string
+  /** Display header per column id */
+  labels?: Record<string, string>
+}
+
+/** snake_case column id to a presentable header, when the agent gave no label. */
+function prettify(key: string): string {
+  const words = key.replace(/_/g, " ").trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 /** Renders one query result as a data-browser-style table. */
-export function TableBlock({ resultId, result, title }: TableBlockProps) {
+export function TableBlock({ resultId, result, title, labels }: TableBlockProps) {
   const columns = result.columns.map(key => ({
     key,
+    label: labels?.[key] ?? prettify(key),
     numeric: typeof result.rows.find(r => r[key] != null)?.[key] === "number",
     format: cellText
   }))

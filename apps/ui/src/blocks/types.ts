@@ -6,6 +6,8 @@ export interface ShowTableInput {
   sql: string
   /** Title above the table */
   title: string
+  /** Display header per column id */
+  labels?: Record<string, string>
 }
 
 /** Input of show_chart: the kit Chart declarative subset bound to a result. */

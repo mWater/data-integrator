@@ -12,6 +12,7 @@ import { AgentImplementation, ToolOutcome } from "./types.js"
 import { executeStoredQuery } from "../dashboards/queries.js"
 import { lookupCountry } from "../countries.js"
 import { describeSchema, RASTER_SQL_GUIDE } from "./shared.js"
+import { getDefaultAoi } from "../settings.js"
 
 /** Hard cap on rows per stored result; over-cap queries are rejected. */
 const ASSISTANT_MAX_ROWS = 1000
@@ -149,6 +150,7 @@ out with query first, then show the result you are happy with. Do not paste rows
 your prose; summarize what matters and refer to the block.
 - show_table runs its own statement and shows the complete result as a table carrying
   its SQL and a CSV download. Show the results your answer rests on, not every step.
+  Always pass labels: human-readable column headers; raw SQL ids never face the user.
 - show_chart binds a chart to a result_id (from query or show_table). Forms: trend = line/area, comparison = bar,
   composition with few slices = pie, relation between two measures = scatter. Use
   xType "time" with raw ISO date x values for time series. One value axis by design:
@@ -156,7 +158,10 @@ your prose; summarize what matters and refer to the block.
 - show_map draws catalog raster layers (layerId from list_schema; optional "at" date
   picks the snapshot covering it on time-series layers) and/or overlays built from a
   result's rows (an ST_AsGeoJSON column, or lon/lat columns). Prefer fit; label every
-  layer and overlay.
+  layer and overlay. The platform holds data only for the deployment area (list_schema
+  names it): every layer and table is already clipped to it, so a wider "context" or
+  "surroundings" view of the same layer shows exactly the same picture - never show
+  the same layer at the same date twice in one answer.
 
 # Conversation
 Answer, then stop: your plain-text answer ends the turn. When a choice is not forced
@@ -204,7 +209,11 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
           "Show a result to the user as a table block with its SQL and a CSV download. Runs its own statement, under the same rules as query; check the statement with query first, then show the result you want the user to have.",
         inputSchema: z.object({
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement"),
-          title: z.string().describe("Short title shown above the table")
+          title: z.string().describe("Short title shown above the table"),
+          labels: z
+            .record(z.string(), z.string())
+            .optional()
+            .describe("Human-readable header per column id; raw SQL ids never face the user")
         })
       }),
       show_chart: tool({
@@ -270,8 +279,13 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
   async execute(name: string, input: unknown, state: AssistantState): Promise<ToolOutcome<AssistantState>> {
     const args = (input ?? {}) as Record<string, unknown>
     switch (name) {
-      case "list_schema":
-        return { result: await describeSchema(this.deps.pool) }
+      case "list_schema": {
+        const aoi = await getDefaultAoi(this.deps.pool)
+        const coverage = aoi
+          ? `Deployment area of interest: ${aoi.name ?? "unnamed"} (bbox ${JSON.stringify(aoi.bbox)}). All tables and layers are clipped to this area; no data exists outside it.\n\n`
+          : ""
+        return { result: coverage + (await describeSchema(this.deps.pool)) }
+      }
       case "query":
         return await this.query(state, String(args.sql ?? ""))
       case "show_table":
