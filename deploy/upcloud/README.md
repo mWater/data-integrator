@@ -87,6 +87,28 @@ ssh root@<ip> journalctl -u data-integrator -f
 `setup.sh` is also safe to re-run; it keeps the existing env file (and secret
 key) and skips work already done.
 
+## Reset to a clean install
+
+To wipe a box back to empty (fresh database, no data) without reprovisioning:
+
+```sh
+systemctl stop data-integrator
+sudo -u postgres dropdb integrator
+sudo -u postgres createdb -O integrator integrator
+sudo -u postgres psql -d integrator -c "CREATE EXTENSION postgis"
+sudo -u postgres psql -d integrator -c "CREATE EXTENSION postgis_raster"
+sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on"
+sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'"
+rm -rf /var/lib/data-integrator/{raster-store,work,tile-cache}
+```
+
+then migrate, recreate the admin, and restart (the `run_cli` shape from
+setup.sh). The two ALTER DATABASE lines are easy to forget and fail loudly
+only later: raster registration errors with "Cannot open out-db file with
+GDAL". They are superuser-set, so migration 0008 can only warn when they
+are missing. Re-running `setup.sh` does all of this too, and is the safer
+path when in doubt.
+
 ## Real hostname via Cloudflare Tunnel
 
 For a named public instance (e.g. `integrator-demo.mwater.co` on the
