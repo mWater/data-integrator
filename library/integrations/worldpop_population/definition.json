@@ -1,0 +1,82 @@
+{
+  "id": "worldpop_population",
+  "code": "",
+  "name": "WorldPop Population",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://hub.worldpop.org/",
+    "name": "WorldPop Global 2 constrained population counts",
+    "license": "CC BY 4.0",
+    "provider": "WorldPop, University of Southampton",
+    "limitations": "The source grid is 3 arc-seconds (approximately 100 m at the equator), and the current R2025A product is an alpha release that WorldPop says may be revised as methods improve. Years after the current calendar year are modeled projections, not observations; zero or nodata means no population was allocated to that grid cell, not that the location is confirmed uninhabited.",
+    "documentation": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf"
+  },
+  "runtime": "python3.12",
+  "trigger": {
+    "cron": "0 6 1 * *"
+  },
+  "contract": 2,
+  "description": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m for the deployment area of interest, including all years published in the newest release.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "Population",
+      "bands": [
+        {
+          "id": "population",
+          "name": "Population count",
+          "units": "people per grid cell",
+          "nodata": -99999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#ffffe5",
+                "value": 0
+              },
+              {
+                "color": "#f7fcb9",
+                "value": 1
+              },
+              {
+                "color": "#d9f0a3",
+                "value": 3
+              },
+              {
+                "color": "#addd8e",
+                "value": 8
+              },
+              {
+                "color": "#78c679",
+                "value": 13
+              },
+              {
+                "color": "#41ab5d",
+                "value": 43
+              },
+              {
+                "color": "#238443",
+                "value": 170
+              },
+              {
+                "color": "#005a32",
+                "value": 280
+              }
+            ],
+            "resampling": "nearest",
+            "defaultRange": {
+              "max": 280,
+              "min": 0
+            }
+          }
+        }
+      ],
+      "layerId": "population",
+      "description": "Annual WorldPop constrained estimates of people per approximately 100 m grid cell for the deployment area of interest.",
+      "temporality": "time-series"
+    }
+  ]
+}
