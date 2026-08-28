@@ -76,6 +76,8 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const [error, setError] = useState<string | null>(null)
   const [bandId, setBandId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
+  const [opacity, setOpacity] = useState(0.65)
+  const opacityRef = useRef(opacity)
 
   useEffect(() => {
     getLayer(layerId, sessionId).then(detail => {
@@ -110,7 +112,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
           tiles: [tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])],
           tileSize: 256
         })
-        map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": 0.85 } })
+        map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": opacityRef.current } })
         if (layer.footprint) {
           const bounds = new LngLatBounds()
           for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
@@ -138,6 +140,12 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     }, 200)
     return () => clearTimeout(timer)
   }, [layer, bandId, index])
+
+  useEffect(() => {
+    opacityRef.current = opacity
+    const map = mapRef.current
+    if (map?.getLayer(RASTER_LAYER)) map.setPaintProperty(RASTER_LAYER, "raster-opacity", opacity)
+  }, [opacity])
 
   useEffect(() => () => {
     mapRef.current?.remove()
@@ -218,6 +226,19 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
             </section>
 
             {band && <Legend band={band} />}
+
+            <section className="layer-section">
+              <h2>{T`Opacity`}</h2>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                value={Math.round(opacity * 100)}
+                aria-label={T`Layer opacity`}
+                onChange={e => setOpacity(Number(e.target.value) / 100)}
+              />
+              <div className="dim">{Math.round(opacity * 100)}%</div>
+            </section>
           </>
         )}
 

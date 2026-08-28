@@ -142,6 +142,11 @@ upctl server delete --delete-storages integrator-test
 
 ## Notes
 
+- On small plans, two concurrent download-heavy runs can starve the rootless
+  sandbox's DNS (slirp4netns forwards lookups over UDP): jobs then fail with
+  curl "Could not resolve host" for hosts that resolve fine on the box. It
+  clears when the box is less loaded; re-run the failed integration.
+
 - sslip.io shares Let's Encrypt rate limits across all its users. If issuance
   fails, swap the hostname in `/etc/caddy/Caddyfile` to the `nip.io`
   equivalent and `systemctl reload caddy`.

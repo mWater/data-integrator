@@ -4003,6 +4003,24 @@
       "es": "Documentación",
       "mg": "Tahirin-kevitra",
       "sw": "Nyaraka"
+    },
+    {
+      "_base": "en",
+      "en": "Opacity",
+      "fr": "Opacité",
+      "pt": "Opacidade",
+      "es": "Opacidad",
+      "mg": "Tsy fangaraharana",
+      "sw": "Kutopenya"
+    },
+    {
+      "_base": "en",
+      "en": "Layer opacity",
+      "fr": "Opacité de la couche",
+      "pt": "Opacidade da camada",
+      "es": "Opacidad de la capa",
+      "mg": "Tsy fangaraharan’ny sosona",
+      "sw": "Kutopenya kwa safu"
     }
   ],
   "unused": [
