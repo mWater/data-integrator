@@ -1,0 +1,81 @@
+{
+  "id": "clms_fpar_10daily",
+  "code": "",
+  "name": "CLMS 10-daily FPAR",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 900000
+  },
+  "source": {
+    "url": "https://land.copernicus.eu/en/products/vegetation/fraction-of-absorbed-photosynthetically-active-radiation-v2-0-300m",
+    "name": "CLMS Fraction of Absorbed Photosynthetically Active Radiation v2.0 (300 m, 10-daily), via CDSE",
+    "license": "Copernicus data and information policy (free, full and open access; attribution required)",
+    "provider": "European Union, Copernicus Land Monitoring Service / Copernicus Data Space Ecosystem",
+    "limitations": "Dekads carry nominal dates (10th, 20th, month-end). The most recent composites are near-real-time RT0 estimates that later RT1/RT2 revisions replace, so recent values can change; persistent wet-season cloud reduces the observations behind a composite.",
+    "documentation": "https://land.copernicus.eu/en/technical-library/product-user-manual-fraction-of-absorbed-photosynthetically-active-radiation-300m-version-2/@@download/file"
+  },
+  "runtime": "python3.12",
+  "secrets": [
+    "cdse_s3_credentials"
+  ],
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": "Copernicus Land Monitoring Service version 2 global 300 m FPAR, read with range requests from Copernicus Data Space Ecosystem S3 and clipped to the deployment area. Backfills six months and checks daily for new or revised 10-daily composites.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "Vegetation productivity (FPAR)",
+      "bands": [
+        {
+          "id": "fpar",
+          "name": "FPAR",
+          "units": "1",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#ffffe5",
+                "value": 0
+              },
+              {
+                "color": "#f7fcb9",
+                "value": 0.08
+              },
+              {
+                "color": "#d9f0a3",
+                "value": 0.16
+              },
+              {
+                "color": "#addd8e",
+                "value": 0.24
+              },
+              {
+                "color": "#78c679",
+                "value": 0.46
+              },
+              {
+                "color": "#31a354",
+                "value": 0.77
+              },
+              {
+                "color": "#006837",
+                "value": 0.94
+              }
+            ],
+            "resampling": "average",
+            "defaultRange": {
+              "max": 0.916,
+              "min": 0.076
+            }
+          }
+        }
+      ],
+      "layerId": "vegetation_productivity_fpar",
+      "description": "10-daily fraction of absorbed photosynthetically active radiation (FPAR) at 300 m, a measure of vegetation productivity.",
+      "temporality": "time-series"
+    }
+  ]
+}

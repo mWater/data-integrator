@@ -12,6 +12,7 @@
     "name": "Copernicus DEM GLO-30",
     "license": "Copernicus DEM licence",
     "provider": "Copernicus Programme / European Space Agency",
+    "limitations": "A surface model, not bare earth: elevations include tree canopy and buildings. Derived from TanDEM-X radar acquired 2011-2015, so later terrain change is absent, and water surfaces are hydrologically edited rather than measured.",
     "documentation": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model"
   },
   "runtime": "python3.12",
@@ -72,6 +73,7 @@
         }
       ],
       "layerId": "elevation",
+      "description": "Ground-surface elevation in meters from the Copernicus GLO-30 digital surface model.",
       "temporality": "current-only"
     }
   ]

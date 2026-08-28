@@ -1,0 +1,78 @@
+{
+  "id": "copernicus_spi3",
+  "code": "",
+  "name": "Copernicus SPI-3 drought index",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 2048,
+    "timeoutMs": 900000
+  },
+  "source": {
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_ERA5_Standardized_Precipitation_Index_SPI3/",
+    "name": "Copernicus Global Drought Observatory ERA5 Standardized Precipitation Index (SPI-3)",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": "ERA5-derived SPI on a 0.25° (~28 km) grid: cells span large areas and are computed over ocean as well as land. Each month is represented by its final dekad, and magnitudes beyond ±3 are statistical extremes best read qualitatively.",
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_spi.pdf"
+  },
+  "runtime": "python3.12",
+  "trigger": {
+    "cron": "0 6 10 * *"
+  },
+  "contract": 2,
+  "description": "Monthly 3-month Standardized Precipitation Index from the Copernicus Global Drought Observatory ERA5 dekadal product, clipped to the deployment area of interest. Each month is represented by the final dekad starting on the 21st. Backfills the latest 24 months and then ingests new monthly observations incrementally.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "SPI-3 drought index",
+      "bands": [
+        {
+          "id": "spi3",
+          "name": "SPI-3",
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#67000d",
+                "value": -7
+              },
+              {
+                "color": "#b2182b",
+                "value": -2
+              },
+              {
+                "color": "#ef8a62",
+                "value": -1
+              },
+              {
+                "color": "#f7f7f7",
+                "value": 0
+              },
+              {
+                "color": "#92c5de",
+                "value": 1
+              },
+              {
+                "color": "#2166ac",
+                "value": 2
+              },
+              {
+                "color": "#053061",
+                "value": 2.31
+              }
+            ],
+            "resampling": "average",
+            "defaultRange": {
+              "max": 2.31,
+              "min": -7
+            }
+          }
+        }
+      ],
+      "layerId": "spi3",
+      "description": "Monthly 3-month Standardized Precipitation Index: negative values are drier than normal, positive wetter.",
+      "temporality": "time-series"
+    }
+  ]
+}

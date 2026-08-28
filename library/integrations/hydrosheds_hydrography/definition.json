@@ -1,0 +1,170 @@
+{
+  "id": "hydrosheds_hydrography",
+  "code": "",
+  "name": "HydroSHEDS HydroBASINS and HydroRIVERS",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 1200000
+  },
+  "source": {
+    "url": "https://www.hydrosheds.org/",
+    "name": "HydroSHEDS HydroBASINS v1c and HydroRIVERS v1.0",
+    "license": "HydroSHEDS license agreement; freely available for scientific, educational, and commercial use subject to attribution and redistribution terms",
+    "provider": "WWF HydroSHEDS",
+    "limitations": "Derived from SRTM elevation data collected in 2000: the network is static, does not reflect later channel migration or new works, and positional accuracy declines in flat or densely vegetated terrain.",
+    "documentation": "https://www.hydrosheds.org/products/hydrobasins"
+  },
+  "runtime": "python3.12",
+  "trigger": {},
+  "contract": 2,
+  "description": "Static level-8 HydroBASINS catchments and HydroRIVERS reaches intersecting the deployment area of interest, preserving complete source geometries.",
+  "destinations": [
+    {
+      "kind": "table",
+      "name": "Watersheds",
+      "action": "replace",
+      "columns": [
+        {
+          "id": "hybas_id",
+          "name": "HydroBASINS ID",
+          "type": "integer"
+        },
+        {
+          "id": "next_down_id",
+          "name": "Next downstream basin ID",
+          "type": "integer"
+        },
+        {
+          "id": "next_sink_id",
+          "name": "Terminal sink basin ID",
+          "type": "integer"
+        },
+        {
+          "id": "main_basin_id",
+          "name": "Main basin ID",
+          "type": "integer"
+        },
+        {
+          "id": "pfaf_id",
+          "name": "Pfafstetter code",
+          "type": "integer"
+        },
+        {
+          "id": "subbasin_area_sq_km",
+          "name": "Sub-basin area",
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "upstream_area_sq_km",
+          "name": "Upstream area",
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "distance_to_sink_km",
+          "name": "Distance to sink",
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "endorheic",
+          "name": "Endorheic basin",
+          "type": "boolean"
+        },
+        {
+          "id": "coastal",
+          "name": "Coastal basin",
+          "type": "boolean"
+        },
+        {
+          "id": "basin_order",
+          "name": "Basin order",
+          "type": "integer"
+        },
+        {
+          "id": "geometry",
+          "name": "Basin geometry",
+          "type": "geometry"
+        }
+      ],
+      "tableId": "hydrobasins",
+      "description": "Level-8 HydroBASINS watershed polygons intersecting the deployment area."
+    },
+    {
+      "kind": "table",
+      "name": "River reaches",
+      "action": "replace",
+      "columns": [
+        {
+          "id": "hyriv_id",
+          "name": "HydroRIVERS reach ID",
+          "type": "integer"
+        },
+        {
+          "id": "next_down_id",
+          "name": "Next downstream reach ID",
+          "type": "integer"
+        },
+        {
+          "id": "main_river_id",
+          "name": "Main river ID",
+          "type": "integer"
+        },
+        {
+          "id": "hydrobasins_level12_id",
+          "name": "HydroBASINS level-12 ID",
+          "type": "integer"
+        },
+        {
+          "id": "length_km",
+          "name": "Reach length",
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "distance_downstream_km",
+          "name": "Distance to river outlet",
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "local_catchment_sq_km",
+          "name": "Local catchment area",
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "upstream_drainage_area_sq_km",
+          "name": "Upstream drainage area",
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "average_discharge_cms",
+          "name": "Long-term average discharge",
+          "type": "number",
+          "units": "m³/s"
+        },
+        {
+          "id": "endorheic",
+          "name": "Endorheic reach",
+          "type": "boolean"
+        },
+        {
+          "id": "strahler_order",
+          "name": "Strahler stream order",
+          "type": "integer"
+        },
+        {
+          "id": "geometry",
+          "name": "River geometry",
+          "type": "geometry"
+        }
+      ],
+      "tableId": "hydrorivers",
+      "description": "HydroRIVERS river reach lines with flow attributes intersecting the deployment area."
+    }
+  ]
+}

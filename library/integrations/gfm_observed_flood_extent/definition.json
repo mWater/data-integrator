@@ -1,0 +1,58 @@
+{
+  "id": "gfm_observed_flood_extent",
+  "code": "",
+  "name": "Copernicus GFM Daily Observed Flood Extent",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 1800000
+  },
+  "source": {
+    "url": "https://stac.eodc.eu/api/v1/collections/GFM",
+    "name": "Copernicus Global Flood Monitoring (GFM) STAC catalogue",
+    "license": "Copernicus data and information policy; see GFM terms and conditions",
+    "provider": "European Commission Joint Research Centre / EODC / Copernicus Emergency Management Service",
+    "limitations": "The source has 20 m pixels and observes locations only during Sentinel-1 overpasses; nodata means no frame covered the pixel that UTC day, not no flood, and brief floods between overpasses can be missed. SAR flood mapping under-detects in urban areas, dense vegetation, and steep terrain.",
+    "documentation": "https://extwiki.eodc.eu/en/GFM/PUM/DataAccess/STAC"
+  },
+  "runtime": "python3.12",
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": "Ingests one daily UTC composite of Sentinel-1-derived observed flood extent for the deployment area, initially backfilling the most recent 12 months and then checking daily for completed observation days; COG overviews use flood-preserving max pooling.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "Daily observed flood extent",
+      "bands": [
+        {
+          "id": "flood_extent",
+          "name": "Observed flood extent",
+          "units": "binary (0=observed no flood, 1=observed flood)",
+          "nodata": 255,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#00000000",
+                "value": 0
+              },
+              {
+                "color": "#169eb0",
+                "value": 1
+              }
+            ],
+            "resampling": "nearest",
+            "defaultRange": {
+              "max": 1,
+              "min": 0
+            }
+          }
+        }
+      ],
+      "layerId": "observed_flood_extent",
+      "description": "Daily UTC composites of Sentinel-1 flood observations, with flood taking precedence across frames and max-pooled COG overviews preserving sparse flood pixels at small scales.",
+      "temporality": "time-series"
+    }
+  ]
+}

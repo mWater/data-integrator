@@ -1,0 +1,108 @@
+{
+  "id": "insitu_sensor_webhook",
+  "code": "",
+  "name": "In-situ Sensor Webhook",
+  "limits": {
+    "cpus": 1,
+    "memoryMb": 512,
+    "timeoutMs": 300000
+  },
+  "source": {
+    "name": "In-situ sensor webhook",
+    "provider": "User-managed sensor network",
+    "limitations": "Readings are loaded as received from the sending system, with deduplication but no independent validation or calibration; coverage and accuracy are those of the field sensors themselves."
+  },
+  "runtime": "python3.12",
+  "trigger": {
+    "webhook": true,
+    "webhookDelaySeconds": 900
+  },
+  "contract": 2,
+  "validation": {
+    "sensor_readings": {
+      "requiredColumns": [
+        "station_id",
+        "variable",
+        "timestamp",
+        "value",
+        "unit"
+      ]
+    },
+    "sensor_stations": {
+      "requiredColumns": [
+        "station_id",
+        "location",
+        "location_observed_at"
+      ]
+    }
+  },
+  "description": "Receives webhook-pushed groundwater-level and rainfall-gauge readings, upserts readings without duplication, and maintains each station's latest timestamped location. Malformed events are skipped and reported in the run log and run state.",
+  "destinations": [
+    {
+      "kind": "table",
+      "name": "Sensor readings",
+      "action": "merge",
+      "columns": [
+        {
+          "id": "station_id",
+          "name": "Station ID",
+          "type": "text"
+        },
+        {
+          "id": "variable",
+          "name": "Variable",
+          "type": "text"
+        },
+        {
+          "id": "timestamp",
+          "name": "Observation timestamp",
+          "type": "datetime"
+        },
+        {
+          "id": "value",
+          "name": "Observed value",
+          "type": "number"
+        },
+        {
+          "id": "unit",
+          "name": "Unit",
+          "type": "text"
+        }
+      ],
+      "tableId": "sensor_readings",
+      "description": "Timestamped groundwater-level and rainfall-gauge readings pushed by field sensors.",
+      "mergeColumns": [
+        "station_id",
+        "variable",
+        "timestamp"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "Sensor stations",
+      "action": "merge",
+      "columns": [
+        {
+          "id": "station_id",
+          "name": "Station ID",
+          "type": "text"
+        },
+        {
+          "id": "location",
+          "name": "Latest known location",
+          "type": "geometry"
+        },
+        {
+          "id": "location_observed_at",
+          "name": "Location observation timestamp",
+          "type": "datetime"
+        }
+      ],
+      "tableId": "sensor_stations",
+      "description": "Latest reported location and metadata for each sensor station.",
+      "mergeColumns": [
+        "station_id"
+      ]
+    }
+  ]
+}

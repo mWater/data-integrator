@@ -1,0 +1,77 @@
+{
+  "id": "glofas_river_discharge",
+  "code": "",
+  "name": "River discharge",
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical",
+    "name": "Copernicus GloFAS historical hydrological data",
+    "license": "CEMS-FLOODS datasets licence",
+    "provider": "Copernicus Emergency Management Service / ECMWF",
+    "limitations": "GloFAS v4 is uncalibrated in most basins of the deployment area, so absolute discharge can differ substantially from gauged values; treat readings as relative anomalies and temporal patterns. Values describe the 0.05° river-network cell, not a specific gauge, and recent days use ERA5T intermediate forcing that is revised when consolidated ERA5 arrives.",
+    "documentation": "https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=overview"
+  },
+  "runtime": "python3.12",
+  "secrets": [
+    "cds_api_token"
+  ],
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": "Daily average river discharge from the Copernicus Global Flood Awareness System (GloFAS), using consolidated ERA5 reanalysis where available and ERA5T intermediate data at the recent edge.",
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": "River discharge",
+      "bands": [
+        {
+          "id": "discharge",
+          "name": "River discharge",
+          "units": "m3/s",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#f7fbff",
+                "value": 0
+              },
+              {
+                "color": "#c6dbef",
+                "value": 1
+              },
+              {
+                "color": "#6baed6",
+                "value": 5
+              },
+              {
+                "color": "#2171b5",
+                "value": 20
+              },
+              {
+                "color": "#08519c",
+                "value": 50
+              },
+              {
+                "color": "#08306b",
+                "value": 100
+              }
+            ],
+            "resampling": "average",
+            "defaultRange": {
+              "max": 100,
+              "min": 0
+            }
+          }
+        }
+      ],
+      "layerId": "river_discharge",
+      "description": "Daily average river discharge in m³/s on the 0.05° GloFAS river network.",
+      "temporality": "time-series"
+    }
+  ]
+}

@@ -12,6 +12,7 @@
     "name": "GHS-BUILT-S R2023A",
     "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
     "provider": "European Commission Joint Research Centre",
+    "limitations": "Model-derived estimate of built-up surface from satellite imagery for the 2020 epoch at 100 m resolution; it is not a cadastral record, small or obscured structures may be missed, and later construction is absent.",
     "documentation": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS"
   },
   "runtime": "python3.12",
@@ -60,6 +61,7 @@
         }
       ],
       "layerId": "built_up_surface",
+      "description": "Built-up surface in square meters per 100 m grid cell, from GHSL GHS-BUILT-S (2020 epoch).",
       "temporality": "current-only"
     }
   ]
