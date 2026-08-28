@@ -7,8 +7,9 @@
 import { useEffect, useRef, useState } from "react"
 import { LngLatBounds, Map as MapLibreMap, RasterTileSource } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
-import "./maplibre"
+import { basemapStyle } from "./maplibre.js"
 import { getLayer, LayerBand, LayerDetail, styleToken } from "./api.js"
+import { useAppTheme } from "./theme.js"
 
 /** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
 const tileUrl = (layerId: string, snapshotId: string, band: LayerBand) =>
@@ -69,6 +70,8 @@ function Legend({ band }: { band: LayerBand }) {
 export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const mapModeRef = useRef<"light" | "dark" | null>(null)
+  const { mode } = useAppTheme()
   const [layer, setLayer] = useState<LayerDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [bandId, setBandId] = useState<string | null>(null)
@@ -83,43 +86,44 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     }, err => setError(err.message))
   }, [layerId, sessionId])
 
-  // The map is created once the layer is known, so the first tiles are right
+  // The map is created once the layer is known, so the first tiles are right.
+  // A theme flip rebuilds it on the other basemap style.
   useEffect(() => {
-    if (!layer || !bandId || layer.snapshots.length === 0 || mapRef.current) return
-    const map = new MapLibreMap({
-      container: container.current!,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "(c) OpenStreetMap contributors"
-          }
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm" }]
-      },
-      center: [30, -10],
-      zoom: 3
-    })
-    mapRef.current = map
-    map.on("load", () => {
-      map.addSource(RASTER_LAYER, {
-        type: "raster",
-        tiles: [tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])],
-        tileSize: 256
+    if (!layer || !bandId || layer.snapshots.length === 0) return
+    if (mapRef.current && mapModeRef.current === mode) return
+    mapRef.current?.remove()
+    mapRef.current = null
+    let cancelled = false
+    void basemapStyle(mode).then(style => {
+      if (cancelled || !container.current) return
+      mapModeRef.current = mode
+      const map = new MapLibreMap({
+        container: container.current,
+        style,
+        center: [30, -10],
+        zoom: 3
       })
-      map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": 0.85 } })
-      if (layer.footprint) {
-        const bounds = new LngLatBounds()
-        for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
-        if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40, animate: false })
-      }
+      mapRef.current = map
+      map.on("load", () => {
+        map.addSource(RASTER_LAYER, {
+          type: "raster",
+          tiles: [tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])],
+          tileSize: 256
+        })
+        map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": 0.85 } })
+        if (layer.footprint) {
+          const bounds = new LngLatBounds()
+          for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
+          if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40, animate: false })
+        }
+      })
     })
+    return () => {
+      cancelled = true
+    }
     // Layer identity drives creation; band and snapshot changes retile below
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layer, bandId])
+  }, [layer, bandId, mode])
 
   // Band and time changes only swap the source's tile template. Retiling is
   // debounced: a slider drag emits every intermediate snapshot, and reloading

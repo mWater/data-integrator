@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react"
 import { GeoJSONSourceSpecification, LngLatBounds, Map as MapLibreMap, Popup } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
-import "../maplibre"
+import { basemapStyle } from "../maplibre.js"
+import { useAppTheme } from "../theme.js"
 import { useTheme, type GeoJsonFeature, type GeoJsonFeatureCollection, type GeoJsonGeometry } from "@data-integrator/kit"
 import { AssistantResult, listLayers, MapLayer, styleToken } from "../api.js"
 import { BlockShell } from "./BlockShell.js"
@@ -125,6 +126,7 @@ interface MapBlockProps {
 /** Renders one map block: basemap, pinned raster tiles, overlays, legend. */
 export function MapBlock({ spec, results }: MapBlockProps) {
   const theme = useTheme()
+  const { mode } = useAppTheme()
   const container = useRef<HTMLDivElement>(null)
   const [catalog, setCatalog] = useState<MapLayer[] | null>(null)
 
@@ -150,30 +152,29 @@ export function MapBlock({ spec, results }: MapBlockProps) {
 
   useEffect(() => {
     if (!container.current || catalog === null) return
+    const layerCatalog = catalog
     const overlays = (spec.overlays ?? [])
       .filter(o => results[o.resultId])
       .map(o => resolveOverlay(o, results[o.resultId]))
-    const map = new MapLibreMap({
-      container: container.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "(c) OpenStreetMap contributors"
-          }
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm" }]
-      },
-      center: [30, -10],
-      zoom: 3
+    let map: MapLibreMap | null = null
+    let cancelled = false
+    void basemapStyle(mode).then(style => {
+      if (cancelled || !container.current) return
+      map = new MapLibreMap({
+        container: container.current,
+        style,
+        center: [30, -10],
+        zoom: 3
+      })
+
+      map.on("load", () => {
+        buildContents(map!)
+      })
     })
 
-    map.on("load", () => {
+    function buildContents(map: MapLibreMap) {
       for (const layer of spec.layers ?? []) {
-        const entry = catalog.find(l => l.id === layer.layerId)
+        const entry = layerCatalog.find(l => l.id === layer.layerId)
         const snapshotId = entry ? resolveSnapshot(entry, layer.at) : null
         if (!entry || !snapshotId) continue
         map.addSource(layer.layerId, { type: "raster", tiles: [tileUrl(entry, snapshotId)], tileSize: 256 })
@@ -220,19 +221,22 @@ export function MapBlock({ spec, results }: MapBlockProps) {
       const bounds = spec.fit === false ? null : overlayBounds(overlays)
       if (bounds) map.fitBounds(bounds, { padding: 40, maxZoom: 12 })
       else {
-        const first = (spec.layers ?? []).map(l => catalog.find(c => c.id === l.layerId)).find(l => l?.footprint)
+        const first = (spec.layers ?? []).map(l => layerCatalog.find(c => c.id === l.layerId)).find(l => l?.footprint)
         if (first?.footprint) {
           const fb = new LngLatBounds()
           for (const point of first.footprint.coordinates[0]) fb.extend(point as [number, number])
           if (!fb.isEmpty()) map.fitBounds(fb, { padding: 40 })
         }
       }
-    })
+    }
 
-    return () => map.remove()
+    return () => {
+      cancelled = true
+      map?.remove()
+    }
     // The spec and results are frozen per block; catalog arrival triggers the build
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, theme])
+  }, [catalog, theme, mode])
 
   const legend = [
     ...(spec.layers ?? []).filter(l => l.label).map(l => ({ label: l.label!, color: null as string | null })),
