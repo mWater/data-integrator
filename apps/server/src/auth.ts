@@ -138,6 +138,17 @@ export async function deleteAuthSession(pool: pg.Pool, token: string): Promise<v
   await pool.query("DELETE FROM app.auth_sessions WHERE token_hash = $1", [tokenHash(token)])
 }
 
+/** Whether the user has acknowledged that AI features send data to an external model provider. */
+export async function getAiAcknowledged(pool: pg.Pool, userId: string): Promise<boolean> {
+  const result = await pool.query("SELECT ai_acknowledged_at FROM app.users WHERE id = $1", [userId])
+  return result.rows[0]?.ai_acknowledged_at != null
+}
+
+/** Records the user's AI acknowledgement; idempotent, keeps the first timestamp. */
+export async function acknowledgeAi(pool: pg.Pool, userId: string): Promise<void> {
+  await pool.query("UPDATE app.users SET ai_acknowledged_at = COALESCE(ai_acknowledged_at, now()) WHERE id = $1", [userId])
+}
+
 /** One personal access token as listed to its owner (never the secret). */
 export interface ApiTokenInfo {
   /** Row id: the stored hash (safe to expose; it cannot be inverted) */

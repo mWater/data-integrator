@@ -13,6 +13,7 @@ import {
   stopSession,
   subscribeEvents
 } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { isBlockCall } from "./blocks/types.js"
 import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
 import { Markdown } from "./Markdown.js"
@@ -246,6 +247,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   async function send(text: string) {
     if (!text) return
     setError(null)
+    if (!(await ensureAiAck())) return
     const wasBusy = busy
     if (!wasBusy) frozenRef.current = messagesLenRef.current
     setBusy(true)

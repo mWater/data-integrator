@@ -43,11 +43,13 @@ import {
   SITE_TITLE_KEY
 } from "./settings.js"
 import {
+  acknowledgeAi,
   authenticate,
   AuthUser,
   createApiToken,
   createAuthSession,
   deleteAuthSession,
+  getAiAcknowledged,
   getSessionUser,
   getTokenUser,
   listApiTokens,
@@ -55,6 +57,7 @@ import {
   setPassword,
   verifyPassword
 } from "./auth.js"
+import { AiProvider } from "./config.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
@@ -139,12 +142,13 @@ export function createApiServer(
   basemap: BasemapProxy | null = null,
   uiDistPath: string | null = null,
   libraryPath: string | null = null,
-  assistantAgent: AgentService | null = null
+  assistantAgent: AgentService | null = null,
+  aiProvider: AiProvider | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -197,6 +201,7 @@ async function route(
   uiDist: string,
   libraryPath: string | null,
   assistantAgent: AgentService | null,
+  aiProvider: AiProvider | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -293,8 +298,20 @@ async function route(
   }
 
   if (pathname === "/api/me") {
-    if (!user) json(res, 401, { error: "not signed in" })
-    else json(res, 200, { user: { email: user.email, role: user.role } })
+    if (!user) {
+      json(res, 401, { error: "not signed in" })
+      return
+    }
+    // Hosted providers require the one-time data-processing acknowledgement;
+    // a custom (self-hosted) endpoint keeps data on the admin's infrastructure
+    const hosted = aiProvider === "openrouter" || aiProvider === "anthropic"
+    json(res, 200, {
+      user: { email: user.email, role: user.role },
+      ai: {
+        provider: aiProvider,
+        ackRequired: hosted && !(await getAiAcknowledged(pool, user.id))
+      }
+    })
     return
   }
 
@@ -414,6 +431,13 @@ async function route(
     }
     await setSetting(pool, DEFAULT_AOI_KEY, aoi)
     json(res, 200, { default_aoi: aoi })
+    return
+  }
+
+  // One-time acknowledgement that AI features send data to the model provider
+  if (pathname === "/api/me/ai-acknowledge" && req.method === "POST") {
+    await acknowledgeAi(pool, user.id)
+    json(res, 200, { ok: true })
     return
   }
 
@@ -1155,7 +1179,7 @@ async function route(
   }
 
   if (pathname.startsWith("/api/sessions")) {
-    await routeSessions(pool, agent, dashboardAgent, assistantAgent, user, req, res, url)
+    await routeSessions(pool, agent, dashboardAgent, assistantAgent, aiProvider, user, req, res, url)
     return
   }
 
@@ -1170,6 +1194,7 @@ async function routeSessions(
   agent: AgentService | null,
   dashboardAgent: AgentService | null,
   assistantAgent: AgentService | null,
+  aiProvider: AiProvider | null,
   user: AuthUser,
   req: IncomingMessage,
   res: ServerResponse,
@@ -1178,6 +1203,19 @@ async function routeSessions(
   const isViewer = user.role === "viewer"
   const [pathname, search] = url.split("?")
   const searchParams = new URLSearchParams(search ?? "")
+
+  // A hosted provider means every session send leaves the deployment, so the
+  // one-time acknowledgement is enforced here, not just in the UI: creating a
+  // session and posting a message are the only doors to the model
+  async function ackMissing(): Promise<boolean> {
+    if (aiProvider !== "openrouter" && aiProvider !== "anthropic") return false
+    if (await getAiAcknowledged(pool, user.id)) return false
+    json(res, 403, {
+      error: "AI features require a one-time data-processing acknowledgement (POST /api/me/ai-acknowledge; the app shows the notice)",
+      code: "ai_ack_required"
+    })
+    return true
+  }
 
   // Creation first: the viewer rejection outranks the no-model 503
   if (pathname === "/api/sessions" && req.method === "POST") {
@@ -1189,9 +1227,10 @@ async function routeSessions(
     }
     const service = kind === "dashboard" ? dashboardAgent : kind === "assistant" ? assistantAgent : agent
     if (!service) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
       return
     }
+    if (await ackMissing()) return
     const bindId = kind === "dashboard" ? body.dashboardId : kind === "designer" ? body.integrationId : undefined
     const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId), user.id)
     json(res, 201, { sessionId })
@@ -1199,7 +1238,7 @@ async function routeSessions(
   }
 
   if (!agent && !dashboardAgent && !assistantAgent) {
-    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
     return
   }
 
@@ -1239,7 +1278,7 @@ async function routeSessions(
       return
     }
     if (!assistantAgent) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
       return
     }
     const deleted = await assistantAgent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
@@ -1250,7 +1289,7 @@ async function routeSessions(
 
   const agentService = ownerKind === "dashboard" ? dashboardAgent : ownerKind === "assistant" ? assistantAgent : agent
   if (!agentService) {
-    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)" })
+    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
     return
   }
 
@@ -1309,6 +1348,7 @@ async function routeSessions(
   }
 
   if (sub === "/messages" && req.method === "POST") {
+    if (await ackMissing()) return
     const body = await readJsonBody(req)
     const text = String(body.text ?? "").trim()
     if (!text) {

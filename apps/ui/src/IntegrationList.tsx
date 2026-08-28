@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { cronText } from "./localization.js"
 
 /** Human-readable trigger summary. */
@@ -45,6 +46,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
 
   async function onCreate() {
     setError(null)
+    if (!(await ensureAiAck())) return
     try {
       const { sessionId } = await createSession()
       window.location.hash = `#/session/${sessionId}`

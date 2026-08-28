@@ -16,6 +16,7 @@ import { hostname } from "node:os"
 import { createInterface } from "node:readline/promises"
 import { fileURLToPath } from "node:url"
 import { createAnthropic } from "@ai-sdk/anthropic"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { LanguageModel } from "ai"
 import { Runner } from "@data-integrator/runner"
@@ -28,7 +29,7 @@ import { RasterStore } from "./rasterStore.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
 import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
-import { AppConfig, describeConfig, loadConfig } from "./config.js"
+import { aiProvider, AppConfig, describeConfig, loadConfig } from "./config.js"
 import { startScheduler } from "./scheduler.js"
 import { registerMissingRasters } from "./rasterSql.js"
 import { randomBytes } from "node:crypto"
@@ -83,9 +84,19 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
 /** Default agent model (OpenRouter); see Quickstart "Choosing a model". */
 const DEFAULT_MODEL = "openai/gpt-5.6-sol"
 
-/** Agent model from configuration: OpenRouter when its key is set, else Anthropic. */
+/** Agent model from configuration: a custom OpenAI-compatible endpoint wins, then OpenRouter, then Anthropic. */
 function buildModel(config: AppConfig): LanguageModel | null {
-  const { openrouterKey, anthropicKey, effort: configEffort } = config.agent
+  const { baseUrl, baseUrlKey, openrouterKey, anthropicKey, effort: configEffort } = config.agent
+  if (baseUrl) {
+    // Self-hosted or third-party endpoint (vLLM, Ollama, LiteLLM…); config
+    // guarantees AGENT_MODEL is set. No effort/caching knobs: those vary by server.
+    const provider = createOpenAICompatible({
+      name: "custom",
+      baseURL: baseUrl,
+      ...(baseUrlKey ? { apiKey: baseUrlKey } : {})
+    })
+    return provider(config.agent.model!)
+  }
   if (openrouterKey) {
     const modelId = config.agent.model ?? DEFAULT_MODEL
     // The default model runs at medium effort: high cost 6x for no visible gain
@@ -279,7 +290,7 @@ async function main(): Promise<number> {
         const target = process.argv[3]
         const model = buildModel(config)
         if (!model) {
-          console.error("Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY (AGENT_MODEL overrides the default model)")
+          console.error("Set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL (AGENT_MODEL overrides the default model)")
           return 1
         }
         const runner = new Runner()
@@ -411,7 +422,8 @@ async function main(): Promise<number> {
           basemap,
           config.uiDistPath,
           config.libraryPath,
-          assistantAgent
+          assistantAgent,
+          aiProvider(config)
         ).listen(
           config.port,
           () => {

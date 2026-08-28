@@ -56,7 +56,9 @@ interest — lives in the Settings page, not the environment.
 | `TILE_CACHE_PATH` | `./tile-cache` | rendered tile cache |
 | `LIBRARY_PATH` | `./library` | integration library root; the designer agent loads `skills/` from here |
 | `PORT` | `8080` | HTTP port |
-| `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the designer agent; without one the platform runs with the session API disabled |
+| `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the AI agents; without a model configured the platform runs with the session API disabled |
+| `LLM_BASE_URL` | (none) | any OpenAI-compatible endpoint (vLLM, Ollama, LiteLLM, Azure…) instead of a hosted provider; takes precedence over the keys above. Requires `AGENT_MODEL` |
+| `LLM_API_KEY` | (none) | API key for `LLM_BASE_URL`, if the endpoint needs one |
 | `AGENT_MODEL` | `openai/gpt-5.6-sol` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |
 | `AGENT_EFFORT` | `medium` for the default model, else model default | reasoning effort for OpenRouter models: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets; `openssl rand -base64 32`. Only needed once definitions declare secrets |

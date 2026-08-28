@@ -4021,6 +4021,276 @@
       "es": "Opacidad de la capa",
       "mg": "Tsy fangaraharan’ny sosona",
       "sw": "Kutopenya kwa safu"
+    },
+    {
+      "_base": "en",
+      "en": "AI features and your data",
+      "fr": "Fonctionnalités d’IA et vos données",
+      "pt": "Recursos de IA e seus dados",
+      "es": "Funciones de IA y sus datos",
+      "mg": "Endri-javatra AI sy ny angonao",
+      "sw": "Vipengele vya AI na data yako"
+    },
+    {
+      "_base": "en",
+      "en": "The AI features (integration designer, data assistant, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
+      "fr": "Les fonctionnalités d’IA (outil de conception d’intégrations, assistant de données et outil de création de tableaux de bord) fonctionnent en envoyant du contexte à un fournisseur de modèles externe, {0}. Chaque requête peut inclure :",
+      "pt": "Os recursos de IA (designer de integrações, assistente de dados e criador de painéis) funcionam enviando contexto a um provedor de modelo externo, {0}. Cada solicitação pode incluir:",
+      "es": "Las funciones de IA (diseñador de integraciones, asistente de datos y creador de paneles) envían contexto a un proveedor de modelos externo, {0}. Cada solicitud puede incluir:",
+      "mg": "Miasa amin’ny fandefasana ny toe-javatra ilaina any amin’ny mpamatsy modely ivelany, {0}, ireo endri-javatra AI (mpamorona fampidirana angona, mpanampy momba ny angona ary mpamorona tabilao fanaraha-maso). Mety ahitana izao ny fangatahana tsirairay:",
+      "sw": "Vipengele vya AI (kiunda miunganisho, msaidizi wa data na kiunda dashibodi) hufanya kazi kwa kutuma muktadha kwa mtoa huduma wa modeli wa nje, {0}. Kila ombi linaweza kujumuisha:"
+    },
+    {
+      "_base": "en",
+      "en": "your messages",
+      "fr": "vos messages",
+      "pt": "suas mensagens",
+      "es": "sus mensajes",
+      "mg": "ny hafatrao",
+      "sw": "ujumbe wako"
+    },
+    {
+      "_base": "en",
+      "en": "table and column names, and the deployment's area of interest",
+      "fr": "les noms des tables et des colonnes, ainsi que la zone d’intérêt du déploiement",
+      "pt": "nomes de tabelas e colunas e a área de interesse da implantação",
+      "es": "nombres de tablas y columnas, y el área de interés de la implementación",
+      "mg": "anaran’ny tabilao sy tsanganana, ary ny faritra mahaliana amin’ilay fametrahana",
+      "sw": "majina ya majedwali na safu wima, na eneo lengwa la usakinishaji"
+    },
+    {
+      "_base": "en",
+      "en": "SQL and samples of query results",
+      "fr": "du SQL et des échantillons de résultats de requêtes",
+      "pt": "SQL e amostras dos resultados das consultas",
+      "es": "SQL y muestras de resultados de consultas",
+      "mg": "SQL sy santionan’ny valin’ny fangatahana",
+      "sw": "SQL na sampuli za matokeo ya hoja"
+    },
+    {
+      "_base": "en",
+      "en": "integration code and run logs",
+      "fr": "le code des intégrations et les journaux d’exécution",
+      "pt": "código da integração e logs de execução",
+      "es": "código de integraciones y registros de ejecución",
+      "mg": "kaodin’ny fampidirana angona sy firaketana ny fampandehanana",
+      "sw": "msimbo wa muunganisho na kumbukumbu za utekelezaji"
+    },
+    {
+      "_base": "en",
+      "en": "Passwords, API keys, and stored secret values are never sent.",
+      "fr": "Les mots de passe, les clés d’API et les valeurs secrètes enregistrées ne sont jamais envoyés.",
+      "pt": "Senhas, chaves de API e valores secretos armazenados nunca são enviados.",
+      "es": "Nunca se envían contraseñas, claves de API ni valores secretos almacenados.",
+      "mg": "Tsy alefa mihitsy ny tenimiafina, fanalahidy API ary sanda tsiambaratelo voatahiry.",
+      "sw": "Manenosiri, funguo za API na thamani za siri zilizohifadhiwa hazitumwi kamwe."
+    },
+    {
+      "_base": "en",
+      "en": "How AI features handle data",
+      "fr": "Traitement des données par les fonctionnalités d’IA",
+      "pt": "Como os recursos de IA tratam os dados",
+      "es": "Cómo gestionan los datos las funciones de IA",
+      "mg": "Fomba itantanan’ny endri-javatra AI ny angona",
+      "sw": "Jinsi vipengele vya AI vinavyoshughulikia data"
+    },
+    {
+      "_base": "en",
+      "en": "I Understand",
+      "fr": "J’ai compris",
+      "pt": "Entendi",
+      "es": "Entiendo",
+      "mg": "Azoko",
+      "sw": "Nimeelewa"
+    },
+    {
+      "_base": "en",
+      "en": "AI and Data Privacy",
+      "fr": "IA et confidentialité des données",
+      "pt": "IA e privacidade de dados",
+      "es": "IA y privacidad de los datos",
+      "mg": "AI sy ny tsiambaratelon’ny angona",
+      "sw": "AI na Faragha ya Data"
+    },
+    {
+      "_base": "en",
+      "en": "Three features of this platform use a large language model: the integration designer, the data assistant, and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
+      "fr": "Trois fonctionnalités de cette plateforme utilisent un grand modèle de langage : l’outil de conception d’intégrations, l’assistant de données et l’outil de création de tableaux de bord. Tout le reste - exécutions planifiées des ingestions, webhooks, cartes, tables, consultation des tableaux de bord - n’utilise aucun modèle et n’envoie aucune donnée ailleurs.",
+      "pt": "Três recursos desta plataforma usam um modelo de linguagem de grande porte: o designer de integrações, o assistente de dados e o criador de painéis. Todo o restante - execuções de ingestão agendadas, webhooks, mapas, tabelas e visualização de painéis - não envolve nenhum modelo nem envia dados a lugar algum.",
+      "es": "Tres funciones de esta plataforma usan un modelo de lenguaje de gran tamaño: el diseñador de integraciones, el asistente de datos y el creador de paneles. Todo lo demás - ejecuciones de ingesta programadas, webhooks, mapas, tablas y visualización de paneles - no usa ningún modelo ni envía nada a ningún lugar.",
+      "mg": "Endri-javatra telo amin’ity sehatra ity no mampiasa modelim-piteny lehibe: ny mpamorona fampidirana angona, ny mpanampy momba ny angona ary ny mpamorona tabilao fanaraha-maso. Ny zavatra hafa rehetra - fampandehanana fampidirana voalahatra, webhook, sarintany, tabilao, tabilao fanaraha-maso jerena - dia tsy mampiasa modely ary tsy mandefa na inona na inona na aiza na aiza.",
+      "sw": "Vipengele vitatu vya jukwaa hili hutumia modeli kubwa ya lugha: kiunda miunganisho, msaidizi wa data na kiunda dashibodi. Shughuli nyingine zote - utekelezaji wa uratibu wa kuingiza data, webhooks, ramani, majedwali, dashibodi zinazotazamwa - hazihusishi modeli wala kutuma chochote mahali pengine."
+    },
+    {
+      "_base": "en",
+      "en": "Where the model runs",
+      "fr": "Où le modèle s’exécute",
+      "pt": "Onde o modelo é executado",
+      "es": "Dónde se ejecuta el modelo",
+      "mg": "Toerana iasan’ny modely",
+      "sw": "Mahali modeli inapoendeshwa"
+    },
+    {
+      "_base": "en",
+      "en": "No model is configured on this deployment, so the AI features are disabled and no data is sent to any model provider.",
+      "fr": "Aucun modèle n’est configuré sur ce déploiement. Les fonctionnalités d’IA sont donc désactivées et aucune donnée n’est envoyée à un fournisseur de modèles.",
+      "pt": "Nenhum modelo está configurado nesta implantação. Portanto, os recursos de IA estão desativados e nenhum dado é enviado a qualquer provedor de modelo.",
+      "es": "No hay ningún modelo configurado en esta implementación, por lo que las funciones de IA están desactivadas y no se envían datos a ningún proveedor de modelos.",
+      "mg": "Tsy misy modely voarindra amin’ity fametrahana ity, ka tsy mandeha ireo endri-javatra AI ary tsy misy angona alefa any amin’ny mpamatsy modely.",
+      "sw": "Hakuna modeli iliyosanidiwa katika usakinishaji huu, kwa hivyo vipengele vya AI vimezimwa na hakuna data inayotumwa kwa mtoa huduma yeyote wa modeli."
+    },
+    {
+      "_base": "en",
+      "en": "This deployment is configured to use its own model endpoint, operated by your administrator. AI requests go to that endpoint, not to an external provider.",
+      "fr": "Ce déploiement est configuré pour utiliser son propre point de terminaison de modèle, géré par votre administrateur. Les requêtes d’IA sont envoyées à ce point de terminaison, et non à un fournisseur externe.",
+      "pt": "Esta implantação está configurada para usar seu próprio endpoint de modelo, operado pelo administrador. As solicitações de IA são enviadas a esse endpoint, não a um provedor externo.",
+      "es": "Esta implementación está configurada para usar su propio punto de conexión del modelo, gestionado por su administrador. Las solicitudes de IA se envían a ese punto de conexión, no a un proveedor externo.",
+      "mg": "Namboarina hampiasa endpoint-n’ny modeliny manokana, izay tantanan’ny mpitantana anao, ity fametrahana ity. Any amin’io endpoint io no alefa ny fangatahana AI, fa tsy any amin’ny mpamatsy ivelany.",
+      "sw": "Usakinishaji huu umesanidiwa kutumia endpoint yake ya modeli, inayoendeshwa na msimamizi wako. Maombi ya AI huenda kwenye endpoint hiyo, si kwa mtoa huduma wa nje."
+    },
+    {
+      "_base": "en",
+      "en": "This deployment uses {0} as its model provider. AI requests are sent to {1}'s API over an encrypted connection and processed there to generate responses. Retention and training commitments are governed by the provider's API terms; major providers do not use API traffic to train models by default.",
+      "fr": "Ce déploiement utilise {0} comme fournisseur de modèles. Les requêtes d’IA sont envoyées à l’API de {1} via une connexion chiffrée et y sont traitées pour générer les réponses. Les engagements en matière de conservation et d’entraînement sont régis par les conditions d’utilisation de l’API du fournisseur ; par défaut, les principaux fournisseurs n’utilisent pas le trafic de leur API pour entraîner leurs modèles.",
+      "pt": "Esta implantação usa {0} como provedor de modelo. As solicitações de IA são enviadas à API de {1} por uma conexão criptografada e processadas lá para gerar respostas. Os compromissos de retenção e treinamento são regidos pelos termos da API do provedor; por padrão, os principais provedores não usam o tráfego da API para treinar modelos.",
+      "es": "Esta implementación usa {0} como proveedor de modelos. Las solicitudes de IA se envían a la API de {1} mediante una conexión cifrada y se procesan allí para generar respuestas. Los compromisos de conservación y entrenamiento se rigen por las condiciones de la API del proveedor; los principales proveedores no usan de forma predeterminada el tráfico de la API para entrenar modelos.",
+      "mg": "Mampiasa an’i {0} ho mpamatsy modely ity fametrahana ity. Alefa any amin’ny API an’i {1} amin’ny alalan’ny fifandraisana voaaro ny fangatahana AI ary karakaraina any mba hamoronana valiny. Ny fepetran’ny API an’ilay mpamatsy no mifehy ny fitazonana angona sy ny fampiasana azy amin’ny fanazarana modely; amin’ny ankapobeny, tsy mampiasa ny fifamoivoizana API hanazarana modely ireo mpamatsy lehibe.",
+      "sw": "Usakinishaji huu hutumia {0} kama mtoa huduma wake wa modeli. Maombi ya AI hutumwa kwa API ya {1} kupitia muunganisho uliosimbwa kwa njia fiche na kuchakatwa huko ili kutoa majibu. Masharti ya uhifadhi na mafunzo yanadhibitiwa na masharti ya API ya mtoa huduma; kwa chaguo-msingi, watoa huduma wakuu hawatumii trafiki ya API kufunza modeli."
+    },
+    {
+      "_base": "en",
+      "en": "What is sent, and when",
+      "fr": "Données envoyées et moment de l’envoi",
+      "pt": "O que é enviado e quando",
+      "es": "Qué se envía y cuándo",
+      "mg": "Izay alefa sy ny fotoana andefasana azy",
+      "sw": "Kinachotumwa, na wakati gani"
+    },
+    {
+      "_base": "en",
+      "en": "Data is sent only while a person is actively using an AI feature. One request can include:",
+      "fr": "Les données ne sont envoyées que lorsqu’une personne utilise activement une fonctionnalité d’IA. Une requête peut inclure :",
+      "pt": "Os dados são enviados somente enquanto uma pessoa está usando ativamente um recurso de IA. Uma solicitação pode incluir:",
+      "es": "Los datos solo se envían mientras una persona usa activamente una función de IA. Una solicitud puede incluir:",
+      "mg": "Rehefa misy olona tena mampiasa endri-javatra AI ihany no andefasana angona. Mety ahitana izao ny fangatahana iray:",
+      "sw": "Data hutumwa tu wakati mtu anatumia kipengele cha AI kikamilifu. Ombi moja linaweza kujumuisha:"
+    },
+    {
+      "_base": "en",
+      "en": "the messages you type",
+      "fr": "les messages que vous saisissez",
+      "pt": "as mensagens que você digita",
+      "es": "los mensajes que escribe",
+      "mg": "ireo hafatra soratanao",
+      "sw": "ujumbe unaoandika"
+    },
+    {
+      "_base": "en",
+      "en": "the data schema: table and column names, descriptions, and the deployment's area of interest",
+      "fr": "le schéma des données : noms et descriptions des tables et des colonnes, ainsi que la zone d’intérêt du déploiement",
+      "pt": "o esquema de dados: nomes e descrições de tabelas e colunas e a área de interesse da implantação",
+      "es": "el esquema de datos: nombres y descripciones de tablas y columnas, y el área de interés de la implementación",
+      "mg": "ny firafitry ny angona: anaran’ny tabilao sy tsanganana, famaritana ary ny faritra mahaliana amin’ilay fametrahana",
+      "sw": "muundo wa data: majina na maelezo ya majedwali na safu wima, na eneo lengwa la usakinishaji"
+    },
+    {
+      "_base": "en",
+      "en": "SQL the model writes, and samples of the rows those queries return",
+      "fr": "le SQL écrit par le modèle et des échantillons des lignes renvoyées par ces requêtes",
+      "pt": "o SQL que o modelo escreve e amostras das linhas retornadas por essas consultas",
+      "es": "el SQL que escribe el modelo y muestras de las filas devueltas por esas consultas",
+      "mg": "ny SQL soratan’ny modely sy santionan’ny andalana averin’ireo fangatahana ireo",
+      "sw": "SQL inayoandikwa na modeli, na sampuli za safu mlalo zinazorudishwa na hoja hizo"
+    },
+    {
+      "_base": "en",
+      "en": "integration code, and log output from runs the designer starts while building or testing an integration",
+      "fr": "le code des intégrations et les journaux produits par les exécutions lancées par l’outil de conception pendant la création ou le test d’une intégration",
+      "pt": "o código da integração e os logs das execuções iniciadas pelo designer durante a criação ou o teste de uma integração",
+      "es": "código de integraciones y registros de las ejecuciones que inicia el diseñador al crear o probar una integración",
+      "mg": "kaodin’ny fampidirana angona sy vokatry ny firaketana avy amin’ny fampandehanana atomboky ny mpamorona mandritra ny fanamboarana na fitsapana fampidirana angona",
+      "sw": "msimbo wa muunganisho, na matokeo ya kumbukumbu kutoka kwenye utekelezaji unaoanzishwa na kiunda wakati wa kuunda au kujaribu muunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "What is never sent",
+      "fr": "Données qui ne sont jamais envoyées",
+      "pt": "O que nunca é enviado",
+      "es": "Qué no se envía nunca",
+      "mg": "Izay tsy alefa mihitsy",
+      "sw": "Kisichotumwa kamwe"
+    },
+    {
+      "_base": "en",
+      "en": "stored secret values (API keys, source credentials): they are encrypted at rest, write-only, and the agents can only reference them by name",
+      "fr": "les valeurs secrètes enregistrées (clés d’API, identifiants des sources) : elles sont chiffrées au repos, accessibles uniquement en écriture, et les agents ne peuvent les référencer que par leur nom",
+      "pt": "valores secretos armazenados (chaves de API e credenciais da fonte): são criptografados quando armazenados, permitem apenas gravação e os agentes só podem referenciá-los pelo nome",
+      "es": "valores secretos almacenados (claves de API y credenciales de origen): se cifran al almacenarse, son de solo escritura y los agentes solo pueden referirse a ellos por su nombre",
+      "mg": "sanda tsiambaratelo voatahiry (fanalahidy API, fanamarinana fidirana amin’ny loharano): voaaro amin’ny fanafenana izy ireo rehefa voatahiry, azo soratana ihany, ary ny anarany ihany no azon’ireo agent ampiasaina",
+      "sw": "thamani za siri zilizohifadhiwa (funguo za API, vitambulisho vya vyanzo): zimesimbwa kwa njia fiche zinapohifadhiwa, zinaweza kuandikwa tu, na mawakala wanaweza kuzirejelea kwa majina pekee"
+    },
+    {
+      "_base": "en",
+      "en": "user accounts and passwords",
+      "fr": "les comptes utilisateur et les mots de passe",
+      "pt": "contas de usuário e senhas",
+      "es": "cuentas de usuario y contraseñas",
+      "mg": "kaontin’ny mpampiasa sy tenimiafina",
+      "sw": "akaunti za watumiaji na manenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "raster imagery files: the model sees derived statistics and log lines, not the pixels",
+      "fr": "les fichiers d’imagerie matricielle : le modèle voit des statistiques dérivées et des lignes de journal, pas les pixels",
+      "pt": "arquivos de imagens raster: o modelo recebe estatísticas derivadas e linhas de log, não os pixels",
+      "es": "archivos de imágenes ráster: el modelo ve estadísticas derivadas y líneas de registro, no los píxeles",
+      "mg": "rakitra sary raster: antontan’isa nalaina avy amin’ireo sary sy andalana ao amin’ny firaketana no hitan’ny modely, fa tsy ireo piksel",
+      "sw": "faili za picha za raster: modeli huona takwimu zilizotolewa na mistari ya kumbukumbu, si pikseli"
+    },
+    {
+      "_base": "en",
+      "en": "anything from scheduled runs: cron and webhook ingestion never contacts the model provider",
+      "fr": "les données des exécutions planifiées : les ingestions par cron et webhook ne contactent jamais le fournisseur de modèles",
+      "pt": "qualquer dado de execuções agendadas: a ingestão por cron e webhook nunca entra em contato com o provedor de modelo",
+      "es": "nada procedente de ejecuciones programadas: la ingesta mediante cron y webhook nunca contacta con el proveedor de modelos",
+      "mg": "na inona na inona avy amin’ny fampandehanana voalahatra: tsy mifandray amin’ny mpamatsy modely mihitsy ny fampidirana amin’ny cron sy webhook",
+      "sw": "chochote kutoka kwenye utekelezaji ulioratibiwa: uingizaji kupitia cron na webhook hauwasiliani kamwe na mtoa huduma wa modeli"
+    },
+    {
+      "_base": "en",
+      "en": "Controls",
+      "fr": "Contrôles",
+      "pt": "Controles",
+      "es": "Controles",
+      "mg": "Fanaraha-maso",
+      "sw": "Udhibiti"
+    },
+    {
+      "_base": "en",
+      "en": "The AI features are off unless an administrator configures a model provider; a deployment without one runs fully AI-free.",
+      "fr": "Les fonctionnalités d’IA restent désactivées tant qu’un administrateur ne configure pas de fournisseur de modèles ; un déploiement qui n’en utilise aucun fonctionne entièrement sans IA.",
+      "pt": "Os recursos de IA ficam desativados a menos que um administrador configure um provedor de modelo; uma implantação sem provedor funciona totalmente sem IA.",
+      "es": "Las funciones de IA permanecen desactivadas a menos que un administrador configure un proveedor de modelos; una implementación sin proveedor funciona completamente sin IA.",
+      "mg": "Tsy mandeha ireo endri-javatra AI raha tsy misy mpitantana mandrindra mpamatsy modely; miasa tanteraka tsy misy AI ny fametrahana tsy manana izany.",
+      "sw": "Vipengele vya AI huzimwa isipokuwa msimamizi asanidi mtoa huduma wa modeli; usakinishaji usio na mtoa huduma huendeshwa kikamilifu bila AI."
+    },
+    {
+      "_base": "en",
+      "en": "With an external provider configured, each user must accept a one-time notice before their first AI use; the acceptance is recorded.",
+      "fr": "Lorsqu’un fournisseur externe est configuré, chaque utilisateur doit accepter une notification unique avant sa première utilisation de l’IA ; cette acceptation est enregistrée.",
+      "pt": "Com um provedor externo configurado, cada usuário deve aceitar um aviso uma única vez antes do primeiro uso da IA; a aceitação é registrada.",
+      "es": "Cuando se configura un proveedor externo, cada usuario debe aceptar un aviso una sola vez antes de usar la IA por primera vez; la aceptación queda registrada.",
+      "mg": "Rehefa voarindra ny mpamatsy ivelany dia tsy maintsy manaiky fampandrenesana indray mandeha ny mpampiasa tsirairay alohan’ny hampiasany AI voalohany; voarakitra izany fanekena izany.",
+      "sw": "Mtoa huduma wa nje anaposanidiwa, kila mtumiaji lazima akubali taarifa ya mara moja kabla ya kutumia AI kwa mara ya kwanza; kukubali huko kunarekodiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Administrators can instead point the platform at a self-hosted, OpenAI-compatible model endpoint so AI requests never leave their own infrastructure.",
+      "fr": "Les administrateurs peuvent aussi configurer la plateforme pour utiliser un point de terminaison de modèle auto-hébergé et compatible avec OpenAI, afin que les requêtes d’IA ne quittent jamais leur propre infrastructure.",
+      "pt": "Como alternativa, os administradores podem configurar a plataforma para usar um endpoint de modelo auto-hospedado e compatível com OpenAI, para que as solicitações de IA nunca saiam da própria infraestrutura.",
+      "es": "Como alternativa, los administradores pueden configurar la plataforma para usar un punto de conexión de un modelo autoalojado y compatible con OpenAI, de modo que las solicitudes de IA nunca salgan de su propia infraestructura.",
+      "mg": "Azon’ny mpitantana atao kosa ny mampifandray ilay sehatra amin’ny endpoint-n’ny modely ampiantranoiny manokana sy mifanaraka amin’ny OpenAI, mba tsy hivoaka mihitsy amin’ny fotodrafitrasa tantaniny ny fangatahana AI.",
+      "sw": "Badala yake, wasimamizi wanaweza kuelekeza jukwaa kwenye endpoint ya modeli inayopangishwa ndani na inayooana na OpenAI, ili maombi ya AI yasiondoke kamwe kwenye miundombinu yao wenyewe."
     }
   ],
   "unused": [

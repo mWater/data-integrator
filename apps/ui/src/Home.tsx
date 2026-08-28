@@ -15,6 +15,7 @@ import {
   HomeSummary,
   User
 } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { FlowDiagram } from "./FlowDiagram.js"
 
 /** Problems listed before the rest collapse into a count. */
@@ -268,8 +269,9 @@ function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean })
   const waiting = home.counts.integrations > 0
 
   async function design() {
-    setBusy(true)
     setError(null)
+    if (!(await ensureAiAck())) return
+    setBusy(true)
     try {
       const { sessionId } = await createSession()
       window.location.hash = `#/session/${sessionId}`
@@ -346,8 +348,9 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
   const sources = counts.tables + counts.rasters
 
   async function newDashboard() {
-    setBusy(true)
     setError(null)
+    if (!(await ensureAiAck())) return
+    setBusy(true)
     try {
       const { sessionId } = await createDashboardSession()
       window.location.hash = `#/session/${sessionId}`

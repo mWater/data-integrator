@@ -232,6 +232,22 @@ export interface User {
   role: "admin" | "editor" | "viewer"
 }
 
+/** How the deployment's AI features are wired, from /api/me. */
+export interface AiInfo {
+  /** Configured model provider; "custom" is an admin-run endpoint, null is none */
+  provider: "openrouter" | "anthropic" | "custom" | null
+  /** True until this user acknowledges the external-provider data notice */
+  ackRequired: boolean
+}
+
+/** The /api/me payload: the signed-in user plus the AI wiring. */
+export interface Me {
+  /** The signed-in user */
+  user: User
+  /** AI provider and acknowledgement state */
+  ai: AiInfo
+}
+
 /**
  * Fetches JSON, throwing on HTTP errors with the server's message. A 401 on a
  * data route dispatches "auth:required" so the app can flip to the login screen.
@@ -246,13 +262,18 @@ async function request<T>(url: string, init?: RequestInit, quiet401 = false): Pr
   return body as T
 }
 
-/** The signed-in user, or null when not authenticated. */
-export async function getMe(): Promise<User | null> {
+/** The signed-in user with AI wiring, or null when not authenticated. */
+export async function getMe(): Promise<Me | null> {
   try {
-    return (await request<{ user: User }>("/api/me", undefined, true)).user
+    return await request<Me>("/api/me", undefined, true)
   } catch {
     return null
   }
+}
+
+/** Records the one-time acknowledgement that AI features send data to the provider. */
+export function acknowledgeAi(): Promise<{ ok: boolean }> {
+  return request("/api/me/ai-acknowledge", { method: "POST" })
 }
 
 /** Signs in; the session rides an httpOnly cookie afterwards. */

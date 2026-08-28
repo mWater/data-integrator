@@ -255,6 +255,10 @@ button.linkish {
 }
 button.linkish:hover { color: var(--topbar-ink) }
 .list-page.wide { max-width: 1320px }
+.ai-privacy { max-width: 720px }
+.ai-privacy h2 { margin: 22px 0 6px; font-size: 16px }
+.ai-privacy p, .ai-privacy li { font-size: 13.5px; line-height: 1.6 }
+.ai-privacy ul { margin: 6px 0; padding-left: 22px }
 .dest-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 }
 .dest-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px;

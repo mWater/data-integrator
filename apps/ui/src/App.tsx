@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react"
-import { getMe, logout, User } from "./api.js"
+import { AiInfo, getMe, logout, User } from "./api.js"
 import { applyLocale, availableLocales, getSavedLocale, loadCronLocale } from "./localization.js"
+import { AiAckHost, setAiInfo } from "./aiAck.js"
+import { AiPrivacy } from "./AiPrivacy.js"
 import { AssistantPage } from "./AssistantPage.js"
 import { DashboardList } from "./DashboardList.js"
 import { DashboardView } from "./DashboardView.js"
@@ -41,6 +43,8 @@ interface Route {
   dashboardId: string | null
   /** True on the settings page */
   settings: boolean
+  /** True on the AI & data privacy page */
+  aiPrivacy: boolean
   /** True on the library page */
   library: boolean
   /** Raster layer id, when on a layer page */
@@ -68,6 +72,7 @@ function parseHash(): Route {
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
     settings: hash === "#/settings",
+    aiPrivacy: hash === "#/ai-privacy",
     library: hash === "#/library",
     layerId: layer ? layer[1] : null,
     layerSessionId: layer ? new URLSearchParams(query ?? "").get("session") : null
@@ -104,6 +109,7 @@ function LanguageToggle({
 export function App() {
   const [route, setRoute] = useState(parseHash())
   const [user, setUser] = useState<User | null | "loading">("loading")
+  const [ai, setAi] = useState<AiInfo | null>(null)
 
   // Locale lives in state so switching re-renders every localized string;
   // applyLocale repoints the global T before children render.
@@ -118,7 +124,11 @@ export function App() {
   }, [locale])
 
   useEffect(() => {
-    getMe().then(setUser)
+    getMe().then(me => {
+      setUser(me?.user ?? null)
+      setAi(me?.ai ?? null)
+      setAiInfo(me?.ai ?? null)
+    })
     const onChange = () => setRoute(parseHash())
     const onAuthRequired = () => setUser(null)
     window.addEventListener("hashchange", onChange)
@@ -130,7 +140,19 @@ export function App() {
   }, [])
 
   if (user === "loading") return null
-  if (user === null) return <Login onLogin={setUser} />
+  if (user === null)
+    return (
+      <Login
+        onLogin={u => {
+          setUser(u)
+          // The login response carries only the user; the AI wiring rides /api/me
+          void getMe().then(me => {
+            setAi(me?.ai ?? null)
+            setAiInfo(me?.ai ?? null)
+          })
+        }}
+      />
+    )
 
   const canDesign = user.role !== "viewer"
   return (
@@ -169,6 +191,8 @@ export function App() {
         <Library user={user} />
       ) : route.settings ? (
         <Settings user={user} />
+      ) : route.aiPrivacy ? (
+        <AiPrivacy ai={ai ?? { provider: null, ackRequired: false }} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (
@@ -178,6 +202,7 @@ export function App() {
       ) : (
         <Home user={user} />
       )}
+      <AiAckHost />
     </div>
   )
 }

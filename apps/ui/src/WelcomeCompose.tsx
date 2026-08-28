@@ -42,6 +42,9 @@ export function WelcomeCompose({ icon, title, blurb, placeholder, hints, submitL
       await onSubmit(trimmed)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      // A submit can finish without navigating (e.g. the AI notice was
+      // declined); on success the hash change has already unmounted this card
       setBusy(false)
     }
   }

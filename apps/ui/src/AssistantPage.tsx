@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react"
 import { createAssistantSession, deleteSession, listSessions, sendMessage, SessionSummary } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { WelcomeCompose } from "./WelcomeCompose.js"
 
@@ -60,6 +61,7 @@ export function AssistantPage() {
   }
 
   async function start(text: string) {
+    if (!(await ensureAiAck())) return
     const { sessionId } = await createAssistantSession()
     await sendMessage(sessionId, text)
     window.location.hash = `#/session/${sessionId}`

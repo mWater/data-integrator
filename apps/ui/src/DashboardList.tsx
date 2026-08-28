@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createDashboardSession, DashboardSummary, deleteDashboard, listDashboards } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 
 /** Props for the dashboards list. */
@@ -21,6 +22,7 @@ export function DashboardList({ canDesign }: Props) {
   }, [])
 
   async function newDashboard(dashboardId?: string) {
+    if (!(await ensureAiAck())) return
     try {
       const { sessionId } = await createDashboardSession(dashboardId)
       window.location.hash = `#/session/${sessionId}`

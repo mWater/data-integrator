@@ -20,6 +20,7 @@ import {
   startRun,
   VersionSummary
 } from "./api.js"
+import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
 import { SecretsSection } from "./SecretsSection.js"
@@ -95,6 +96,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
 
   async function onDesign() {
     setError(null)
+    if (!(await ensureAiAck())) return
     try {
       const { sessionId } = await createSession(integrationId)
       window.location.hash = `#/session/${sessionId}`

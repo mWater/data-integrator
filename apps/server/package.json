@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.33",
+    "@ai-sdk/openai-compatible": "^3.0.39",
     "@data-integrator/definitions": "workspace:*",
     "@data-integrator/kit": "workspace:*",
     "@data-integrator/runner": "workspace:*",
