@@ -1,47 +1,55 @@
 ---
 name: WorldPop population source
-description: How WorldPop publishes gridded population - per-country files by ISO3, product variants, URL layout
-verified: 2026-08-09
+description: How WorldPop publishes gridded population - country-keyed files, Global 2015-2030 release layout, constrained variant, encoding pitfalls
+verified: 2026-08-28
 ---
 
 # WorldPop gridded population
 
 University of Southampton population rasters, one file per country per
-year. License CC-BY-4.0. Catalog: https://hub.worldpop.org (the data files
-themselves come from `data.worldpop.org`).
+year. License CC-BY-4.0. Catalog API: `https://hub.worldpop.org/rest/data/pop`
+(discover the newest release there rather than pinning one); data files
+come from `data.worldpop.org`.
 
 ## File layout
 
 WorldPop is **country-keyed, not extent-keyed**: you download a country's
-file by ISO 3166-1 alpha-3 code, not a spatial window. The UN-adjusted 1km
-unconstrained series used by the library entry:
+file by ISO 3166-1 alpha-3 code, not a spatial window. The current
+Global Demographic Data series (annual 2015-2030, revised releases):
 
-    https://data.worldpop.org/GIS/Population/Global_2000_2020_1km_UNadj/2020/{ISO3}/{iso3_lower}_ppp_2020_1km_Aggregated_UNadj.tif
+    https://data.worldpop.org/GIS/Population/Global_2015_2030/{RELEASE}/{year}/{ISO3}/v1/100m/constrained/{iso3}_pop_{year}_CN_100m_{RELEASE}_v1.tif
 
-- `{ISO3}` uppercase in the directory, lowercase in the filename.
-- Years 2000-2020 in this series; sibling series vary by resolution
-  (100m native vs 1km aggregated), constrained vs unconstrained, and
-  UN-adjusted vs raw. Ask the user which variant when it matters.
-- Values are people per pixel (sum over an area = population). EPSG:4326.
-  Nodata is a large negative sentinel — read it from the file.
+- `{RELEASE}` like `R2025A`; `{ISO3}` uppercase in the path, lowercase in
+  the filename; `CN` = constrained (also `UC` unconstrained).
+- **Constrained** places population only on detected settlement - the
+  variant coverage/facility analysis needs. Unconstrained smears people
+  across empty land.
+- Years past the current calendar year are modeled projections, not
+  observations; releases are revised (newer R-series supersede), and
+  recent releases may be flagged alpha. Say both in source.limitations.
+- Values are people per pixel (float32; sum over an area = population),
+  EPSG:4326, nodata a large negative sentinel - read it from the file.
+- UN-adjusted totals track UN WPP: a country-sum within ~1-2% of the UN
+  figure is the acceptance check (Madagascar 2026: 33.1M vs WPP ~32.7M).
 
 ## Choosing the country
 
-Take the ISO3 from the AOI: `ctx.definition.aoi.countries` carries the
-codes when the AOI came from a country selection (deployment default or
-picker). Fall back to asking the user; never guess from the bbox.
+Take ISO3 codes from the runtime AOI (`aoi.countries`) so the entry stays
+portable across deployments, with a `params.countries` override. Never
+guess countries from the bbox alone.
+
+## Encoding pitfalls (both hit for real)
+
+- `PREDICTOR=FLOATING_POINT` inflates this sparse data ~57% versus
+  `PREDICTOR=NO` - measure, don't assume (see the COG output skill).
+- Build overviews with NEAREST. Averaged overviews bleed the -99999
+  sentinel into settlement edges, and approx statistics (which read
+  overviews) then report impossible negative population - if min < 0
+  shows up in stats, suspect the pyramid, not the source.
 
 ## Ingestion pattern
 
-The proven shape (see `library/integrations/worldpop_population`):
-
-- Static/annual data: a **current-only** raster layer, replaced on ingest,
-  not a time series.
-- Cache the country file in /work (atomic `.part` rename); re-runs then
-  only re-clip.
-- Clip to the AOI bbox and convert to COG with `gdal_translate -projwin`
-  (upper-left then lower-right: west north east south), RESAMPLING=NEAREST
-  to keep counts unsmoothed.
-- Population rasters double as analysis masks: population-weighted zonal
-  statistics over a bbox largely self-correct for ocean and empty areas
-  (see `library/integrations/rainfall_stats`).
+Annual series -> **time-series** layer, one snapshot per year (Jan 1
+instants), monthly cron to catch new years/releases; cursor per the
+incremental ingestion skill. Cache country files in /work keyed by
+release+year; clip to the AOI with one gdalwarp to COG.

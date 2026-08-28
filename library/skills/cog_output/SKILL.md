@@ -28,8 +28,13 @@ The alternative that also works: write a plain tiled GTiff first, then
   clip + CRS + nodata in a single pass:
   `-of COG -te <west south east north> -dstnodata <sentinel>`
 - Compression: `-co COMPRESS=DEFLATE` always; `-co PREDICTOR=2` for integer
-  bands, `PREDICTOR=FLOATING_POINT` for float. `-co BIGTIFF=IF_SAFER` when
-  the mosaic can pass 4 GB; `-co BLOCKSIZE=512`.
+  bands. For float bands **measure before trusting a predictor**:
+  `PREDICTOR=FLOATING_POINT` helps smooth continuous fields but INFLATES
+  sparse float rasters, badly (population counts: +57%; sparse NaN density
+  grids: 3x) - default to `PREDICTOR=NO` for sparse data and keep
+  FLOATING_POINT only when a size comparison on real output shows it
+  smaller. `-co BIGTIFF=IF_SAFER` when the mosaic can pass 4 GB;
+  `-co BLOCKSIZE=512`.
 - Keep the native grid unless the destination declares otherwise; warping
   to EPSG:4326 is for sources already in it, not a default.
 
