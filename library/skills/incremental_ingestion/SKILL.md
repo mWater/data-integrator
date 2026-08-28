@@ -38,6 +38,21 @@ temp name and rename (atomic, so a killed run never leaves a truncated file
 that a later run trusts). Cold runs wipe /work — code must work from
 nothing, and the cache only makes it faster.
 
+Atomic rename is not enough for artifacts **built in stages** (a COG that
+gets overviews attached after creation, an archive assembled from parts):
+a run killed between stages leaves a file that exists, opens, and is wrong.
+Before reusing any staged cached artifact, validate its structure (expected
+bands, overview levels, row counts) and rebuild on failure — a worker kill
+mid-run is routine (deploys, restarts, timeouts), not exceptional.
+
+## Emit empty periods through the same pipeline
+
+When a period legitimately has no source data (no satellite pass, no
+readings), emit its artifact through the SAME code path as a normal period
+— an all-nodata raster still gets its full overview pyramid, metadata, and
+validation. A special-cased "empty" branch skips steps the normal path has
+and rots into the one path that never got tested.
+
 ## Reprocessing and backfill
 
 - Manual runs carry `params` — support an explicit backfill parameter

@@ -31,7 +31,8 @@ to cloud-optimized files beats any packaging queue: no wait, no per-request
 date caps, range reads fetch only the AOI's bytes, and there is nothing to
 poll. When a queue misbehaves, finding the object store the packager reads
 from is usually the fix (CLMS's stalled download API vs the same COGs in
-CDSE S3 is the canonical case).
+CDSE S3; GFM's timing-out authenticated REST API vs the same rasters free
+in the EODC STAC catalogue).
 
 ## If the queue is the only door
 
