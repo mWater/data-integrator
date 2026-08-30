@@ -387,22 +387,24 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
             fact={T`Reads all ${plural(sources, T`data source`, T`data sources`)}`}
           />
         )}
-        {canBuildDashboard ? (
-          <ActionCard
-            onClick={() => void newDashboard()}
-            busy={busy}
-            icon="chart"
-            title={T`Build a dashboard`}
-            description={T`Charts, tables and maps you can come back to.`}
-            fact={counts.dashboards > 0 ? T`${counts.dashboards} already built` : T`None yet`}
-          />
-        ) : counts.dashboards > 0 ? (
+        {counts.dashboards > 0 ? (
+          // Existing dashboards: the card leads to the list (which carries the
+          // New Dashboard button); the build card is for the empty state only
           <LinkCard
             href="#/dashboards"
             icon="chart"
             title={T`View dashboards`}
             description={T`Charts, tables and maps built from your data.`}
             fact={plural(counts.dashboards, T`dashboard`, T`dashboards`)}
+          />
+        ) : canBuildDashboard ? (
+          <ActionCard
+            onClick={() => void newDashboard()}
+            busy={busy}
+            icon="chart"
+            title={T`Build a dashboard`}
+            description={T`Charts, tables and maps you can come back to.`}
+            fact={T`None yet`}
           />
         ) : null}
         <LinkCard
