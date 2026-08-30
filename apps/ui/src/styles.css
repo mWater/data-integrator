@@ -156,6 +156,9 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 .chip-draft { background: #eee2f7; color: #5b2d82; margin-left: 8px }
 .chip-table { background: #e2ecf5; color: #14496f }
 .chip-raster { background: #e0f0e6; color: #1d5c33 }
+.chip-public { background: #d9efd9; color: #216e21 }
+.topbar-signin { color: var(--topbar-dim); text-decoration: none }
+.topbar-signin:hover { color: var(--topbar-ink) }
 .new-session { display: flex; align-items: center; gap: 16px }
 .dim-link { color: var(--ink-dim); font-size: 13px }
 
@@ -280,6 +283,7 @@ button.linkish:hover { color: var(--topbar-ink) }
 :root[data-theme="dark"] .chip-draft { background: #2e2338; color: #c9a1ee }
 :root[data-theme="dark"] .chip-table { background: #1d2e3d; color: #9dc4e4 }
 :root[data-theme="dark"] .chip-raster { background: #1c2f24; color: #8fc9a4 }
+:root[data-theme="dark"] .chip-public { background: #1a3320; color: #7ecb8f }
 
 /* ---------------------------------------------------------------------------
    MapLibre popups. Stock styling hardcodes a white card, which is unreadable

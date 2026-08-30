@@ -66,6 +66,8 @@ export interface DashboardAgentState {
   source: string
   /** Draft stored queries */
   queries: DashboardQuery[]
+  /** Declared raster catalog layer ids */
+  layers: string[]
   /** Latest build outcome; null before the first write_source */
   build: DashboardBuild | null
   /** Saved version once finish succeeded */
@@ -739,14 +741,18 @@ export interface DashboardSummary {
   currentVersion: number | null
   /** Last update time (ISO) */
   updatedAt: string
+  /** True when viewable without signing in */
+  public: boolean
 }
 
-/** Full detail from GET /api/dashboards/:id. */
+/** Full detail from GET /api/dashboards/:id (source and queries are omitted for anonymous viewers). */
 export interface DashboardDetail extends DashboardSummary {
-  /** React source of the current version */
-  source: string
-  /** Stored queries of the current version */
-  queries: DashboardQuery[]
+  /** React source of the current version; absent for anonymous viewers */
+  source?: string
+  /** Stored queries of the current version; absent for anonymous viewers */
+  queries?: DashboardQuery[]
+  /** Raster catalog layer ids the version declares */
+  layers: string[]
   /** Kit version the bundle was built against; provenance, not a loader input */
   builtWithKit: string
   /** Compiled ESM bundle */
@@ -768,6 +774,51 @@ export function getDashboard(id: string): Promise<DashboardDetail> {
 /** Permanently deletes a dashboard and all its versions; design sessions are kept. */
 export function deleteDashboard(id: string): Promise<{ versions: number; sessions: number }> {
   return request(`/api/dashboards/${id}`, { method: "DELETE" })
+}
+
+/** Renames a dashboard's slug and/or display name; existing links break with the slug. */
+export function renameDashboard(id: string, newId: string, name: string): Promise<{ id: string }> {
+  return request(`/api/dashboards/${id}/rename`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: newId, name })
+  })
+}
+
+/** Opens or closes a dashboard's view surface to unauthenticated viewers. */
+export function setDashboardPublic(id: string, isPublic: boolean): Promise<{ public: boolean }> {
+  return request(`/api/dashboards/${id}/public`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ public: isPublic })
+  })
+}
+
+/** One declared layer in a dashboard's freshness meta. */
+export interface DashboardLayerMeta {
+  /** Layer id */
+  id: string
+  /** Display name */
+  name: string
+  /** static or time-series */
+  temporality: string
+  /** Snapshot drawn when none is picked */
+  currentSnapshotId: string | null
+  /** Promoted snapshots, oldest first */
+  snapshots: { id: string; observedAt: string; observedEnd: string | null }[]
+}
+
+/** Freshness and declared-layer meta the dashboard frame mounts with. */
+export interface DashboardMeta {
+  /** Table id to last-update time */
+  tables: Record<string, string | null>
+  /** Declared raster layers with snapshot timelines */
+  layers: DashboardLayerMeta[]
+}
+
+/** Fetches the frame meta for one dashboard (public for public dashboards). */
+export function getDashboardMeta(id: string): Promise<DashboardMeta> {
+  return request(`/api/dashboards/${id}/meta`)
 }
 
 /** What an integration owns and what would break with it. */

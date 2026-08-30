@@ -21,6 +21,8 @@ export interface DashboardSummary {
   currentVersion: number | null
   /** Last update time (ISO 8601). */
   updatedAt: string
+  /** True when the dashboard is viewable without signing in. */
+  public: boolean
 }
 
 /** Full dashboard detail at its current version. */
@@ -29,6 +31,8 @@ export interface DashboardDetail extends DashboardSummary {
   source: string
   /** Stored queries of the current version. */
   queries: DashboardQuery[]
+  /** Raster catalog layer ids the version declares (and may draw). */
+  layers: string[]
   /** Kit version the bundle was built against. Provenance only: the loader
    * always uses the current kit, so this never selects an asset. */
   builtWithKit: string
@@ -39,34 +43,74 @@ export interface DashboardDetail extends DashboardSummary {
 }
 
 /**
- * Per-dashboard authorization: may this user view this dashboard? Today every
- * authenticated user passes; dashboard-only principals (share links) slot in
- * here without touching callers.
+ * Per-dashboard authorization: may this principal view this dashboard? Every
+ * signed-in user passes; an anonymous viewer passes only when the dashboard
+ * is public.
  */
-export function canViewDashboard(user: AuthUser, dashboardId: string): boolean {
-  void user
-  void dashboardId
-  return true
+export function canViewDashboard(user: AuthUser | null, dashboard: { public: boolean }): boolean {
+  return user !== null || dashboard.public
+}
+
+/** Outcome of a rename: ok, or the reason it was refused. */
+export interface RenameDashboardResult {
+  /** True when the rename applied. */
+  ok: boolean
+  /** Refusal reason when not ok. */
+  error?: string
+}
+
+/**
+ * Renames a dashboard's slug and/or display name. The id is the natural key;
+ * migration 0013 makes its references ON UPDATE CASCADE, so one UPDATE moves
+ * versions and session bindings with it. Existing links (public ones included)
+ * point at the old slug and break - the caller warns the user.
+ */
+export async function renameDashboard(
+  pool: pg.Pool,
+  id: string,
+  newId: string,
+  newName: string | null
+): Promise<RenameDashboardResult> {
+  if (!ID_PATTERN.test(newId)) return { ok: false, error: `dashboard id must match ${ID_PATTERN}` }
+  if (newName !== null && newName.trim() === "") return { ok: false, error: "name must not be empty" }
+  try {
+    const result = await pool.query(
+      "UPDATE app.dashboards SET id = $2, name = COALESCE($3, name), updated_at = now() WHERE id = $1",
+      [id, newId, newName]
+    )
+    if ((result.rowCount ?? 0) === 0) return { ok: false, error: "unknown dashboard" }
+    return { ok: true }
+  } catch (err) {
+    if ((err as { code?: string }).code === "23505") return { ok: false, error: `a dashboard named "${newId}" already exists` }
+    throw err
+  }
+}
+
+/** Sets the public flag; false when no such dashboard exists. */
+export async function setDashboardPublic(pool: pg.Pool, id: string, isPublic: boolean): Promise<boolean> {
+  const result = await pool.query("UPDATE app.dashboards SET public = $2 WHERE id = $1", [id, isPublic])
+  return (result.rowCount ?? 0) > 0
 }
 
 /** Lists dashboards, newest first. */
 export async function listDashboards(pool: pg.Pool): Promise<DashboardSummary[]> {
   const result = await pool.query(
-    "SELECT id, name, current_version, updated_at FROM app.dashboards ORDER BY updated_at DESC"
+    "SELECT id, name, current_version, updated_at, public FROM app.dashboards ORDER BY updated_at DESC"
   )
   return result.rows.map((row) => ({
     id: row.id,
     name: row.name,
     currentVersion: row.current_version,
-    updatedAt: row.updated_at.toISOString()
+    updatedAt: row.updated_at.toISOString(),
+    public: row.public
   }))
 }
 
 /** Loads a dashboard at its current version; null when absent or unsaved. */
 export async function getDashboard(pool: pg.Pool, id: string): Promise<DashboardDetail | null> {
   const result = await pool.query(
-    `SELECT d.id, d.name, d.current_version, d.updated_at,
-            v.source, v.queries, v.kit_version, v.bundle_js, v.bundle_css
+    `SELECT d.id, d.name, d.current_version, d.updated_at, d.public,
+            v.source, v.queries, v.layers, v.kit_version, v.bundle_js, v.bundle_css
      FROM app.dashboards d
      JOIN app.dashboard_versions v ON v.dashboard_id = d.id AND v.version = d.current_version
      WHERE d.id = $1`,
@@ -79,8 +123,10 @@ export async function getDashboard(pool: pg.Pool, id: string): Promise<Dashboard
     name: row.name,
     currentVersion: row.current_version,
     updatedAt: row.updated_at.toISOString(),
+    public: row.public,
     source: row.source,
     queries: row.queries,
+    layers: row.layers,
     builtWithKit: row.kit_version,
     bundleJs: row.bundle_js,
     bundleCss: row.bundle_css
@@ -97,6 +143,8 @@ export interface SaveDashboardInput {
   source: string
   /** Stored queries frozen with this version. */
   queries: DashboardQuery[]
+  /** Raster catalog layer ids the version declares. */
+  layers: string[]
 }
 
 /** Result of a save: the new version, or the build/validation errors. */
@@ -116,6 +164,16 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
   if (typeof input.name !== "string" || input.name.trim() === "") errors.push("name is required")
   if (!Array.isArray(input.queries)) errors.push("queries must be an array")
   else errors.push(...validateQueries(input.queries))
+  if (!Array.isArray(input.layers) || input.layers.some((l) => typeof l !== "string")) {
+    errors.push("layers must be an array of raster layer ids")
+  } else if (input.layers.length > 0) {
+    // Declared layers must exist: the scoped tile route serves only these
+    const known = await pool.query("SELECT id FROM app.raster_layers WHERE id = ANY($1)", [input.layers])
+    const knownIds = new Set(known.rows.map((r: { id: string }) => r.id))
+    for (const id of input.layers) {
+      if (!knownIds.has(id)) errors.push(`unknown raster layer "${id}"`)
+    }
+  }
   if (typeof input.source !== "string" || input.source.trim() === "") errors.push("source is required")
   if (errors.length > 0) return { ok: false, errors }
 
@@ -137,9 +195,18 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
     const version = versionResult.rows[0].next as number
     await client.query(
       `INSERT INTO app.dashboard_versions
-         (dashboard_id, version, source, queries, kit_version, bundle_js, bundle_css)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [input.id, version, input.source, JSON.stringify(input.queries), KIT_VERSION, built.bundleJs, built.bundleCss]
+         (dashboard_id, version, source, queries, layers, kit_version, bundle_js, bundle_css)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        input.id,
+        version,
+        input.source,
+        JSON.stringify(input.queries),
+        JSON.stringify(input.layers),
+        KIT_VERSION,
+        built.bundleJs,
+        built.bundleCss
+      ]
     )
     await client.query("UPDATE app.dashboards SET current_version = $2, updated_at = now() WHERE id = $1", [
       input.id,

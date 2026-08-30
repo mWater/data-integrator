@@ -140,7 +140,21 @@ export function App() {
   }, [])
 
   if (user === "loading") return null
-  if (user === null)
+  if (user === null) {
+    // Public dashboards render without a session on their normal URL; the
+    // server serves them only when their public flag is set
+    if (route.dashboardId) {
+      return (
+        <div className="app">
+          <header className="topbar">
+            <a href="#/" className="brand">Data Integrator</a>
+            <span style={{ flex: 1 }} />
+            <a className="topbar-signin" href="#/dashboards">{T`Sign In`}</a>
+          </header>
+          <DashboardView dashboardId={route.dashboardId} />
+        </div>
+      )
+    }
     return (
       <Login
         onLogin={u => {
@@ -153,6 +167,7 @@ export function App() {
         }}
       />
     )
+  }
 
   const canDesign = user.role !== "viewer"
   return (

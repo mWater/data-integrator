@@ -4,9 +4,12 @@ import {
   AssistantResult,
   AssistantState,
   DashboardAgentState,
+  DashboardMeta,
   DesignerState,
   execSessionQuery,
   getSession,
+  listLayers,
+  listSources,
   sendMessage,
   SessionDetail,
   SessionEvent,
@@ -22,6 +25,35 @@ import { StatePanel } from "./StatePanel.js"
 
 // Same lazy chunk as the stored transcript's blocks
 const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
+
+/**
+ * Draft preview meta: live catalog freshness, layers filtered to the draft's
+ * declared list so the preview matches what viewers of the saved dashboard get.
+ */
+async function draftMeta(declared: string[]): Promise<DashboardMeta> {
+  const [sources, layers] = await Promise.all([
+    listSources().catch(() => ({ sources: [] })),
+    listLayers().catch(() => ({ layers: [] }))
+  ])
+  const tables: Record<string, string | null> = {}
+  for (const source of sources.sources) if (source.kind === "table") tables[source.id] = source.updatedAt
+  return {
+    tables,
+    layers: layers.layers
+      .filter(layer => declared.includes(layer.id))
+      .map(layer => ({
+        id: layer.id,
+        name: layer.name,
+        temporality: layer.temporality,
+        currentSnapshotId: layer.current_snapshot_id ?? null,
+        snapshots: (layer.snapshots ?? []).map(snapshot => ({
+          id: snapshot.id,
+          observedAt: snapshot.observed_at,
+          observedEnd: snapshot.observed_end ?? null
+        }))
+      }))
+  }
+}
 
 /** One live item rendered below the stored transcript while the loop runs. */
 export interface LiveItem {
@@ -455,6 +487,12 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
               fetchVectorTile={(query, z, x, y, params) =>
                 fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)
               }
+              fetchMeta={() => draftMeta(dashState?.layers ?? [])}
+              fetchRasterTile={async (layerId, snapshotId, z, x, y) => {
+                const res = await fetch(`/tiles/${layerId}/${snapshotId}/${z}/${x}/${y}.png`)
+                if (!res.ok) throw new Error(`tile ${res.status}`)
+                return res.arrayBuffer()
+              }}
               onError={message =>
                 setPreviewErrors(errors => (errors.includes(message) ? errors : [...errors.slice(-4), message]))
               }

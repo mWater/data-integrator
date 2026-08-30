@@ -28,7 +28,9 @@ import {
   executeDashboardTileQuery,
   getDashboard,
   listDashboards,
-  saveDashboard
+  renameDashboard,
+  saveDashboard,
+  setDashboardPublic
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTableTileQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
@@ -91,6 +93,10 @@ const SESSION_PATH =
 /** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
 const DASHBOARD_TILE_PATH =
   /^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/tiles\/([a-z][a-z0-9_]*)\/(\d+)\/(\d+)\/(\d+)\.mvt$/
+
+/** Matches /api/dashboards/:id/rastertiles/:layer/:snapshot[/:band]/:z/:x/:y.png (declared raster layers). */
+const DASHBOARD_RASTER_TILE_PATH =
+  /^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/rastertiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Content type of encoded vector tiles. */
 const MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile"
@@ -315,6 +321,36 @@ async function route(
     return
   }
 
+  // Basemap proxy: cached upstream style/sprite/glyph/tile bytes for map
+  // frames. Public: it proxies open basemap tiles and carries no platform data,
+  // and public dashboards need it without a session.
+  const basemapMatch = pathname.match(/^\/basemap\/(.+)$/)
+  if (basemapMatch && req.method === "GET") {
+    let framePath: string
+    try {
+      framePath = decodeURIComponent(basemapMatch[1])
+    } catch {
+      json(res, 400, { error: "bad basemap path" })
+      return
+    }
+    const result = basemap ? await basemap.fetch(framePath) : null
+    if (!result) {
+      json(res, 404, { error: "basemap unavailable" })
+      return
+    }
+    res.writeHead(200, {
+      "content-type": result.contentType,
+      "cache-control": "public, max-age=86400"
+    })
+    res.end(result.body)
+    return
+  }
+
+  // Dashboard view surface (detail, stored queries, tiles, meta): reachable
+  // without a session so public dashboards render; per-dashboard visibility
+  // is checked inside
+  if (await routeDashboardView(pool, tiles, user, req, res, pathname, searchParams)) return
+
   // Everything below is either the static shell (public) or data (auth required)
   if (!user) {
     if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
@@ -528,29 +564,6 @@ async function route(
     }
   }
 
-  // Basemap proxy: cached upstream style/sprite/glyph/tile bytes for map frames
-  const basemapMatch = pathname.match(/^\/basemap\/(.+)$/)
-  if (basemapMatch && req.method === "GET") {
-    let framePath: string
-    try {
-      framePath = decodeURIComponent(basemapMatch[1])
-    } catch {
-      json(res, 400, { error: "bad basemap path" })
-      return
-    }
-    const result = basemap ? await basemap.fetch(framePath) : null
-    if (!result) {
-      json(res, 404, { error: "basemap unavailable" })
-      return
-    }
-    res.writeHead(200, {
-      "content-type": result.contentType,
-      "cache-control": "public, max-age=86400"
-    })
-    res.end(result.body)
-    return
-  }
-
   if (pathname === "/api/tokens") {
     if (req.method === "POST") {
       const body = await readJsonBody(req)
@@ -734,43 +747,7 @@ async function route(
   const tileMatch = pathname.match(TILE_PATH)
   if (tileMatch) {
     const [, layerId, snapshotId, bandId, z, x, y] = tileMatch
-    const snapshot = await pool.query(
-      `SELECT s.path, l.bands FROM app.raster_snapshots s
-       JOIN app.raster_layers l ON l.id = s.layer_id
-       WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'`,
-      [snapshotId, layerId]
-    )
-    if (snapshot.rows.length === 0) {
-      json(res, 404, { error: "unknown snapshot" })
-      return
-    }
-    const bands = snapshot.rows[0].bands as BandSpec[]
-    const band = bandId ? bands.find(b => b.id === bandId) : bands[0]
-    if (!band) {
-      json(res, 404, { error: `unknown band "${bandId}"` })
-      return
-    }
-    const rendering = band.rendering ?? {}
-    // A cancelled request (slider scrubbed past this snapshot) stops the
-    // GDAL pipeline between steps instead of rendering pixels nobody wants
-    const png = await tiles.tile(
-      layerId,
-      snapshotId,
-      snapshot.rows[0].path,
-      band.id,
-      rendering,
-      Number(z),
-      Number(x),
-      Number(y),
-      () => !req.destroyed && !res.destroyed
-    )
-    if (png === null) {
-      res.destroy()
-      return
-    }
-    // Snapshot-pinned URL: content never changes, cache hard
-    res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
-    res.end(png)
+    await serveRasterTile(pool, tiles, req, res, layerId, snapshotId, bandId, Number(z), Number(x), Number(y))
     return
   }
 
@@ -1093,7 +1070,8 @@ async function route(
         id: String(body.id ?? ""),
         name: String(body.name ?? ""),
         source: String(body.source ?? ""),
-        queries: (body.queries ?? []) as never
+        queries: (body.queries ?? []) as never,
+        layers: (body.layers ?? []) as never
       })
       if (result.ok) json(res, 201, { version: result.version })
       else json(res, 400, { errors: result.errors })
@@ -1104,77 +1082,46 @@ async function route(
   }
 
   const dashboardMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)$/)
-  if (dashboardMatch) {
-    if (!canViewDashboard(user, dashboardMatch[1])) {
-      json(res, 403, { error: "no access to this dashboard" })
+  if (dashboardMatch && req.method === "DELETE") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot delete dashboards" })
       return
     }
-    if (req.method === "DELETE") {
-      if (user.role === "viewer") {
-        json(res, 403, { error: "Viewers cannot delete dashboards" })
-        return
-      }
-      const result = await deleteDashboard(pool, dashboardMatch[1])
-      if (!result.ok) json(res, 404, { error: "unknown dashboard" })
-      else json(res, 200, { versions: result.versions, sessions: result.sessions })
-      return
-    }
-    const detail = await getDashboard(pool, dashboardMatch[1])
-    if (!detail) json(res, 404, { error: "unknown dashboard" })
-    else json(res, 200, detail)
+    const result = await deleteDashboard(pool, dashboardMatch[1])
+    if (!result.ok) json(res, 404, { error: "unknown dashboard" })
+    else json(res, 200, { versions: result.versions, sessions: result.sessions })
     return
   }
 
-  const dashboardTileMatch = pathname.match(DASHBOARD_TILE_PATH)
-  if (dashboardTileMatch && req.method === "GET") {
-    const [, dashboardId, queryName, z, x, y] = dashboardTileMatch
-    if (!canViewDashboard(user, dashboardId)) {
-      json(res, 403, { error: "no access to this dashboard" })
-      return
-    }
-    try {
-      const mvt = await executeDashboardTileQuery(
-        pool,
-        dashboardId,
-        queryName,
-        tileParams(searchParams),
-        Number(z),
-        Number(x),
-        Number(y)
-      )
-      if (mvt === null) {
-        json(res, 404, { error: "unknown dashboard or tile query" })
-        return
-      }
-      // Live data with bound filters: a short private cache absorbs pan/zoom
-      // backtracking without serving stale tiles for long
-      res.writeHead(200, { "content-type": MVT_CONTENT_TYPE, "cache-control": "private, max-age=60" })
-      res.end(mvt)
-    } catch (err) {
-      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
-    }
-    return
-  }
-
-  const dashboardQueryMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/queries\/([a-z][a-z0-9_]*)$/)
-  if (dashboardQueryMatch && req.method === "POST") {
-    if (!canViewDashboard(user, dashboardQueryMatch[1])) {
-      json(res, 403, { error: "no access to this dashboard" })
+  // Rename: new slug and/or display name; references cascade with the id.
+  // Old links (public ones included) break - the UI warns before renaming
+  const dashboardRenameMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/rename$/)
+  if (dashboardRenameMatch && req.method === "POST") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot rename dashboards" })
       return
     }
     const body = await readJsonBody(req)
-    try {
-      const rows = await executeDashboardQuery(
-        pool,
-        dashboardQueryMatch[1],
-        dashboardQueryMatch[2],
-        (body.params ?? {}) as Record<string, unknown>
-      )
-      if (rows === null) json(res, 404, { error: "unknown dashboard or query" })
-      else json(res, 200, { rows })
-    } catch (err) {
-      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    const newId = String(body.id ?? dashboardRenameMatch[1])
+    const newName = body.name === undefined ? null : String(body.name)
+    const result = await renameDashboard(pool, dashboardRenameMatch[1], newId, newName)
+    if (!result.ok) json(res, result.error === "unknown dashboard" ? 404 : 400, { error: result.error })
+    else json(res, 200, { id: newId })
+    return
+  }
+
+  // Publish toggle: a public dashboard's view surface (bundle, stored queries,
+  // declared raster layers) opens to unauthenticated viewers
+  const dashboardPublicMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/public$/)
+  if (dashboardPublicMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot publish dashboards" })
+      return
     }
+    const body = await readJsonBody(req)
+    const isPublic = body.public === true
+    if (await setDashboardPublic(pool, dashboardPublicMatch[1], isPublic)) json(res, 200, { public: isPublic })
+    else json(res, 404, { error: "unknown dashboard" })
     return
   }
 
@@ -1186,6 +1133,203 @@ async function route(
   if (req.method === "GET" && (await serveUi(url, res, uiDist))) return
 
   json(res, 404, { error: "not found" })
+}
+
+/**
+ * The dashboard view surface: detail, stored queries, vector tiles, declared
+ * raster tiles, and freshness meta. Runs ahead of the auth gate so public
+ * dashboards render without a session; every handler checks per-dashboard
+ * visibility (any signed-in user, or the public flag). Returns true when the
+ * request was handled here.
+ */
+async function routeDashboardView(
+  pool: pg.Pool,
+  tiles: TileRenderer,
+  user: AuthUser | null,
+  req: IncomingMessage,
+  res: ServerResponse,
+  pathname: string,
+  searchParams: URLSearchParams
+): Promise<boolean> {
+  const match = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)(\/.*)?$/)
+  if (!match) return false
+  const [, dashboardId, sub] = match
+
+  // Only the view surface is served here; management (list, save, delete,
+  // publish) stays behind the auth gate
+  const isView =
+    (sub === undefined && req.method === "GET") ||
+    (sub === "/meta" && req.method === "GET") ||
+    (sub?.startsWith("/queries/") === true && req.method === "POST") ||
+    (sub?.startsWith("/tiles/") === true && req.method === "GET") ||
+    (sub?.startsWith("/rastertiles/") === true && req.method === "GET")
+  if (!isView) return false
+
+  const detail = await getDashboard(pool, dashboardId)
+  // An anonymous viewer learns nothing about what exists: absent and private
+  // dashboards answer identically
+  if (!detail || !canViewDashboard(user, detail)) {
+    if (!user) json(res, 401, { error: "sign in required" })
+    else json(res, 404, { error: "unknown dashboard" })
+    return true
+  }
+
+  if (sub === undefined) {
+    // Source and SQL are editor-facing; anonymous viewers get only what the
+    // frame needs to mount
+    if (user) json(res, 200, detail)
+    else {
+      const { source, queries, ...viewable } = detail
+      void source
+      void queries
+      json(res, 200, viewable)
+    }
+    return true
+  }
+
+  if (sub === "/meta") {
+    // Freshness and snapshot timelines for the frame: every table's update
+    // time (ids and timestamps only), declared layers in full
+    const sources = await listSources(pool)
+    const tables: Record<string, string | null> = {}
+    for (const source of sources) if (source.kind === "table") tables[source.id] = source.updatedAt
+    const layerRows =
+      detail.layers.length === 0
+        ? []
+        : (
+            await pool.query(
+              `SELECT l.id, l.name, l.temporality, l.current_snapshot_id,
+                      COALESCE(sn.snapshots, '[]'::json) AS snapshots
+               FROM app.raster_layers l
+               LEFT JOIN LATERAL (
+                 SELECT json_agg(json_build_object(
+                          'id', id, 'observedAt', observed_at, 'observedEnd', observed_end
+                        ) ORDER BY observed_at) AS snapshots
+                 FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
+               ) sn ON true
+               WHERE l.id = ANY($1) AND l.session_id IS NULL
+               ORDER BY l.id`,
+              [detail.layers]
+            )
+          ).rows
+    json(res, 200, {
+      tables,
+      layers: layerRows.map(row => ({
+        id: row.id,
+        name: row.name,
+        temporality: row.temporality,
+        currentSnapshotId: row.current_snapshot_id,
+        snapshots: row.snapshots
+      }))
+    })
+    return true
+  }
+
+  const queryMatch = pathname.match(/^\/api\/dashboards\/[a-z][a-z0-9_-]*\/queries\/([a-z][a-z0-9_]*)$/)
+  if (queryMatch) {
+    const body = await readJsonBody(req)
+    try {
+      const rows = await executeDashboardQuery(pool, dashboardId, queryMatch[1], (body.params ?? {}) as Record<string, unknown>)
+      if (rows === null) json(res, 404, { error: "unknown query" })
+      else json(res, 200, { rows })
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
+    return true
+  }
+
+  const tileMatch = pathname.match(DASHBOARD_TILE_PATH)
+  if (tileMatch) {
+    const [, , queryName, z, x, y] = tileMatch
+    try {
+      const mvt = await executeDashboardTileQuery(
+        pool,
+        dashboardId,
+        queryName,
+        tileParams(searchParams),
+        Number(z),
+        Number(x),
+        Number(y)
+      )
+      if (mvt === null) {
+        json(res, 404, { error: "unknown tile query" })
+        return true
+      }
+      // Live data with bound filters: a short private cache absorbs pan/zoom
+      // backtracking without serving stale tiles for long
+      res.writeHead(200, { "content-type": MVT_CONTENT_TYPE, "cache-control": "private, max-age=60" })
+      res.end(mvt)
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+    }
+    return true
+  }
+
+  const rasterMatch = pathname.match(DASHBOARD_RASTER_TILE_PATH)
+  if (rasterMatch) {
+    const [, , layerId, snapshotId, bandId, z, x, y] = rasterMatch
+    if (!detail.layers.includes(layerId)) {
+      json(res, 404, { error: "layer not declared by this dashboard" })
+      return true
+    }
+    await serveRasterTile(pool, tiles, req, res, layerId, snapshotId, bandId, Number(z), Number(x), Number(y))
+    return true
+  }
+
+  json(res, 404, { error: "not found" })
+  return true
+}
+
+/** Renders and serves one raster snapshot tile (shared by the catalog and dashboard-scoped routes). */
+async function serveRasterTile(
+  pool: pg.Pool,
+  tiles: TileRenderer,
+  req: IncomingMessage,
+  res: ServerResponse,
+  layerId: string,
+  snapshotId: string,
+  bandId: string | undefined,
+  z: number,
+  x: number,
+  y: number
+): Promise<void> {
+  const snapshot = await pool.query(
+    `SELECT s.path, l.bands FROM app.raster_snapshots s
+     JOIN app.raster_layers l ON l.id = s.layer_id
+     WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'`,
+    [snapshotId, layerId]
+  )
+  if (snapshot.rows.length === 0) {
+    json(res, 404, { error: "unknown snapshot" })
+    return
+  }
+  const bands = snapshot.rows[0].bands as BandSpec[]
+  const band = bandId ? bands.find(b => b.id === bandId) : bands[0]
+  if (!band) {
+    json(res, 404, { error: `unknown band "${bandId}"` })
+    return
+  }
+  const rendering = band.rendering ?? {}
+  // A cancelled request (slider scrubbed past this snapshot) stops the
+  // GDAL pipeline between steps instead of rendering pixels nobody wants
+  const png = await tiles.tile(
+    layerId,
+    snapshotId,
+    snapshot.rows[0].path,
+    band.id,
+    rendering,
+    z,
+    x,
+    y,
+    () => !req.destroyed && !res.destroyed
+  )
+  if (png === null) {
+    res.destroy()
+    return
+  }
+  // Snapshot-pinned URL: content never changes, cache hard
+  res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
+  res.end(png)
 }
 
 /** Handles the /api/sessions routes; design actions need editor or admin, assistant chats are open to viewers. */

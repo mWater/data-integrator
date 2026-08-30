@@ -4291,6 +4291,96 @@
       "es": "Como alternativa, los administradores pueden configurar la plataforma para usar un punto de conexión de un modelo autoalojado y compatible con OpenAI, de modo que las solicitudes de IA nunca salgan de su propia infraestructura.",
       "mg": "Azon’ny mpitantana atao kosa ny mampifandray ilay sehatra amin’ny endpoint-n’ny modely ampiantranoiny manokana sy mifanaraka amin’ny OpenAI, mba tsy hivoaka mihitsy amin’ny fotodrafitrasa tantaniny ny fangatahana AI.",
       "sw": "Badala yake, wasimamizi wanaweza kuelekeza jukwaa kwenye endpoint ya modeli inayopangishwa ndani na inayooana na OpenAI, ili maombi ya AI yasiondoke kamwe kwenye miundombinu yao wenyewe."
+    },
+    {
+      "_base": "en",
+      "en": "Sharing",
+      "fr": "Partage",
+      "pt": "Compartilhamento",
+      "es": "Compartir",
+      "mg": "Fizarana",
+      "sw": "Kushiriki"
+    },
+    {
+      "_base": "en",
+      "en": "Anyone with the link can view this dashboard without signing in",
+      "fr": "Toute personne disposant du lien peut consulter ce tableau de bord sans se connecter",
+      "pt": "Qualquer pessoa com o link pode visualizar este painel sem iniciar sessão",
+      "es": "Cualquier persona con el enlace puede ver este panel sin iniciar sesión",
+      "mg": "Afaka mijery ity tabilao ity tsy mila miditra izay rehetra manana ny rohy",
+      "sw": "Mtu yeyote aliye na kiungo anaweza kuona dashibodi hii bila kuingia"
+    },
+    {
+      "_base": "en",
+      "en": "public",
+      "fr": "public",
+      "pt": "público",
+      "es": "público",
+      "mg": "ho an’ny daholobe",
+      "sw": "ya umma"
+    },
+    {
+      "_base": "en",
+      "en": "private",
+      "fr": "privé",
+      "pt": "privado",
+      "es": "privado",
+      "mg": "manokana",
+      "sw": "ya faragha"
+    },
+    {
+      "_base": "en",
+      "en": "Make Private",
+      "fr": "Rendre privé",
+      "pt": "Tornar privado",
+      "es": "Hacer privado",
+      "mg": "Ataovy manokana",
+      "sw": "Weka kuwa ya faragha"
+    },
+    {
+      "_base": "en",
+      "en": "Make Public",
+      "fr": "Rendre public",
+      "pt": "Tornar público",
+      "es": "Hacer público",
+      "mg": "Ataovy ho an’ny daholobe",
+      "sw": "Weka kuwa ya umma"
+    },
+    {
+      "_base": "en",
+      "en": "Rename",
+      "fr": "Renommer",
+      "pt": "Renomear",
+      "es": "Cambiar nombre",
+      "mg": "Ovao anarana",
+      "sw": "Badilisha jina"
+    },
+    {
+      "_base": "en",
+      "en": "Rename “{0}”",
+      "fr": "Renommer « {0} »",
+      "pt": "Renomear “{0}”",
+      "es": "Cambiar nombre de «{0}»",
+      "mg": "Ovao anarana ny “{0}”",
+      "sw": "Badilisha jina la “{0}”"
+    },
+    {
+      "_base": "en",
+      "en": "URL slug",
+      "fr": "Slug d’URL",
+      "pt": "Slug da URL",
+      "es": "Identificador de URL",
+      "mg": "Famantarana URL",
+      "sw": "Slug ya URL"
+    },
+    {
+      "_base": "en",
+      "en": "Changing the slug changes the dashboard's address to #/dashboard/{0}. Existing links - including shared public ones - will stop working.",
+      "fr": "La modification du slug change l’adresse du tableau de bord en #/dashboard/{0}. Les liens existants, y compris les liens publics partagés, ne fonctionneront plus.",
+      "pt": "Alterar o slug muda o endereço do painel para #/dashboard/{0}. Os links existentes, incluindo os links públicos compartilhados, deixarão de funcionar.",
+      "es": "Cambiar el identificador cambia la dirección del panel a #/dashboard/{0}. Los enlaces existentes, incluidos los enlaces públicos compartidos, dejarán de funcionar.",
+      "mg": "Ny fanovana ny famantarana URL dia manova ny adiresin'ny tabilao ho #/dashboard/{0}. Tsy hiasa intsony ireo rohy efa misy - anisan'izany ireo rohy ho an'ny daholobe nozaraina.",
+      "sw": "Kubadilisha slug hubadilisha anwani ya dashibodi kuwa #/dashboard/{0}. Viungo vilivyopo - pamoja na vilivyoshirikiwa hadharani - vitaacha kufanya kazi."
     }
   ],
   "unused": [

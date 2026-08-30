@@ -31,6 +31,8 @@ export interface DashboardAgentState {
   source: string
   /** Draft stored queries */
   queries: DashboardQuery[]
+  /** Declared raster catalog layer ids the dashboard may draw */
+  layers: string[]
   /** Latest build outcome; null before the first write_source */
   build: DashboardBuild | null
   /** Saved version, once finish succeeded */
@@ -55,13 +57,14 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Pr
     name: "",
     source: "",
     queries: [],
+    layers: [],
     build: null,
     saved: null,
     schemas
   }
   if (dashboardId !== "") {
     const existing = await pool.query(
-      `SELECT d.name, v.source, v.queries FROM app.dashboards d
+      `SELECT d.name, v.source, v.queries, v.layers FROM app.dashboards d
        JOIN app.dashboard_versions v ON v.dashboard_id = d.id AND v.version = d.current_version
        WHERE d.id = $1`,
       [dashboardId]
@@ -70,6 +73,7 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Pr
       state.name = existing.rows[0].name
       state.source = existing.rows[0].source
       state.queries = existing.rows[0].queries
+      state.layers = existing.rows[0].layers
       // Build the saved source now so the preview panel is live from the first
       // frame; it also surfaces drift from the current kit before any edit
       const built = await buildDashboard(state.source)
@@ -118,7 +122,10 @@ One TypeScript React file. Default export is the root component, receiving
   ST_AsGeoJSON); a feature "color" property overrides the overlay color; popup
   names the property shown on click. layers draws raster catalog layers by
   layerId: [{layerId, snapshotId?, opacity?, label?, colorMap?}], server-rendered
-  from the COG with the layer's own color ramp. This is ALWAYS the right way to
+  from the COG with the layer's own color ramp. Every layerId drawn this way
+  MUST also be declared with set_layers - the dashboard's tile access is frozen
+  to its declared layers, like its data access is frozen to its queries;
+  undeclared layers fail to render for viewers. This is ALWAYS the right way to
   draw a raster - never convert pixels to points or polygons through a tile
   query to get a map of raster values. For a date-driven map (time slider,
   month picker) take the snapshot list from useLayers(), let the control pick
@@ -154,8 +161,9 @@ One TypeScript React file. Default export is the root component, receiving
 - useQuery(name, params?) -> {data, loading, error}: executes a stored query.
 - useMeta() -> {tables: {tableId: lastUpdatedIso}}: freshness for "data as of".
 - useLayers() -> [{id, name, temporality, snapshots: [{id, observedAt, observedEnd}]}]:
-  the raster catalog with each layer's snapshot timeline, oldest first. Drive
-  date controls from it and pass the chosen snapshot id to MapView layers.
+  the dashboard's declared raster layers (set_layers) with each layer's snapshot
+  timeline, oldest first. Drive date controls from it and pass the chosen
+  snapshot id to MapView layers.
 - useTheme(), useLocale(): resolved tokens and locale.
 
 # Query contract
@@ -197,11 +205,13 @@ none at all.
 1. Explore the data with sample_query (real SQL, 50-row cap) to learn shapes and ranges.
 2. Propose the dashboard plan in plain text (sections, charts, filters) and confirm
    with ask_user before building, unless the request already pins it down.
-3. set_queries for the data; write_source for the React file. Every write_source /
+3. set_queries for the data; set_layers for any raster catalog layers the maps
+   draw; write_source for the React file. Every write_source /
    edit_source rebuilds automatically and returns compile/typecheck errors - fix them
    before moving on. The user sees a live preview beside the chat after each
    successful build; they may report runtime errors from it.
-4. finish({id, name}) saves the dashboard (id is permanent, snake_case/kebab-case).
+4. finish({id, name}) saves the dashboard (id is the URL slug, snake_case/kebab-case;
+   editors can rename it later, but pick a good one - renaming breaks existing links).
    It is rejected while the latest build has errors.
 
 Chart guidance: pick the form by the data's job (trend = line/area, comparison = bar,
@@ -254,7 +264,7 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
   tools(): ToolSet {
     return {
       get_dashboard: tool({
-        description: "Read the current draft: name, queries, and source.",
+        description: "Read the current draft: name, queries, declared layers, and source.",
         inputSchema: z.object({})
       }),
       write_source: tool({
@@ -302,6 +312,13 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
             .describe("The complete query list (replaces the previous one)")
         })
       }),
+      set_layers: tool({
+        description:
+          "Replace the declared raster catalog layer list. MapView can only draw declared layers; viewers' tile access is frozen to this list.",
+        inputSchema: z.object({
+          layers: z.array(z.string()).describe("The complete raster layer id list (replaces the previous one)")
+        })
+      }),
       sample_query: tool({
         description:
           "Run one exploratory read-only SELECT against the data schema (50-row cap). Inline literal values rather than parameters.",
@@ -319,7 +336,7 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
       }),
       finish: tool({
         description:
-          "Save the dashboard and end the session. Rejected while the latest build has errors. The id is permanent; re-finishing an existing dashboard saves a new version.",
+          "Save the dashboard and end the session. Rejected while the latest build has errors. The id becomes the URL slug (editors can rename it later); re-finishing an existing dashboard saves a new version.",
         inputSchema: z.object({
           id: z.string().describe("Dashboard id: lowercase letters/digits/_/-, starting with a letter"),
           name: z.string().describe("Display name"),
@@ -342,7 +359,11 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
     switch (name) {
       case "get_dashboard":
         return {
-          result: JSON.stringify({ name: state.name, dashboardId: state.dashboardId, queries: state.queries, source: state.source }, null, 2)
+          result: JSON.stringify(
+            { name: state.name, dashboardId: state.dashboardId, queries: state.queries, layers: state.layers, source: state.source },
+            null,
+            2
+          )
         }
       case "write_source":
         return await this.setSource(state, String(args.source ?? ""))
@@ -350,6 +371,8 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
         return await this.editSource(state, String(args.oldString ?? ""), String(args.newString ?? ""))
       case "set_queries":
         return this.setQueries(state, args.queries as DashboardQuery[])
+      case "set_layers":
+        return await this.setLayers(state, args.layers as string[])
       case "sample_query":
         return await this.sampleQuery(String(args.sql ?? ""))
       case "ask_user":
@@ -405,6 +428,26 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
     return { result: `Stored ${queries.length} quer${queries.length === 1 ? "y" : "ies"}.`, state: { ...state, queries } }
   }
 
+  /** Replaces the declared raster layer list after checking the catalog. */
+  private async setLayers(state: DashboardAgentState, layers: string[]): Promise<ToolOutcome<DashboardAgentState>> {
+    if (!Array.isArray(layers) || layers.some((l) => typeof l !== "string")) {
+      return { result: "layers must be an array of raster layer ids" }
+    }
+    if (layers.length > 0) {
+      const known = await this.deps.pool.query(
+        "SELECT id FROM app.raster_layers WHERE id = ANY($1) AND session_id IS NULL",
+        [layers]
+      )
+      const knownIds = new Set(known.rows.map((r: { id: string }) => r.id))
+      const missing = layers.filter((l) => !knownIds.has(l))
+      if (missing.length > 0) return { result: `Unknown raster layers: ${missing.join(", ")}` }
+    }
+    return {
+      result: `Declared ${layers.length} layer${layers.length === 1 ? "" : "s"}.`,
+      state: { ...state, layers }
+    }
+  }
+
   /** Runs one exploratory query under the sql_engine role. */
   private async sampleQuery(sql: string): Promise<ToolOutcome<DashboardAgentState>> {
     if (sql.trim() === "") return { result: "sql is required" }
@@ -438,7 +481,13 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
     }
     const id = state.dashboardId || String(args.id ?? "")
     const name = String(args.name ?? "").trim() || state.name || id
-    const saved = await saveDashboard(this.deps.pool, { id, name, source: state.source, queries: state.queries })
+    const saved = await saveDashboard(this.deps.pool, {
+      id,
+      name,
+      source: state.source,
+      queries: state.queries,
+      layers: state.layers
+    })
     if (!saved.ok) return { result: `Save failed:\n${saved.errors.join("\n")}` }
     await this.deps.pool.query("UPDATE app.agent_sessions SET dashboard_id = $2 WHERE id = $1", [sessionId, id])
     return {

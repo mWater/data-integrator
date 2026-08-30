@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react"
 // (and its echarts side effects); kit components load with the blocks chunk
 import { darkTheme, lightTheme, mountDashboardFrame } from "@data-integrator/kit/host"
 import { KIT_VERSION } from "@data-integrator/kit/version"
-import { execDashboardQuery, listLayers, listSources } from "./api.js"
+import { DashboardMeta, execDashboardQuery, getDashboardMeta } from "./api.js"
 import { useAppTheme } from "./theme.js"
 
 /** Props for the dashboard frame host. */
@@ -24,6 +24,10 @@ interface Props {
   runQuery?: (name: string, params: Record<string, unknown>) => Promise<Record<string, unknown>[]>
   /** Draft override: fetches vector tiles via this handler instead of the saved dashboard */
   fetchVectorTile?: (query: string, z: number, x: number, y: number, params: Record<string, unknown>) => Promise<ArrayBuffer>
+  /** Draft override: freshness/layer meta instead of the saved dashboard's declared set */
+  fetchMeta?: () => Promise<DashboardMeta>
+  /** Draft override: raster tile bytes instead of the saved dashboard's scoped route */
+  fetchRasterTile?: (layerId: string, snapshotId: string, z: number, x: number, y: number) => Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error */
   onError?: (message: string, stack?: string) => void
 }
@@ -47,7 +51,16 @@ export async function fetchTileBytes(
 }
 
 /** Sandboxed dashboard iframe wired to the app's API. */
-export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fetchVectorTile, onError }: Props) {
+export function DashboardFrame({
+  dashboardId,
+  bundleJs,
+  bundleCss,
+  runQuery,
+  fetchVectorTile,
+  fetchMeta,
+  fetchRasterTile,
+  onError
+}: Props) {
   const container = useRef<HTMLDivElement>(null)
   // Handlers live in refs, never in the effect deps: the bridge calls them
   // lazily, so a caller's inline lambda changing identity on every render
@@ -58,6 +71,10 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fet
   runQueryRef.current = runQuery
   const fetchVectorTileRef = useRef(fetchVectorTile)
   fetchVectorTileRef.current = fetchVectorTile
+  const fetchRasterTileRef = useRef(fetchRasterTile)
+  fetchRasterTileRef.current = fetchRasterTile
+  const fetchMetaRef = useRef(fetchMeta)
+  fetchMetaRef.current = fetchMeta
   const { mode } = useAppTheme()
 
   useEffect(() => {
@@ -67,26 +84,18 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fet
     const snapshotByLayer = new Map<string, string>()
 
     const mount = async () => {
-      // Freshness for useMeta() and layer -> current snapshot for tiles
-      const [sources, layers] = await Promise.all([
-        listSources().catch(() => ({ sources: [] })),
-        listLayers().catch(() => ({ layers: [] }))
-      ])
-      for (const layer of layers.layers) {
-        if (layer.current_snapshot_id) snapshotByLayer.set(layer.id, layer.current_snapshot_id)
+      // Freshness for useMeta() and declared layers with snapshot timelines;
+      // the scoped endpoint serves public dashboards without a session
+      const metaFetch = fetchMetaRef.current ?? (() => getDashboardMeta(dashboardId))
+      const meta = await metaFetch().catch((): DashboardMeta => ({ tables: {}, layers: [] }))
+      for (const layer of meta.layers) {
+        if (layer.currentSnapshotId) snapshotByLayer.set(layer.id, layer.currentSnapshotId)
       }
-      const tables: Record<string, string | null> = {}
-      for (const s of sources.sources) if (s.kind === "table") tables[s.id] = s.updatedAt
-      // Snapshot timelines let dashboards drive a date control over a layer
-      const layerInfo = layers.layers.map(layer => ({
+      const layerInfo = meta.layers.map(layer => ({
         id: layer.id,
         name: layer.name,
         temporality: layer.temporality,
-        snapshots: (layer.snapshots ?? []).map(snapshot => ({
-          id: snapshot.id,
-          observedAt: snapshot.observed_at,
-          observedEnd: snapshot.observed_end ?? null
-        }))
+        snapshots: layer.snapshots
       }))
       if (destroyed || !container.current) return
 
@@ -98,7 +107,7 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fet
         init: {
           locale: navigator.language || "en",
           theme: mode === "dark" ? darkTheme : lightTheme,
-          meta: { tables },
+          meta: { tables: meta.tables },
           layers: layerInfo
         },
         handlers: {
@@ -113,7 +122,9 @@ export function DashboardFrame({ dashboardId, bundleJs, bundleCss, runQuery, fet
           fetchTile: async (layerId, z, x, y, snapshotId) => {
             const snapshot = snapshotId ?? snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
-            const res = await fetch(`/tiles/${layerId}/${snapshot}/${z}/${x}/${y}.png`)
+            if (fetchRasterTileRef.current) return fetchRasterTileRef.current(layerId, snapshot, z, x, y)
+            // Scoped to the dashboard: only its declared layers are served
+            const res = await fetch(`/api/dashboards/${dashboardId}/rastertiles/${layerId}/${snapshot}/${z}/${x}/${y}.png`)
             if (!res.ok) throw new Error(`tile ${res.status}`)
             return res.arrayBuffer()
           },
