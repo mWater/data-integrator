@@ -156,7 +156,7 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 .chip-draft { background: #eee2f7; color: #5b2d82; margin-left: 8px }
 .chip-table { background: #e2ecf5; color: #14496f }
 .chip-raster { background: #e0f0e6; color: #1d5c33 }
-.chip-public { background: #d9efd9; color: #216e21 }
+.chip-public { background: #d9efd9; color: #216e21; margin-left: 8px }
 .topbar-signin { color: var(--topbar-dim); text-decoration: none }
 .topbar-signin:hover { color: var(--topbar-ink) }
 .new-session { display: flex; align-items: center; gap: 16px }
@@ -164,6 +164,10 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 
 /* Session list */
 .list-page { max-width: 1120px; margin: 0 auto; padding: 28px 20px; width: 100% }
+.list-head { display: flex; align-items: center; gap: 16px; margin: 0 0 16px }
+.list-head h1 { margin: 0 }
+.list-head button { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; line-height: 1 }
+.list-head button svg { display: block; flex: none }
 .new-session { display: flex; gap: 8px; margin: 16px 0 }
 .new-session input {
   flex: 1; padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 6px; font: inherit;
@@ -223,6 +227,34 @@ tr:hover .row-delete, .row-delete:focus-visible { opacity: 1 }
 .row-delete:hover { color: var(--danger); background: var(--danger-bg) }
 /* Without hover there is no way to reveal it, so keep it out on touch */
 @media (hover: none) { .row-delete { opacity: 1 } }
+
+/* Per-row overflow menu: quiet icon in the table, list portaled to the body */
+.row-menu-trigger {
+  padding: 4px 6px;
+  line-height: 0;
+  color: var(--ink-muted);
+  background: none;
+  border: none;
+  border-radius: 6px;
+}
+.row-menu-trigger:hover, .row-menu-trigger[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--hover-tint);
+}
+.row-menu-list {
+  position: fixed; z-index: 10; min-width: 180px;
+  display: flex; flex-direction: column; padding: 6px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 8px 24px var(--shadow);
+}
+.row-menu-list [role="menuitem"] {
+  display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
+  background: none; color: var(--ink); font: inherit; font-size: 13.5px;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.row-menu-list [role="menuitem"]:hover { background: var(--hover-tint) }
+.row-menu-list [role="menuitem"].row-menu-danger { color: var(--danger) }
+.row-menu-list [role="menuitem"].row-menu-danger:hover { background: var(--danger-bg) }
 
 .dim { color: var(--ink-muted); font-size: 12.5px }
 

@@ -4381,10 +4381,21 @@
       "es": "Cambiar el identificador cambia la dirección del panel a #/dashboard/{0}. Los enlaces existentes, incluidos los enlaces públicos compartidos, dejarán de funcionar.",
       "mg": "Ny fanovana ny famantarana URL dia manova ny adiresin'ny tabilao ho #/dashboard/{0}. Tsy hiasa intsony ireo rohy efa misy - anisan'izany ireo rohy ho an'ny daholobe nozaraina.",
       "sw": "Kubadilisha slug hubadilisha anwani ya dashibodi kuwa #/dashboard/{0}. Viungo vilivyopo - pamoja na vilivyoshirikiwa hadharani - vitaacha kufanya kazi."
+    },
+    {
+      "_base": "en",
+      "en": "Actions for {0}",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
     }
   ],
   "unused": [
     "cron (UTC; empty for manual only)",
-    "{0} already built"
+    "{0} already built",
+    "Sharing",
+    "private"
   ]
 }

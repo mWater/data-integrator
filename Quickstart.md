@@ -146,8 +146,8 @@ pnpm dev
 
 This runs both dev processes in parallel with prefixed output: the API
 server from source (`tsx watch`, restarting on change) and the Vite UI with
-hot reload, proxying `/api` and friends to :8080. Open the Vite URL it
-prints (usually http://localhost:5173): UI edits apply instantly, server
+hot reload. Open the same URL as production: http://127.0.0.1:$PORT
+(8080 unless `PORT` is set in `.env`). UI edits apply instantly; server
 edits restart the process. Ctrl+C stops both. (`set -a` makes every
 variable the sourced `.env` defines exported, so they reach pnpm's child
 processes; `set +a` turns that back off.)

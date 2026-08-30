@@ -1,6 +1,7 @@
 /** Dashboards list page. */
 
-import { useEffect, useState } from "react"
+import { type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import {
   createDashboardSession,
   DashboardSummary,
@@ -60,67 +61,78 @@ export function DashboardList({ canDesign }: Props) {
     }
   }
 
+  function openDashboard(id: string) {
+    window.location.hash = `#/dashboard/${id}`
+  }
+
   return (
     <main className="list-page">
-      <div className="new-session">
+      <div className="list-head">
         <h1>{T`Dashboards`}</h1>
-        {canDesign ? <button onClick={() => void newDashboard()}>{T`New Dashboard`}</button> : null}
+        {canDesign ? (
+          <button onClick={() => void newDashboard()}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 1.5v9M1.5 6h9" />
+            </svg>
+            {T`New Dashboard`}
+          </button>
+        ) : null}
       </div>
-      {error ? <p className="error">{error}</p> : null}
-      {dashboards && dashboards.length === 0 ? (
-        <p className="dim">
+      {error ? <div className="error">{error}</div> : null}
+      {dashboards === null ? (
+        <p>{T`Loading…`}</p>
+      ) : dashboards.length === 0 ? (
+        <p>
           {canDesign ? T`No dashboards yet. Create one with the designer agent.` : T`No dashboards yet.`}
         </p>
-      ) : null}
-      {dashboards && dashboards.length > 0 ? (
+      ) : (
         <table className="sessions">
           <thead>
             <tr>
               <th>{T`Name`}</th>
-              <th>{T`Version`}</th>
               <th>{T`Updated`}</th>
-              <th>{T`Sharing`}</th>
               {canDesign ? <th /> : null}
             </tr>
           </thead>
           <tbody>
             {dashboards.map((d) => (
-              <tr key={d.id}>
+              <tr key={d.id} onClick={() => openDashboard(d.id)}>
                 <td>
-                  <a href={`#/dashboard/${d.id}`}>{d.name}</a>
-                </td>
-                <td>{d.currentVersion ?? "—"}</td>
-                <td>{new Date(d.updatedAt).toLocaleString()}</td>
-                <td>
+                  <b>{d.name}</b>
                   {d.public ? (
-                    <span className="chip chip-public" title={T`Anyone with the link can view this dashboard without signing in`}>
+                    <span
+                      className="chip chip-public"
+                      title={T`Anyone with the link can view this dashboard without signing in`}
+                    >
                       {T`public`}
                     </span>
-                  ) : (
-                    <span className="dim">{T`private`}</span>
-                  )}
+                  ) : null}
+                  <div className="dim">{d.id}</div>
                 </td>
+                <td>{new Date(d.updatedAt).toLocaleString()}</td>
                 {canDesign ? (
-                  <td className="row-actions">
-                    <button className="secondary" onClick={() => void togglePublic(d)}>
-                      {d.public ? T`Make Private` : T`Make Public`}
-                    </button>
-                    <button className="secondary" onClick={() => setRenaming(d)}>
-                      {T`Rename`}
-                    </button>
-                    <button className="secondary" onClick={() => void newDashboard(d.id)}>
-                      {T`Edit with Agent`}
-                    </button>
-                    <button className="danger" onClick={() => setDoomed(d)}>
-                      {T`Delete`}
-                    </button>
+                  <td className="row-delete-cell">
+                    <RowMenu label={T`Actions for ${d.name}`}>
+                      <button role="menuitem" onClick={() => void newDashboard(d.id)}>
+                        {T`Edit with Agent`}
+                      </button>
+                      <button role="menuitem" onClick={() => void togglePublic(d)}>
+                        {d.public ? T`Make Private` : T`Make Public`}
+                      </button>
+                      <button role="menuitem" onClick={() => setRenaming(d)}>
+                        {T`Rename`}
+                      </button>
+                      <button role="menuitem" className="row-menu-danger" onClick={() => setDoomed(d)}>
+                        {T`Delete`}
+                      </button>
+                    </RowMenu>
                   </td>
                 ) : null}
               </tr>
             ))}
           </tbody>
         </table>
-      ) : null}
+      )}
       {renaming ? (
         <RenameDialog
           dashboard={renaming}
@@ -146,6 +158,82 @@ export function DashboardList({ canDesign }: Props) {
         </ConfirmDelete>
       ) : null}
     </main>
+  )
+}
+
+/** Quiet ⋯ menu, portaled so the table's overflow does not clip it. */
+function RowMenu({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState({ top: 0, right: 0 })
+
+  useEffect(() => {
+    if (!open) return
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || menuRef.current?.contains(t)) return
+      setOpen(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [open])
+
+  function toggle(e: ReactMouseEvent) {
+    e.stopPropagation()
+    if (open) {
+      setOpen(false)
+      return
+    }
+    const r = triggerRef.current!.getBoundingClientRect()
+    setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right })
+    setOpen(true)
+  }
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        className="row-menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={toggle}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="5" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="12" cy="19" r="1.8" />
+        </svg>
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="row-menu-list"
+              role="menu"
+              style={{ top: coords.top, right: coords.right }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(false)
+              }}
+            >
+              {children}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   )
 }
 

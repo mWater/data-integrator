@@ -13,7 +13,14 @@ test("loadConfig: minimal valid environment applies defaults", () => {
   assert.equal(config.rasterStorePath, "./raster-store")
   assert.equal(config.secretKey, null)
   assert.equal(config.agent.openrouterKey, null)
+  assert.equal(config.viteDevUrl, null)
   assert.ok(config.basemap.upstream)
+})
+
+test("loadConfig: VITE_DEV_URL must be a local origin", () => {
+  const config = loadConfig({ DATABASE_URL: DB, VITE_DEV_URL: "http://127.0.0.1:5173" })
+  assert.equal(config.viteDevUrl, "http://127.0.0.1:5173")
+  assert.throws(() => loadConfig({ DATABASE_URL: DB, VITE_DEV_URL: "https://example.com" }), /VITE_DEV_URL/)
 })
 
 test("loadConfig: reports every problem at once", () => {

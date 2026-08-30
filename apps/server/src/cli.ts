@@ -423,11 +423,15 @@ async function main(): Promise<number> {
           config.uiDistPath,
           config.libraryPath,
           assistantAgent,
-          aiProvider(config)
+          aiProvider(config),
+          config.viteDevUrl
         ).listen(
           config.port,
           () => {
             console.log(`Serving on http://127.0.0.1:${config.port} (${describeConfig(config)})`)
+            if (config.viteDevUrl) {
+              console.log(`UI hot-reloads from ${config.viteDevUrl}`)
+            }
             if (!agent) console.log("No model configured; session API disabled")
           }
         )

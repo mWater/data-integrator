@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/cli.ts serve",
+    "dev": "VITE_DEV_URL=http://127.0.0.1:5173 tsx watch src/cli.ts serve",
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {

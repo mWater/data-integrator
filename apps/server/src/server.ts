@@ -1,4 +1,4 @@
-import { createServer, Server, IncomingMessage, ServerResponse } from "node:http"
+import { createServer, request as httpRequest, Server, IncomingMessage, ServerResponse } from "node:http"
 import { BasemapProxy } from "./basemap.js"
 import { createReadStream } from "node:fs"
 import { readFile, rm, stat } from "node:fs/promises"
@@ -137,6 +137,7 @@ const COOKIE_MAX_AGE = 30 * 24 * 3600
  * streams, and the built SPA.
  * @param agent - Session service; null when no model is configured
  * @param runs - Manual-run service; null when the host has no job runner
+ * @param viteDevUrl - Live Vite origin; null serves the built SPA from dist
  */
 export function createApiServer(
   pool: pg.Pool,
@@ -149,12 +150,13 @@ export function createApiServer(
   uiDistPath: string | null = null,
   libraryPath: string | null = null,
   assistantAgent: AgentService | null = null,
-  aiProvider: AiProvider | null = null
+  aiProvider: AiProvider | null = null,
+  viteDevUrl: string | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -208,6 +210,7 @@ async function route(
   libraryPath: string | null,
   assistantAgent: AgentService | null,
   aiProvider: AiProvider | null,
+  viteDevUrl: string | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -354,7 +357,7 @@ async function route(
   // Everything below is either the static shell (public) or data (auth required)
   if (!user) {
     if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
-      if (await serveUi(url, res, uiDist)) return
+      if (await serveUi(req, res, uiDist, viteDevUrl)) return
     }
     json(res, 401, { error: "authentication required" })
     return
@@ -1130,7 +1133,7 @@ async function route(
     return
   }
 
-  if (req.method === "GET" && (await serveUi(url, res, uiDist))) return
+  if (req.method === "GET" && (await serveUi(req, res, uiDist, viteDevUrl))) return
 
   json(res, 404, { error: "not found" })
 }
@@ -1534,9 +1537,16 @@ async function routeSessions(
   json(res, 404, { error: "not found" })
 }
 
-/** Serves the built SPA; returns false when the file tree has no answer. */
-async function serveUi(url: string, res: ServerResponse, uiDist: string): Promise<boolean> {
-  const requested = url === "/" ? "/index.html" : url.split("?")[0]
+/** Serves the SPA: Vite during `pnpm dev`, otherwise the built dist. */
+async function serveUi(
+  req: IncomingMessage,
+  res: ServerResponse,
+  uiDist: string,
+  viteDevUrl: string | null
+): Promise<boolean> {
+  if (viteDevUrl) return proxyVite(req, res, viteDevUrl)
+
+  const requested = (req.url ?? "/") === "/" ? "/index.html" : (req.url ?? "/").split("?")[0]
   const file = path.normalize(path.join(uiDist, requested))
   if (!file.startsWith(path.normalize(uiDist))) return false
 
@@ -1559,4 +1569,44 @@ async function serveUi(url: string, res: ServerResponse, uiDist: string): Promis
   } catch {
     return false
   }
+}
+
+/**
+ * Reverse-proxies one GET to the Vite dev server so the operator UI on PORT
+ * hot-reloads. Returns false only if the URL is not something we should have
+ * asked Vite for; connection failure is a 502, not a dist fallback, so a
+ * missing Vite process cannot silently serve a stale build.
+ */
+function proxyVite(req: IncomingMessage, res: ServerResponse, viteDevUrl: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const target = new URL(req.url ?? "/", viteDevUrl)
+    const upstream = httpRequest(
+      {
+        hostname: target.hostname,
+        port: target.port,
+        path: `${target.pathname}${target.search}`,
+        method: req.method,
+        headers: { ...req.headers, host: target.host }
+      },
+      up => {
+        const headers = { ...up.headers }
+        delete headers.connection
+        delete headers["transfer-encoding"]
+        res.writeHead(up.statusCode ?? 502, headers)
+        up.pipe(res)
+        resolve(true)
+      }
+    )
+    upstream.on("error", err => {
+      if (!res.headersSent) {
+        res.writeHead(502, { "content-type": "text/plain; charset=utf-8" })
+        res.end(
+          `Vite is not running at ${viteDevUrl} (${err instanceof Error ? err.message : err}).\n` +
+            `Start it with \`pnpm dev\` from the repository root, or unset VITE_DEV_URL to serve apps/ui/dist.`
+        )
+      }
+      resolve(true)
+    })
+    req.pipe(upstream)
+  })
 }

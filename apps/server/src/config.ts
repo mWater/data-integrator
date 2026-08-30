@@ -28,6 +28,8 @@ export interface AppConfig {
   libraryPath: string
   /** UI_DIST_PATH: built SPA directory; null uses the in-repo default */
   uiDistPath: string | null
+  /** VITE_DEV_URL: live Vite origin for `pnpm dev`; null serves the built SPA */
+  viteDevUrl: string | null
   /** INTEGRATOR_SECRET_KEY parsed to 32 bytes; null when unset */
   secretKey: Buffer | null
   /** RUNTIME_IMAGE_PYTHON / RUNTIME_IMAGE_NODE job images */
@@ -106,6 +108,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (llmBaseUrl && !/^https?:\/\//.test(llmBaseUrl)) {
     problems.push(`LLM_BASE_URL must be an http(s) URL, got "${llmBaseUrl}"`)
   }
+
+  const viteDevUrl = env.VITE_DEV_URL?.trim().replace(/\/+$/, "") || null
+  if (viteDevUrl && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(viteDevUrl)) {
+    problems.push(`VITE_DEV_URL must be a local http(s) origin, got "${viteDevUrl}"`)
+  }
   if (llmBaseUrl && !env.AGENT_MODEL) {
     problems.push("AGENT_MODEL is required when LLM_BASE_URL is set (the endpoint's model name)")
   }
@@ -125,6 +132,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tileCachePath: env.TILE_CACHE_PATH ?? "./tile-cache",
     libraryPath: env.LIBRARY_PATH ?? "./library",
     uiDistPath: env.UI_DIST_PATH ?? null,
+    viteDevUrl,
     secretKey,
     workQuotaMb,
     minFreeDiskMb,
@@ -184,6 +192,7 @@ export function describeConfig(config: AppConfig): string {
     `tileCache=${config.tileCachePath}`,
     `secrets=${config.secretKey ? "on" : "off"}`,
     `model=${model}`,
-    `basemap=${config.basemap.upstream ?? "off"}`
+    `basemap=${config.basemap.upstream ?? "off"}`,
+    `ui=${config.viteDevUrl ? `vite:${config.viteDevUrl}` : "dist"}`
   ].join(" ")
 }
