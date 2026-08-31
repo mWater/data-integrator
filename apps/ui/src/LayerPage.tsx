@@ -5,10 +5,10 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { LngLatBounds, Map as MapLibreMap, RasterTileSource } from "maplibre-gl"
+import { LngLatBounds, Map as MapLibreMap, Popup, RasterTileSource } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "./maplibre.js"
-import { getLayer, LayerBand, LayerDetail, styleToken } from "./api.js"
+import { getLayer, LayerBand, LayerDetail, sampleLayer, styleToken } from "./api.js"
 import { useAppTheme } from "./theme.js"
 
 /** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
@@ -43,7 +43,31 @@ function bytes(n: number): string {
 /** Snapshot timestamp, to the day for intervals and to the minute otherwise. */
 function snapshotLabel(iso: string, interval: boolean): string {
   const date = new Date(iso)
-  return interval ? date.toLocaleDateString() : date.toLocaleString()
+  // Date-stamped snapshots are stored as midnight UTC; local clock time is noise
+  const dateStamp =
+    date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0
+  if (interval || dateStamp) {
+    return date.toLocaleDateString(undefined, dateStamp ? { timeZone: "UTC" } : undefined)
+  }
+  return date.toLocaleString()
+}
+
+/** Units worth printing; "1" and "dimensionless" are a scale, not a caption. */
+function displayUnits(units?: string): string | null {
+  if (!units) return null
+  const key = units.trim().toLowerCase()
+  if (key === "1" || key === "dimensionless") return null
+  return units
+}
+
+/** Pixel value in a click popup; enough digits for fractions, no trailing zeros. */
+function formatSample(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 4 })
+}
+
+/** Minimal HTML escaping for popup text. */
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 }
 
 /** Color ramp legend from the band's declared color map. */
@@ -54,15 +78,19 @@ function Legend({ band }: { band: LayerBand }) {
   const max = stops[stops.length - 1].value
   const span = max - min || 1
   const gradient = stops.map(s => `${s.color} ${((s.value - min) / span) * 100}%`).join(", ")
+  const units = displayUnits(band.units)
   return (
-    <div className="layer-legend">
-      <div className="layer-ramp" style={{ background: `linear-gradient(to right, ${gradient})` }} />
-      <div className="layer-ramp-ends">
-        <span>{min.toLocaleString()}</span>
-        <span>{max.toLocaleString()}</span>
+    <section className="layer-section">
+      <h2>{T`Legend`}</h2>
+      <div className="layer-legend">
+        <div className="layer-ramp" style={{ background: `linear-gradient(to right, ${gradient})` }} />
+        <div className="layer-ramp-ends">
+          <span>{min.toLocaleString()}</span>
+          <span>{max.toLocaleString()}</span>
+        </div>
+        {units ? <div className="dim">{units}</div> : null}
       </div>
-      {band.units && <div className="dim">{band.units}</div>}
-    </div>
+    </section>
   )
 }
 
@@ -78,6 +106,14 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const [index, setIndex] = useState(0)
   const [opacity, setOpacity] = useState(0.65)
   const opacityRef = useRef(opacity)
+  const inspectRef = useRef({
+    layerId,
+    snapshotId: "",
+    bandId: "" as string | null,
+    sessionId: sessionId ?? null,
+    bandName: "",
+    units: null as string | null
+  })
 
   useEffect(() => {
     getLayer(layerId, sessionId).then(detail => {
@@ -118,6 +154,43 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
           for (const point of layer.footprint.coordinates[0]) bounds.extend(point as [number, number])
           if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40, animate: false })
         }
+        map.getCanvas().style.cursor = "crosshair"
+        const popup = new Popup({ closeButton: false, closeOnClick: false, maxWidth: "220px" })
+        let seq = 0
+        map.on("click", async e => {
+          const id = ++seq
+          const inspect = inspectRef.current
+          if (!inspect.snapshotId) return
+          popup
+            .setLngLat(e.lngLat)
+            .setHTML(`<div class="map-sample"><div class="map-sample-value dim">…</div></div>`)
+            .addTo(map)
+          try {
+            const sample = await sampleLayer(
+              inspect.layerId,
+              inspect.snapshotId,
+              e.lngLat.lng,
+              e.lngLat.lat,
+              inspect.bandId,
+              inspect.sessionId
+            )
+            if (id !== seq) return
+            const valueHtml =
+              sample.value == null
+                ? `<div class="map-sample-value dim">${escapeHtml(T`No data`)}</div>`
+                : `<div class="map-sample-value">${escapeHtml(formatSample(sample.value))}${
+                    inspect.units ? ` <span class="dim">${escapeHtml(inspect.units)}</span>` : ""
+                  }</div>`
+            popup.setHTML(
+              `<div class="map-sample"><div class="map-sample-name">${escapeHtml(inspect.bandName)}</div>${valueHtml}</div>`
+            )
+          } catch {
+            if (id !== seq) return
+            popup.setHTML(
+              `<div class="map-sample"><div class="map-sample-value dim">${escapeHtml(T`No data`)}</div></div>`
+            )
+          }
+        })
       })
     })
     return () => {
@@ -164,6 +237,14 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const band = layer.bands.find(b => b.id === bandId) ?? layer.bands[0]
   const snapshot = layer.snapshots[index]
   const interval = snapshot?.observed_end != null
+  inspectRef.current = {
+    layerId,
+    snapshotId: snapshot?.id ?? "",
+    bandId,
+    sessionId: sessionId ?? null,
+    bandName: band ? bandLabel(band) : "",
+    units: band ? displayUnits(band.units) : null
+  }
 
   return (
     <main className="layer-page">
@@ -171,6 +252,9 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
         <div className="layer-head">
           <h1>{layer.name}</h1>
           <div className="dim">{layer.id}</div>
+          <a className="dim-link" href={`#/integration/${layer.integrationId}`}>
+            {T`from ${layer.integrationName}`}
+          </a>
         </div>
 
         {layer.snapshots.length === 0 ? (
@@ -195,7 +279,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
                       onClick={() => setBandId(b.id)}
                     >
                       <span className="layer-band-name">{bandLabel(b)}</span>
-                      {b.units && <span className="dim">{b.units}</span>}
+                      {displayUnits(b.units) && <span className="dim">{displayUnits(b.units)}</span>}
                     </button>
                   ))}
                 </div>

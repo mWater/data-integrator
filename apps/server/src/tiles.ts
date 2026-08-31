@@ -112,6 +112,25 @@ export class TileRenderer {
     }
   }
 
+  /**
+   * Reads one pixel of a snapshot COG at a WGS84 lon/lat. Null when the
+   * point is outside the raster, the file cannot be read, or the value is
+   * not a finite number.
+   */
+  async sample(snapshotPath: string, bandIndex: number, lon: number, lat: number): Promise<number | null> {
+    try {
+      const { stdout } = await execFileP(
+        "gdallocationinfo",
+        ["-valonly", "-wgs84", "-b", String(bandIndex), this.store.absolute(snapshotPath), String(lon), String(lat)],
+        { timeout: 15_000 }
+      )
+      const value = Number(stdout.trim())
+      return Number.isFinite(value) ? value : null
+    } catch {
+      return null
+    }
+  }
+
   /** Removes a layer's whole cache subtree (all snapshots); missing is fine. */
   async dropLayer(layerId: string): Promise<void> {
     await rm(path.join(this.cacheDir, layerId), { recursive: true, force: true })

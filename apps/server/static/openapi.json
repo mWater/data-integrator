@@ -182,6 +182,23 @@
         "responses": { "200": { "description": "{ layers: [...] }" } }
       }
     },
+    "/api/layers/{id}/sample": {
+      "get": {
+        "summary": "Pixel value of a snapshot at a WGS84 lon/lat (click-to-inspect)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "snapshot", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "lon", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "lat", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "band", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "{ value: number | null }" },
+          "400": { "description": "Missing snapshot, lon, or lat" },
+          "404": { "description": "Unknown snapshot or band" }
+        }
+      }
+    },
     "/api/snapshots/{id}/download": {
       "get": {
         "summary": "Download one snapshot as its Cloud-Optimized GeoTIFF",

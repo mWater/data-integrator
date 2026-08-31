@@ -747,6 +747,44 @@ async function route(
     return
   }
 
+  // Pixel value at a WGS84 point, for click-to-inspect on the layer page.
+  const sampleMatch = pathname.match(/^\/api\/layers\/([a-z][a-z0-9_]*)\/sample$/)
+  if (sampleMatch && req.method === "GET") {
+    const lon = Number(searchParams.get("lon"))
+    const lat = Number(searchParams.get("lat"))
+    const snapshotId = searchParams.get("snapshot")
+    if (!snapshotId || !Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+      json(res, 400, { error: "snapshot, lon, and lat are required (WGS84)" })
+      return
+    }
+    const session = searchParams.get("session")
+    const snapshot = await pool.query(
+      `SELECT s.path, l.bands FROM app.raster_snapshots s
+       JOIN app.raster_layers l ON l.id = s.layer_id
+       WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'
+         AND ${session ? "l.session_id = $3" : "l.session_id IS NULL"}`,
+      session ? [snapshotId, sampleMatch[1], session] : [snapshotId, sampleMatch[1]]
+    )
+    if (snapshot.rows.length === 0) {
+      json(res, 404, { error: "unknown snapshot" })
+      return
+    }
+    const bands = snapshot.rows[0].bands as BandSpec[]
+    const bandId = searchParams.get("band")
+    const bandIndex = bandId ? bands.findIndex(b => b.id === bandId) : 0
+    const band = bands[bandIndex]
+    if (!band) {
+      json(res, 404, { error: `unknown band "${bandId}"` })
+      return
+    }
+    const sampled = await tiles.sample(snapshot.rows[0].path, bandIndex + 1, lon, lat)
+    const nodata = band.nodata
+    const value =
+      sampled == null || (nodata != null && Number.isFinite(nodata) && sampled === nodata) ? null : sampled
+    json(res, 200, { value })
+    return
+  }
+
   const tileMatch = pathname.match(TILE_PATH)
   if (tileMatch) {
     const [, layerId, snapshotId, bandId, z, x, y] = tileMatch

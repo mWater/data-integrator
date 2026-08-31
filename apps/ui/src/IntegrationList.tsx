@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
 import { cronText } from "./localization.js"
@@ -32,6 +32,18 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
     )
   }, [])
 
+  const sortedIntegrations = useMemo(
+    () =>
+      (integrations ?? [])
+        .slice()
+        .sort(
+          (a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
+            a.id.localeCompare(b.id, undefined, { sensitivity: "base" })
+        ),
+    [integrations]
+  )
+
   /** Imports a definition file exported by another deployment; it lands paused. */
   async function onImportFile(file: File) {
     setError(null)
@@ -57,32 +69,63 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
 
   return (
     <main className="list-page">
-      <h1>{T`Integrations`}</h1>
+      <div className="list-head">
+        <h1>{T`Integrations`}</h1>
+        {canDesign && (
+          <div className="list-head-actions">
+            <a className="dim-link" href="#/sessions">
+              {openSessions > 0 ? T`Agent activity (${openSessions} open)` : T`Agent activity`}
+            </a>
+            <button
+              className="secondary"
+              title={T`Install a definition file exported from another deployment; it arrives paused for review`}
+              onClick={() => fileInput.current?.click()}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 1.5v6M3.5 5 6 7.5 8.5 5M2 10.5h8" />
+              </svg>
+              {T`Import`}
+            </button>
+            <button onClick={onCreate}>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 1.5v9M1.5 6h9" />
+              </svg>
+              {T`New Integration`}
+            </button>
+          </div>
+        )}
+      </div>
       {canDesign && (
-        <div className="new-session">
-          <button onClick={onCreate}>{T`New Integration`}</button>
-          <button
-            className="secondary"
-            title={T`Install a definition file exported from another deployment; it arrives paused for review`}
-            onClick={() => fileInput.current?.click()}
-          >
-            {T`Import`}
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: "none" }}
-            onChange={e => {
-              const file = e.target.files?.[0]
-              e.target.value = ""
-              if (file) void onImportFile(file)
-            }}
-          />
-          <a className="dim-link" href="#/sessions">
-            {openSessions > 0 ? T`Agent activity (${openSessions} open)` : T`Agent activity`}
-          </a>
-        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: "none" }}
+          onChange={e => {
+            const file = e.target.files?.[0]
+            e.target.value = ""
+            if (file) void onImportFile(file)
+          }}
+        />
       )}
       {error && <div className="error">{error}</div>}
       {integrations === null ? (
@@ -95,11 +138,12 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
             <tr><th>{T`Integration`}</th><th>{T`Trigger`}</th><th>{T`Last run`}</th></tr>
           </thead>
           <tbody>
-            {integrations.map(i => (
+            {sortedIntegrations.map(i => (
               <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
                 <td>
                   <b>{i.name}</b>
                   {i.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
+                  {!i.enabled && <span className="chip chip-paused integration-state-chip">{T`paused`}</span>}
                   <div className="dim">{i.id}</div>
                 </td>
                 <td>{triggerLabel(i.trigger)}</td>

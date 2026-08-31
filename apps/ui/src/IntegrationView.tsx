@@ -23,6 +23,7 @@ import {
 import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
+import { RowMenu } from "./RowMenu.js"
 import { SecretsSection } from "./SecretsSection.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
@@ -144,37 +145,53 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   const tab = picked ?? (tableIds.length > 0 ? "data" : "runs")
   return (
     <main className="list-page wide">
-      <div className="session-head">
-        <h1>{definition.name}</h1>
-        {detail.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
-        <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
-        {!detail.enabled && <span className="chip chip-paused">{T`paused`}</span>}
-        <span style={{ flex: 1 }} />
-        {canDesign && (
-          <button className="secondary" onClick={onToggleEnabled} title={T`Paused integrations are skipped by the scheduler`}>
-            {detail.enabled ? T`Pause` : T`Resume`}
-          </button>
-        )}
-        {canDesign && (
-          <button className="secondary" onClick={onRun} disabled={running}>
-            {running ? T`Running…` : T`Run Now`}
-          </button>
-        )}
-        <button
-          className="secondary"
-          title={T`Download the definition as a file another deployment can import`}
-          onClick={() => {
-            window.location.href = `/api/integrations/${detail.id}/export`
-          }}
-        >
-          {T`Export`}
-        </button>
-        {canDesign && <button onClick={onDesign}>{T`Design with Agent`}</button>}
-        {canDesign && (
-          <button className="danger" onClick={() => void onDeleteOpen()}>
-            {T`Delete`}
-          </button>
-        )}
+      <div className="list-head">
+        <div className="list-head-title">
+          <h1>{definition.name}</h1>
+          <div className="list-head-meta">
+            {detail.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
+            <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
+            {!detail.enabled && <span className="chip chip-paused">{T`paused`}</span>}
+            <span className="dim">{detail.id}</span>
+          </div>
+        </div>
+        <div className="list-head-actions">
+          {canDesign ? (
+            <button onClick={onRun} disabled={running}>
+              {running ? T`Running…` : T`Run Now`}
+            </button>
+          ) : null}
+          <RowMenu label={T`Actions for ${definition.name}`}>
+            {canDesign ? (
+              <button role="menuitem" onClick={() => void onDesign()}>
+                {T`Design with Agent`}
+              </button>
+            ) : null}
+            {canDesign ? (
+              <button
+                role="menuitem"
+                title={T`Paused integrations are skipped by the scheduler`}
+                onClick={() => void onToggleEnabled()}
+              >
+                {detail.enabled ? T`Pause` : T`Resume`}
+              </button>
+            ) : null}
+            <button
+              role="menuitem"
+              title={T`Download the definition as a file another deployment can import`}
+              onClick={() => {
+                window.location.href = `/api/integrations/${detail.id}/export`
+              }}
+            >
+              {T`Export`}
+            </button>
+            {canDesign ? (
+              <button role="menuitem" className="row-menu-danger" onClick={() => void onDeleteOpen()}>
+                {T`Delete`}
+              </button>
+            ) : null}
+          </RowMenu>
+        </div>
       </div>
       {error && <div className="error">{error}</div>}
       {usage && (
@@ -186,13 +203,12 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
         />
       )}
 
-      <div className="dest-cards">
-        {detail.destinations.map(d => (
-          <div key={d.id} className="dest-card">
-            <div className="dim">{d.kind === "table" ? T`table` : T`raster layer`}</div>
-            <b>{d.id}</b>
-            <div>
-              {d.count === null
+      {detail.destinations.length > 0 ? (
+        <div className="panel dest-panel">
+          {detail.destinations.map(d => {
+            const href = d.kind === "raster" ? `#/layer/${d.id}` : `#/table/${d.id}`
+            const fact =
+              d.count === null
                 ? running
                   ? T`first run in progress…`
                   : canDesign
@@ -200,12 +216,18 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
                     : T`no data yet`
                 : d.kind === "table"
                   ? T`${d.count.toLocaleString()} rows`
-                  : T`${d.count.toLocaleString()} snapshots`}
-            </div>
-            {d.kind === "raster" && d.count !== null && <a href={`#/layer/${d.id}`}>{T`View on map`}</a>}
-          </div>
-        ))}
-      </div>
+                  : T`${d.count.toLocaleString()} snapshots`
+            return (
+              <a className="panel-row" href={href} key={d.id}>
+                <span className={`chip chip-${d.kind}`}>{d.kind === "table" ? T`table` : T`raster`}</span>
+                <span className="grow">{d.id}</span>
+                <span className="panel-fact">{fact}</span>
+                {d.kind === "raster" && d.count !== null ? <span className="panel-when">{T`View on map`}</span> : null}
+              </a>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div className="tabs">
         {([...(tableIds.length ? ["data" as const] : []), "runs", "definition", "code"] as Tab[]).map(t => (

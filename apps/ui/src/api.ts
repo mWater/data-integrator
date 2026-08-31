@@ -480,6 +480,31 @@ export function getLayer(id: string, sessionId?: string | null): Promise<LayerDe
   return request(`/api/layers/${id}${sessionId ? `?session=${encodeURIComponent(sessionId)}` : ""}`)
 }
 
+/** One pixel of a layer snapshot, or null outside the raster / at nodata. */
+export interface LayerSample {
+  /** Measured value; null when the point has no data */
+  value: number | null
+}
+
+/** Reads the pixel under a WGS84 lon/lat for click-to-inspect. */
+export function sampleLayer(
+  layerId: string,
+  snapshotId: string,
+  lon: number,
+  lat: number,
+  bandId?: string | null,
+  sessionId?: string | null
+): Promise<LayerSample> {
+  const params = new URLSearchParams({
+    snapshot: snapshotId,
+    lon: String(lon),
+    lat: String(lat)
+  })
+  if (bandId) params.set("band", bandId)
+  if (sessionId) params.set("session", sessionId)
+  return request(`/api/layers/${layerId}/sample?${params}`)
+}
+
 /** One data source in the catalog: a destination table or a raster layer. */
 export interface DataSource {
   /** Source kind */

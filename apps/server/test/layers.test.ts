@@ -112,6 +112,33 @@ test("layer detail requires a session", async () => {
   assert.equal((await fetch(`${base}/api/layers/drought`)).status, 401)
 })
 
+test("sample reads a pixel or rejects a bad request", async () => {
+  assert.equal((await fetch(`${base}/api/layers/drought/sample?lon=0&lat=0&snapshot=${snapshotId}`)).status, 401)
+
+  const missing = await fetch(`${base}/api/layers/drought/sample`, { headers: { cookie } })
+  assert.equal(missing.status, 400)
+
+  const unknown = await fetch(
+    `${base}/api/layers/drought/sample?lon=0&lat=0&snapshot=00000000-0000-0000-0000-000000000000`,
+    { headers: { cookie } }
+  )
+  assert.equal(unknown.status, 404)
+
+  const unknownBand = await fetch(
+    `${base}/api/layers/drought/sample?lon=0&lat=0&snapshot=${snapshotId}&band=nope`,
+    { headers: { cookie } }
+  )
+  assert.equal(unknownBand.status, 404)
+
+  // The fixture snapshot has no COG on disk, so the read is empty rather than an error
+  const empty = await fetch(
+    `${base}/api/layers/drought/sample?lon=0.5&lat=0.5&snapshot=${snapshotId}&band=spei3`,
+    { headers: { cookie } }
+  )
+  assert.equal(empty.status, 200)
+  assert.deepEqual(await empty.json(), { value: null })
+})
+
 /**
  * The band segment is optional in the tile path, so /:snapshot/:z/:x/:y and
  * /:snapshot/:band/:z/:x/:y have to stay distinguishable. Rendering needs GDAL
