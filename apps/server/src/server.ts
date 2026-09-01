@@ -517,9 +517,12 @@ async function route(
     const failures: string[] = []
     for (const row of installed.rows) {
       try {
-        const definition = row.definition
+        // Definitions installed before localization hold plain English strings;
+        // wrapping is a no-op on already-localized ones
+        const definition = wrapDefinitionStrings(row.definition, "en")
         const written = await translateDefinition(model, definition, locales)
-        if (written > 0) {
+        const wrapped = JSON.stringify(definition) !== JSON.stringify(row.definition)
+        if (written > 0 || wrapped) {
           await pool.query("UPDATE app.integrations SET definition = $2 WHERE id = $1", [
             row.id,
             JSON.stringify(definition)
