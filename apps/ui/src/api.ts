@@ -1,3 +1,7 @@
+/** LocalizedString from ez-localize: _base names the authored locale. */
+import type { LocalizedString } from "ez-localize"
+import { currentLocale } from "./localization.js"
+
 /** Session summary row from GET /api/sessions. */
 export interface SessionSummary {
   /** Session id */
@@ -20,8 +24,8 @@ export interface SessionSummary {
 export interface Definition {
   /** Integration id */
   id: string
-  /** Display name */
-  name: string
+  /** Display name (a plain string while a draft has not been saved yet) */
+  name: LocalizedString | string
   /** Runtime image id */
   runtime: string
   /** Single-file integration code */
@@ -107,7 +111,7 @@ export interface SessionDetail extends SessionSummary {
   /** Error that stopped the last loop, if it crashed (cleared on the next step) */
   error: string | null
   /** Scratch preview layers with data, for map links during design */
-  scratchLayers: { id: string; name: string }[]
+  scratchLayers: { id: string; name: LocalizedString }[]
 }
 
 /** One content part of a stored model message. */
@@ -161,7 +165,7 @@ export interface IntegrationSummary {
   /** Integration id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Runtime image id */
   runtime: string
   /** Trigger spec */
@@ -373,7 +377,7 @@ export interface MapLayer {
   /** Layer id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** current-only or time-series */
   temporality: string
   /** Current snapshot id, null before first data */
@@ -416,7 +420,7 @@ export interface LayerBand {
   /** Band id, used in tile URLs */
   id: string
   /** Display name; falls back to the id */
-  name?: string
+  name?: LocalizedString
   /** Measurement units, e.g. "mm/month" */
   units?: string
   /** Value meaning "no data" */
@@ -430,11 +434,11 @@ export interface LayerDetail {
   /** Layer id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Owning integration id */
   integrationId: string
   /** Owning integration display name */
-  integrationName: string
+  integrationName: LocalizedString
   /** current-only or time-series */
   temporality: string
   /** Measured bands, in declaration order */
@@ -454,7 +458,7 @@ export interface LayerDetail {
   /** Total bytes across promoted snapshots */
   sizeBytes: number
   /** Owning integration's prose description */
-  description: string | null
+  description: LocalizedString | null
   /** Provenance of the external source, if declared */
   source: LayerSource | null
 }
@@ -462,7 +466,7 @@ export interface LayerDetail {
 /** Provenance block from the owning integration's definition. */
 export interface LayerSource {
   /** Source name */
-  name: string
+  name: LocalizedString
   /** Primary URL of the source or its API */
   url?: string
   /** Organization publishing the data */
@@ -512,13 +516,13 @@ export interface DataSource {
   /** tableId or layerId */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Owning integration id */
   integrationId: string
   /** Owning integration display name */
-  integrationName: string
+  integrationName: LocalizedString
   /** Destination description, falling back to the integration's description */
-  description: string | null
+  description: LocalizedString | null
   /** Row count (tables); null before first run */
   rows: number | null
   /** Declared column count (tables) */
@@ -541,7 +545,7 @@ export interface HomeSource {
   /** tableId or layerId */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Row count (tables); null for rasters */
   rows: number | null
   /** Declared column count (tables); null for rasters */
@@ -557,7 +561,7 @@ export interface HomeIntegration {
   /** Integration id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Whether the scheduler considers it */
   enabled: boolean
   /** Lifecycle: draft until a design session's cold run certifies it */
@@ -573,7 +577,7 @@ export interface HomeProblem {
   /** Integration id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Terminal status of the failing run */
   status: string
   /** Error recorded on the run */
@@ -662,7 +666,7 @@ export function createSession(integrationId?: string): Promise<{ sessionId: stri
   return request("/api/sessions", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(integrationId ? { integrationId } : {})
+    body: JSON.stringify({ locale: currentLocale(), ...(integrationId ? { integrationId } : {}) })
   })
 }
 
@@ -671,7 +675,7 @@ export function createDashboardSession(dashboardId?: string): Promise<{ sessionI
   return request("/api/sessions", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: "dashboard", ...(dashboardId ? { dashboardId } : {}) })
+    body: JSON.stringify({ kind: "dashboard", locale: currentLocale(), ...(dashboardId ? { dashboardId } : {}) })
   })
 }
 
@@ -680,7 +684,7 @@ export function createAssistantSession(): Promise<{ sessionId: string }> {
   return request("/api/sessions", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: "assistant" })
+    body: JSON.stringify({ kind: "assistant", locale: currentLocale() })
   })
 }
 
@@ -824,7 +828,7 @@ export interface DashboardLayerMeta {
   /** Layer id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** static or time-series */
   temporality: string
   /** Snapshot drawn when none is picked */
@@ -918,9 +922,24 @@ export function listCountries(): Promise<{ countries: CountryBox[] }> {
 
 /** Deployment settings. */
 export function getSettings(): Promise<{
-  settings: { default_aoi: DefaultAoi | null; site_title: string | null }
+  settings: { default_aoi: DefaultAoi | null; site_title: string | null; locales: string[] }
+  supportedLocales: { code: string; name: string }[]
 }> {
   return request("/api/settings")
+}
+
+/** Sets the deployment's offered locales (admin only). */
+export function setLocalesSetting(locales: string[]): Promise<{ locales: string[] }> {
+  return request("/api/settings/locales", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ locales })
+  })
+}
+
+/** Fills missing catalog translations across installed definitions (admin only). */
+export function translateCatalog(): Promise<{ integrations: number; translations: number; failures: string[] }> {
+  return request("/api/settings/translate-catalog", { method: "POST" })
 }
 
 /** Sets the deployment display name; a blank title restores the default (admin only). */
@@ -987,11 +1006,11 @@ export interface LibraryEntry {
   /** Entry id (= integration id when installed) */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** What the integration does */
-  description: string | null
+  description: LocalizedString | null
   /** Source provenance */
-  source: { name?: string; provider?: string; license?: string; url?: string } | null
+  source: { name?: LocalizedString; provider?: string; license?: string; url?: string } | null
   /** Suggested cadence */
   trigger: { cron?: string; webhook?: boolean }
   /** Runtime image id */

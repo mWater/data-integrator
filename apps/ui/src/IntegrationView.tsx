@@ -27,6 +27,8 @@ import { RowMenu } from "./RowMenu.js"
 import { SecretsSection } from "./SecretsSection.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
+import { localizeData } from "./localization.js"
+import type { LocalizedString } from "ez-localize"
 
 /** What a finished run produced, as "sites: 412, readings: 9k in 3.4s". */
 function runStatsText(stats: NonNullable<RunSummary["stats"]>): string {
@@ -63,7 +65,13 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(() => {
-    getIntegration(integrationId).then(setDetail, err => setError(err.message))
+    getIntegration(integrationId).then(
+      detail => {
+        setDetail(detail)
+        setError(null)
+      },
+      err => setError(err.message)
+    )
   }, [integrationId])
 
   useEffect(() => {
@@ -147,7 +155,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
     <main className="list-page wide">
       <div className="list-head">
         <div className="list-head-title">
-          <h1>{definition.name}</h1>
+          <h1>{localizeData(definition.name)}</h1>
           <div className="list-head-meta">
             {detail.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
             <span className="chip">{triggerLabel(definition.trigger as { cron?: string })}</span>
@@ -161,7 +169,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
               {running ? T`Running…` : T`Run Now`}
             </button>
           ) : null}
-          <RowMenu label={T`Actions for ${definition.name}`}>
+          <RowMenu label={T`Actions for ${localizeData(definition.name)}`}>
             {canDesign ? (
               <button role="menuitem" onClick={() => void onDesign()}>
                 {T`Design with Agent`}
@@ -589,13 +597,13 @@ interface ColumnSpec {
   /** Column id (SQL name) */
   id: string
   /** Display name */
-  name?: string
+  name?: LocalizedString
   /** Column type */
   type: string
   /** Units of measure */
   units?: string
   /** Values when type is enum */
-  enumValues?: { id: string; name?: string }[]
+  enumValues?: { id: string; name?: LocalizedString }[]
 }
 
 /** Table destination fields the definition tab renders. */
@@ -619,11 +627,11 @@ interface RasterDest {
   /** Layer id */
   layerId: string
   /** Display name */
-  name?: string
+  name?: LocalizedString
   /** time-series or current-only */
   temporality: string
   /** Declared bands */
-  bands: { id: string; name?: string; units?: string }[]
+  bands: { id: string; name?: LocalizedString; units?: string }[]
 }
 
 /** Props for the definition tab. */
@@ -634,20 +642,20 @@ interface DefinitionTabProps {
 
 /** Human-readable definition: description, source, schedule, and per-destination schemas. */
 function DefinitionTab({ definition }: DefinitionTabProps) {
-  const source = definition.source as { name?: string; url?: string; license?: string } | undefined
+  const source = definition.source as { name?: LocalizedString; url?: string; license?: string } | undefined
   const destinations = (definition.destinations ?? []) as (TableDest | RasterDest)[]
   return (
     <div className="definition-tab">
-      {typeof definition.description === "string" && <p>{definition.description}</p>}
+      {definition.description != null && <p>{localizeData(definition.description as LocalizedString | string)}</p>}
       <dl className="facts">
         {source?.name && (
           <>
             <dt>{T`Source`}</dt>
             <dd>
               {source.url ? (
-                <a href={source.url} target="_blank" rel="noreferrer">{source.name}</a>
+                <a href={source.url} target="_blank" rel="noreferrer">{localizeData(source.name)}</a>
               ) : (
-                source.name
+                localizeData(source.name)
               )}
               {source.license ? ` · ${source.license}` : ""}
             </dd>
@@ -675,13 +683,13 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
                 {dest.columns.map(column => (
                   <tr key={column.id}>
                     <td>
-                      <b>{column.name ?? column.id}</b>
-                      {column.name && column.name !== column.id && <div className="dim">{column.id}</div>}
+                      <b>{column.name ? localizeData(column.name) : column.id}</b>
+                      {column.name && localizeData(column.name) !== column.id && <div className="dim">{column.id}</div>}
                     </td>
                     <td>
                       {column.type}
                       {column.type === "enum" && column.enumValues
-                        ? `: ${column.enumValues.map(v => v.name ?? v.id).join(", ")}`
+                        ? `: ${column.enumValues.map(v => (v.name ? localizeData(v.name) : v.id)).join(", ")}`
                         : ""}
                     </td>
                     <td>{column.units ?? ""}</td>
@@ -693,7 +701,8 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
         ) : (
           <div key={dest.layerId} className="dest-def">
             <h3>
-              {dest.name ?? dest.layerId} <span className="dim">{T`raster · ${dest.temporality}`}</span>
+              {dest.name ? localizeData(dest.name) : dest.layerId}{" "}
+              <span className="dim">{T`raster · ${dest.temporality}`}</span>
             </h3>
             <table className="sessions">
               <thead>
@@ -702,7 +711,7 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
               <tbody>
                 {dest.bands.map(band => (
                   <tr key={band.id}>
-                    <td>{band.name ?? band.id}</td>
+                    <td>{band.name ? localizeData(band.name) : band.id}</td>
                     <td>{band.units ?? ""}</td>
                   </tr>
                 ))}
@@ -739,7 +748,7 @@ function DeleteIntegrationDialog({ detail, usage, onCancel, onConfirm }: DeleteI
       <>
         <div className="drawer-backdrop" onClick={onCancel} />
         <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Cannot delete`}>
-          <h2>{T`“${detail.definition.name}” cannot be deleted yet`}</h2>
+          <h2>{T`“${localizeData(detail.definition.name)}” cannot be deleted yet`}</h2>
           <p>{T`Other integrations read its data and would break:`}</p>
           <ul>
             {usage.dependents.map(d => (
@@ -760,7 +769,7 @@ function DeleteIntegrationDialog({ detail, usage, onCancel, onConfirm }: DeleteI
   const rasters = detail.destinations.filter(d => d.kind === "raster")
   return (
     <ConfirmDelete
-      title={T`Delete “${detail.definition.name}”?`}
+      title={T`Delete “${localizeData(detail.definition.name)}”?`}
       confirmToken={detail.id}
       onCancel={onCancel}
       onConfirm={onConfirm}

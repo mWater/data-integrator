@@ -10,6 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "./maplibre.js"
 import { getLayer, LayerBand, LayerDetail, sampleLayer, styleToken } from "./api.js"
 import { useAppTheme } from "./theme.js"
+import { localizeData } from "./localization.js"
 
 /** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
 const tileUrl = (layerId: string, snapshotId: string, band: LayerBand) =>
@@ -28,7 +29,7 @@ interface LayerPageProps {
 
 /** A band's display label. */
 function bandLabel(band: LayerBand): string {
-  return band.name ?? band.id
+  return band.name ? localizeData(band.name) : band.id
 }
 
 /** Human byte size, for the storage line. */
@@ -250,10 +251,10 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     <main className="layer-page">
       <aside className="layer-side">
         <div className="layer-head">
-          <h1>{layer.name}</h1>
+          <h1>{localizeData(layer.name)}</h1>
           <div className="dim">{layer.id}</div>
           <a className="dim-link" href={`#/integration/${layer.integrationId}`}>
-            {T`from ${layer.integrationName}`}
+            {T`from ${localizeData(layer.integrationName)}`}
           </a>
         </div>
 
@@ -261,7 +262,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
           <p className="dim">
             {T`No data yet. Snapshots appear here once ${(
               <a key="integration" href={`#/integration/${layer.integrationId}`}>
-                {layer.integrationName}
+                {localizeData(layer.integrationName)}
               </a>
             )} runs.`}
           </p>
@@ -329,17 +330,17 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
         {(layer.description || layer.source) && (
           <section className="layer-section">
             <h2>{T`Source`}</h2>
-            {layer.description && <p className="layer-description">{layer.description}</p>}
+            {layer.description && <p className="layer-description">{localizeData(layer.description)}</p>}
             {layer.source && (
               <dl className="layer-facts">
                 <dt>{T`Dataset`}</dt>
                 <dd>
                   {layer.source.url ? (
                     <a href={layer.source.url} target="_blank" rel="noreferrer">
-                      {layer.source.name}
+                      {localizeData(layer.source.name)}
                     </a>
                   ) : (
-                    layer.source.name
+                    localizeData(layer.source.name)
                   )}
                 </dd>
                 {layer.source.provider && (
@@ -367,7 +368,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
               </dl>
             )}
             {layer.source?.limitations && (
-              <p className="layer-limitations">{layer.source.limitations}</p>
+              <p className="layer-limitations">{localizeData(layer.source.limitations)}</p>
             )}
           </section>
         )}
@@ -377,7 +378,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
           <dl className="layer-facts">
             <dt>{T`From`}</dt>
             <dd>
-              <a href={`#/integration/${layer.integrationId}`}>{layer.integrationName}</a>
+              <a href={`#/integration/${layer.integrationId}`}>{localizeData(layer.integrationName)}</a>
             </dd>
             <dt>{T`Kind`}</dt>
             <dd>{layer.temporality === "time-series" ? T`Time series` : T`Current only`}</dd>

@@ -5,6 +5,7 @@ import { ensureTable, ident } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
 import { parseAoi } from "./settings.js"
 import { parseCron } from "./cron.js"
+import { validateDefinitionStrings } from "./localizeCatalog.js"
 
 /** Published-identifier rule for all definition-borne ids. */
 export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
@@ -13,27 +14,42 @@ export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
 const COLUMN_TYPES = ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
 
 /**
- * Stable content fingerprint of a definition (keys sorted recursively). Used
- * only by design sessions to gate finish on a cold run of the exact current
- * definition; never stored in the database.
+ * Canonical form for definition identity: keys sorted recursively, and every
+ * LocalizedString reduced to its base language text. Translations are display
+ * metadata - filling or fixing them never changes what a definition IS, so
+ * certification hashes and library update detection ignore them.
+ */
+export function canonicalDefinition(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalDefinition)
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>
+    if (typeof record._base === "string" && typeof record[record._base] === "string") {
+      return { _base: record._base, [record._base]: record[record._base] }
+    }
+    return Object.fromEntries(
+      Object.keys(record).sort().map(k => [k, canonicalDefinition(record[k])])
+    )
+  }
+  return value
+}
+
+/**
+ * Stable content fingerprint of a definition (canonicalDefinition serialized).
+ * Used only by design sessions to gate finish on a cold run of the exact
+ * current definition; never stored in the database.
  */
 export function definitionHash(definition: IntegrationDefinition): string {
-  const canonical = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(canonical)
-    if (value && typeof value === "object") {
-      return Object.fromEntries(
-        Object.keys(value as object).sort().map(k => [k, canonical((value as Record<string, unknown>)[k])])
-      )
-    }
-    return value
-  }
-  return createHash("sha256").update(JSON.stringify(canonical(definition))).digest("hex")
+  return createHash("sha256").update(JSON.stringify(canonicalDefinition(definition))).digest("hex")
 }
 
 /** Structural validation beyond what the types express. Throws on violations. */
 export function validateDefinition(definition: IntegrationDefinition): void {
   const badId = (id: string) => !ID_PATTERN.test(id)
   if (badId(definition.id)) throw new Error(`Invalid integration id: ${definition.id}`)
+  // Human-facing text must be LocalizedString-shaped; plain strings exist
+  // only at the agent boundary and are wrapped before validation
+  const stringProblems = validateDefinitionStrings(definition)
+  if (stringProblems.length > 0) throw new Error(`Localized text problems: ${stringProblems.join("; ")}`)
   // Tri-state AOI: explicit boxes must be well-formed (null and absent are meaningful)
   if (definition.aoi != null) parseAoi(definition.aoi)
   // The scheduler evaluates trigger.cron every minute; reject bad expressions here

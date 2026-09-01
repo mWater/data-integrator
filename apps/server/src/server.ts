@@ -34,7 +34,7 @@ import {
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTableTileQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
-import {
+import { getLocales, LOCALES_KEY, parseLocales,
   DEFAULT_AOI_KEY,
   getDefaultAoi,
   getSiteTitle,
@@ -60,6 +60,9 @@ import {
   verifyPassword
 } from "./auth.js"
 import { AiProvider } from "./config.js"
+import { LanguageModel } from "ai"
+import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
+import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
@@ -151,12 +154,13 @@ export function createApiServer(
   libraryPath: string | null = null,
   assistantAgent: AgentService | null = null,
   aiProvider: AiProvider | null = null,
-  viteDevUrl: string | null = null
+  viteDevUrl: string | null = null,
+  model: LanguageModel | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   return createServer(async (req, res) => {
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, model, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -211,6 +215,7 @@ async function route(
   assistantAgent: AgentService | null,
   aiProvider: AiProvider | null,
   viteDevUrl: string | null,
+  model: LanguageModel | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -431,7 +436,8 @@ async function route(
   // Deployment settings: readable by any signed-in user, writable by admins
   if (pathname === "/api/settings" && req.method === "GET") {
     json(res, 200, {
-      settings: { default_aoi: await getDefaultAoi(pool), site_title: await getSiteTitle(pool) }
+      settings: { default_aoi: await getDefaultAoi(pool), site_title: await getSiteTitle(pool), locales: await getLocales(pool) },
+      supportedLocales: SUPPORTED_LOCALES
     })
     return
   }
@@ -470,6 +476,62 @@ async function route(
     }
     await setSetting(pool, DEFAULT_AOI_KEY, aoi)
     json(res, 200, { default_aoi: aoi })
+    return
+  }
+
+  if (pathname === `/api/settings/${LOCALES_KEY}` && req.method === "PUT") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change settings" })
+      return
+    }
+    let locales
+    try {
+      locales = parseLocales(await readJsonBody(req))
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    await setSetting(pool, LOCALES_KEY, locales)
+    json(res, 200, { locales })
+    return
+  }
+
+  // Fills missing catalog translations across installed definitions: after
+  // adding a locale, after a session that finished without a model reachable,
+  // or to pick up strings a translation pass missed. Translation-only changes
+  // update the stored definition in place (no version bump - canonical
+  // identity ignores translations).
+  if (pathname === "/api/settings/translate-catalog" && req.method === "POST") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can translate the catalog" })
+      return
+    }
+    if (!model) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      return
+    }
+    const locales = await getLocales(pool)
+    const installed = await pool.query("SELECT id, definition FROM app.integrations ORDER BY id")
+    let integrations = 0
+    let translations = 0
+    const failures: string[] = []
+    for (const row of installed.rows) {
+      try {
+        const definition = row.definition
+        const written = await translateDefinition(model, definition, locales)
+        if (written > 0) {
+          await pool.query("UPDATE app.integrations SET definition = $2 WHERE id = $1", [
+            row.id,
+            JSON.stringify(definition)
+          ])
+          integrations++
+          translations += written
+        }
+      } catch (err) {
+        failures.push(`${row.id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+    json(res, 200, { integrations, translations, failures })
     return
   }
 
@@ -702,8 +764,8 @@ async function route(
     const session = searchParams.get("session")
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
-              l.integration_id, i.definition->>'name' AS integration_name,
-              i.definition->>'description' AS integration_description,
+              l.integration_id, i.definition->'name' AS integration_name,
+              i.definition->'description' AS integration_description,
               i.definition->'source' AS source,
               s.observed_at, s.observed_end, s.crs,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
@@ -900,7 +962,8 @@ async function route(
     }
     let version: number
     try {
-      version = (await installIntegration(pool, body as unknown as IntegrationDefinition, "ready", user.id)).version
+      const definition = wrapDefinitionStrings(body as unknown as IntegrationDefinition, "en")
+      version = (await installIntegration(pool, definition, "ready", user.id)).version
     } catch (err) {
       // Validation failures and destination-ownership conflicts alike
       json(res, 400, { error: err instanceof Error ? err.message : String(err) })
@@ -1417,7 +1480,8 @@ async function routeSessions(
     }
     if (await ackMissing()) return
     const bindId = kind === "dashboard" ? body.dashboardId : kind === "designer" ? body.integrationId : undefined
-    const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId), user.id)
+    const locale = typeof body.locale === "string" && SUPPORTED_LOCALES.some(l => l.code === body.locale) ? body.locale : undefined
+    const sessionId = await service.createSession(bindId == null || bindId === "" ? undefined : String(bindId), user.id, locale)
     json(res, 201, { sessionId })
     return
   }

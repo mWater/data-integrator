@@ -13,6 +13,7 @@ import {
 } from "./api.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { Markdown } from "./Markdown.js"
+import { localizeData } from "./localization.js"
 
 /**
  * The library's skills: source and technique know-how the design agent loads on
@@ -167,11 +168,11 @@ export function Library({ user }: { user: User }) {
               <>
                 <tr key={entry.id}>
                   <td>
-                    <b>{entry.name}</b>
-                    {entry.description && <div className="dim">{entry.description}</div>}
+                    <b>{localizeData(entry.name)}</b>
+                    {entry.description && <div className="dim">{localizeData(entry.description)}</div>}
                     {entry.source && (
                       <div className="dim">
-                        {[entry.source.provider ?? entry.source.name, entry.source.license]
+                        {[entry.source.provider ?? localizeData(entry.source.name), entry.source.license]
                           .filter(Boolean)
                           .join(" · ")}
                       </div>

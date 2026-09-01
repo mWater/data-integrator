@@ -1,7 +1,15 @@
 {
   "id": "worldpop_population",
   "code": "",
-  "name": "WorldPop Population",
+  "name": {
+    "_base": "en",
+    "en": "WorldPop Population",
+    "fr": "Population WorldPop",
+    "pt": "População WorldPop",
+    "es": "Población WorldPop",
+    "mg": "Mponina WorldPop",
+    "sw": "Idadi ya watu ya WorldPop"
+  },
   "limits": {
     "cpus": 2,
     "memoryMb": 4096,
@@ -9,10 +17,26 @@
   },
   "source": {
     "url": "https://hub.worldpop.org/",
-    "name": "WorldPop Global 2 constrained population counts",
+    "name": {
+      "_base": "en",
+      "en": "WorldPop Global 2 constrained population counts",
+      "fr": "Comptages contraints de population WorldPop Global 2",
+      "pt": "Contagens restritas de população do WorldPop Global 2",
+      "es": "Recuentos de población restringidos de WorldPop Global 2",
+      "mg": "Isan’ny mponina voafetra an’ny WorldPop Global 2",
+      "sw": "Hesabu za idadi ya watu zilizowekewa vikwazo za WorldPop Global 2"
+    },
     "license": "CC BY 4.0",
     "provider": "WorldPop, University of Southampton",
-    "limitations": "The source grid is 3 arc-seconds (approximately 100 m at the equator), and the current R2025A product is an alpha release that WorldPop says may be revised as methods improve. Years after the current calendar year are modeled projections, not observations; zero or nodata means no population was allocated to that grid cell, not that the location is confirmed uninhabited.",
+    "limitations": {
+      "_base": "en",
+      "en": "The source grid is 3 arc-seconds (approximately 100 m at the equator), and the current R2025A product is an alpha release that WorldPop says may be revised as methods improve. Years after the current calendar year are modeled projections, not observations; zero or nodata means no population was allocated to that grid cell, not that the location is confirmed uninhabited.",
+      "fr": "La grille source a une résolution de 3 secondes d’arc (environ 100 m à l’équateur), et le produit R2025A actuel est une version alpha qui, selon WorldPop, pourra être révisée à mesure que les méthodes s’améliorent. Les années postérieures à l’année civile en cours sont des projections modélisées, et non des observations ; une valeur de zéro ou nodata signifie qu’aucune population n’a été affectée à cette cellule de grille, et non que le lieu est confirmé comme inhabité.",
+      "pt": "A grade de origem tem resolução de 3 segundos de arco (aproximadamente 100 m no equador), e o produto R2025A atual é uma versão alfa que, segundo o WorldPop, poderá ser revisada à medida que os métodos forem aprimorados. Os anos posteriores ao ano civil atual são projeções modeladas, não observações; zero ou nodata significa que nenhuma população foi alocada à célula da grade, e não que o local esteja comprovadamente desabitado.",
+      "es": "La cuadrícula de origen tiene una resolución de 3 segundos de arco (aproximadamente 100 m en el ecuador), y el producto R2025A actual es una versión alfa que, según WorldPop, podrá revisarse a medida que mejoren los métodos. Los años posteriores al año natural actual son proyecciones modelizadas, no observaciones; cero o nodata significa que no se asignó población a esa celda de la cuadrícula, no que se haya confirmado que el lugar está deshabitado.",
+      "mg": "Manana famaha 3 segondra zoro ny harato loharano (manodidina ny 100 m eo amin’ny ekoatera), ary famoahana alpha ny vokatra R2025A ankehitriny, izay lazain’ny WorldPop fa mety mbola hahitsy rehefa mihatsara ny fomba fiasa. Vinavina novolavolaina tamin’ny maodely fa tsy fandinihana ny taona aorian’ny taona kalandrie ankehitriny; ny sanda aotra na nodata dia midika fa tsy nisy isan’ny mponina nozaraina tamin’io sela harato io, fa tsy hoe voamarina ho tsy misy mponina ilay toerana.",
+      "sw": "Gridi chanzo ina mwonekano wa sekunde 3 za tao (takriban m 100 kwenye ikweta), na bidhaa ya sasa ya R2025A ni toleo la alpha ambalo WorldPop inasema linaweza kurekebishwa kadiri mbinu zinavyoboreshwa. Miaka inayofuata mwaka huu wa kalenda ni makadirio yaliyoundwa kwa modeli, si uchunguzi; sifuri au nodata inamaanisha kuwa hakuna idadi ya watu iliyogawiwa kwenye seli hiyo ya gridi, si kwamba eneo limethibitishwa kuwa halina wakazi."
+    },
     "documentation": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf"
   },
   "runtime": "python3.12",
@@ -20,15 +44,39 @@
     "cron": "0 6 1 * *"
   },
   "contract": 2,
-  "description": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m for the deployment area of interest, including all years published in the newest release.",
+  "description": {
+    "_base": "en",
+    "en": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m for the deployment area of interest, including all years published in the newest release.",
+    "fr": "Comptages annuels contraints de la population WorldPop, ajustés aux estimations de l’ONU, à une résolution d’environ 100 m pour la zone de déploiement ciblée, couvrant toutes les années publiées dans la version la plus récente.",
+    "pt": "Contagens anuais restritas da população WorldPop, ajustadas às estimativas da ONU, com resolução de aproximadamente 100 m para a área de interesse da implantação, incluindo todos os anos publicados na versão mais recente.",
+    "es": "Recuentos anuales restringidos de población WorldPop, ajustados a las estimaciones de la ONU, con una resolución aproximada de 100 m para el área de interés del despliegue, incluidos todos los años publicados en la versión más reciente.",
+    "mg": "Isan’ny mponina WorldPop isan-taona, voafetra sy nahitsy hifanaraka amin’ny ONU, amin’ny famaha manodidina ny 100 m ho an’ny faritra kendrena amin’ny fametrahana, ahitana ny taona rehetra navoaka tamin’ny kinova vaovao indrindra.",
+    "sw": "Hesabu za kila mwaka za idadi ya watu za WorldPop zilizowekewa vikwazo na kurekebishwa kulingana na UN, kwa mwonekano wa takriban m 100 katika eneo lengwa la utekelezaji, zikijumuisha miaka yote iliyochapishwa katika toleo jipya zaidi."
+  },
   "destinations": [
     {
       "kind": "raster",
-      "name": "Population",
+      "name": {
+        "_base": "en",
+        "en": "Population",
+        "fr": "Population",
+        "pt": "População",
+        "es": "Población",
+        "mg": "Mponina",
+        "sw": "Idadi ya watu"
+      },
       "bands": [
         {
           "id": "population",
-          "name": "Population count",
+          "name": {
+            "_base": "en",
+            "en": "Population count",
+            "fr": "Nombre d’habitants",
+            "pt": "Contagem da população",
+            "es": "Recuento de población",
+            "mg": "Isan’ny mponina",
+            "sw": "Hesabu ya idadi ya watu"
+          },
           "units": "people per grid cell",
           "nodata": -99999,
           "rendering": {
@@ -75,7 +123,15 @@
         }
       ],
       "layerId": "population",
-      "description": "Annual WorldPop constrained estimates of people per approximately 100 m grid cell for the deployment area of interest.",
+      "description": {
+        "_base": "en",
+        "en": "Annual WorldPop constrained estimates of people per approximately 100 m grid cell for the deployment area of interest.",
+        "fr": "Estimations annuelles contraintes de WorldPop du nombre de personnes par cellule de grille d’environ 100 m pour la zone de déploiement ciblée.",
+        "pt": "Estimativas anuais restritas do WorldPop do número de pessoas por célula de grade de aproximadamente 100 m para a área de interesse da implantação.",
+        "es": "Estimaciones anuales restringidas de WorldPop del número de personas por celda de cuadrícula de aproximadamente 100 m para el área de interés del despliegue.",
+        "mg": "Tombana voafetra isan-taona avy amin’ny WorldPop momba ny isan’ny olona isaky ny sela harato manodidina ny 100 m ho an’ny faritra kendrena amin’ny fametrahana.",
+        "sw": "Makadirio ya kila mwaka ya WorldPop yaliyowekewa vikwazo ya watu kwa kila seli ya gridi ya takriban m 100 katika eneo lengwa la utekelezaji."
+      },
       "temporality": "time-series"
     }
   ]

@@ -12,6 +12,7 @@ import { listIntegrations } from "./integrations.js"
 import { listLibrary } from "./library.js"
 import { DEFAULT_SITE_TITLE, getSiteTitle } from "./settings.js"
 import { listSources } from "./sources.js"
+import { LocalizedString } from "@data-integrator/definitions"
 
 /** Rows each home panel shows before deferring to its section page. */
 const PANEL_LIMIT = 4
@@ -23,7 +24,7 @@ export interface HomeSource {
   /** tableId or layerId */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Row count (tables); null for rasters and before the first run */
   rows: number | null
   /** Declared column count (tables); null for rasters */
@@ -39,7 +40,7 @@ export interface HomeIntegration {
   /** Integration id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Whether the scheduler considers it */
   enabled: boolean
   /** Lifecycle: draft until a design session's cold run certifies it */
@@ -55,7 +56,7 @@ export interface HomeProblem {
   /** Integration id */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** Terminal status of the failing run */
   status: string
   /** Error recorded on the run, when there is one */
@@ -109,7 +110,7 @@ export interface HomeSummary {
 /** Enabled integrations whose most recent run ended badly, newest first. */
 async function listProblems(pool: pg.Pool): Promise<HomeProblem[]> {
   const result = await pool.query(
-    `SELECT i.id, i.definition->>'name' AS name, r.status, r.error,
+    `SELECT i.id, i.definition->'name' AS name, r.status, r.error,
             COALESCE(r.finished_at, r.started_at) AS failed_at
      FROM app.integrations i
      JOIN LATERAL (
@@ -121,7 +122,7 @@ async function listProblems(pool: pg.Pool): Promise<HomeProblem[]> {
   )
   return result.rows.map(row => ({
     id: row.id,
-    name: row.name ?? row.id,
+    name: row.name ?? { _base: "en", en: row.id },
     status: row.status,
     error: row.error,
     failedAt: row.failed_at ? row.failed_at.toISOString() : null

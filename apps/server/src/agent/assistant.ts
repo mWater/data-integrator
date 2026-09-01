@@ -276,7 +276,13 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
   }
 
   /** Executes one tool call. */
-  async execute(name: string, input: unknown, state: AssistantState): Promise<ToolOutcome<AssistantState>> {
+  async execute(
+    name: string,
+    input: unknown,
+    state: AssistantState,
+    events?: unknown,
+    sessionId?: string
+  ): Promise<ToolOutcome<AssistantState>> {
     const args = (input ?? {}) as Record<string, unknown>
     switch (name) {
       case "list_schema": {
@@ -284,7 +290,13 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
         const coverage = aoi
           ? `Deployment area of interest: ${aoi.name ?? "unnamed"} (bbox ${JSON.stringify(aoi.bbox)}). All tables and layers are clipped to this area; no data exists outside it.\n\n`
           : ""
-        return { result: coverage + (await describeSchema(this.deps.pool)) }
+        // Display names resolve to the locale the chat was opened in, so the
+        // assistant titles tables the way the user's catalog does
+        const locale = sessionId
+          ? ((await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+              ?.locale ?? "en")
+          : "en"
+        return { result: coverage + (await describeSchema(this.deps.pool, locale)) }
       }
       case "query":
         return await this.query(state, String(args.sql ?? ""))

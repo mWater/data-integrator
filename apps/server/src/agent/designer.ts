@@ -12,6 +12,8 @@ import { materializeInputs } from "../materialize.js"
 import { startProductionRun } from "../runService.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets } from "../secrets.js"
+import { getLocales } from "../settings.js"
+import { detectBaseLocale, refreshChangedStrings, translateDefinition, wrapDefinitionStrings } from "../localizeCatalog.js"
 import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
 
 /** Client state of a designer session: the draft and its certification. */
@@ -26,6 +28,8 @@ export interface DesignerState {
   failStreak?: { signature: string; count: number } | null
   /** True when finish started the fresh install's first production load; absent before finish */
   firstLoadStarted?: boolean
+  /** Detected language of the draft's authored text, with the sample it was detected on */
+  baseLocale?: { code: string; sample: string } | null
 }
 
 /** Everything the designer needs: executor deps plus the model. */
@@ -34,6 +38,16 @@ export interface DesignerDeps extends ExecutorDeps {
   model: LanguageModel
   /** library/skills directory; absent or missing on disk means no skills */
   skillsDir?: string | null
+}
+
+/** Plain text of a draft field that may be a plain string or a LocalizedString. */
+function textOf(value: unknown): string {
+  if (typeof value === "string") return value
+  if (value && typeof value === "object") {
+    const ls = value as { _base?: string; [k: string]: unknown }
+    if (typeof ls._base === "string" && typeof ls[ls._base] === "string") return ls[ls._base] as string
+  }
+  return ""
 }
 
 /** Snippet resource limits: exploration jobs stay small and short. */
@@ -48,7 +62,8 @@ export function initialDesignerState(integrationId = ""): DesignerState {
   return {
     definition: {
       id: integrationId,
-      name: integrationId,
+      // Draft boundary is plain-string; wrapDefinitionStrings localizes at save
+      name: integrationId as unknown as IntegrationDefinition["name"],
       trigger: {},
       runtime: "python3.12",
       destinations: [],
@@ -78,6 +93,12 @@ repair one integration per session: a JSON definition plus one self-contained co
 that ingests external data into Postgres tables and/or the raster catalog.
 
 # Definition format (contract 2)
+Write every human-facing text field (name, description, source.name, limitations, destination
+and column names, enum value names, band names) as a plain string in the language of this
+conversation - the platform detects the language, stores the text as a localized string, and
+translates it into the deployment's other languages after you finish. Never attempt
+multilingual output yourself. When you read the definition back these fields appear as
+{_base, <locale>: text} objects; echo them through unchanged unless editing the text.
 Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
 license?, documentation?, limitations?}, trigger ({cron: "..."} and/or {webhook: true, webhookDelaySeconds?}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
@@ -388,7 +409,19 @@ ${index}`
       }
       events({ type: "integration_bound", integrationId: id })
     }
-    const definition = { ...incoming, id, code: state.definition.code }
+    // Wrap plain-string names/descriptions as LocalizedStrings based in the
+    // authored language: detected from the headline text once, re-detected
+    // only when that text changes. The session's UI locale is the fallback.
+    const draft = { ...incoming, id, code: state.definition.code }
+    const sample = [textOf(draft.name), textOf(draft.description)].filter(Boolean).join("\n")
+    let baseLocale = state.baseLocale ?? null
+    if (sample && baseLocale?.sample !== sample) {
+      const sessionLocale = (await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId]))
+        .rows[0]?.locale
+      const code = await detectBaseLocale(this.model, sample, sessionLocale ?? "en")
+      baseLocale = { code, sample }
+    }
+    const definition = wrapDefinitionStrings(draft, baseLocale?.code ?? "en")
     let validation = "valid"
     try {
       validateDefinition(definition)
@@ -411,7 +444,7 @@ ${index}`
         ])
       }
     }
-    return { result: `Draft saved. Validation: ${validation}`, state: { ...state, definition } }
+    return { result: `Draft saved. Validation: ${validation}`, state: { ...state, definition, baseLocale } }
   }
 
   /** Exact-string code edit; the empty oldString only initializes empty code. */
@@ -631,6 +664,19 @@ ${index}`
     const prior = await this.deps.pool.query("SELECT 1 FROM app.runs WHERE integration_id = $1 LIMIT 1", [
       state.definition.id
     ])
+    // Localize the catalog text: keep translations whose base text is
+    // unchanged since the installed version, then fill the deployment's
+    // locales in one batched call. Non-fatal - a failure installs base-only
+    // text and the Settings translate action fills it later.
+    try {
+      const installed = await this.deps.pool.query("SELECT definition FROM app.integrations WHERE id = $1", [
+        state.definition.id
+      ])
+      refreshChangedStrings(state.definition, installed.rows[0]?.definition ?? null)
+      await translateDefinition(this.model, state.definition, await getLocales(this.deps.pool))
+    } catch {
+      // Base-language text still installs and renders via fallback
+    }
     await installIntegration(this.deps.pool, state.definition, "ready", session.rows[0]?.user_id ?? null)
     await cleanupScratch(this.deps.pool, this.deps.store, this.deps.workRoot, sessionId)
     let firstLoadStarted = false

@@ -17,6 +17,7 @@ import {
 } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
 import { FlowDiagram } from "./FlowDiagram.js"
+import { localizeData } from "./localization.js"
 
 /** Problems listed before the rest collapse into a count. */
 const PROBLEM_LIMIT = 2
@@ -212,7 +213,7 @@ function SourceRow({ source }: { source: HomeSource }) {
   return (
     <a className="panel-row" href={href}>
       <span className={`chip chip-${source.kind}`}>{source.kind}</span>
-      <span className="grow">{source.name}</span>
+      <span className="grow">{localizeData(source.name)}</span>
       <span className="panel-fact">{contents(source)}</span>
       <span className="panel-when">{since(source.updatedAt) ?? T`never`}</span>
     </a>
@@ -227,7 +228,7 @@ function IntegrationRow({ integration }: { integration: HomeIntegration }) {
   return (
     <a className="panel-row" href={`#/integration/${integration.id}`}>
       <span className={runTone(integration.lastRunStatus)} />
-      <span className="grow">{integration.name}</span>
+      <span className="grow">{localizeData(integration.name)}</span>
       {integration.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
       {!integration.enabled && <span className="chip chip-paused">{T`paused`}</span>}
       <span className="panel-when">{when}</span>
@@ -245,7 +246,7 @@ function Problems({ problems }: { problems: HomeProblem[] }) {
         <a className="home-alert" key={problem.id} href={`#/integration/${problem.id}`}>
           <span className="chip chip-failed">{problem.status}</span>
           <span className="grow">
-            <b>{problem.name}</b> {ended(problem.status)} {since(problem.failedAt) ?? T`recently`}
+            <b>{localizeData(problem.name)}</b> {ended(problem.status)} {since(problem.failedAt) ?? T`recently`}
             {problem.error ? `. ${problem.error}` : ""}
           </span>
           <span className="home-alert-action">{T`Look at the run`}</span>

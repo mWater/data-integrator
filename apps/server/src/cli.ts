@@ -8,6 +8,8 @@
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
  *   register-rasters        Backfill the out-db SQL mirror of promoted snapshots.
+ *   localize-library        Wrap and translate library entry text into every
+ *                           supported locale (library authoring; needs a model).
  *   serve                   HTTP API and map page.
  */
 import { readFile, stat } from "node:fs/promises"
@@ -40,6 +42,9 @@ import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
 import { RunService } from "./runService.js"
 import { skillsDir } from "./skills.js"
+import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
+import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
+import { readdir, writeFile } from "node:fs/promises"
 
 /** Directory holding the numbered .sql migration files. */
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -392,6 +397,27 @@ async function main(): Promise<number> {
         for (const failure of result.failures) console.error(`  failed: ${failure}`)
         return result.failures.length > 0 ? 1 : 0
       }
+      case "localize-library": {
+        // Library authoring: entries ship fully localized at the release
+        // ceiling, so subset deployments find their languages present and
+        // update detection stays quiet (canonical identity ignores
+        // translations anyway). Rewrites each definition.json in place.
+        const model = buildModel(config)
+        if (!model) {
+          console.error("Set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL")
+          return 1
+        }
+        const root = path.join(process.argv[3] ?? config.libraryPath, process.argv[3] ? "" : "integrations")
+        const targets = SUPPORTED_LOCALES.map(l => l.code)
+        for (const id of (await readdir(root, { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)) {
+          const file = path.join(root, id, "definition.json")
+          const definition = wrapDefinitionStrings(JSON.parse(await readFile(file, "utf8")), "en")
+          const written = await translateDefinition(model, definition, targets)
+          await writeFile(file, JSON.stringify(definition, null, 2) + "\n")
+          console.log(`${id}: ${written} translations written`)
+        }
+        return 0
+      }
       case "serve": {
         const deps = buildDeps(pool, new Runner(), config)
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
@@ -424,7 +450,8 @@ async function main(): Promise<number> {
           config.libraryPath,
           assistantAgent,
           aiProvider(config),
-          config.viteDevUrl
+          config.viteDevUrl,
+          model
         ).listen(
           config.port,
           () => {

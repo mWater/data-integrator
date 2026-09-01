@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { AssistantState, DashboardAgentState, DashboardQuery, DesignerState, SessionDetail } from "./api.js"
+import { localizeData } from "./localization.js"
 
 /** Panel tabs. */
 type Tab = "definition" | "code" | "status"
@@ -61,7 +62,7 @@ export function StatePanel({ detail }: StatePanelProps) {
                 <dd>
                   {detail.scratchLayers.map(layer => (
                     <div key={layer.id}>
-                      <a href={`#/layer/${layer.id}?session=${detail.id}`}>{layer.name}</a>
+                      <a href={`#/layer/${layer.id}?session=${detail.id}`}>{localizeData(layer.name)}</a>
                     </div>
                   ))}
                 </dd>

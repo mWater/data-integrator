@@ -1,5 +1,5 @@
 import pg from "pg"
-import { ColumnSpec, FilterSpec } from "@data-integrator/definitions"
+import { LocalizedString, ColumnSpec, FilterSpec } from "@data-integrator/definitions"
 import { buildWhere, tableColumns } from "./materialize.js"
 
 /** Hard cap on rows per request; page with limit/offset beyond it. */
@@ -14,6 +14,10 @@ export interface TableInfo {
   tableId: string
   /** Integration that writes it */
   integrationId: string
+  /** Display name from the destination spec */
+  name?: LocalizedString
+  /** Catalog description from the destination spec */
+  description?: LocalizedString
   /** Declared column specs (names, types, units, enums) */
   columns: ColumnSpec[]
 }
@@ -48,6 +52,8 @@ export async function listTables(pool: pg.Pool): Promise<TableInfo[]> {
   return result.rows.map(row => ({
     tableId: row.id,
     integrationId: row.integration_id,
+    name: row.spec?.name,
+    description: row.spec?.description,
     columns: (row.spec?.columns as ColumnSpec[]) ?? []
   }))
 }

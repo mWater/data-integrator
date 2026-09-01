@@ -1,6 +1,7 @@
 /** Prompt/schema building blocks shared by the SQL-facing agents. */
 
 import pg from "pg"
+import { localizeString } from "@data-integrator/definitions"
 import { listTables } from "../queryApi.js"
 
 /**
@@ -39,24 +40,28 @@ modeling - is integration work in Python, not something to approximate in a
 query.`
 
 /**
- * Describes the queryable surface for an agent: data tables with columns,
- * types, and units, plus installed raster layers with band indexes and tile
- * colorMaps.
+ * Describes the queryable surface for an agent: data tables with display
+ * names, columns, types, and units, plus installed raster layers with band
+ * indexes and tile colorMaps. Display names resolve to the given locale so
+ * the agent titles things the way the user's catalog does.
  */
-export async function describeSchema(pool: pg.Pool): Promise<string> {
+export async function describeSchema(pool: pg.Pool, locale = "en"): Promise<string> {
   const tables = await listTables(pool)
   const tableBlock =
     tables.length === 0
       ? "(no data tables exist yet)"
       : tables
-          .map(
-            (t) =>
-              `${t.tableId}: ${t.columns.map((c) => `${c.id} ${c.type}${c.units ? ` (${c.units})` : ""}`).join(", ")}`
-          )
+          .map((t) => {
+            const display = t.name ? ` "${localizeString(t.name, locale)}"` : ""
+            const about = t.description ? ` - ${localizeString(t.description, locale)}` : ""
+            return `${t.tableId}${display}${about}: ${t.columns
+              .map((c) => `${c.id} ${c.type}${c.units ? ` (${c.units})` : ""}`)
+              .join(", ")}`
+          })
           .join("\n")
   // Raster layers queryable through the rasters table (band index = position)
   const layers = await pool.query(
-    "SELECT id, temporality, bands FROM app.raster_layers WHERE integration_id IS NOT NULL ORDER BY id"
+    "SELECT id, name, temporality, bands FROM app.raster_layers WHERE integration_id IS NOT NULL ORDER BY id"
   )
   const layerBlock =
     layers.rows.length === 0
@@ -66,10 +71,11 @@ export async function describeSchema(pool: pg.Pool): Promise<string> {
           .map(
             (l: {
               id: string
+              name: { _base: string; [locale: string]: string }
               temporality: string
               bands: { id: string; units?: string; rendering?: { colorMap?: { value: number; color: string }[] } }[]
             }) =>
-              `${l.id} (${l.temporality}): ${l.bands
+              `${l.id} "${localizeString(l.name, locale)}" (${l.temporality}): ${l.bands
                 .map((b, i) => {
                   const ramp = b.rendering?.colorMap ? `, tile colorMap ${JSON.stringify(b.rendering.colorMap)}` : ""
                   return `band ${i + 1}=${b.id}${b.units ? ` (${b.units})` : ""}${ramp}`

@@ -11,8 +11,8 @@
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
-import { IntegrationDefinition } from "@data-integrator/definitions"
-import { installIntegration, ID_PATTERN } from "./install.js"
+import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
+import { canonicalDefinition, installIntegration, ID_PATTERN } from "./install.js"
 
 /** Fields the deployment owns once installed: carried over on update, ignored in update detection. */
 const DEPLOYMENT_FIELDS = ["aoi", "trigger", "limits"] as const
@@ -22,9 +22,9 @@ export interface LibraryEntry {
   /** Entry id (= integration id when installed) */
   id: string
   /** Display name */
-  name: string
+  name: LocalizedString
   /** What the integration does */
-  description: string | null
+  description: LocalizedString | null
   /** Source provenance (name, provider, license, url) */
   source: unknown
   /** Suggested cadence */
@@ -39,20 +39,15 @@ export interface LibraryEntry {
   installedVersion: number | null
 }
 
-/** Canonical JSON with the deployment-owned fields stripped, for update detection. */
+/**
+ * Canonical JSON with the deployment-owned fields stripped, for update
+ * detection. Uses canonicalDefinition, so translation-only differences never
+ * read as an update.
+ */
 function comparableJson(definition: IntegrationDefinition): string {
   const stripped: Record<string, unknown> = { ...definition }
   for (const field of DEPLOYMENT_FIELDS) delete stripped[field]
-  const canonical = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(canonical)
-    if (value && typeof value === "object") {
-      return Object.fromEntries(
-        Object.keys(value as object).sort().map(k => [k, canonical((value as Record<string, unknown>)[k])])
-      )
-    }
-    return value
-  }
-  return JSON.stringify(canonical(stripped))
+  return JSON.stringify(canonicalDefinition(stripped))
 }
 
 /** Loads one entry's full definition (code file inlined), or null. */
@@ -95,7 +90,7 @@ export async function listLibrary(pool: pg.Pool, libraryPath: string): Promise<L
     const current = byId.get(id)
     entries.push({
       id,
-      name: definition.name ?? id,
+      name: definition.name ?? { _base: "en", en: id },
       description: definition.description ?? null,
       source: definition.source ?? null,
       trigger: definition.trigger ?? {},

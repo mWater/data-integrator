@@ -4385,11 +4385,110 @@
     {
       "_base": "en",
       "en": "Actions for {0}",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Actions pour {0}",
+      "pt": "Ações para {0}",
+      "es": "Acciones para {0}",
+      "mg": "Hetsika ho an’i {0}",
+      "sw": "Vitendo vya {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Search sources",
+      "fr": "Rechercher des sources",
+      "pt": "Pesquisar fontes",
+      "es": "Buscar fuentes",
+      "mg": "Hikaroka loharano",
+      "sw": "Tafuta vyanzo"
+    },
+    {
+      "_base": "en",
+      "en": "No sources match.",
+      "fr": "Aucune source correspondante.",
+      "pt": "Nenhuma fonte corresponde.",
+      "es": "Ninguna fuente coincide.",
+      "mg": "Tsy misy loharano mifanaraka.",
+      "sw": "Hakuna vyanzo vinavyolingana."
+    },
+    {
+      "_base": "en",
+      "en": "Legend",
+      "fr": "Légende",
+      "pt": "Legenda",
+      "es": "Leyenda",
+      "mg": "Fanazavana",
+      "sw": "Ufafanuzi wa alama"
+    },
+    {
+      "_base": "en",
+      "en": "Saved. The language picker offers these; new catalog text is translated into them.",
+      "fr": "Enregistré. Le sélecteur de langue propose celles-ci ; les nouveaux textes du catalogue y sont traduits.",
+      "pt": "Salvo. O seletor de idioma oferece estes idiomas; novos textos do catálogo são traduzidos para eles.",
+      "es": "Guardado. El selector de idioma ofrece estos idiomas; el nuevo texto del catálogo se traduce a ellos.",
+      "mg": "Voatahiry. Ireo no asehon’ny mpifantina fiteny ho safidy; adika amin’ireo fiteny ireo ny lahatsoratra vaovao ao amin’ny katalaogy.",
+      "sw": "Imehifadhiwa. Kiteua lugha kinaonyesha lugha hizi; maandishi mapya ya katalogi hutafsiriwa katika lugha hizo."
+    },
+    {
+      "_base": "en",
+      "en": "Translated {0} strings in {1} integrations; failed: {2}",
+      "fr": "{0} chaînes traduites dans {1} intégrations ; échecs : {2}",
+      "pt": "Traduzidos {0} textos em {1} integrações; falhas: {2}",
+      "es": "Se tradujeron {0} cadenas en {1} integraciones; errores: {2}",
+      "mg": "Nadika ny lahatsoratra {0} tao amin’ny fampidirana {1}; tsy nahomby: {2}",
+      "sw": "Imetafsiri mifuatano {0} katika miunganisho {1}; iliyoshindikana: {2}"
+    },
+    {
+      "_base": "en",
+      "en": "Nothing to translate — the catalog already covers every offered language.",
+      "fr": "Rien à traduire — le catalogue couvre déjà toutes les langues proposées.",
+      "pt": "Nada para traduzir — o catálogo já abrange todos os idiomas oferecidos.",
+      "es": "Nada que traducir: el catálogo ya está disponible en todos los idiomas ofrecidos.",
+      "mg": "Tsy misy hadika — efa mahafaoka ny fiteny atolotra rehetra ny katalaogy.",
+      "sw": "Hakuna cha kutafsiri — katalogi tayari inajumuisha kila lugha inayotolewa."
+    },
+    {
+      "_base": "en",
+      "en": "Translated {0} strings across {1} integrations.",
+      "fr": "{0} chaînes traduites dans {1} intégrations.",
+      "pt": "Traduzidos {0} textos em {1} integrações.",
+      "es": "Se tradujeron {0} cadenas en {1} integraciones.",
+      "mg": "Nadika ny lahatsoratra {0} tao amin’ny fampidirana {1}.",
+      "sw": "Imetafsiri mifuatano {0} katika miunganisho {1}."
+    },
+    {
+      "_base": "en",
+      "en": "Languages",
+      "fr": "Langues",
+      "pt": "Idiomas",
+      "es": "Idiomas",
+      "mg": "Fiteny",
+      "sw": "Lugha"
+    },
+    {
+      "_base": "en",
+      "en": "Languages this deployment offers: the picker shows them, and data catalog text (names, descriptions, caveats) is translated into them. Interface languages are fixed per release; this narrows the offer.",
+      "fr": "Langues proposées par ce déploiement : le sélecteur les affiche et les textes du catalogue de données (noms, descriptions, mises en garde) y sont traduits. Les langues de l’interface sont définies pour chaque version ; ce réglage restreint l’offre.",
+      "pt": "Idiomas oferecidos por esta implantação: o seletor os exibe, e os textos do catálogo de dados (nomes, descrições, ressalvas) são traduzidos para eles. Os idiomas da interface são definidos em cada versão; isso limita a oferta.",
+      "es": "Idiomas que ofrece este despliegue: el selector los muestra y el texto del catálogo de datos (nombres, descripciones y salvedades) se traduce a ellos. Los idiomas de la interfaz son fijos para cada versión; esto limita la oferta.",
+      "mg": "Fiteny atolotr’ity fametrahana ity: asehon’ny mpifantina izy ireo, ary adika amin’ireo fiteny ireo ny lahatsoratry ny katalaogin’ny angona (anarana, famaritana, fanamarihana). Raikitra isaky ny kinova navoaka ny fitenin’ny sehatr’asa; mampihena ny safidy izany.",
+      "sw": "Lugha zinazotolewa na usakinishaji huu: kiteua kinaonyesha lugha hizo, na maandishi ya katalogi ya data (majina, maelezo, tahadhari) hutafsiriwa katika lugha hizo. Lugha za kiolesura huwekwa kwa kila toleo; hii inapunguza lugha zinazotolewa."
+    },
+    {
+      "_base": "en",
+      "en": "Fills missing catalog translations for the offered languages using the configured model",
+      "fr": "Complète les traductions manquantes du catalogue dans les langues proposées à l’aide du modèle configuré",
+      "pt": "Preenche traduções ausentes do catálogo para os idiomas oferecidos usando o modelo configurado",
+      "es": "Completa las traducciones que faltan en el catálogo para los idiomas ofrecidos mediante el modelo configurado",
+      "mg": "Mameno ny dikantenin’ny katalaogy tsy ampy ho an’ny fiteny atolotra amin’ny alalan’ny modely voarindra",
+      "sw": "Hujaza tafsiri za katalogi zinazokosekana kwa lugha zinazotolewa kwa kutumia modeli iliyosanidiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Translate Catalog",
+      "fr": "Traduire le catalogue",
+      "pt": "Traduzir catálogo",
+      "es": "Traducir catálogo",
+      "mg": "Handika ny katalaogy",
+      "sw": "Tafsiri katalogi"
     }
   ],
   "unused": [

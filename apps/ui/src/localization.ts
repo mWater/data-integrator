@@ -5,6 +5,7 @@
  * locale change will not reach it without a reload.
  */
 import cronstrue from "cronstrue"
+import { type LocalizedString } from "@data-integrator/definitions"
 import { Localizer, type LocalizerData } from "ez-localize"
 import localizations from "./localizations.json"
 
@@ -16,9 +17,37 @@ const data = localizations as LocalizerData
 /** Locale the global T is currently pointed at. */
 let activeLocale = "en"
 
-/** Locales offered in the language picker, straight from the catalog. */
+/** Deployment-offered locale codes; null until settings load (offer everything). */
+let offeredLocales: string[] | null = null
+
+/** Narrows the picker to the deployment's offered locales (from settings). */
+export function setOfferedLocales(codes: string[] | null): void {
+  offeredLocales = codes
+  // The picker lives in App; tell it the offer changed so it re-renders
+  window.dispatchEvent(new Event("locales:changed"))
+}
+
+/** Locales offered in the language picker: the catalog's, narrowed by the deployment setting. */
 export function availableLocales(): { code: string; name: string }[] {
-  return data.locales
+  if (!offeredLocales) return data.locales
+  const offered = data.locales.filter(l => offeredLocales!.includes(l.code))
+  return offered.length > 0 ? offered : data.locales
+}
+
+/**
+ * Resolves a definition-sourced LocalizedString for the active locale, falling
+ * back to the string's own base language (ez-localize's localizer falls back
+ * to English instead, which loses untranslated non-English content).
+ */
+/** The locale the global T currently renders; sessions record it at creation. */
+export function currentLocale(): string {
+  return activeLocale
+}
+
+export function localizeData(value: LocalizedString | string | null | undefined): string {
+  if (!value) return ""
+  if (typeof value === "string") return value
+  return value[activeLocale] ?? value[value._base] ?? ""
 }
 
 /**

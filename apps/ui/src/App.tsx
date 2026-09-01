@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react"
-import { AiInfo, getMe, logout, User } from "./api.js"
-import { applyLocale, availableLocales, getSavedLocale, loadCronLocale } from "./localization.js"
+import { AiInfo, getMe, getSettings, logout, User } from "./api.js"
+import { applyLocale, availableLocales, getSavedLocale, loadCronLocale, setOfferedLocales } from "./localization.js"
 import { AiAckHost, setAiInfo } from "./aiAck.js"
 import { AiPrivacy } from "./AiPrivacy.js"
 import { AssistantPage } from "./AssistantPage.js"
@@ -123,19 +123,25 @@ export function App() {
     loadCronLocale(locale).then(changed => changed && setCronLoaded(n => n + 1))
   }, [locale])
 
+  // The deployment's offered languages narrow the picker whenever they change
+  const [, setOfferTick] = useState(0)
   useEffect(() => {
     getMe().then(me => {
       setUser(me?.user ?? null)
       setAi(me?.ai ?? null)
       setAiInfo(me?.ai ?? null)
+      if (me) getSettings().then(r => setOfferedLocales(r.settings.locales), () => {})
     })
     const onChange = () => setRoute(parseHash())
     const onAuthRequired = () => setUser(null)
+    const onLocalesChanged = () => setOfferTick(n => n + 1)
     window.addEventListener("hashchange", onChange)
     window.addEventListener("auth:required", onAuthRequired)
+    window.addEventListener("locales:changed", onLocalesChanged)
     return () => {
       window.removeEventListener("hashchange", onChange)
       window.removeEventListener("auth:required", onAuthRequired)
+      window.removeEventListener("locales:changed", onLocalesChanged)
     }
   }, [])
 

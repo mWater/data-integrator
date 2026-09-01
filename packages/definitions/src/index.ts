@@ -16,6 +16,54 @@
  */
 
 // ============================================================================
+// Localization
+// ============================================================================
+
+/**
+ * A human-facing string localized per ez-localize's shape: _base names the
+ * locale the text was authored in (always present as a key), other keys carry
+ * translations. Structurally identical to ez-localize's LocalizedString, so
+ * either type flows into the other.
+ */
+export interface LocalizedString {
+  /** Locale code the string was authored in; that locale is always a key below */
+  _base: string
+  /** Text per locale code */
+  [locale: string]: string
+}
+
+/**
+ * Release ceiling: the locales this build's UI chrome supports, in picker
+ * order. The deployment's `locales` setting is a subset of these; the data
+ * translation pass and the language picker both honor the setting, never this
+ * list directly.
+ */
+export const SUPPORTED_LOCALES: { code: string; name: string }[] = [
+  { code: "en", name: "English" },
+  { code: "fr", name: "Français" },
+  { code: "pt", name: "Português" },
+  { code: "es", name: "Español" },
+  { code: "mg", name: "Malagasy" },
+  { code: "sw", name: "Kiswahili" }
+]
+
+/**
+ * Resolves a localized string for a locale, falling back to the string's own
+ * base language (not English - a French-authored, untranslated string renders
+ * French everywhere rather than disappearing).
+ */
+export function localizeString(value: LocalizedString | string | undefined, locale: string): string {
+  if (value === undefined) return ""
+  if (typeof value === "string") return value
+  return value[locale] ?? value[value._base] ?? ""
+}
+
+/** Wraps a plain string as a LocalizedString authored in the given locale. */
+export function toLocalizedString(text: string, base: string): LocalizedString {
+  return { _base: base, [base]: text }
+}
+
+// ============================================================================
 // Definition
 // ============================================================================
 
@@ -24,9 +72,9 @@ export interface IntegrationDefinition {
   /** Published identifier, snake_case (^[a-z][a-z0-9_]{0,62}$). Renaming is creating a new integration. */
   id: string
   /** Human-readable display name */
-  name: string
+  name: LocalizedString
   /** What the integration does and any caveats */
-  description?: string
+  description?: LocalizedString
   /** Provenance of the external source; documentation, not behavior. Absent for derived integrations. */
   source?: SourceInfo
   /** How runs are triggered. Library entries suggest a cadence; the installed value is carried over on library updates. */
@@ -62,7 +110,7 @@ export type RuntimeId = "node22" | "python3.12"
 /** Provenance of the external data source, for documentation and lineage. */
 export interface SourceInfo {
   /** Source name, e.g. "GloFAS river discharge" */
-  name: string
+  name: LocalizedString
   /** Primary URL of the source or its API */
   url?: string
   /** Organization publishing the data */
@@ -72,7 +120,7 @@ export interface SourceInfo {
   /** Link to source documentation */
   documentation?: string
   /** Known caveats a data consumer should see: accuracy, coverage, timeliness, interpretation pitfalls */
-  limitations?: string
+  limitations?: LocalizedString
 }
 
 /** How runs of the integration are triggered. */
@@ -228,13 +276,13 @@ export interface TableDestination {
   /** Destination table, created/managed by the server; snake_case, becomes the table name in the data schema */
   tableId: string
   /** Human-readable display name */
-  name?: string
+  name?: LocalizedString
   /** How incoming rows are applied */
   action: "replace" | "append" | "merge"
   /** Key columns identifying a row; required when action is "merge" */
   mergeColumns?: string[]
   /** One-sentence summary of what the table contains, shown in the data catalog */
-  description?: string
+  description?: LocalizedString
   /** Schema of the destination table */
   columns: ColumnSpec[]
 }
@@ -244,11 +292,11 @@ export interface ColumnSpec {
   /** Column id, lowercase snake case */
   id: string
   /** Human-readable display name */
-  name?: string
+  name?: LocalizedString
   /** Value type of the column; integer is exact (bigint), number is floating point */
   type: "text" | "number" | "integer" | "boolean" | "date" | "datetime" | "geometry" | "enum" | "json"
   /** Permitted codes when type is "enum": the harmonization target for source codings (FUC-2). Stored as text; out-of-vocabulary values flag the run. */
-  enumValues?: { id: string; name: string }[]
+  enumValues?: { id: string; name: LocalizedString }[]
   /** Measurement units, e.g. "mm/day" */
   units?: string
 }
@@ -260,7 +308,7 @@ export interface RasterLayerDestination {
   /** Catalog layer to write snapshots into; snake_case, appears in tile and API URLs */
   layerId: string
   /** Human-readable display name */
-  name?: string
+  name?: LocalizedString
   /** One-sentence summary of what the layer shows, shown in the data catalog */
   description?: string
   /** time-series retains promoted snapshots as history; current-only prunes superseded */
@@ -274,7 +322,7 @@ export interface BandSpec {
   /** Band id, stable key used in tile and query URLs */
   id: string
   /** Human-readable display name */
-  name?: string
+  name?: LocalizedString
   /** Measurement units, e.g. "m3/s" */
   units?: string
   /** Stored as Float32 COGs; NaN when absent */

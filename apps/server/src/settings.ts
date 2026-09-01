@@ -6,7 +6,7 @@
  */
 
 import pg from "pg"
-import { Aoi } from "@data-integrator/definitions"
+import { Aoi, SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { COUNTRIES } from "./countries.js"
 
 /**
@@ -45,6 +45,36 @@ export async function setSetting(pool: pg.Pool, key: string, value: unknown): Pr
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
     [key, JSON.stringify(value)]
   )
+}
+
+/** Settings key for the deployment's offered locales (subset of SUPPORTED_LOCALES). */
+export const LOCALES_KEY = "locales"
+
+/**
+ * The deployment's offered locales: what the language picker shows and what
+ * the data-translation pass targets. Unset means the release's full list.
+ */
+export async function getLocales(pool: pg.Pool): Promise<string[]> {
+  const value = await getSetting<string[]>(pool, LOCALES_KEY)
+  const supported = SUPPORTED_LOCALES.map(l => l.code)
+  if (!value) return supported
+  const chosen = value.filter(code => supported.includes(code))
+  return chosen.length > 0 ? chosen : supported
+}
+
+/**
+ * Validates a locales setting value: a non-empty array of supported codes.
+ * Returns the list normalized to SUPPORTED_LOCALES order.
+ */
+export function parseLocales(body: unknown): string[] {
+  const raw = (body as { locales?: unknown })?.locales
+  if (!Array.isArray(raw) || raw.length === 0 || !raw.every(v => typeof v === "string")) {
+    throw new Error("locales must be a non-empty array of locale codes")
+  }
+  const supported = SUPPORTED_LOCALES.map(l => l.code)
+  const unknown = raw.filter(code => !supported.includes(code))
+  if (unknown.length > 0) throw new Error(`unsupported locales: ${unknown.join(", ")}`)
+  return supported.filter(code => raw.includes(code))
 }
 
 /** The deployment default AOI, or null when none is configured. */

@@ -304,6 +304,8 @@ button.linkish {
 }
 button.linkish:hover { color: var(--topbar-ink) }
 .list-page.wide { max-width: 1320px }
+.locale-checks { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 10px 0 }
+.locale-checks label { display: flex; align-items: center; gap: 6px }
 .ai-privacy { max-width: 720px }
 .ai-privacy h2 { margin: 22px 0 6px; font-size: 16px }
 .ai-privacy p, .ai-privacy li { font-size: 13.5px; line-height: 1.6 }

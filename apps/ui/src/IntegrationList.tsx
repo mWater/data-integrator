@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
-import { cronText } from "./localization.js"
+import { localizeData, cronText } from "./localization.js"
 
 /** Human-readable trigger summary. */
 export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): string {
@@ -38,7 +38,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
         .slice()
         .sort(
           (a, b) =>
-            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
+            localizeData(a.name).localeCompare(localizeData(b.name), undefined, { sensitivity: "base" }) ||
             a.id.localeCompare(b.id, undefined, { sensitivity: "base" })
         ),
     [integrations]
@@ -141,7 +141,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
             {sortedIntegrations.map(i => (
               <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
                 <td>
-                  <b>{i.name}</b>
+                  <b>{localizeData(i.name)}</b>
                   {i.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
                   {!i.enabled && <span className="chip chip-paused integration-state-chip">{T`paused`}</span>}
                   <div className="dim">{i.id}</div>

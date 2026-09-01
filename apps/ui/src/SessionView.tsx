@@ -22,6 +22,7 @@ import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
+import { localizeData } from "./localization.js"
 
 // Same lazy chunk as the stored transcript's blocks
 const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
@@ -383,7 +384,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         <div className="session-head">
           {/* Ids are plumbing: the title is the display name, or a placeholder
               until the agent names what it is building */}
-          <h1>{title}</h1>
+          <h1>{localizeData(title)}</h1>
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>{T`Saved v${dashState.saved.version}`}</a>
           )}

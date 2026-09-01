@@ -57,13 +57,19 @@ export class AgentSessionController<S> {
   }
 
   /** Creates a new paused session with the given initial client state. */
-  async createSession(state: S, userId?: string): Promise<string> {
+  async createSession(state: S, userId?: string, locale?: string): Promise<string> {
     const result = await this.pool.query(
-      `INSERT INTO app.agent_sessions (kind, user_id, status, messages, client_state, usage)
-       VALUES ($1, $2, 'paused', '[]', $3, $4) RETURNING id`,
-      [this.impl.kind, userId ?? null, JSON.stringify(state), JSON.stringify(emptyUsage())]
+      `INSERT INTO app.agent_sessions (kind, user_id, status, messages, client_state, usage, locale)
+       VALUES ($1, $2, 'paused', '[]', $3, $4, $5) RETURNING id`,
+      [this.impl.kind, userId ?? null, JSON.stringify(state), JSON.stringify(emptyUsage()), locale ?? null]
     )
     return result.rows[0].id
+  }
+
+  /** The UI locale recorded at session creation, or null (older sessions, CLI). */
+  async getLocale(sessionId: string): Promise<string | null> {
+    const result = await this.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])
+    return result.rows[0]?.locale ?? null
   }
 
   /**

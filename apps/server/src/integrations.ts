@@ -1,12 +1,12 @@
 import pg from "pg"
-import { IntegrationDefinition } from "@data-integrator/definitions"
+import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
 
 /** Summary row for the integrations list. */
 export interface IntegrationSummary {
   /** Integration id */
   id: string
   /** Display name from the definition */
-  name: string
+  name: LocalizedString
   /** Runtime image id */
   runtime: string
   /** Trigger spec from the definition */
@@ -74,7 +74,7 @@ export interface IntegrationDetail {
 /** Lists installed integrations with their latest run, newest first. */
 export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummary[]> {
   const result = await pool.query(
-    `SELECT i.id, i.definition->>'name' AS name, i.definition->>'runtime' AS runtime,
+    `SELECT i.id, i.definition->'name' AS name, i.definition->>'runtime' AS runtime,
             i.definition->'trigger' AS trigger,
             COALESCE(jsonb_array_length(i.definition->'destinations'), 0) AS destinations,
             i.enabled, i.status, r.status AS last_status, COALESCE(r.finished_at, r.started_at) AS last_at
@@ -87,7 +87,7 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
   )
   return result.rows.map(row => ({
     id: row.id,
-    name: row.name ?? row.id,
+    name: row.name ?? { _base: "en", en: row.id },
     runtime: row.runtime ?? "?",
     trigger: row.trigger ?? {},
     destinations: row.destinations,
@@ -167,7 +167,7 @@ export interface VersionSummary {
   /** Email of the installing user; null for CLI/library-sync installs */
   createdBy: string | null
   /** Display name in this version */
-  name: string
+  name: LocalizedString
   /** AOI tri-state in this version */
   aoiMode: AoiMode
   /** The explicit box, when aoiMode is "box" */
@@ -177,7 +177,7 @@ export interface VersionSummary {
 /** The version history of an integration, newest first. */
 export async function listIntegrationVersions(pool: pg.Pool, id: string): Promise<VersionSummary[]> {
   const result = await pool.query(
-    `SELECT v.version, v.created_at, u.email AS created_by, v.definition->>'name' AS name,
+    `SELECT v.version, v.created_at, u.email AS created_by, v.definition->'name' AS name,
             v.definition->'aoi' AS aoi, v.definition ? 'aoi' AS has_aoi
      FROM app.integration_versions v
      LEFT JOIN app.users u ON u.id = v.created_by
@@ -188,7 +188,7 @@ export async function listIntegrationVersions(pool: pg.Pool, id: string): Promis
     version: row.version,
     createdAt: row.created_at.toISOString(),
     createdBy: row.created_by ?? null,
-    name: row.name ?? id,
+    name: row.name ?? { _base: "en", en: id },
     aoiMode: !row.has_aoi ? "inherit" : row.aoi === null ? "full" : "box",
     aoi: row.has_aoi && row.aoi !== null ? row.aoi : null
   }))

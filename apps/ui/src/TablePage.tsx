@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { DataSource, getTableGeometry, getTableRows, listSources } from "./api.js"
+import { localizeData } from "./localization.js"
 
 // The map owns the maplibre chunk; keep it out of the first paint
 const TableMap = lazy(() => import("./TableMap.js").then(m => ({ default: m.TableMap })))
@@ -37,10 +38,12 @@ export function TablePage({ tableId }: TablePageProps) {
   return (
     <main className="list-page wide">
       <div className="session-head">
-        <h1>{source?.name ?? tableId}</h1>
+        <h1>{source ? localizeData(source.name) : tableId}</h1>
         {source && <span className="chip chip-table">{T`table`}</span>}
         <span style={{ flex: 1 }} />
-        {source && <a href={`#/integration/${source.integrationId}`}>{T`From integration “${source.integrationName}”`}</a>}
+        {source && (
+          <a href={`#/integration/${source.integrationId}`}>{T`From integration “${localizeData(source.integrationName)}”`}</a>
+        )}
       </div>
       {source && (
         <p className="dim">

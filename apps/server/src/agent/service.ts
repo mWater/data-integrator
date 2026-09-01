@@ -57,7 +57,7 @@ interface KindAdapter<S> {
   /** SQL expression over agent_sessions yielding the bound artifact id */
   bindIdSql: string
   /** Initial client state; bindId is an integration or dashboard id to start from */
-  initialState(bindId?: string): Promise<S>
+  initialState(bindId?: string, locale?: string): Promise<S>
   /** Bound artifact id from client state */
   bindId(state: S): string | null
   /** Kind-specific detail fields merged into SessionDetail */
@@ -133,7 +133,7 @@ export class AgentService<S = unknown> {
       kind: "dashboard",
       implementation: new DashboardImplementation(deps),
       bindIdSql: "NULLIF(client_state->>'dashboardId', '')",
-      initialState: (dashboardId?: string) => initialDashboardState(pool, dashboardId ?? ""),
+      initialState: (dashboardId?: string, locale?: string) => initialDashboardState(pool, dashboardId ?? "", locale),
       bindId: state => state.dashboardId || null,
       detailExtras: async () => ({}),
       ensureReady: async () => {}
@@ -162,8 +162,8 @@ export class AgentService<S = unknown> {
    * Creates a new session, optionally bound to an existing artifact id so the
    * agent edits rather than re-derives. userId records the creator.
    */
-  async createSession(bindId?: string, userId?: string): Promise<string> {
-    return await this.controller.createSession(await this.adapter.initialState(bindId), userId)
+  async createSession(bindId?: string, userId?: string, locale?: string): Promise<string> {
+    return await this.controller.createSession(await this.adapter.initialState(bindId, locale), userId, locale)
   }
 
   /** Lists this kind's sessions, newest first; forUserId narrows to one creator's. */

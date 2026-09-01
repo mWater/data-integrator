@@ -50,8 +50,8 @@ export interface DashboardDeps {
 }
 
 /** Fresh state for a new dashboard session; schemas are captured at creation. */
-export async function initialDashboardState(pool: pg.Pool, dashboardId = ""): Promise<DashboardAgentState> {
-  const schemas = await describeSchema(pool)
+export async function initialDashboardState(pool: pg.Pool, dashboardId = "", locale?: string): Promise<DashboardAgentState> {
+  const schemas = await describeSchema(pool, locale ?? "en")
   const state: DashboardAgentState = {
     dashboardId,
     name: "",

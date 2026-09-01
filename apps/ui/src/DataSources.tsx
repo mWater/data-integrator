@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { DataSource, listSources } from "./api.js"
+import { localizeData } from "./localization.js"
 
 /** A source kind's display label, translated at call time. */
 function kindLabel(kind: DataSource["kind"]): string {
@@ -10,10 +11,10 @@ function kindLabel(kind: DataSource["kind"]): string {
 function matches(source: DataSource, q: string): boolean {
   if (!q) return true
   const hay = [
-    source.name,
+    localizeData(source.name),
     source.id,
-    source.description ?? "",
-    source.integrationName,
+    localizeData(source.description),
+    localizeData(source.integrationName),
     kindLabel(source.kind)
   ]
   return hay.some(s => s.toLowerCase().includes(q))
@@ -34,7 +35,11 @@ export function DataSources() {
     const q = query.trim().toLowerCase()
     return sources
       .filter(source => matches(source, q))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id.localeCompare(b.id))
+      .sort(
+        (a, b) =>
+          localizeData(a.name).localeCompare(localizeData(b.name), undefined, { sensitivity: "base" }) ||
+          a.id.localeCompare(b.id)
+      )
   }, [sources, query])
 
   /** Tables open their table page; rasters open on the map. */
@@ -74,9 +79,9 @@ export function DataSources() {
                 {shown.map(source => (
                   <tr key={`${source.kind}:${source.id}`} onClick={() => open(source)}>
                     <td>
-                      <b>{source.name}</b>
-                      {source.description && <div className="source-description">{source.description}</div>}
-                      <div className="source-from">{T`from ${source.integrationName}`}</div>
+                      <b>{localizeData(source.name)}</b>
+                      {source.description && <div className="source-description">{localizeData(source.description)}</div>}
+                      <div className="source-from">{T`from ${localizeData(source.integrationName)}`}</div>
                     </td>
                     <td><span className={`chip chip-${source.kind}`}>{kindLabel(source.kind)}</span></td>
                     <td>

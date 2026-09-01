@@ -10,6 +10,7 @@ import { darkTheme, lightTheme, mountDashboardFrame } from "@data-integrator/kit
 import { KIT_VERSION } from "@data-integrator/kit/version"
 import { DashboardMeta, execDashboardQuery, getDashboardMeta } from "./api.js"
 import { useAppTheme } from "./theme.js"
+import { localizeData } from "./localization.js"
 
 /** Props for the dashboard frame host. */
 interface Props {
@@ -93,7 +94,7 @@ export function DashboardFrame({
       }
       const layerInfo = meta.layers.map(layer => ({
         id: layer.id,
-        name: layer.name,
+        name: localizeData(layer.name),
         temporality: layer.temporality,
         snapshots: layer.snapshots
       }))

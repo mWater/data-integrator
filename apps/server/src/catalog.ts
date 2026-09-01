@@ -49,7 +49,13 @@ export async function ensureLayer(
     await client.query(
       `INSERT INTO app.raster_layers (id, integration_id, name, temporality, bands)
        VALUES ($1, $2, $3, $4, $5)`,
-      [spec.layerId, integrationId, spec.name ?? spec.layerId, spec.temporality, JSON.stringify(spec.bands)]
+      [
+        spec.layerId,
+        integrationId,
+        JSON.stringify(spec.name ?? { _base: "en", en: spec.layerId }),
+        spec.temporality,
+        JSON.stringify(spec.bands)
+      ]
     )
     return
   }
@@ -58,7 +64,7 @@ export async function ensureLayer(
   }
   await client.query(
     "UPDATE app.raster_layers SET name = $2, temporality = $3, bands = $4 WHERE id = $1",
-    [spec.layerId, spec.name ?? spec.layerId, spec.temporality, JSON.stringify(spec.bands)]
+    [spec.layerId, JSON.stringify(spec.name ?? { _base: "en", en: spec.layerId }), spec.temporality, JSON.stringify(spec.bands)]
   )
 }
 
@@ -90,7 +96,7 @@ export async function ensureScratchLayer(
     `INSERT INTO app.raster_layers (id, integration_id, session_id, name, temporality, bands)
      VALUES ($1, NULL, $2, $3, $4, $5)
      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, temporality = EXCLUDED.temporality, bands = EXCLUDED.bands`,
-    [layerRowId, sessionId, spec.name ?? spec.layerId, spec.temporality, JSON.stringify(spec.bands)]
+    [layerRowId, sessionId, JSON.stringify(spec.name ?? { _base: "en", en: spec.layerId }), spec.temporality, JSON.stringify(spec.bands)]
   )
 }
 
