@@ -530,6 +530,29 @@ async function route(
           integrations++
           translations += written
         }
+        // The catalog serves per-destination copies (data_tables.spec,
+        // raster_layers) that otherwise refresh only when the integration
+        // runs; push the (possibly already-)translated specs into them
+        for (const dest of definition.destinations ?? []) {
+          if (dest.kind === "table") {
+            await pool.query(
+              `UPDATE app.data_tables SET spec = $3, updated_at = now()
+               WHERE id = $1 AND integration_id = $2`,
+              [dest.tableId, row.id, JSON.stringify(dest)]
+            )
+          } else if (dest.kind === "raster") {
+            await pool.query(
+              `UPDATE app.raster_layers SET name = $3, bands = $4
+               WHERE id = $1 AND integration_id = $2 AND session_id IS NULL`,
+              [
+                dest.layerId,
+                row.id,
+                JSON.stringify(dest.name ?? { _base: "en", en: dest.layerId }),
+                JSON.stringify(dest.bands)
+              ]
+            )
+          }
+        }
       } catch (err) {
         failures.push(`${row.id}: ${err instanceof Error ? err.message : String(err)}`)
       }
