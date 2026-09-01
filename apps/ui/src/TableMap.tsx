@@ -18,13 +18,20 @@ interface TableMapProps {
   tableId: string
   /** [west, south, east, north] to frame initially; null centers on nothing in particular */
   extent: [number, number, number, number] | null
+  /** Localized display name per column id, for popup row labels */
+  columnLabels?: Record<string, string>
 }
 
 /** Renders the table's features over the basemap with property popups. */
-export function TableMap({ tableId, extent }: TableMapProps) {
+export function TableMap({ tableId, extent, columnLabels }: TableMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const { mode } = useAppTheme()
+
+  // Labels can arrive after the map mounts; the click handler reads the ref
+  // so popups always use the latest ones without rebuilding the map
+  const labelsRef = useRef(columnLabels)
+  labelsRef.current = columnLabels
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -88,7 +95,10 @@ export function TableMap({ tableId, extent }: TableMapProps) {
             if (!feature) return
             const rows = Object.entries(feature.properties ?? {})
               .slice(0, 20)
-              .map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(String(value))}</td></tr>`)
+              .map(
+                ([key, value]) =>
+                  `<tr><th>${escapeHtml(labelsRef.current?.[key] ?? key)}</th><td>${escapeHtml(String(value))}</td></tr>`
+              )
               .join("")
             new Popup({ maxWidth: "320px" })
               .setLngLat(event.lngLat)

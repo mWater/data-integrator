@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react"
-import { DataSource, getTableGeometry, getTableRows, listSources } from "./api.js"
+import { DataSource, getTableGeometry, getTableRows, listSources, listTableSchemas, TableColumn } from "./api.js"
 import { localizeData } from "./localization.js"
 
 // The map owns the maplibre chunk; keep it out of the first paint
@@ -19,14 +19,21 @@ export function TablePage({ tableId }: TablePageProps) {
     geometryColumn: string | null
     extent: [number, number, number, number] | null
   } | null>(null)
+  const [columns, setColumns] = useState<TableColumn[] | null>(null)
   const [view, setView] = useState<"data" | "map">("data")
 
   useEffect(() => {
     setSource(null)
     setError(null)
     setGeometry(null)
+    setColumns(null)
     setView("data")
     getTableGeometry(tableId).then(setGeometry, () => setGeometry(null))
+    // Declared column specs carry the localized display names
+    listTableSchemas().then(
+      r => setColumns(r.tables.find(t => t.tableId === tableId)?.columns ?? null),
+      () => setColumns(null)
+    )
     // The catalog resolves the owning integration, which the rows API needs
     listSources().then(r => {
       const found = r.sources.find(s => s.kind === "table" && s.id === tableId)
@@ -66,10 +73,23 @@ export function TablePage({ tableId }: TablePageProps) {
       )}
       {source && view === "map" && geometry?.geometryColumn ? (
         <Suspense fallback={<p>{T`Loading map…`}</p>}>
-          <TableMap tableId={tableId} extent={geometry.extent} />
+          <TableMap
+            tableId={tableId}
+            extent={geometry.extent}
+            columnLabels={Object.fromEntries(
+              (columns ?? []).filter(c => c.name).map(c => [c.id, localizeData(c.name)])
+            )}
+          />
         </Suspense>
       ) : (
-        source && <DataTab integrationId={source.integrationId} tableIds={[tableId]} running={false} />
+        source && (
+          <DataTab
+            integrationId={source.integrationId}
+            tableIds={[tableId]}
+            running={false}
+            columnSpecs={columns ? { [tableId]: columns } : undefined}
+          />
+        )
       )}
     </main>
   )
@@ -83,10 +103,12 @@ interface DataTabProps {
   tableIds: string[]
   /** True while a run is in flight; the preview refetches when it settles */
   running: boolean
+  /** Declared column specs per table id, for localized header names */
+  columnSpecs?: Record<string, TableColumn[]>
 }
 
 /** Newest-rows preview of one destination table at a time. */
-export function DataTab({ integrationId, tableIds, running }: DataTabProps) {
+export function DataTab({ integrationId, tableIds, running, columnSpecs }: DataTabProps) {
   const [tableId, setTableId] = useState(tableIds[0])
   const [preview, setPreview] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -113,7 +135,18 @@ export function DataTab({ integrationId, tableIds, running }: DataTabProps) {
         <div className="data-scroll">
           <table className="sessions data-table">
             <thead>
-              <tr>{preview.columns.map(c => <th key={c}>{c}</th>)}</tr>
+              <tr>
+                {preview.columns.map(c => {
+                  const spec = columnSpecs?.[tableId]?.find(s => s.id === c)
+                  const label = spec?.name ? localizeData(spec.name) : c
+                  return (
+                    <th key={c}>
+                      {label}
+                      {label !== c && <div className="dim">{c}</div>}
+                    </th>
+                  )
+                })}
+              </tr>
             </thead>
             <tbody>
               {preview.rows.map((row, i) => (

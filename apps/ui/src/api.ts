@@ -1074,6 +1074,37 @@ export function getTableGeometry(
   return request(`/api/tables/${tableId}/geometry`)
 }
 
+/** Declared column of a destination table, from its spec. */
+export interface TableColumn {
+  /** Column id (SQL name) */
+  id: string
+  /** Display name */
+  name?: LocalizedString
+  /** Column type */
+  type: string
+  /** Units of measure */
+  units?: string
+}
+
+/** One queryable table with its declared schema, from GET /api/tables. */
+export interface TableSchema {
+  /** Table id */
+  tableId: string
+  /** Integration that writes it */
+  integrationId: string
+  /** Display name from the destination spec */
+  name?: LocalizedString
+  /** Catalog description from the destination spec */
+  description?: LocalizedString
+  /** Declared column specs */
+  columns: TableColumn[]
+}
+
+/** Lists the queryable tables with their declared schemas. */
+export function listTableSchemas(): Promise<{ tables: TableSchema[] }> {
+  return request("/api/tables")
+}
+
 /** Imports a shared integration definition; it installs paused. */
 export function importIntegration(definition: unknown): Promise<{ id: string; version: number }> {
   return request("/api/integrations/import", {

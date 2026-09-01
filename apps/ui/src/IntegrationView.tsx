@@ -271,7 +271,18 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
             </tbody>
           </table>
         ))}
-      {tab === "data" && <DataTab integrationId={integrationId} tableIds={tableIds} running={running} />}
+      {tab === "data" && (
+        <DataTab
+          integrationId={integrationId}
+          tableIds={tableIds}
+          running={running}
+          columnSpecs={Object.fromEntries(
+            ((definition.destinations ?? []) as (TableDest | RasterDest)[])
+              .filter((d): d is TableDest => d.kind === "table")
+              .map(d => [d.tableId, d.columns])
+          )}
+        />
+      )}
       {tab === "definition" && (
         <>
           <ScheduleSection detail={detail} canDesign={canDesign} isAdmin={isAdmin} onChanged={refresh} />
