@@ -166,6 +166,8 @@ export interface IntegrationSummary {
   id: string
   /** Display name */
   name: LocalizedString
+  /** What the integration ingests and produces, when the definition has one */
+  description: LocalizedString | null
   /** Runtime image id */
   runtime: string
   /** Trigger spec */

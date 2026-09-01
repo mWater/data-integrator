@@ -99,7 +99,9 @@ conversation - the platform detects the language, stores the text as a localized
 translates it into the deployment's other languages after you finish. Never attempt
 multilingual output yourself. When you read the definition back these fields appear as
 {_base, <locale>: text} objects; echo them through unchanged unless editing the text.
-Fields: id (snake_case; immutable once set), name, description?, source? {name, url?, provider?,
+Fields: id (snake_case; immutable once set), name, description [always write one: 1-2
+sentences on what the integration ingests and produces - it is how people tell
+integrations apart in the list], source? {name, url?, provider?,
 license?, documentation?, limitations?}, trigger ({cron: "..."} and/or {webhook: true, webhookDelaySeconds?}, or {} for
 manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], countries?: [ISO3...]} | null
 (omit aoi to inherit the deployment default at run time; explicit null means the source's full extent;

@@ -7,6 +7,8 @@ export interface IntegrationSummary {
   id: string
   /** Display name from the definition */
   name: LocalizedString
+  /** What the integration ingests and produces, when the definition has one */
+  description: LocalizedString | null
   /** Runtime image id */
   runtime: string
   /** Trigger spec from the definition */
@@ -74,7 +76,8 @@ export interface IntegrationDetail {
 /** Lists installed integrations with their latest run, newest first. */
 export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummary[]> {
   const result = await pool.query(
-    `SELECT i.id, i.definition->'name' AS name, i.definition->>'runtime' AS runtime,
+    `SELECT i.id, i.definition->'name' AS name, i.definition->'description' AS description,
+            i.definition->>'runtime' AS runtime,
             i.definition->'trigger' AS trigger,
             COALESCE(jsonb_array_length(i.definition->'destinations'), 0) AS destinations,
             i.enabled, i.status, r.status AS last_status, COALESCE(r.finished_at, r.started_at) AS last_at
@@ -88,6 +91,7 @@ export async function listIntegrations(pool: pg.Pool): Promise<IntegrationSummar
   return result.rows.map(row => ({
     id: row.id,
     name: row.name ?? { _base: "en", en: row.id },
+    description: row.description ?? null,
     runtime: row.runtime ?? "?",
     trigger: row.trigger ?? {},
     destinations: row.destinations,

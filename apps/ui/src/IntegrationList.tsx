@@ -144,6 +144,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
                   <b>{localizeData(i.name)}</b>
                   {i.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
                   {!i.enabled && <span className="chip chip-paused integration-state-chip">{T`paused`}</span>}
+                  {i.description && <div className="dim clamp-2">{localizeData(i.description)}</div>}
                   <div className="dim">{i.id}</div>
                 </td>
                 <td>{triggerLabel(i.trigger)}</td>
