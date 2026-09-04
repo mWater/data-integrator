@@ -4678,17 +4678,146 @@
       "es": "Idiomas disponibles en este despliegue. El selector de idioma los muestra y, al añadir uno, el catálogo de datos (nombres, descripciones y salvedades) se traduce automáticamente a ese idioma. Los idiomas de la interfaz son fijos para cada versión; esta opción limita la oferta.",
       "mg": "Ireo fiteny atolotr'ity fametrahana ity. Asehon'ny mpisafidy fiteny izy ireo, ary adika ho azy amin'ny tsirairay ny katalaogin'ny angona (anarana, famaritana, fanamarihana) rehefa ampidirinao ilay fiteny. Voafaritra isaky ny famoahana ny fitenin'ny interface; mametra ny safidy izany.",
       "sw": "Lugha zinazotolewa na usakinishaji huu. Kiteuzi cha lugha huzionyesha, na katalogi ya data (majina, maelezo, tahadhari) hutafsiriwa kiotomatiki kwa kila lugha unapoiongeza. Lugha za kiolesura hubainishwa kwa kila toleo; hivyo chaguo hupungua."
+    },
+    {
+      "_base": "en",
+      "en": "The AI features (integration designer, Ask, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
+      "fr": "Les fonctionnalités d’IA (concepteur d’intégration, Ask et générateur de tableaux de bord) envoient du contexte à un fournisseur de modèles externe, {0}. Chaque requête peut inclure :",
+      "pt": "Os recursos de IA (designer de integrações, Perguntar e criador de painéis) funcionam enviando contexto a um provedor de modelos externo, {0}. Cada solicitação pode incluir:",
+      "es": "Las funciones de IA (diseñador de integraciones, Preguntar y creador de paneles) funcionan enviando contexto a un proveedor de modelos externo, {0}. Cada solicitud puede incluir:",
+      "mg": "Miasa amin’ny fandefasana ny tontolon-kevitra any amin’ny mpamatsy modely ivelany, {0}, ireo fiasa AI (mpamorona fampidirana, Anontanio, ary mpamorona tabilao fitantanana). Mety ahitana ireto ny fangatahana tsirairay:",
+      "sw": "Vipengele vya AI (zana ya kubuni miunganisho, Uliza na zana ya kuunda dashibodi) hufanya kazi kwa kutuma muktadha kwa mtoa huduma wa modeli wa nje, {0}. Kila ombi linaweza kujumuisha:"
+    },
+    {
+      "_base": "en",
+      "en": "Three features of this platform use a large language model: the integration designer, Ask (questions about the data), and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
+      "fr": "Trois fonctionnalités de cette plateforme utilisent un grand modèle de langage : le concepteur d’intégration, Ask (questions sur les données) et le générateur de tableaux de bord. Tout le reste - exécutions planifiées d’ingestion, webhooks, cartes, tableaux, consultation des tableaux de bord - n’utilise aucun modèle et n’envoie rien à l’extérieur.",
+      "pt": "Três recursos desta plataforma usam um modelo de linguagem de grande escala: o designer de integrações, Perguntar (perguntas sobre os dados) e o criador de painéis. Todo o restante - execuções agendadas de ingestão, webhooks, mapas, tabelas e visualização de painéis - não envolve nenhum modelo nem envia nada a lugar algum.",
+      "es": "Tres funciones de esta plataforma usan un modelo de lenguaje de gran tamaño: el diseñador de integraciones, Preguntar (preguntas sobre los datos) y el creador de paneles. Todo lo demás - ejecuciones programadas de ingesta, webhooks, mapas, tablas y visualización de paneles - no utiliza ningún modelo ni envía nada a ningún sitio.",
+      "mg": "Fiasa telo amin’ity sehatra ity no mampiasa modely lehibe momba ny fiteny: ny mpamorona fampidirana, Anontanio (fanontaniana momba ny angona), ary ny mpamorona tabilao fitantanana. Ny hafa rehetra - fampidirana angona voalahatra, webhooks, sarintany, latabatra, tabilao fitantanana jerena - dia tsy mampiasa modely ary tsy mandefa na inona na inona na aiza na aiza.",
+      "sw": "Vipengele vitatu vya jukwaa hili hutumia modeli kubwa ya lugha: zana ya kubuni miunganisho, Uliza (maswali kuhusu data) na zana ya kuunda dashibodi. Vipengele vingine vyote - utekelezaji wa uratibu wa uingizaji data, webhooks, ramani, majedwali, dashibodi zinazotazamwa - havitumii modeli wala kutuma chochote mahali popote."
+    },
+    {
+      "_base": "en",
+      "en": "Past questions",
+      "fr": "Questions précédentes",
+      "pt": "Perguntas anteriores",
+      "es": "Preguntas anteriores",
+      "mg": "Fanontaniana teo aloha",
+      "sw": "Maswali ya awali"
+    },
+    {
+      "_base": "en",
+      "en": "No questions yet. Ask one above; it will be saved here.",
+      "fr": "Aucune question pour le moment. Posez-en une ci-dessus ; elle sera enregistrée ici.",
+      "pt": "Ainda não há perguntas. Faça uma acima; ela será salva aqui.",
+      "es": "Aún no hay preguntas. Haz una arriba; se guardará aquí.",
+      "mg": "Tsy mbola misy fanontaniana. Mametraha fanontaniana etsy ambony; hotehirizina eto izany.",
+      "sw": "Bado hakuna maswali. Uliza swali hapo juu; litahifadhiwa hapa."
+    },
+    {
+      "_base": "en",
+      "en": "Delete question",
+      "fr": "Supprimer la question",
+      "pt": "Excluir pergunta",
+      "es": "Eliminar pregunta",
+      "mg": "Fafao ny fanontaniana",
+      "sw": "Futa swali"
+    },
+    {
+      "_base": "en",
+      "en": "Delete question: {0}",
+      "fr": "Supprimer la question : {0}",
+      "pt": "Excluir pergunta: {0}",
+      "es": "Eliminar pregunta: {0}",
+      "mg": "Fafao ny fanontaniana: {0}",
+      "sw": "Futa swali: {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Delete this question?",
+      "fr": "Supprimer cette question ?",
+      "pt": "Excluir esta pergunta?",
+      "es": "¿Eliminar esta pregunta?",
+      "mg": "Hofafana ity fanontaniana ity?",
+      "sw": "Ufute swali hili?"
+    },
+    {
+      "_base": "en",
+      "en": "This question and its answers, tables, and charts are deleted for good.",
+      "fr": "Cette question, ainsi que ses réponses, tableaux et graphiques, seront supprimés définitivement.",
+      "pt": "Esta pergunta e suas respostas, tabelas e gráficos serão excluídos permanentemente.",
+      "es": "Esta pregunta y sus respuestas, tablas y gráficos se eliminarán permanentemente.",
+      "mg": "Hofafana tanteraka ity fanontaniana ity sy ny valiny, latabatra ary tabilao mifandraika aminy.",
+      "sw": "Swali hili, majibu yake, majedwali na chati vitafutwa kabisa."
+    },
+    {
+      "_base": "en",
+      "en": "Integrations write to Data. Dashboards, Ask, and the Map and API read from Data.",
+      "fr": "Les intégrations écrivent dans Données. Les tableaux de bord, Ask, la Carte et l’API lisent les données depuis Données.",
+      "pt": "As integrações gravam em Dados. Painéis, Perguntar, Mapa e API leem os Dados.",
+      "es": "Las integraciones escriben en Datos. Los paneles, Preguntar, el Mapa y la API leen de Datos.",
+      "mg": "Manoratra ao amin’ny Angona ny Fampidirana. Mamaky avy amin’ny Angona ny Tabilao fitantanana, Anontanio, Sarintany ary API.",
+      "sw": "Miunganisho huandika kwenye Data. Dashibodi, Uliza, Ramani na API husoma kutoka Data."
+    },
+    {
+      "_base": "en",
+      "en": "Dashboards, Ask, Map",
+      "fr": "Tableaux de bord, Ask, Carte",
+      "pt": "Painéis, Perguntar, Mapa",
+      "es": "Paneles, Preguntar, Mapa",
+      "mg": "Tabilao fitantanana, Anontanio, Sarintany",
+      "sw": "Dashibodi, Uliza, Ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, Ask, and the Map and API all read from Data.",
+      "fr": "Deux méthodes facultatives permettent d’ajouter une intégration : la décrire à l’agent ou en installer une prête à l’emploi depuis la bibliothèque. Toutes deux alimentent Intégrations. Les intégrations écrivent dans Données. Les tableaux de bord, Ask, la Carte et l’API lisent les données depuis Données.",
+      "pt": "Há duas formas opcionais de adicionar uma integração: descrevê-la ao agente ou instalar uma pronta da biblioteca. Ambas levam a Integrações. As integrações gravam em Dados. Painéis, Perguntar, Mapa e API leem os Dados.",
+      "es": "Hay dos formas opcionales de añadir una integración: describírsela al agente o instalar una ya preparada desde la biblioteca. Ambas pasan a Integraciones. Las integraciones escriben en Datos. Los paneles, Preguntar, el Mapa y la API leen de Datos.",
+      "mg": "Misy fomba roa tsy voatery hanampiana fampidirana: manoritsoritra izany amin’ny mpandraharaha AI, na mametraka fampidirana efa vonona avy amin’ny tranomboky; samy miditra ao amin’ny Fampidirana izy ireo. Manoratra ao amin’ny Angona ny Fampidirana. Mamaky avy amin’ny Angona ny Tabilao fitantanana, Anontanio, Sarintany ary API.",
+      "sw": "Kuna njia mbili za hiari za kuongeza muunganisho: kuuelezea kwa wakala au kusakinisha muunganisho uliotayarishwa tayari kutoka maktabani. Zote huingiza kwenye Miunganisho. Miunganisho huandika kwenye Data. Dashibodi, Uliza, Ramani na API zote husoma kutoka Data."
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Ask.",
+      "fr": "Questions en langage courant traitées à partir de vos données, avec affichage de la requête exécutée. Vos questions sont enregistrées dans Ask.",
+      "pt": "Perguntas em linguagem natural respondidas com base nos seus dados, com a consulta executada exibida. Suas perguntas são salvas em Perguntar.",
+      "es": "Preguntas en lenguaje natural respondidas a partir de tus datos, mostrando la consulta ejecutada. Tus preguntas se guardan en Preguntar.",
+      "mg": "Fanontaniana amin’ny fiteny tsotra valiana avy amin’ny angonao, miaraka amin’ny fangatahana nampiasaina aseho. Tehirizina ao amin’ny Anontanio ny fanontanianao.",
+      "sw": "Maswali ya lugha rahisi yanayojibiwa kwa kutumia data yako, pamoja na hoja iliyoendeshwa. Maswali yako huhifadhiwa chini ya Uliza."
+    },
+    {
+      "_base": "en",
+      "en": "New question",
+      "fr": "Nouvelle question",
+      "pt": "Nova pergunta",
+      "es": "Nueva pregunta",
+      "mg": "Fanontaniana vaovao",
+      "sw": "Swali jipya"
     }
   ],
   "unused": [
+    "Assistant",
+    "Past conversations",
+    "Delete chat",
+    "Delete chat: {0}",
+    "Delete this conversation?",
+    "Integrations write to Data. Dashboards, the Assistant, and the Map and API read from Data.",
+    "Dashboards, Assistant, Map",
     "Agent activity ({0} open)",
     "cron (UTC; empty for manual only)",
+    "New chat",
     "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",
+    "This chat and its answers, tables, and charts are deleted for good.",
+    "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.",
     "Ask a question",
     "Plain language, answered from your data, with the query it ran shown.",
     "{0} already built",
     "Skills",
     "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
+    "The AI features (integration designer, data assistant, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
+    "Three features of this platform use a large language model: the integration designer, the data assistant, and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
     "Sharing",
     "private",
     "Saved. The language picker offers these; new catalog text is translated into them.",
@@ -4698,6 +4827,9 @@
     "Languages this deployment offers: the picker shows them, and data catalog text (names, descriptions, caveats) is translated into them. Interface languages are fixed per release; this narrows the offer.",
     "Fills missing catalog translations for the offered languages using the configured model",
     "Translate Catalog",
+    "No conversations yet. Ask a question above; it will be saved here.",
+    "Ask the Assistant",
+    "Plain-language questions answered from your data, with the query it ran shown. Conversations are saved under Assistant.",
     "Translate Data Catalog Now",
     "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed."
   ]

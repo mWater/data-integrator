@@ -88,11 +88,11 @@ Name the place, the period, and the measurements you care about.`}
       />
       {error && <div className="error">{error}</div>}
       <section className="assistant-history">
-        <h2>{T`Past conversations`}</h2>
+        <h2>{T`Past questions`}</h2>
         {chats === null ? (
           <p className="dim">{T`Loading…`}</p>
         ) : chats.length === 0 ? (
-          <p className="dim">{T`No conversations yet. Ask a question above; it will be saved here.`}</p>
+          <p className="dim">{T`No questions yet. Ask one above; it will be saved here.`}</p>
         ) : (
           <table className="sessions">
             <thead>
@@ -107,8 +107,8 @@ Name the place, the period, and the measurements you care about.`}
                   <td className="row-delete-cell">
                     <button
                       className="row-delete"
-                      title={T`Delete chat`}
-                      aria-label={T`Delete chat: ${s.firstMessage ?? T`(empty)`}`}
+                      title={T`Delete question`}
+                      aria-label={T`Delete question: ${s.firstMessage ?? T`(empty)`}`}
                       // The row navigates; the delete must not ride along
                       onClick={e => {
                         e.stopPropagation()
@@ -126,7 +126,7 @@ Name the place, the period, and the measurements you care about.`}
       </section>
       {doomed && (
         <ConfirmDelete
-          title={T`Delete this conversation?`}
+          title={T`Delete this question?`}
           confirmLabel={T`Delete`}
           onCancel={() => setDoomed(null)}
           onConfirm={() => void confirmDelete(doomed)}
@@ -134,7 +134,7 @@ Name the place, the period, and the measurements you care about.`}
           <p>
             {doomed.firstMessage
               ? T`“${doomed.firstMessage}” and its answers, tables, and charts are deleted for good.`
-              : T`This chat and its answers, tables, and charts are deleted for good.`}{" "}
+              : T`This question and its answers, tables, and charts are deleted for good.`}{" "}
             <b>{T`This cannot be undone.`}</b>
           </p>
         </ConfirmDelete>

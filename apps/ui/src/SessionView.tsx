@@ -368,7 +368,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
   const assistantResults = isAssistant ? (detail.state as AssistantState)?.results : undefined
   const title = isAssistant
-    ? detail.firstMessage || T`New chat`
+    ? detail.firstMessage || T`New question`
     : isDashboard
       ? dashState?.name || T`New dashboard`
       : (detail.state as DesignerState)?.definition?.name || T`New integration`

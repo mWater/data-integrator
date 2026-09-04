@@ -16,7 +16,7 @@ export function SessionList() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Assistant chats live on the Assistant page; this list is design work
+    // Questions live on the Ask page; this list is design work
     listSessions().then(r => setSessions(r.sessions.filter(s => s.kind !== "assistant")), err => setError(err.message))
   }, [])
 

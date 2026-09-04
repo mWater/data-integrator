@@ -33,8 +33,8 @@ interface Route {
   sessions: boolean
   /** True on the data catalog page */
   data: boolean
-  /** True on the assistant page */
-  assistant: boolean
+  /** True on the Ask page (plain-language questions over the data) */
+  ask: boolean
   /** True on the integrations list page */
   integrations: boolean
   /** True on the dashboards list page */
@@ -67,7 +67,8 @@ function parseHash(): Route {
     tableId: table ? table[1] : null,
     sessions: hash === "#/sessions",
     data: hash === "#/data",
-    assistant: hash === "#/assistant",
+    // #/assistant is the page's old address; links to it still work
+    ask: hash === "#/ask" || hash === "#/assistant",
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
@@ -240,7 +241,7 @@ export function App() {
         <nav>
           <a href="#/">{T`Home`}</a>
           <a href="#/data">{T`Data`}</a>
-          <a href="#/assistant">{T`Assistant`}</a>
+          <a href="#/ask">{T`Ask`}</a>
           <a href="#/integrations">{T`Integrations`}</a>
           <a href="#/library">{T`Library`}</a>
           <a href="#/dashboards">{T`Dashboards`}</a>
@@ -260,7 +261,7 @@ export function App() {
         <Suspense fallback={null}>
           <LayerPage layerId={route.layerId} sessionId={route.layerSessionId} />
         </Suspense>
-      ) : route.assistant ? (
+      ) : route.ask ? (
         <AssistantPage />
       ) : route.dashboardId ? (
         <DashboardView dashboardId={route.dashboardId} />
