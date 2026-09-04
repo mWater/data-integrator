@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
-  translateCatalog,
+  CatalogTranslation,
   setLocalesSetting,
   changePassword,
   clearDefaultAoi,
@@ -109,6 +109,7 @@ export function Settings({ user }: { user: User }) {
   const [siteTitle, setSiteTitleState] = useState<string | null>(null)
   const [locales, setLocales] = useState<string[]>([])
   const [supportedLocales, setSupportedLocales] = useState<{ code: string; name: string }[]>([])
+  const [translation, setTranslation] = useState<CatalogTranslation | null>(null)
   const [countries, setCountries] = useState<CountryBox[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -128,6 +129,7 @@ export function Settings({ user }: { user: User }) {
         setSiteTitleState(settings.settings.site_title)
         setLocales(settings.settings.locales)
         setSupportedLocales(settings.supportedLocales)
+        setTranslation(settings.catalogTranslation)
         setCountries(countryList.countries)
         setLoaded(true)
       },
@@ -257,11 +259,12 @@ export function Settings({ user }: { user: User }) {
           )}
         </>
       )}
-      {loaded && (
+      {loaded && translation && (
         <LanguagesSection
           isAdmin={isAdmin}
           locales={locales}
           supportedLocales={supportedLocales}
+          translation={translation}
           onChange={codes => {
             setLocales(codes)
             // Narrow the navbar picker immediately, not just on next load
@@ -284,6 +287,8 @@ interface LanguagesSectionProps {
   locales: string[]
   /** The release ceiling: locales this build can render */
   supportedLocales: { code: string; name: string }[]
+  /** Background catalog translation state at page load */
+  translation: CatalogTranslation
   /** Reflects a successful save into the page state */
   onChange: (locales: string[]) => void
 }
@@ -292,15 +297,26 @@ interface LanguagesSectionProps {
  * Offered languages: what the language picker shows and what the data catalog
  * is translated into. A subset of what this release's interface supports.
  */
-function LanguagesSection({ isAdmin, locales, supportedLocales, onChange }: LanguagesSectionProps) {
+function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onChange }: LanguagesSectionProps) {
   const [draft, setDraft] = useState<string[]>(locales)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [job, setJob] = useState<CatalogTranslation>(translation)
 
   function toggle(code: string) {
     setDraft(d => (d.includes(code) ? d.filter(c => c !== code) : [...d, code]))
   }
+
+  // A translation pass runs on the server after a language is added and
+  // outlasts any single request; poll until it settles
+  useEffect(() => {
+    if (!job.running) return
+    const timer = setInterval(() => {
+      getSettings().then(r => setJob(r.catalogTranslation), () => {})
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [job.running])
 
   async function save() {
     setBusy(true)
@@ -310,26 +326,14 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, onChange }: Lang
       const result = await setLocalesSetting(draft)
       onChange(result.locales)
       setDraft(result.locales)
-      setNotice(T`Saved. The language picker offers these; new catalog text is translated into them.`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function translateNow() {
-    setBusy(true)
-    setError(null)
-    setNotice(null)
-    try {
-      const result = await translateCatalog()
+      setJob(result.catalogTranslation)
+      const names = result.added.map(code => supportedLocales.find(l => l.code === code)?.name ?? code)
       setNotice(
-        result.failures.length > 0
-          ? T`Translated ${result.translations} strings in ${result.integrations} integrations; failed: ${result.failures.join("; ")}`
-          : result.translations === 0
-            ? T`Nothing to translate — the catalog already covers every offered language.`
-            : T`Translated ${result.translations} strings across ${result.integrations} integrations.`
+        result.added.length > 0 && result.catalogTranslation.running
+          ? T`Saved. Translating the data catalog into ${names.join(", ")} in the background; this takes a few minutes.`
+          : result.added.length > 0
+            ? T`Saved. No model is configured, so the data catalog stays untranslated for ${names.join(", ")}.`
+            : T`Saved.`
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -338,13 +342,24 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, onChange }: Lang
     }
   }
 
+  /** One line on the last or running translation pass. */
+  function jobLine(): string | null {
+    if (job.running) return T`Translating the data catalog…`
+    if (!job.result || !job.finishedAt) return null
+    const when = new Date(job.finishedAt).toLocaleString()
+    if (job.result.failures.length > 0)
+      return T`Last catalog translation (${when}): ${job.result.translations} strings written; failed: ${job.result.failures.join("; ")}`
+    if (job.result.translations === 0) return T`Last catalog translation (${when}): nothing was missing.`
+    return T`Last catalog translation (${when}): ${job.result.translations} strings across ${job.result.integrations} integrations.`
+  }
+
   const dirty = draft.slice().sort().join(",") !== locales.slice().sort().join(",")
 
   return (
     <section className="settings-section">
       <h2>{T`Languages`}</h2>
       <p className="dim">
-        {T`Languages this deployment offers: the picker shows them, and data catalog text (names, descriptions, caveats) is translated into them. Interface languages are fixed per release; this narrows the offer.`}
+        {T`Languages this deployment offers. The language picker shows them, and the data catalog (names, descriptions, caveats) is translated into each one automatically when you add it. Interface languages are fixed per release; this narrows the offer.`}
       </p>
       {error && <div className="error">{error}</div>}
       <div className="locale-checks">
@@ -365,22 +380,10 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, onChange }: Lang
           <button onClick={() => void save()} disabled={busy || !dirty || draft.length === 0}>
             {T`Save`}
           </button>
-          <button
-            className="secondary"
-            onClick={() => void translateNow()}
-            disabled={busy}
-            title={T`Fills missing catalog translations for the offered languages using the configured model`}
-          >
-            {T`Translate Data Catalog Now`}
-          </button>
         </div>
       )}
-      {isAdmin && (
-        <p className="dim">
-          {T`Names and descriptions of installed data are translated automatically as integrations are added. Use "Translate Data Catalog Now" after adding a language, or for integrations installed before translation existed.`}
-        </p>
-      )}
       {notice && <p className="dim">{notice}</p>}
+      {isAdmin && jobLine() && <p className="dim">{jobLine()}</p>}
     </section>
   )
 }

@@ -62,7 +62,7 @@ import {
 import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
-import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
+import { catalogTranslationStatus, startCatalogTranslation, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
@@ -437,7 +437,8 @@ async function route(
   if (pathname === "/api/settings" && req.method === "GET") {
     json(res, 200, {
       settings: { default_aoi: await getDefaultAoi(pool), site_title: await getSiteTitle(pool), locales: await getLocales(pool) },
-      supportedLocales: SUPPORTED_LOCALES
+      supportedLocales: SUPPORTED_LOCALES,
+      catalogTranslation: catalogTranslationStatus()
     })
     return
   }
@@ -491,16 +492,20 @@ async function route(
       json(res, 400, { error: err instanceof Error ? err.message : String(err) })
       return
     }
+    // Adding a language is the one event that leaves the catalog untranslated,
+    // so the translation pass starts here, in the background
+    const previous = await getLocales(pool)
     await setSetting(pool, LOCALES_KEY, locales)
-    json(res, 200, { locales })
+    const added = locales.filter(l => !previous.includes(l))
+    const catalogTranslation =
+      added.length > 0 && model ? startCatalogTranslation(pool, model, locales) : catalogTranslationStatus()
+    json(res, 200, { locales, added, catalogTranslation })
     return
   }
 
-  // Fills missing catalog translations across installed definitions: after
-  // adding a locale, after a session that finished without a model reachable,
-  // or to pick up strings a translation pass missed. Translation-only changes
-  // update the stored definition in place (no version bump - canonical
-  // identity ignores translations).
+  // Operator entry point for a full catalog translation pass (the settings
+  // page triggers one automatically when a language is added). Runs in the
+  // background; poll GET /api/settings for catalogTranslation.
   if (pathname === "/api/settings/translate-catalog" && req.method === "POST") {
     if (user.role !== "admin") {
       json(res, 403, { error: "Only admins can translate the catalog" })
@@ -510,54 +515,7 @@ async function route(
       json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
       return
     }
-    const locales = await getLocales(pool)
-    const installed = await pool.query("SELECT id, definition FROM app.integrations ORDER BY id")
-    let integrations = 0
-    let translations = 0
-    const failures: string[] = []
-    for (const row of installed.rows) {
-      try {
-        // Definitions installed before localization hold plain English strings;
-        // wrapping is a no-op on already-localized ones
-        const definition = wrapDefinitionStrings(row.definition, "en")
-        const written = await translateDefinition(model, definition, locales)
-        const wrapped = JSON.stringify(definition) !== JSON.stringify(row.definition)
-        if (written > 0 || wrapped) {
-          await pool.query("UPDATE app.integrations SET definition = $2 WHERE id = $1", [
-            row.id,
-            JSON.stringify(definition)
-          ])
-          integrations++
-          translations += written
-        }
-        // The catalog serves per-destination copies (data_tables.spec,
-        // raster_layers) that otherwise refresh only when the integration
-        // runs; push the (possibly already-)translated specs into them
-        for (const dest of definition.destinations ?? []) {
-          if (dest.kind === "table") {
-            await pool.query(
-              `UPDATE app.data_tables SET spec = $3, updated_at = now()
-               WHERE id = $1 AND integration_id = $2`,
-              [dest.tableId, row.id, JSON.stringify(dest)]
-            )
-          } else if (dest.kind === "raster") {
-            await pool.query(
-              `UPDATE app.raster_layers SET name = $3, bands = $4
-               WHERE id = $1 AND integration_id = $2 AND session_id IS NULL`,
-              [
-                dest.layerId,
-                row.id,
-                JSON.stringify(dest.name ?? { _base: "en", en: dest.layerId }),
-                JSON.stringify(dest.bands)
-              ]
-            )
-          }
-        }
-      } catch (err) {
-        failures.push(`${row.id}: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    }
-    json(res, 200, { integrations, translations, failures })
+    json(res, 202, { catalogTranslation: startCatalogTranslation(pool, model, await getLocales(pool)) })
     return
   }
 

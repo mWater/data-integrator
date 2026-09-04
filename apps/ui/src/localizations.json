@@ -4606,6 +4606,78 @@
       "es": "Actividad del agente",
       "mg": "Hetsiky ny mpandraharaha",
       "sw": "Shughuli za Ajenti"
+    },
+    {
+      "_base": "en",
+      "en": "Saved. Translating the data catalog into {0} in the background; this takes a few minutes.",
+      "fr": "Enregistré. Traduction du catalogue de données en {0} en arrière-plan ; cela prend quelques minutes.",
+      "pt": "Guardado. A traduzir o catálogo de dados para {0} em segundo plano; demora alguns minutos.",
+      "es": "Guardado. El catálogo de datos se está traduciendo al {0} en segundo plano; tardará unos minutos.",
+      "mg": "Voatahiry. Adika amin'ny teny {0} any ambadika ny katalaogin'ny angona; maharitra minitra vitsivitsy izany.",
+      "sw": "Imehifadhiwa. Katalogi ya data inatafsiriwa kwa {0} chinichini; hii huchukua dakika chache."
+    },
+    {
+      "_base": "en",
+      "en": "Saved. No model is configured, so the data catalog stays untranslated for {0}.",
+      "fr": "Enregistré. Aucun modèle n’est configuré ; le catalogue de données reste donc non traduit en {0}.",
+      "pt": "Guardado. Nenhum modelo está configurado, por isso o catálogo de dados permanece sem tradução para {0}.",
+      "es": "Guardado. No hay ningún modelo configurado, por lo que el catálogo de datos permanece sin traducir al {0}.",
+      "mg": "Voatahiry. Tsy misy maodely voarindra, ka mijanona tsy voadika amin'ny teny {0} ny katalaogin'ny angona.",
+      "sw": "Imehifadhiwa. Hakuna modeli iliyosanidiwa, kwa hivyo katalogi ya data inabaki bila kutafsiriwa kwa {0}."
+    },
+    {
+      "_base": "en",
+      "en": "Saved.",
+      "fr": "Enregistré.",
+      "pt": "Guardado.",
+      "es": "Guardado.",
+      "mg": "Voatahiry.",
+      "sw": "Imehifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Translating the data catalog…",
+      "fr": "Traduction du catalogue de données…",
+      "pt": "A traduzir o catálogo de dados…",
+      "es": "Traduciendo el catálogo de datos…",
+      "mg": "Adika ny katalaogin'ny angona…",
+      "sw": "Inatafsiri katalogi ya data…"
+    },
+    {
+      "_base": "en",
+      "en": "Last catalog translation ({0}): {1} strings written; failed: {2}",
+      "fr": "Dernière traduction du catalogue ({0}) : {1} chaînes écrites ; échecs : {2}",
+      "pt": "Última tradução do catálogo ({0}): {1} cadeias escritas; falhas: {2}",
+      "es": "Última traducción del catálogo ({0}): {1} cadenas guardadas; errores: {2}",
+      "mg": "Fandikana farany ny katalaogy ({0}): lahatsoratra {1} voasoratra; tsy nahomby: {2}",
+      "sw": "Tafsiri ya mwisho ya katalogi ({0}): maandishi {1} yamehifadhiwa; yaliyoshindikana: {2}"
+    },
+    {
+      "_base": "en",
+      "en": "Last catalog translation ({0}): nothing was missing.",
+      "fr": "Dernière traduction du catalogue ({0}) : aucune chaîne ne manquait.",
+      "pt": "Última tradução do catálogo ({0}): não faltava nada.",
+      "es": "Última traducción del catálogo ({0}): no faltaba nada.",
+      "mg": "Fandikana farany ny katalaogy ({0}): tsy nisy tsy ampy.",
+      "sw": "Tafsiri ya mwisho ya katalogi ({0}): hakuna kilichokosekana."
+    },
+    {
+      "_base": "en",
+      "en": "Last catalog translation ({0}): {1} strings across {2} integrations.",
+      "fr": "Dernière traduction du catalogue ({0}) : {1} chaînes dans {2} intégrations.",
+      "pt": "Última tradução do catálogo ({0}): {1} cadeias em {2} integrações.",
+      "es": "Última traducción del catálogo ({0}): {1} cadenas de {2} integraciones.",
+      "mg": "Fandikana farany ny katalaogy ({0}): lahatsoratra {1} tao amin'ny fampidirana {2}.",
+      "sw": "Tafsiri ya mwisho ya katalogi ({0}): maandishi {1} katika miunganisho {2}."
+    },
+    {
+      "_base": "en",
+      "en": "Languages this deployment offers. The language picker shows them, and the data catalog (names, descriptions, caveats) is translated into each one automatically when you add it. Interface languages are fixed per release; this narrows the offer.",
+      "fr": "Langues proposées par ce déploiement. Le sélecteur de langue les affiche et, lorsque vous en ajoutez une, le catalogue de données (noms, descriptions, réserves) y est automatiquement traduit. Les langues de l’interface sont fixées pour chaque version ; cette liste limite donc les choix proposés.",
+      "pt": "Idiomas disponíveis nesta implementação. O seletor de idioma apresenta-os e o catálogo de dados (nomes, descrições e ressalvas) é traduzido automaticamente para cada idioma adicionado. Os idiomas da interface são fixos em cada versão; esta opção limita a oferta.",
+      "es": "Idiomas disponibles en este despliegue. El selector de idioma los muestra y, al añadir uno, el catálogo de datos (nombres, descripciones y salvedades) se traduce automáticamente a ese idioma. Los idiomas de la interfaz son fijos para cada versión; esta opción limita la oferta.",
+      "mg": "Ireo fiteny atolotr'ity fametrahana ity. Asehon'ny mpisafidy fiteny izy ireo, ary adika ho azy amin'ny tsirairay ny katalaogin'ny angona (anarana, famaritana, fanamarihana) rehefa ampidirinao ilay fiteny. Voafaritra isaky ny famoahana ny fitenin'ny interface; mametra ny safidy izany.",
+      "sw": "Lugha zinazotolewa na usakinishaji huu. Kiteuzi cha lugha huzionyesha, na katalogi ya data (majina, maelezo, tahadhari) hutafsiriwa kiotomatiki kwa kila lugha unapoiongeza. Lugha za kiolesura hubainishwa kwa kila toleo; hivyo chaguo hupungua."
     }
   ],
   "unused": [
@@ -4619,6 +4691,14 @@
     "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
     "Sharing",
     "private",
-    "Translate Catalog"
+    "Saved. The language picker offers these; new catalog text is translated into them.",
+    "Translated {0} strings in {1} integrations; failed: {2}",
+    "Nothing to translate — the catalog already covers every offered language.",
+    "Translated {0} strings across {1} integrations.",
+    "Languages this deployment offers: the picker shows them, and data catalog text (names, descriptions, caveats) is translated into them. Interface languages are fixed per release; this narrows the offer.",
+    "Fills missing catalog translations for the offered languages using the configured model",
+    "Translate Catalog",
+    "Translate Data Catalog Now",
+    "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed."
   ]
 }

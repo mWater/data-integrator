@@ -6,6 +6,7 @@
  * boundary and are wrapped here.
  */
 
+import pg from "pg"
 import { generateObject, LanguageModel } from "ai"
 import { z } from "zod"
 import {
@@ -243,4 +244,121 @@ export function refreshChangedStrings(definition: IntegrationDefinition, previou
       }
     }
   }
+}
+
+/** Outcome of one pass over the installed catalog. */
+export interface CatalogTranslationResult {
+  /** Integrations whose stored definition changed */
+  integrations: number
+  /** Translated strings written */
+  translations: number
+  /** "integrationId: message" for integrations that failed */
+  failures: string[]
+}
+
+/** State of the background catalog translation, for the settings page. */
+export interface CatalogTranslationStatus {
+  /** True while a pass is running */
+  running: boolean
+  /** Locales the running or last pass targeted */
+  locales: string[]
+  /** Start time of the running or last pass (ISO); null when never run */
+  startedAt: string | null
+  /** Finish time of the last pass (ISO); null while running or never run */
+  finishedAt: string | null
+  /** Result of the last pass; null while running or never run */
+  result: CatalogTranslationResult | null
+}
+
+/**
+ * Fills missing translations across every installed definition and pushes the
+ * translated destination specs into the catalog copies (data_tables.spec,
+ * raster_layers), which otherwise refresh only when an integration runs.
+ * Translation-only changes update the stored definition in place: canonical
+ * identity ignores translations, so no version is archived.
+ */
+export async function translateCatalog(
+  pool: pg.Pool,
+  model: LanguageModel,
+  locales: string[]
+): Promise<CatalogTranslationResult> {
+  const installed = await pool.query("SELECT id, definition FROM app.integrations ORDER BY id")
+  const result: CatalogTranslationResult = { integrations: 0, translations: 0, failures: [] }
+  for (const row of installed.rows) {
+    try {
+      // Definitions installed before localization hold plain English strings;
+      // wrapping is a no-op on already-localized ones
+      const definition = wrapDefinitionStrings(row.definition, "en")
+      const written = await translateDefinition(model, definition, locales)
+      const wrapped = JSON.stringify(definition) !== JSON.stringify(row.definition)
+      if (written > 0 || wrapped) {
+        await pool.query("UPDATE app.integrations SET definition = $2 WHERE id = $1", [
+          row.id,
+          JSON.stringify(definition)
+        ])
+        result.integrations++
+        result.translations += written
+      }
+      for (const dest of definition.destinations ?? []) {
+        if (dest.kind === "table") {
+          await pool.query(
+            `UPDATE app.data_tables SET spec = $3, updated_at = now()
+             WHERE id = $1 AND integration_id = $2`,
+            [dest.tableId, row.id, JSON.stringify(dest)]
+          )
+        } else if (dest.kind === "raster") {
+          await pool.query(
+            `UPDATE app.raster_layers SET name = $3, bands = $4
+             WHERE id = $1 AND integration_id = $2 AND session_id IS NULL`,
+            [
+              dest.layerId,
+              row.id,
+              JSON.stringify(dest.name ?? { _base: "en", en: dest.layerId }),
+              JSON.stringify(dest.bands)
+            ]
+          )
+        }
+      }
+    } catch (err) {
+      result.failures.push(`${row.id}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  return result
+}
+
+/** The one in-process translation pass; a second start while running is a no-op. */
+let catalogJob: CatalogTranslationStatus = {
+  running: false,
+  locales: [],
+  startedAt: null,
+  finishedAt: null,
+  result: null
+}
+
+/** Current state of the background catalog translation. */
+export function catalogTranslationStatus(): CatalogTranslationStatus {
+  return { ...catalogJob, locales: [...catalogJob.locales], result: catalogJob.result }
+}
+
+/**
+ * Starts a catalog translation pass in the background and returns at once.
+ * A pass over a real catalog outlasts proxy timeouts, so requests never wait
+ * on it; the settings page polls the status instead.
+ */
+export function startCatalogTranslation(pool: pg.Pool, model: LanguageModel, locales: string[]): CatalogTranslationStatus {
+  if (catalogJob.running) return catalogTranslationStatus()
+  catalogJob = { running: true, locales, startedAt: new Date().toISOString(), finishedAt: null, result: null }
+  void translateCatalog(pool, model, locales)
+    .then(result => {
+      catalogJob = { ...catalogJob, running: false, finishedAt: new Date().toISOString(), result }
+    })
+    .catch(err => {
+      catalogJob = {
+        ...catalogJob,
+        running: false,
+        finishedAt: new Date().toISOString(),
+        result: { integrations: 0, translations: 0, failures: [err instanceof Error ? err.message : String(err)] }
+      }
+    })
+  return catalogTranslationStatus()
 }

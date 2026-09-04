@@ -922,26 +922,41 @@ export function listCountries(): Promise<{ countries: CountryBox[] }> {
   return request("/api/countries")
 }
 
+/** State of the background data-catalog translation pass. */
+export interface CatalogTranslation {
+  /** True while a pass is running */
+  running: boolean
+  /** Locales the running or last pass targeted */
+  locales: string[]
+  /** Start time of the running or last pass (ISO); null when never run */
+  startedAt: string | null
+  /** Finish time of the last pass (ISO); null while running or never run */
+  finishedAt: string | null
+  /** Result of the last pass; null while running or never run */
+  result: { integrations: number; translations: number; failures: string[] } | null
+}
+
 /** Deployment settings. */
 export function getSettings(): Promise<{
   settings: { default_aoi: DefaultAoi | null; site_title: string | null; locales: string[] }
   supportedLocales: { code: string; name: string }[]
+  catalogTranslation: CatalogTranslation
 }> {
   return request("/api/settings")
 }
 
-/** Sets the deployment's offered locales (admin only). */
-export function setLocalesSetting(locales: string[]): Promise<{ locales: string[] }> {
+/**
+ * Sets the deployment's offered locales (admin only). Adding a language starts
+ * a background translation of the data catalog into it; poll getSettings.
+ */
+export function setLocalesSetting(
+  locales: string[]
+): Promise<{ locales: string[]; added: string[]; catalogTranslation: CatalogTranslation }> {
   return request("/api/settings/locales", {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ locales })
   })
-}
-
-/** Fills missing catalog translations across installed definitions (admin only). */
-export function translateCatalog(): Promise<{ integrations: number; translations: number; failures: string[] }> {
-  return request("/api/settings/translate-catalog", { method: "POST" })
 }
 
 /** Sets the deployment display name; a blank title restores the default (admin only). */
