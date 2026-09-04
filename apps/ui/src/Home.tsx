@@ -373,6 +373,8 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
           )} keeping ${(
             <Count n={sources} one={T`data source`} many={T`data sources`} />
           )} current`}
+          {" · "}
+          <a href="#/how-it-works">{T`How it works`}</a>
         </p>
       </header>
 

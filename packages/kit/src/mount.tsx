@@ -74,7 +74,12 @@ class ErrorBoundary extends Component<BoundaryProps, { failed: boolean }> {
 
 /** Mounts the dashboard root component; the compiled bundle calls this once. */
 export function mountDashboard(Dashboard: ComponentType<DashboardProps>): void {
-  window.addEventListener("error", (e) => bridgeError(e.message, e.error?.stack))
+  window.addEventListener("error", (e) => {
+    // Browsers emit this when layout settles over more than one frame, which
+    // charts do on every resize; it is not an error in the dashboard
+    if (e.message.startsWith("ResizeObserver loop")) return
+    bridgeError(e.message, e.error?.stack)
+  })
   window.addEventListener("unhandledrejection", (e) =>
     bridgeError(e.reason instanceof Error ? e.reason.message : String(e.reason), e.reason?.stack)
   )

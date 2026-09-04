@@ -4,7 +4,7 @@
  * properties. Loaded lazily so maplibre stays out of the first paint.
  */
 import { useEffect, useRef } from "react"
-import { LngLatBounds, Map as MapLibreMap, Popup } from "maplibre-gl"
+import { LngLatBounds, Map as MapLibreMap, NavigationControl, Popup } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "./maplibre.js"
 import { useAppTheme } from "./theme.js"
@@ -44,6 +44,7 @@ export function TableMap({ tableId, extent, columnLabels }: TableMapProps) {
         center: [30, -10],
         zoom: 3
       })
+      map.addControl(new NavigationControl({ showCompass: false }))
       mapRef.current = map
       map.on("load", () => {
         map.addSource("table", {

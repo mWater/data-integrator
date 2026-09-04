@@ -21,6 +21,8 @@ interface Props {
   /** Compiled stylesheet */
   bundleCss: string
   /** Kit version the bundle is pinned to */
+  /** Receives a print function once the frame is mounted (null on unmount) */
+  onPrintReady?: (print: (() => void) | null) => void
   /** Draft override: executes queries via this handler instead of the saved dashboard */
   runQuery?: (name: string, params: Record<string, unknown>) => Promise<Record<string, unknown>[]>
   /** Draft override: fetches vector tiles via this handler instead of the saved dashboard */
@@ -60,9 +62,12 @@ export function DashboardFrame({
   fetchVectorTile,
   fetchMeta,
   fetchRasterTile,
-  onError
+  onError,
+  onPrintReady
 }: Props) {
   const container = useRef<HTMLDivElement>(null)
+  const onPrintReadyRef = useRef(onPrintReady)
+  onPrintReadyRef.current = onPrintReady
   // Handlers live in refs, never in the effect deps: the bridge calls them
   // lazily, so a caller's inline lambda changing identity on every render
   // (e.g. typing in the session composer) must not remount the frame
@@ -81,7 +86,7 @@ export function DashboardFrame({
   useEffect(() => {
     if (!container.current) return
     let destroyed = false
-    let frame: { destroy(): void } | null = null
+    let frame: { destroy(): void; print(): void } | null = null
     const snapshotByLayer = new Map<string, string>()
 
     const mount = async () => {
@@ -100,6 +105,8 @@ export function DashboardFrame({
       }))
       if (destroyed || !container.current) return
 
+      // Published before mount returns: the closure reads the frame when called
+      onPrintReadyRef.current?.(() => frame?.print())
       frame = mountDashboardFrame({
         container: container.current,
         bundleJs,
@@ -142,6 +149,7 @@ export function DashboardFrame({
 
     return () => {
       destroyed = true
+      onPrintReadyRef.current?.(null)
       frame?.destroy()
     }
     // mode in deps: a theme change remounts the frame with the other token set

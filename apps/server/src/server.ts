@@ -62,7 +62,7 @@ import {
 import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
-import { catalogTranslationStatus, startCatalogTranslation, wrapDefinitionStrings } from "./localizeCatalog.js"
+import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
@@ -1120,6 +1120,42 @@ async function route(
     return
   }
 
+  // Display-name edit: the id in the URL is permanent, the name is a definition
+  // field, so this archives a new version like the schedule and AOI edits do.
+  // The new text is authored in the caller's interface language and translated
+  // into the deployment's other languages when a model is configured.
+  const nameMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/name$/)
+  if (nameMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const row = await pool.query("SELECT definition, status FROM app.integrations WHERE id = $1", [nameMatch[1]])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const name = typeof body.name === "string" ? body.name.trim() : ""
+    if (!name || name.length > 200) {
+      json(res, 400, { error: "name must be 1-200 characters" })
+      return
+    }
+    const locale =
+      typeof body.locale === "string" && SUPPORTED_LOCALES.some(l => l.code === body.locale) ? body.locale : "en"
+    const definition = { ...row.rows[0].definition, name: { _base: locale, [locale]: name } }
+    if (model) {
+      try {
+        await translateDefinition(model, definition, await getLocales(pool))
+      } catch (err) {
+        console.warn(`rename ${nameMatch[1]}: translation skipped: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+    const { version } = await installIntegration(pool, definition, row.rows[0].status, user.id)
+    json(res, 200, { version, name: definition.name })
+    return
+  }
+
   const runMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
   if (runMatch && req.method === "POST") {
     if (user.role === "viewer") {
@@ -1248,6 +1284,7 @@ async function routeDashboardView(
   const isView =
     (sub === undefined && req.method === "GET") ||
     (sub === "/meta" && req.method === "GET") ||
+    (sub === "/sources" && req.method === "GET") ||
     (sub?.startsWith("/queries/") === true && req.method === "POST") ||
     (sub?.startsWith("/tiles/") === true && req.method === "GET") ||
     (sub?.startsWith("/rastertiles/") === true && req.method === "GET")
@@ -1272,6 +1309,31 @@ async function routeDashboardView(
       void queries
       json(res, 200, viewable)
     }
+    return true
+  }
+
+  if (sub === "/sources") {
+    // What the dashboard reads, for people: the tables its frozen queries
+    // reference (matched by id against the catalog, since the SQL runs with
+    // search_path = data) and the raster layers it declares
+    const catalog = await listSources(pool)
+    const sqlText = (detail.queries ?? []).map(q => q.sql).join("\n")
+    const used = catalog.filter(source =>
+      source.kind === "raster"
+        ? detail.layers.includes(source.id)
+        : new RegExp(`(^|[^A-Za-z0-9_])${source.id}([^A-Za-z0-9_]|$)`).test(sqlText)
+    )
+    json(res, 200, {
+      sources: used.map(source => ({
+        kind: source.kind,
+        id: source.id,
+        name: source.name,
+        description: source.description,
+        integrationId: source.integrationId,
+        integrationName: source.integrationName,
+        updatedAt: source.updatedAt
+      }))
+    })
     return true
   }
 

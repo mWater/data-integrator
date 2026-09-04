@@ -13,7 +13,7 @@ import {
   User
 } from "./api.js"
 import { ThemePreference, useAppTheme } from "./theme.js"
-import { setOfferedLocales } from "./localization.js"
+import { formatDateTime, setOfferedLocales } from "./localization.js"
 import { UsersSection } from "./UsersSection.js"
 
 /** Shown as the home page title when the deployment has not set one. */
@@ -346,7 +346,7 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onC
   function jobLine(): string | null {
     if (job.running) return T`Translating the data catalog…`
     if (!job.result || !job.finishedAt) return null
-    const when = new Date(job.finishedAt).toLocaleString()
+    const when = formatDateTime(job.finishedAt)
     if (job.result.failures.length > 0)
       return T`Last catalog translation (${when}): ${job.result.translations} strings written; failed: ${job.result.failures.join("; ")}`
     if (job.result.translations === 0) return T`Last catalog translation (${when}): nothing was missing.`

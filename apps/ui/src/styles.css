@@ -287,7 +287,36 @@ tr:hover .row-delete, .row-delete:focus-visible { opacity: 1 }
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 60ch }
 
 /* Login */
-.dashboard-page { flex: 1; min-height: 0; display: flex }
+.dashboard-page { flex: 1; min-height: 0; display: flex; flex-direction: column }
+.dashboard-toolbar {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.dashboard-toolbar h1 { margin: 0; font-size: 16px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.dashboard-toolbar .spacer { flex: 1 }
+.dashboard-toolbar button { font-size: 13px; padding: 5px 10px }
+.sources-menu { position: relative; display: flex }
+.sources-popover {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; width: 360px; max-width: 90vw;
+  max-height: 70vh; overflow: auto; padding: 12px 14px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 8px 24px var(--shadow);
+}
+.sources-popover h2 { margin: 0 0 8px; font-size: 14px }
+.sources-popover ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px }
+.sources-popover li a { font-weight: 600 }
+.sources-popover li .chip { margin-left: 8px }
+.session-page.preview-full .conversation, .session-page.preview-full .split-handle { display: none }
+.session-page.preview-full .preview-panel { border-left: 0; position: relative }
+.preview-exit {
+  position: absolute; top: 8px; right: 12px; z-index: 5; font-size: 12.5px; padding: 4px 10px;
+}
+/* Printing is done by the frame itself (see kit host print); this only covers
+   someone printing the host page directly */
+@media print {
+  .topbar, .dashboard-toolbar, .sources-popover { display: none !important }
+  body { background: #fff }
+}
 .dashboard-frame { flex: 1; min-height: 0 }
 .dashboard-frame iframe { display: block }
 
@@ -475,11 +504,18 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   width: 100%; max-width: min(920px, 100% - 40px); margin-left: auto; margin-right: auto;
 }
 .session-head { display: flex; align-items: center; gap: 12px }
-/* The title yields before the actions do: it truncates rather than squeezing
-   the buttons into wrapped two-line blocks */
+/* The title yields before the actions do: it truncates rather than squeezing them */
 .session-head h1 {
-  font-size: 18px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 18px; margin: 0; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Beside a dashboard preview the chat is a side pane, so its title is a caption */
+.session-head.compact h1 { font-size: 13.5px; font-weight: 600; color: var(--ink-dim) }
+.session-actions { display: flex; gap: 2px; margin-left: auto; flex: 0 0 auto }
+.icon-btn {
+  background: none; border: 0; padding: 5px; border-radius: 6px; color: var(--ink-dim); cursor: pointer;
+  display: flex; align-items: center;
+}
+.icon-btn:hover { color: var(--ink); background: var(--inset) }
 .session-head .chip { flex: 0 0 auto }
 .messages {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
@@ -880,3 +916,12 @@ table.users tbody tr:hover { background: none }
 .secrets-actions { display: flex; gap: 8px; align-items: center }
 .secrets-editor { display: flex; gap: 8px; align-items: flex-start }
 .secrets-editor textarea { width: 340px; font-family: monospace; font-size: 12px; padding: 6px 8px; border: 1px solid var(--control-border); border-radius: 6px }
+
+/* How it works */
+.how-page h2 { margin: 28px 0 10px; font-size: 18px }
+.terms { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px 24px }
+.terms .term { margin: 0 }
+.terms dt { font-weight: 600; margin: 0 0 3px }
+.terms dd { margin: 0; color: var(--ink-dim); font-size: 13.5px; line-height: 1.5 }
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; max-width: 70ch }
+.steps li { line-height: 1.45 }

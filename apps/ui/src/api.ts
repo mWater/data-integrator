@@ -852,6 +852,29 @@ export function getDashboardMeta(id: string): Promise<DashboardMeta> {
   return request(`/api/dashboards/${id}/meta`)
 }
 
+/** One catalog source a dashboard reads, for the viewer's Sources list. */
+export interface DashboardSource {
+  /** Source kind */
+  kind: "table" | "raster"
+  /** tableId or layerId */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** Catalog description */
+  description: LocalizedString | null
+  /** Owning integration id */
+  integrationId: string
+  /** Owning integration display name */
+  integrationName: LocalizedString
+  /** Last data update (ISO); null before the first run */
+  updatedAt: string | null
+}
+
+/** Lists the tables and layers a dashboard reads (public for public dashboards). */
+export function getDashboardSources(id: string): Promise<{ sources: DashboardSource[] }> {
+  return request(`/api/dashboards/${id}/sources`)
+}
+
 /** What an integration owns and what would break with it. */
 export interface IntegrationUsage {
   /** Owned destination table ids */
@@ -1004,6 +1027,15 @@ export interface VersionSummary {
 /** The integration's version history, newest first. */
 export function getIntegrationVersions(id: string): Promise<{ versions: VersionSummary[] }> {
   return request(`/api/integrations/${id}/versions`)
+}
+
+/** Changes the integration's display name, archiving a new definition version. */
+export function renameIntegration(id: string, name: string): Promise<{ version: number; name: LocalizedString }> {
+  return request(`/api/integrations/${id}/name`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, locale: currentLocale() })
+  })
 }
 
 /** Changes the integration's AOI, archiving a new definition version. */

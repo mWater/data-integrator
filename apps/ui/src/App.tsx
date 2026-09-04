@@ -16,6 +16,7 @@ import { SessionView } from "./SessionView.js"
 import { Settings } from "./Settings.js"
 import { TablePage } from "./TablePage.js"
 import { Library } from "./Library.js"
+import { HowItWorks } from "./HowItWorks.js"
 import { UserMenu } from "./UserMenu.js"
 
 // The layer page owns the maplibre chunk; keep it out of the first paint
@@ -47,6 +48,8 @@ interface Route {
   aiPrivacy: boolean
   /** True on the library page */
   library: boolean
+  /** True on the How it works page */
+  howItWorks: boolean
   /** Raster layer id, when on a layer page */
   layerId: string | null
   /** Design session whose scratch layer the page shows (?session=) */
@@ -75,6 +78,7 @@ function parseHash(): Route {
     settings: hash === "#/settings",
     aiPrivacy: hash === "#/ai-privacy",
     library: hash === "#/library",
+    howItWorks: hash === "#/how-it-works",
     layerId: layer ? layer[1] : null,
     layerSessionId: layer ? new URLSearchParams(query ?? "").get("session") : null
   }
@@ -215,7 +219,7 @@ export function App() {
             <span style={{ flex: 1 }} />
             <a className="topbar-signin" href="#/dashboards">{T`Sign In`}</a>
           </header>
-          <DashboardView dashboardId={route.dashboardId} />
+          <DashboardView dashboardId={route.dashboardId} canDesign={false} />
         </div>
       )
     }
@@ -264,9 +268,11 @@ export function App() {
       ) : route.ask ? (
         <AssistantPage />
       ) : route.dashboardId ? (
-        <DashboardView dashboardId={route.dashboardId} />
+        <DashboardView dashboardId={route.dashboardId} canDesign={canDesign} />
       ) : route.dashboards ? (
         <DashboardList canDesign={canDesign} />
+      ) : route.howItWorks ? (
+        <HowItWorks />
       ) : route.library ? (
         <Library user={user} />
       ) : route.settings ? (

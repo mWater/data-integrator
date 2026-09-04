@@ -44,6 +44,25 @@ export function currentLocale(): string {
   return activeLocale
 }
 
+/**
+ * A timestamp for display: the viewer's local time with its zone abbreviation
+ * ("8/26/2026, 4:04 PM EAT"), so "last updated" never reads ambiguously across
+ * offices. Accepts ISO strings and Dates; blank for nothing.
+ */
+export function formatDateTime(value: string | Date | null | undefined): string {
+  if (!value) return ""
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  })
+}
+
 export function localizeData(value: LocalizedString | string | null | undefined): string {
   if (!value) return ""
   if (typeof value === "string") return value

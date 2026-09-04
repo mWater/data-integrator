@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { DataSource, getTableGeometry, getTableRows, listSources, listTableSchemas, TableColumn } from "./api.js"
-import { localizeData } from "./localization.js"
+import { formatDateTime, localizeData } from "./localization.js"
 
 // The map owns the maplibre chunk; keep it out of the first paint
 const TableMap = lazy(() => import("./TableMap.js").then(m => ({ default: m.TableMap })))
@@ -56,7 +56,7 @@ export function TablePage({ tableId }: TablePageProps) {
         <p className="dim">
           {source.id}
           {source.rows !== null ? ` · ${T`${source.rows.toLocaleString()} rows`}` : ""}
-          {source.updatedAt ? ` · ${T`updated ${new Date(source.updatedAt).toLocaleString()}`}` : ""}
+          {source.updatedAt ? ` · ${T`updated ${formatDateTime(source.updatedAt)}`}` : ""}
         </p>
       )}
       {error && <div className="error">{error}</div>}

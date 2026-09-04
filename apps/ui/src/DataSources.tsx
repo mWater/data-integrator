@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { DataSource, listSources } from "./api.js"
-import { localizeData } from "./localization.js"
+import { formatDateTime, localizeData } from "./localization.js"
 
 /** A source kind's display label, translated at call time. */
 function kindLabel(kind: DataSource["kind"]): string {
@@ -93,7 +93,7 @@ export function DataSources() {
                           ? T`${source.snapshots} snapshot`
                           : T`${source.snapshots} snapshots`}
                     </td>
-                    <td>{source.updatedAt ? new Date(source.updatedAt).toLocaleString() : <span className="dim">{T`never`}</span>}</td>
+                    <td>{source.updatedAt ? formatDateTime(source.updatedAt) : <span className="dim">{T`never`}</span>}</td>
                   </tr>
                 ))}
               </tbody>

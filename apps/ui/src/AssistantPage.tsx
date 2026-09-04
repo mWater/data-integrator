@@ -9,6 +9,7 @@ import { createAssistantSession, deleteSession, listSessions, sendMessage, Sessi
 import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { WelcomeCompose } from "./WelcomeCompose.js"
+import { formatDateTime } from "./localization.js"
 
 /** Human labels for session statuses. */
 function statusLabels(): Record<string, string> {
@@ -103,7 +104,7 @@ Name the place, the period, and the measurements you care about.`}
                 <tr key={s.id} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
                   <td>{s.firstMessage ?? <span className="dim">{T`(empty)`}</span>}</td>
                   <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
-                  <td>{new Date(s.updatedAt).toLocaleString()}</td>
+                  <td>{formatDateTime(s.updatedAt)}</td>
                   <td className="row-delete-cell">
                     <button
                       className="row-delete"

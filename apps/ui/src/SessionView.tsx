@@ -164,6 +164,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   const [input, setInput] = useState("")
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const [split, setSplit] = useState(storedSplit)
+  // Full-screen preview hides the conversation so the dashboard can be judged
+  // at its real size; Escape or the button brings the chat back
+  const [previewFull, setPreviewFull] = useState(false)
+  useEffect(() => {
+    if (!previewFull) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewFull(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [previewFull])
   const pageRef = useRef<HTMLElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const kindRef = useRef<string | null>(null)
@@ -379,11 +390,12 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       ? (detail.state as DesignerState)
       : null
   return (
-    <main className="session-page" ref={pageRef}>
+    <main className={`session-page${previewFull ? " preview-full" : ""}`} ref={pageRef}>
       <div className="conversation">
-        <div className="session-head">
+        <div className={`session-head${isDashboard ? " compact" : ""}`}>
           {/* Ids are plumbing: the title is the display name, or a placeholder
-              until the agent names what it is building */}
+              until the agent names what it is building. Beside a preview it
+              stays small; the dashboard carries its own heading */}
           <h1>{localizeData(title)}</h1>
           {isDashboard && dashState?.saved && (
             <a href={`#/dashboard/${detail.integrationId}`}>{T`Saved v${dashState.saved.version}`}</a>
@@ -393,10 +405,27 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           {detail.scratchLayers.length > 0 && (
             <a href={`#/layer/${detail.scratchLayers[0].id}?session=${detail.id}`}>{T`Map preview`}</a>
           )}
-          <span className="spacer" />
-          <button className="details-toggle" onClick={() => setShowDetails(v => !v)}>
-            {showDetails ? T`Hide details` : T`Show Details`}
-          </button>
+          <span className="session-actions">
+            {isDashboard && build && (
+              <button
+                className="icon-btn"
+                onClick={() => setPreviewFull(true)}
+                title={T`Full-screen preview (Esc to return)`}
+                aria-label={T`Full-screen preview`}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                </svg>
+              </button>
+            )}
+            <button className="icon-btn" onClick={() => setShowDetails(v => !v)} title={T`Session details`} aria-label={T`Session details`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 11v5" />
+                <circle cx="12" cy="8" r="0.6" fill="currentColor" />
+              </svg>
+            </button>
+          </span>
         </div>
         <div className="messages">
           <Transcript
@@ -477,7 +506,12 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         />
       )}
       {isDashboard && (
-        <div className="preview-panel" style={{ flex: `0 0 ${(split * 100).toFixed(2)}%` }}>
+        <div className="preview-panel" style={previewFull ? { flex: "1 1 auto" } : { flex: `0 0 ${(split * 100).toFixed(2)}%` }}>
+          {previewFull && (
+            <button className="preview-exit" onClick={() => setPreviewFull(false)} title={T`Back to the conversation (Esc)`}>
+              {T`Back to chat`}
+            </button>
+          )}
           {build ? (
             <DashboardFrame
               key={build.rev}

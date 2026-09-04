@@ -14,6 +14,7 @@ import {
 import { ensureAiAck } from "./aiAck.js"
 import { ConfirmDelete } from "./ConfirmDelete.js"
 import { RowMenu } from "./RowMenu.js"
+import { formatDateTime } from "./localization.js"
 
 /** Props for the dashboards list. */
 interface Props {
@@ -119,7 +120,7 @@ export function DashboardList({ canDesign }: Props) {
                     {s.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}
                   </div>
                 </td>
-                <td>{new Date(s.updatedAt).toLocaleString()}</td>
+                <td>{formatDateTime(s.updatedAt)}</td>
                 {canDesign ? <td /> : null}
               </tr>
             ))}
@@ -137,7 +138,7 @@ export function DashboardList({ canDesign }: Props) {
                   ) : null}
                   <div className="dim">{d.id}</div>
                 </td>
-                <td>{new Date(d.updatedAt).toLocaleString()}</td>
+                <td>{formatDateTime(d.updatedAt)}</td>
                 {canDesign ? (
                   <td className="row-delete-cell">
                     <RowMenu label={T`Actions for ${d.name}`}>

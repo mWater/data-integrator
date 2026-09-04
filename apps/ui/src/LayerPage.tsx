@@ -5,12 +5,12 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { LngLatBounds, Map as MapLibreMap, Popup, RasterTileSource } from "maplibre-gl"
+import { LngLatBounds, Map as MapLibreMap, Popup, RasterTileSource, NavigationControl } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "./maplibre.js"
 import { getLayer, LayerBand, LayerDetail, sampleLayer, styleToken } from "./api.js"
 import { useAppTheme } from "./theme.js"
-import { localizeData } from "./localization.js"
+import { formatDateTime, localizeData } from "./localization.js"
 
 /** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
 const tileUrl = (layerId: string, snapshotId: string, band: LayerBand) =>
@@ -50,7 +50,7 @@ function snapshotLabel(iso: string, interval: boolean): string {
   if (interval || dateStamp) {
     return date.toLocaleDateString(undefined, dateStamp ? { timeZone: "UTC" } : undefined)
   }
-  return date.toLocaleString()
+  return formatDateTime(date)
 }
 
 /** Units worth printing; "1" and "dimensionless" are a scale, not a caption. */
@@ -142,6 +142,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
         center: [30, -10],
         zoom: 3
       })
+      map.addControl(new NavigationControl({ showCompass: false }))
       mapRef.current = map
       map.on("load", () => {
         map.addSource(RASTER_LAYER, {

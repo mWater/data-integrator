@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { listSessions, SessionSummary } from "./api.js"
+import { formatDateTime } from "./localization.js"
 
 /** Human labels for session statuses (statuses stay technical in the API). */
 function statusLabels(): Record<string, string> {
@@ -39,7 +40,7 @@ export function SessionList() {
                 <td>{s.integrationId ?? <span className="dim">{s.firstMessage ?? T`(new)`}</span>}</td>
                 <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
                 <td>{s.steps}</td>
-                <td>{new Date(s.updatedAt).toLocaleString()}</td>
+                <td>{formatDateTime(s.updatedAt)}</td>
               </tr>
             ))}
           </tbody>

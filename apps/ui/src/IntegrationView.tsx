@@ -13,6 +13,7 @@ import {
   IntegrationDetail,
   IntegrationUsage,
   listCountries,
+  renameIntegration,
   RunSummary,
   setIntegrationAoi,
   setIntegrationEnabled,
@@ -27,7 +28,7 @@ import { RowMenu } from "./RowMenu.js"
 import { SecretsSection } from "./SecretsSection.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
-import { localizeData } from "./localization.js"
+import { formatDateTime, localizeData } from "./localization.js"
 import type { LocalizedString } from "ez-localize"
 
 /** What a finished run produced, as "sites: 412, readings: 9k in 3.4s". */
@@ -62,6 +63,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   const [picked, setPicked] = useState<Tab | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<IntegrationUsage | null>(null)
+  const [renaming, setRenaming] = useState(false)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(() => {
@@ -176,6 +178,11 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
               </button>
             ) : null}
             {canDesign ? (
+              <button role="menuitem" onClick={() => setRenaming(true)}>
+                {T`Rename`}
+              </button>
+            ) : null}
+            {canDesign ? (
               <button
                 role="menuitem"
                 title={T`Paused integrations are skipped by the scheduler`}
@@ -202,6 +209,17 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
         </div>
       </div>
       {error && <div className="error">{error}</div>}
+      {renaming && (
+        <RenameIntegrationDialog
+          id={detail.id}
+          current={localizeData(definition.name)}
+          onCancel={() => setRenaming(false)}
+          onRenamed={() => {
+            setRenaming(false)
+            refresh()
+          }}
+        />
+      )}
       {usage && (
         <DeleteIntegrationDialog
           detail={detail}
@@ -256,7 +274,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
             <tbody>
               {detail.runs.map(run => (
                 <tr key={run.id}>
-                  <td>{run.startedAt ? new Date(run.startedAt).toLocaleString() : T`queued`}</td>
+                  <td>{run.startedAt ? formatDateTime(run.startedAt) : T`queued`}</td>
                   <td>{run.trigger}</td>
                   <td><span className={`chip chip-${run.status}`}>{run.status}</span></td>
                   <td className="dim">
@@ -300,6 +318,66 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
       )}
       {tab === "code" && <pre className="pane pane-block pane-code">{definition.code}</pre>}
     </main>
+  )
+}
+
+/** Props for the rename dialog. */
+interface RenameIntegrationDialogProps {
+  /** Integration being renamed */
+  id: string
+  /** Current display name in the interface language */
+  current: string
+  /** Dismisses without renaming */
+  onCancel: () => void
+  /** Called after the new name is saved */
+  onRenamed: () => void
+}
+
+/**
+ * Display-name edit. The id stays: it is the URL, the library identity and
+ * what tables and sessions point at. The name is written in the interface
+ * language and translated into the deployment's other languages.
+ */
+function RenameIntegrationDialog({ id, current, onCancel, onRenamed }: RenameIntegrationDialogProps) {
+  const [name, setName] = useState(current)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setBusy(true)
+    setError(null)
+    try {
+      await renameIntegration(id, name.trim())
+      onRenamed()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onCancel} />
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Rename “${current}”`}>
+        <h2>{T`Rename “${current}”`}</h2>
+        <label>
+          <span>{T`Name`}</span>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} maxLength={200} />
+        </label>
+        <p className="dim">
+          {T`The id (${id}) and the address stay the same. The new name is translated into the deployment's other languages.`}
+        </p>
+        {error ? <div className="error">{error}</div> : null}
+        <div className="confirm-actions">
+          <button className="secondary" onClick={onCancel} disabled={busy}>
+            {T`Cancel`}
+          </button>
+          <button onClick={() => void submit()} disabled={busy || !name.trim() || name.trim() === current}>
+            {busy ? T`Saving…` : T`Rename`}
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -586,7 +664,7 @@ function VersionsSection({ integrationId, currentVersion }: VersionsSectionProps
                 {T`v${v.version}`}
                 {v.version === currentVersion && <span className="chip chip-certified" style={{ marginLeft: 8 }}>{T`current`}</span>}
               </td>
-              <td>{new Date(v.createdAt).toLocaleString()}</td>
+              <td>{formatDateTime(v.createdAt)}</td>
               <td>{v.createdBy ?? <span className="dim">{T`system`}</span>}</td>
               <td className="dim">
                 {v.aoiMode === "inherit"

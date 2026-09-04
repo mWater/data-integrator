@@ -4795,6 +4795,411 @@
       "es": "Nueva pregunta",
       "mg": "Fanontaniana vaovao",
       "sw": "Swali jipya"
+    },
+    {
+      "_base": "en",
+      "en": "Print, or save as PDF from the print dialog",
+      "fr": "Imprimer ou enregistrer au format PDF depuis la boîte de dialogue d’impression",
+      "pt": "Imprimir ou guardar como PDF na caixa de diálogo de impressão",
+      "es": "Imprimir o guardar como PDF desde el cuadro de diálogo de impresión",
+      "mg": "Ataovy pirinty, na tehirizo ho PDF avy amin'ny efajoro fanontana",
+      "sw": "Chapisha, au hifadhi kama PDF kutoka kwenye dirisha la uchapishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Print",
+      "fr": "Imprimer",
+      "pt": "Imprimir",
+      "es": "Imprimir",
+      "mg": "Ataovy pirinty",
+      "sw": "Chapisha"
+    },
+    {
+      "_base": "en",
+      "en": "Sources",
+      "fr": "Sources",
+      "pt": "Fontes",
+      "es": "Fuentes",
+      "mg": "Loharano",
+      "sw": "Vyanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Data sources used by this dashboard",
+      "fr": "Sources de données utilisées par ce tableau de bord",
+      "pt": "Fontes de dados utilizadas por este painel",
+      "es": "Fuentes de datos utilizadas por este panel",
+      "mg": "Loharanon'angona ampiasain'ity tabilao fanaraha-maso ity",
+      "sw": "Vyanzo vya data vinavyotumiwa na dashibodi hii"
+    },
+    {
+      "_base": "en",
+      "en": "Data sources",
+      "fr": "Sources de données",
+      "pt": "Fontes de dados",
+      "es": "Fuentes de datos",
+      "mg": "Loharanon'angona",
+      "sw": "Vyanzo vya data"
+    },
+    {
+      "_base": "en",
+      "en": "No catalog sources found in this dashboard's queries.",
+      "fr": "Aucune source du catalogue trouvée dans les requêtes de ce tableau de bord.",
+      "pt": "Nenhuma fonte do catálogo encontrada nas consultas deste painel.",
+      "es": "No se encontraron fuentes del catálogo en las consultas de este panel.",
+      "mg": "Tsy nahitana loharano avy amin'ny katalaogy tao amin'ny fangatahan'ity tabilao fanaraha-maso ity.",
+      "sw": "Hakuna vyanzo vya katalogi vilivyopatikana katika hoja za dashibodi hii."
+    },
+    {
+      "_base": "en",
+      "en": "From {0}",
+      "fr": "Issu de {0}",
+      "pt": "De {0}",
+      "es": "De {0}",
+      "mg": "Avy amin'ny {0}",
+      "sw": "Kutoka {0}"
+    },
+    {
+      "_base": "en",
+      "en": "How it works",
+      "fr": "Fonctionnement",
+      "pt": "Como funciona",
+      "es": "Cómo funciona",
+      "mg": "Ny fomba fiasany",
+      "sw": "Jinsi inavyofanya kazi"
+    },
+    {
+      "_base": "en",
+      "en": "The Data Integrator pulls public and partner data into one local database, keeps it current, and lets you question, map and chart it. Here is what the pieces are called and how they fit.",
+      "fr": "Data Integrator rassemble les données publiques et celles des partenaires dans une base de données locale, les tient à jour et vous permet de les interroger, de les cartographier et de créer des graphiques. Voici les différents éléments et leur articulation.",
+      "pt": "O Data Integrator reúne dados públicos e de parceiros numa única base de dados local, mantém-nos atualizados e permite consultá-los, mapeá-los e criar gráficos. Veja como se chamam os componentes e como se relacionam.",
+      "es": "Data Integrator reúne datos públicos y de socios en una base de datos local, los mantiene actualizados y permite consultarlos, cartografiarlos y representarlos en gráficos. Estos son los nombres de los componentes y cómo encajan.",
+      "mg": "Ny Data Integrator dia mampiditra angona ho an'ny daholobe sy avy amin'ny mpiara-miombon'antoka ao anaty banky angona iray eo an-toerana, mitazona azy ho vaovao, ary ahafahanao manontany, manao sarintany sy kisary amin'izany. Ireto ny anaran'ireo singa sy ny fomba ifandraisany.",
+      "sw": "Data Integrator hukusanya data za umma na za washirika katika hifadhidata moja ya ndani, huzisasisha, na hukuwezesha kuziuliza maswali, kuzichora kwenye ramani na kuzionyesha kwa chati. Haya ndiyo majina ya sehemu hizo na jinsi zinavyoungana."
+    },
+    {
+      "_base": "en",
+      "en": "The words we use",
+      "fr": "Les termes utilisés",
+      "pt": "Os termos que utilizamos",
+      "es": "Términos que usamos",
+      "mg": "Ireo teny ampiasainay",
+      "sw": "Maneno tunayotumia"
+    },
+    {
+      "_base": "en",
+      "en": "A recipe that fetches data from one place (a satellite product, a national dataset, a sensor feed), reshapes it, and loads it into your database on a schedule. Each integration owns the tables and layers it produces.",
+      "fr": "Une procédure qui récupère des données depuis une source (un produit satellitaire, un jeu de données national, un flux de capteurs), les transforme et les charge à intervalles réguliers dans votre base de données. Chaque intégration gère les tables et les couches qu’elle produit.",
+      "pt": "Uma configuração que obtém dados de uma fonte (um produto de satélite, um conjunto de dados nacional ou dados de sensores), transforma-os e carrega-os na sua base de dados de acordo com um calendário. Cada integração controla as tabelas e camadas que produz.",
+      "es": "Una receta que obtiene datos de un lugar (un producto satelital, un conjunto de datos nacional o una fuente de sensores), los transforma y los carga en tu base de datos según una programación. Cada integración gestiona las tablas y capas que produce.",
+      "mg": "Fomba iray maka angona avy amin'ny toerana iray (vokatra avy amin'ny zanabolana, fitambarana angonam-pirenena, angona avy amin'ny sensor), manova ny endriny, ary mampiditra azy ao amin'ny banky angonao araka ny fandaharam-potoana. Ny fampidirana angona tsirairay no mitantana ireo latabatra sy sosona vokariny.",
+      "sw": "Utaratibu unaochukua data kutoka sehemu moja (bidhaa ya setilaiti, mkusanyiko wa data wa kitaifa, mtiririko wa data za sensa), kuibadilisha, na kuipakia kwenye hifadhidata yako kwa ratiba. Kila muunganisho husimamia majedwali na tabaka unazozalisha."
+    },
+    {
+      "_base": "en",
+      "en": "Where an integration's data originally comes from: the provider, the dataset, its license and its known limitations. Every table and layer records its source so you can judge the data.",
+      "fr": "Origine des données d’une intégration : fournisseur, jeu de données, licence et limites connues. Chaque table et chaque couche indique sa source afin de vous permettre d’évaluer les données.",
+      "pt": "A origem dos dados de uma integração: o fornecedor, o conjunto de dados, a respetiva licença e as limitações conhecidas. Cada tabela e camada regista a sua fonte para permitir avaliar os dados.",
+      "es": "El origen de los datos de una integración: el proveedor, el conjunto de datos, su licencia y sus limitaciones conocidas. Cada tabla y capa registra su fuente para que puedas evaluar los datos.",
+      "mg": "Ny toerana niavian'ny angon'ny fampidirana angona iray: ny mpamatsy, ny fitambarana angona, ny fahazoan-dàlana ary ny fetra efa fantatra. Ny latabatra sy sosona rehetra dia mirakitra ny loharanony mba hahafahanao manombana ny angona.",
+      "sw": "Mahali data za muunganisho zinakotoka awali: mtoa huduma, mkusanyiko wa data, leseni yake na vikwazo vyake vinavyojulikana. Kila jedwali na tabaka hurekodi chanzo chake ili uweze kutathmini data."
+    },
+    {
+      "_base": "en",
+      "en": "Data table",
+      "fr": "Table de données",
+      "pt": "Tabela de dados",
+      "es": "Tabla de datos",
+      "mg": "Latabatra angona",
+      "sw": "Jedwali la data"
+    },
+    {
+      "_base": "en",
+      "en": "Rows and columns produced by an integration, such as sensor readings or river reaches. Tables can be queried, mapped when they have a geometry column, and joined with each other.",
+      "fr": "Lignes et colonnes produites par une intégration, comme des relevés de capteurs ou des tronçons de cours d’eau. Les tables peuvent être interrogées, cartographiées si elles comportent une colonne géométrique et jointes entre elles.",
+      "pt": "Linhas e colunas produzidas por uma integração, como leituras de sensores ou troços de rios. As tabelas podem ser consultadas, mapeadas quando têm uma coluna de geometria e associadas entre si.",
+      "es": "Filas y columnas producidas por una integración, como lecturas de sensores o tramos de ríos. Las tablas se pueden consultar, representar en mapas si tienen una columna de geometría y combinar entre sí.",
+      "mg": "Andalana sy tsanganana vokarin'ny fampidirana angona iray, toy ny vakin'ny sensor na ampahan-drenirano. Azo anaovana fangatahana ny latabatra, azo aseho amin'ny sarintany raha manana tsanganana jeometrika, ary azo ampifandraisina.",
+      "sw": "Safu mlalo na safu wima zinazozalishwa na muunganisho, kama vile vipimo vya sensa au vipande vya mto. Majedwali yanaweza kutafutwa kwa hoja, kuchorwa kwenye ramani yakiwa na safu wima ya jiometri, na kuunganishwa."
+    },
+    {
+      "_base": "en",
+      "en": "Raster layer",
+      "fr": "Couche raster",
+      "pt": "Camada raster",
+      "es": "Capa ráster",
+      "mg": "Sosona raster",
+      "sw": "Tabaka la rasta"
+    },
+    {
+      "_base": "en",
+      "en": "Gridded data such as rainfall, elevation or population, stored as images of values over an area. A layer can be a single picture or a time series.",
+      "fr": "Données maillées telles que les précipitations, l’altitude ou la population, stockées sous forme d’images de valeurs couvrant une zone. Une couche peut être une image unique ou une série chronologique.",
+      "pt": "Dados em grelha, como precipitação, elevação ou população, armazenados como imagens de valores sobre uma área. Uma camada pode ser uma única imagem ou uma série temporal.",
+      "es": "Datos en cuadrícula, como precipitación, elevación o población, almacenados como imágenes de valores sobre un área. Una capa puede ser una sola imagen o una serie temporal.",
+      "mg": "Angona misy harato toy ny rotsak'orana, haavo na mponina, voatahiry ho sarin'ny sanda manerana faritra iray. Mety ho sary tokana na andiam-potoana ny sosona iray.",
+      "sw": "Data zilizopangwa katika gridi, kama vile mvua, mwinuko au idadi ya watu, zilizohifadhiwa kama picha za thamani katika eneo. Tabaka linaweza kuwa picha moja au mfululizo wa muda."
+    },
+    {
+      "_base": "en",
+      "en": "Snapshot",
+      "fr": "Instantané",
+      "pt": "Instantâneo",
+      "es": "Instantánea",
+      "mg": "Dika ara-potoana",
+      "sw": "Nakala ya wakati"
+    },
+    {
+      "_base": "en",
+      "en": "One point in time of a raster layer, for example rainfall for one day or population for one year. Time-series layers are stacks of snapshots.",
+      "fr": "État d’une couche raster à un instant donné, par exemple les précipitations d’une journée ou la population d’une année. Les couches chronologiques sont des séries d’instantanés.",
+      "pt": "Um ponto no tempo de uma camada raster, por exemplo, a precipitação de um dia ou a população de um ano. As camadas de séries temporais são conjuntos de instantâneos.",
+      "es": "Un momento concreto de una capa ráster; por ejemplo, la precipitación de un día o la población de un año. Las capas de series temporales son pilas de instantáneas.",
+      "mg": "Angon'ny sosona raster amin'ny fotoana iray, ohatra ny rotsak'orana mandritra ny andro iray na ny mponina mandritra ny taona iray. Ny sosona misy andiam-potoana dia fitambaran'ny dika ara-potoana.",
+      "sw": "Hali ya tabaka la rasta katika wakati mmoja, kwa mfano mvua ya siku moja au idadi ya watu ya mwaka mmoja. Tabaka za mfululizo wa muda ni mikusanyiko ya nakala za wakati."
+    },
+    {
+      "_base": "en",
+      "en": "The country or bounding box the deployment cares about. Integrations clip their data to it unless they declare an area of their own, so a Madagascar deployment stores Madagascar, not the world.",
+      "fr": "Pays ou emprise géographique concerné par le déploiement. Les intégrations y découpent leurs données, sauf si elles définissent leur propre zone. Ainsi, un déploiement pour Madagascar stocke les données de Madagascar, et non celles du monde entier.",
+      "pt": "O país ou a caixa delimitadora relevante para a implementação. As integrações recortam os dados para essa área, salvo se declararem uma área própria. Assim, uma implementação de Madagáscar armazena dados de Madagáscar, não do mundo inteiro.",
+      "es": "El país o cuadro delimitador de interés para el despliegue. Las integraciones recortan sus datos a esa área, salvo que declaren una propia, por lo que un despliegue de Madagascar almacena Madagascar, no el mundo entero.",
+      "mg": "Ny firenena na efajoro mamaritra faritra izay ifantohan'ilay rafitra. Fintinin'ny fampidirana angona amin'izany faritra izany ny angony, raha tsy hoe mamaritra faritra azy manokana izy, ka i Madagascar no tehirizin'ny rafitra napetraka ho an'i Madagascar, fa tsy izao tontolo izao.",
+      "sw": "Nchi au kisanduku cha mipaka ambacho mfumo unalenga. Miunganisho hupunguza data zake kulingana nacho isipokuwa itaje maeneo yake yenyewe, hivyo mfumo wa Madagascar huhifadhi data za Madagascar, si za dunia nzima."
+    },
+    {
+      "_base": "en",
+      "en": "Ready-made integrations shipped with the platform, installable in one click: WorldPop population, Copernicus flood and drought products, HydroSHEDS rivers and basins, and more.",
+      "fr": "Intégrations prêtes à l’emploi fournies avec la plateforme et installables en un clic : population WorldPop, produits Copernicus sur les inondations et les sécheresses, cours d’eau et bassins HydroSHEDS, et plus encore.",
+      "pt": "Integrações predefinidas fornecidas com a plataforma e instaláveis com um clique: população do WorldPop, produtos de cheias e secas do Copernicus, rios e bacias do HydroSHEDS, entre outros.",
+      "es": "Integraciones listas para usar incluidas con la plataforma e instalables con un clic: población de WorldPop, productos de inundaciones y sequías de Copernicus, ríos y cuencas de HydroSHEDS y más.",
+      "mg": "Fampidirana angona efa voaomana miaraka amin'ny sehatra, azo apetraka amin'ny tsindry iray: mponina WorldPop, vokatra momba ny tondra-drano sy haintany Copernicus, renirano sy lemaka fandraisan-drano HydroSHEDS, ary maro hafa.",
+      "sw": "Miunganisho iliyo tayari inayokuja na jukwaa na inayoweza kusakinishwa kwa mbofyo mmoja: idadi ya watu ya WorldPop, bidhaa za mafuriko na ukame za Copernicus, mito na mabonde ya HydroSHEDS, na zaidi."
+    },
+    {
+      "_base": "en",
+      "en": "Source notes",
+      "fr": "Notes sur les sources",
+      "pt": "Notas da fonte",
+      "es": "Notas de la fuente",
+      "mg": "Fanamarihana momba ny loharano",
+      "sw": "Madokezo ya chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Reference notes the designer agent reads while building an integration: how a provider publishes its files and the quirks to expect. Nothing to install; they live in the Library for transparency.",
+      "fr": "Notes de référence consultées par l’agent de conception lors de la création d’une intégration : mode de publication des fichiers par un fournisseur et particularités à prévoir. Rien à installer ; elles figurent dans la Bibliothèque par souci de transparence.",
+      "pt": "Notas de referência que o agente de design consulta ao criar uma integração: como um fornecedor publica os ficheiros e que particularidades esperar. Não há nada para instalar; ficam na Biblioteca para garantir a transparência.",
+      "es": "Notas de referencia que el agente de diseño consulta al crear una integración: cómo publica sus archivos un proveedor y qué particularidades cabe esperar. No hay nada que instalar; están en la Biblioteca para garantizar la transparencia.",
+      "mg": "Fanamarihana fanovozan-kevitra vakin'ny mpandraharaha mpamolavola rehefa manamboatra fampidirana angona: ny fomba amoahan'ny mpamatsy ny rakitrany sy ireo toetra manokana tokony hampoizina. Tsy misy hapetraka; ao amin'ny Tranomboky izy ireo mba hisian'ny mangarahara.",
+      "sw": "Madokezo ya marejeleo ambayo ajenti wa usanifu husoma anapounda muunganisho: jinsi mtoa huduma anavyochapisha faili zake na mambo yasiyo ya kawaida ya kutarajia. Hakuna cha kusakinisha; yanapatikana katika Maktaba kwa uwazi."
+    },
+    {
+      "_base": "en",
+      "en": "Designer agent",
+      "fr": "Agent de conception",
+      "pt": "Agente de design",
+      "es": "Agente de diseño",
+      "mg": "Mpandraharaha mpamolavola",
+      "sw": "Ajenti wa usanifu"
+    },
+    {
+      "_base": "en",
+      "en": "The AI assistant that builds or repairs an integration from a plain-language request. It explores the source, writes and tests the code, and only installs it after a clean run from scratch.",
+      "fr": "Assistant IA qui crée ou répare une intégration à partir d’une demande en langage courant. Il explore la source, écrit et teste le code, puis n’installe l’intégration qu’après une exécution à froid réussie.",
+      "pt": "O assistente de IA que cria ou repara uma integração a partir de um pedido em linguagem corrente. Explora a fonte, escreve e testa o código e só instala a integração após uma execução limpa desde o início.",
+      "es": "El asistente de IA que crea o repara una integración a partir de una solicitud en lenguaje natural. Explora la fuente, escribe y prueba el código, y solo instala la integración tras una ejecución correcta desde cero.",
+      "mg": "Ilay mpanampy AI izay manamboatra na manarina fampidirana angona avy amin'ny fangatahana amin'ny teny tsotra. Mikaroka ny loharano izy, manoratra sy mizaha toetra ny kaody, ary mametraka azy raha tsy aorian'ny fampandehanana madio hatrany am-boalohany.",
+      "sw": "Msaidizi wa AI anayeunda au kurekebisha muunganisho kutokana na ombi la lugha ya kawaida. Huchunguza chanzo, huandika na kujaribu msimbo, na husakinisha muunganisho tu baada ya uendeshaji safi kuanzia mwanzo."
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions answered from the data already installed, with the query that produced each answer and a download of the result. Ask only reads; it never fetches new data.",
+      "fr": "Questions en langage courant traitées à partir des données déjà installées, avec la requête ayant produit chaque réponse et la possibilité de télécharger le résultat. La fonction Interroger lit uniquement les données ; elle n’en récupère jamais de nouvelles.",
+      "pt": "Perguntas em linguagem corrente respondidas com base nos dados já instalados, incluindo a consulta que produziu cada resposta e a transferência do resultado. Perguntar apenas lê os dados; nunca obtém novos dados.",
+      "es": "Preguntas en lenguaje natural respondidas con los datos ya instalados, junto con la consulta que produjo cada respuesta y una descarga del resultado. Preguntar solo lee los datos; nunca obtiene datos nuevos.",
+      "mg": "Fanontaniana amin'ny teny tsotra valiana avy amin'ny angona efa napetraka, miaraka amin'ny fangatahana namokatra ny valiny tsirairay sy ny fampidinana ilay vokatra. Mamaky fotsiny ny Anontanio; tsy maka angona vaovao mihitsy izy.",
+      "sw": "Maswali ya lugha ya kawaida yanayojibiwa kwa kutumia data ambazo tayari zimesakinishwa, pamoja na hoja iliyotoa kila jibu na upakuaji wa matokeo. Uliza husoma tu; haileti data mpya kamwe."
+    },
+    {
+      "_base": "en",
+      "en": "Dashboard",
+      "fr": "Tableau de bord",
+      "pt": "Painel",
+      "es": "Panel",
+      "mg": "Tabilao fanaraha-maso",
+      "sw": "Dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "A saved page of charts, tables and maps built by the dashboard agent from your data. Dashboards use frozen queries, so they can be shared publicly without exposing the rest of the system.",
+      "fr": "Page enregistrée contenant des graphiques, des tables et des cartes, créée à partir de vos données par l’agent de tableau de bord. Les tableaux de bord utilisent des requêtes figées afin de pouvoir être partagés publiquement sans exposer le reste du système.",
+      "pt": "Uma página guardada com gráficos, tabelas e mapas, criada pelo agente de painéis a partir dos seus dados. Os painéis utilizam consultas fixas, pelo que podem ser partilhados publicamente sem expor o resto do sistema.",
+      "es": "Una página guardada con gráficos, tablas y mapas, creada por el agente de paneles a partir de tus datos. Los paneles usan consultas fijas, por lo que pueden compartirse públicamente sin exponer el resto del sistema.",
+      "mg": "Pejy voatahiry misy kisary, latabatra ary sarintany, namboarin'ny mpandraharahan'ny tabilao fanaraha-maso avy amin'ny angonao. Mampiasa fangatahana raikitra ny tabilao fanaraha-maso, ka azo zaraina ampahibemaso nefa tsy mampiharihary ny ambin'ny rafitra.",
+      "sw": "Ukurasa uliohifadhiwa wenye chati, majedwali na ramani ulioundwa na ajenti wa dashibodi kutokana na data zako. Dashibodi hutumia hoja zisizobadilika, hivyo zinaweza kushirikiwa hadharani bila kufichua sehemu nyingine za mfumo."
+    },
+    {
+      "_base": "en",
+      "en": "Run",
+      "fr": "Exécution",
+      "pt": "Execução",
+      "es": "Ejecución",
+      "mg": "Fampandehanana",
+      "sw": "Uendeshaji"
+    },
+    {
+      "_base": "en",
+      "en": "One execution of an integration: fetch, transform, load. Runs are scheduled, triggered by a webhook, or started by hand, and each keeps its log and statistics.",
+      "fr": "Une exécution d’une intégration : récupération, transformation et chargement. Les exécutions sont planifiées, déclenchées par un webhook ou lancées manuellement. Chacune conserve son journal et ses statistiques.",
+      "pt": "Uma execução de uma integração: obter, transformar e carregar. As execuções podem ser agendadas, acionadas por um webhook ou iniciadas manualmente, e cada uma guarda o respetivo registo e estatísticas.",
+      "es": "Una ejecución de una integración: obtener, transformar y cargar. Las ejecuciones pueden programarse, activarse mediante un webhook o iniciarse manualmente, y cada una conserva su registro y estadísticas.",
+      "mg": "Fanatanterahana iray an'ny fampidirana angona: maka, manova, mampiditra. Araka ny fandaharam-potoana, amin'ny alalan'ny webhook, na atomboka an-tanana ny fampandehanana, ary samy mitahiry ny tatitra sy antontan'isany.",
+      "sw": "Utekelezaji mmoja wa muunganisho: chukua, badilisha, pakia. Uendeshaji hupangwa kwa ratiba, huanzishwa na webhook, au huanzishwa kwa mkono; kila mmoja huhifadhi kumbukumbu na takwimu zake."
+    },
+    {
+      "_base": "en",
+      "en": "Getting started",
+      "fr": "Bien démarrer",
+      "pt": "Primeiros passos",
+      "es": "Primeros pasos",
+      "mg": "Fanombohana",
+      "sw": "Kuanza"
+    },
+    {
+      "_base": "en",
+      "en": "Set the area of interest",
+      "fr": "Définir la zone d’intérêt",
+      "pt": "Definir a área de interesse",
+      "es": "Definir el área de interés",
+      "mg": "Farito ny faritra mahaliana",
+      "sw": "Weka eneo linalolengwa"
+    },
+    {
+      "_base": "en",
+      "en": "Settings, then Default area of interest. Pick the country. Everything installed afterwards is clipped to it.",
+      "fr": "Dans Paramètres, puis Zone d’intérêt par défaut, sélectionnez le pays. Toutes les données installées ensuite seront découpées selon cette zone.",
+      "pt": "Aceda a Definições e depois a Área de interesse predefinida. Selecione o país. Tudo o que for instalado posteriormente será recortado para essa área.",
+      "es": "Ve a Configuración y luego a Área de interés predeterminada. Elige el país. Todo lo que se instale después se recortará a esa área.",
+      "mg": "Fikirana, avy eo Faritra mahaliana mahazatra. Safidio ny firenena. Fintinina amin'izany faritra izany izay rehetra apetraka aorian'izay.",
+      "sw": "Mipangilio, kisha Eneo chaguomsingi linalolengwa. Chagua nchi. Kila kinachosakinishwa baadaye hupunguzwa kulingana nalo."
+    },
+    {
+      "_base": "en",
+      "en": "Install data from the Library",
+      "fr": "Installer des données depuis la Bibliothèque",
+      "pt": "Instalar dados da Biblioteca",
+      "es": "Instalar datos de la Biblioteca",
+      "mg": "Mametraha angona avy amin'ny Tranomboky",
+      "sw": "Sakinisha data kutoka Maktaba"
+    },
+    {
+      "_base": "en",
+      "en": "Choose an entry, confirm, and let the first run load the data. It appears under Data as soon as the run finishes.",
+      "fr": "Choisissez une entrée, confirmez et laissez la première exécution charger les données. Elles apparaissent sous Données dès la fin de l’exécution.",
+      "pt": "Escolha uma entrada, confirme e aguarde que a primeira execução carregue os dados. Estes aparecem em Dados assim que a execução terminar.",
+      "es": "Elige una entrada, confirma y deja que la primera ejecución cargue los datos. Aparecerán en Datos en cuanto finalice la ejecución.",
+      "mg": "Misafidiana singa iray, hamafiso, ary avelao hampiditra ny angona ny fampandehanana voalohany. Hiseho eo ambanin'ny Angona izany raha vantany vao vita ny fampandehanana.",
+      "sw": "Chagua kipengee, thibitisha, kisha acha uendeshaji wa kwanza upakie data. Itaonekana chini ya Data mara tu uendeshaji utakapokamilika."
+    },
+    {
+      "_base": "en",
+      "en": "Ask a question or build a dashboard",
+      "fr": "Poser une question ou créer un tableau de bord",
+      "pt": "Fazer uma pergunta ou criar um painel",
+      "es": "Haz una pregunta o crea un panel",
+      "mg": "Mametraha fanontaniana na manamboara tabilao fanaraha-maso",
+      "sw": "Uliza swali au unda dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Ask answers one-off questions; the dashboard agent turns a description into a page you can share.",
+      "fr": "Interroger répond aux questions ponctuelles ; l’agent de tableau de bord transforme une description en une page que vous pouvez partager.",
+      "pt": "Perguntar responde a perguntas pontuais; o agente de painéis transforma uma descrição numa página que pode partilhar.",
+      "es": "Preguntar responde preguntas puntuales; el agente de paneles convierte una descripción en una página que puedes compartir.",
+      "mg": "Mamaly fanontaniana indray mandeha ny Anontanio; mamadika famaritana ho pejy azo zaraina kosa ny mpandraharahan'ny tabilao fanaraha-maso.",
+      "sw": "Uliza hujibu maswali ya mara moja; ajenti wa dashibodi hubadilisha maelezo kuwa ukurasa unaoweza kushiriki."
+    },
+    {
+      "_base": "en",
+      "en": "Need a source that is not in the Library? New Integration on the Integrations page starts a design session where you describe it in plain language.",
+      "fr": "Besoin d’une source absente de la Bibliothèque ? Nouvelle intégration, sur la page Intégrations, lance une session de conception dans laquelle vous pouvez la décrire en langage courant.",
+      "pt": "Precisa de uma fonte que não está na Biblioteca? Nova integração, na página Integrações, inicia uma sessão de design onde pode descrevê-la em linguagem corrente.",
+      "es": "¿Necesitas una fuente que no está en la Biblioteca? Nueva integración, en la página Integraciones, inicia una sesión de diseño en la que puedes describirla en lenguaje natural.",
+      "mg": "Mila loharano tsy ao amin'ny Tranomboky? Ny Fampidirana angona vaovao ao amin'ny pejy Fampidirana angona dia manomboka fotoam-pamolavolana izay ahafahanao mamaritra izany amin'ny teny tsotra.",
+      "sw": "Unahitaji chanzo ambacho hakipo katika Maktaba? Muunganisho mpya kwenye ukurasa wa Miunganisho huanzisha kipindi cha usanifu ambamo unaeleza chanzo hicho kwa lugha ya kawaida."
+    },
+    {
+      "_base": "en",
+      "en": "The id ({0}) and the address stay the same. The new name is translated into the deployment's other languages.",
+      "fr": "L’identifiant ({0}) et l’adresse restent inchangés. Le nouveau nom est traduit dans les autres langues du déploiement.",
+      "pt": "O ID ({0}) e o endereço permanecem iguais. O novo nome é traduzido para os outros idiomas da implementação.",
+      "es": "El identificador ({0}) y la dirección no cambian. El nuevo nombre se traduce a los demás idiomas del despliegue.",
+      "mg": "Tsy miova ny ID ({0}) sy ny adiresy. Adika amin'ireo fiteny hafa ampiasain'ilay rafitra ny anarana vaovao.",
+      "sw": "Kitambulisho ({0}) na anwani hubaki vilevile. Jina jipya hutafsiriwa katika lugha nyingine za mfumo."
+    },
+    {
+      "_base": "en",
+      "en": "Saving…",
+      "fr": "Enregistrement…",
+      "pt": "A guardar…",
+      "es": "Guardando…",
+      "mg": "Mitahiry…",
+      "sw": "Inahifadhi…"
+    },
+    {
+      "_base": "en",
+      "en": "Hide the chat and view the dashboard at full width (Esc to return)",
+      "fr": "Masquer la discussion et afficher le tableau de bord en pleine largeur (Échap pour revenir)",
+      "pt": "Oculte a conversa e veja o painel em toda a largura (Esc para voltar)",
+      "es": "Ocultar el chat y ver el panel a todo lo ancho (Esc para volver)",
+      "mg": "Afeno ny resaka ary jereo amin'ny sakany manontolo ny tabilao fanaraha-maso (Esc raha hiverina)",
+      "sw": "Ficha gumzo na utazame dashibodi kwa upana kamili (bonyeza Esc kurudi)"
+    },
+    {
+      "_base": "en",
+      "en": "Full-screen preview",
+      "fr": "Aperçu plein écran",
+      "pt": "Pré-visualização em tela cheia",
+      "es": "Vista previa a pantalla completa",
+      "mg": "Topi-maso amin'ny efijery feno",
+      "sw": "Onyesho la kukagua la skrini nzima"
+    },
+    {
+      "_base": "en",
+      "en": "Back to the conversation (Esc)",
+      "fr": "Retour à la conversation (Échap)",
+      "pt": "Voltar à conversa (Esc)",
+      "es": "Volver a la conversación (Esc)",
+      "mg": "Hiverina amin'ny resaka (Esc)",
+      "sw": "Rudi kwenye mazungumzo (Esc)"
+    },
+    {
+      "_base": "en",
+      "en": "Back to chat",
+      "fr": "Retour au chat",
+      "pt": "Voltar ao chat",
+      "es": "Volver al chat",
+      "mg": "Hiverina amin'ny resaka",
+      "sw": "Rudi kwenye gumzo"
+    },
+    {
+      "_base": "en",
+      "en": "Full-screen preview (Esc to return)",
+      "fr": "Aperçu en plein écran (Échap pour revenir)",
+      "pt": "Pré-visualização em tela inteira (Esc para voltar)",
+      "es": "Vista previa a pantalla completa (Esc para volver)",
+      "mg": "Topi-maso amin’ny efijery feno (Esc hiverenana)",
+      "sw": "Onyesho la kukagua la skrini nzima (Esc kurudi)"
+    },
+    {
+      "_base": "en",
+      "en": "Session details",
+      "fr": "Détails de la session",
+      "pt": "Detalhes da sessão",
+      "es": "Detalles de la sesión",
+      "mg": "Antsipirian’ny fotoam-piasana",
+      "sw": "Maelezo ya kipindi"
     }
   ],
   "unused": [
@@ -4808,6 +5213,8 @@
     "Agent activity ({0} open)",
     "cron (UTC; empty for manual only)",
     "New chat",
+    "Hide details",
+    "Show Details",
     "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",
     "This chat and its answers, tables, and charts are deleted for good.",
     "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.",
@@ -4831,6 +5238,7 @@
     "Ask the Assistant",
     "Plain-language questions answered from your data, with the query it ran shown. Conversations are saved under Assistant.",
     "Translate Data Catalog Now",
-    "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed."
+    "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed.",
+    "Hide the chat and view the dashboard at full width (Esc to return)"
   ]
 }

@@ -54,6 +54,8 @@ export interface DashboardFrameOptions {
 export interface DashboardFrame {
   /** The sandboxed iframe element. */
   iframe: HTMLIFrameElement
+  /** Opens the browser print dialog on the dashboard document itself. */
+  print(): void
   /** Detaches listeners and removes the iframe. */
   destroy(): void
 }
@@ -94,6 +96,13 @@ function frameHtml(opts: DashboardFrameOptions): string {
 </head>
 <body>
 <div id="root"></div>
+<script>
+// The frame is sandboxed without same-origin access, so the host cannot call
+// print on it; it asks, and the frame prints its own full document
+window.addEventListener("message", function (e) {
+  if (e.source === window.parent && e.data && e.data.type === "di:print") window.print()
+})
+</script>
 <script type="module">${escapeInlineScript(opts.bundleJs)}</script>
 </body>
 </html>`
@@ -102,7 +111,9 @@ function frameHtml(opts: DashboardFrameOptions): string {
 /** Mounts a compiled dashboard in a sandboxed iframe and services its bridge. */
 export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame {
   const iframe = document.createElement("iframe")
-  iframe.setAttribute("sandbox", "allow-scripts")
+  // allow-modals is what lets the frame call print() on itself (browsers
+  // ignore it otherwise); it grants nothing beyond alert/confirm/prompt
+  iframe.setAttribute("sandbox", "allow-scripts allow-modals")
   iframe.style.width = "100%"
   iframe.style.height = "100%"
   iframe.style.border = "0"
@@ -165,6 +176,9 @@ export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame
   opts.container.appendChild(iframe)
   return {
     iframe,
+    print() {
+      iframe.contentWindow?.postMessage({ type: "di:print" }, "*")
+    },
     destroy() {
       window.removeEventListener("message", onMessage)
       iframe.remove()

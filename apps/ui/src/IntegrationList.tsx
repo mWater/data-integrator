@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions, SessionSummary } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
-import { localizeData, cronText } from "./localization.js"
+import { cronText, formatDateTime, localizeData } from "./localization.js"
 
 /** Human-readable trigger summary. */
 export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): string {
@@ -155,7 +155,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
                   <div className="dim">{d.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}</div>
                 </td>
                 <td />
-                <td><span className="dim">{new Date(d.updatedAt).toLocaleString()}</span></td>
+                <td><span className="dim">{formatDateTime(d.updatedAt)}</span></td>
               </tr>
             ))}
             {sortedIntegrations.map(i => (
@@ -172,7 +172,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
                   {i.lastRunStatus ? (
                     <>
                       <span className={`chip chip-${i.lastRunStatus}`}>{i.lastRunStatus}</span>{" "}
-                      <span className="dim">{i.lastRunAt ? new Date(i.lastRunAt).toLocaleString() : ""}</span>
+                      <span className="dim">{i.lastRunAt ? formatDateTime(i.lastRunAt) : ""}</span>
                     </>
                   ) : (
                     <span className="dim">{T`never`}</span>
