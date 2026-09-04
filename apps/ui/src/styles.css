@@ -104,6 +104,16 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 .lang-picker select:focus-visible { outline: 2px solid var(--topbar-ink); outline-offset: 2px }
 /* The dropdown itself is painted by the OS, so it needs page colors, not topbar ones. */
 .lang-picker option { background: var(--surface); color: var(--ink) }
+.lang-menu { position: relative; display: flex }
+.lang-menu .user-menu-list { min-width: 160px }
+/* Current language gets a check; the others reserve the same space so labels align */
+.lang-menu [role="menuitemradio"]::before { content: "✓"; display: inline-block; width: 16px; color: transparent }
+.lang-menu [role="menuitemradio"][aria-checked="true"]::before { color: var(--accent) }
+.lang-menu [role="menuitemradio"][aria-checked="true"] { font-weight: 600 }
+.topbar-gear {
+  display: flex; align-items: center; padding: 5px 6px; border-radius: 6px; color: var(--topbar-dim);
+}
+.topbar-gear:hover { color: var(--topbar-ink); background: rgba(255, 255, 255, 0.08) }
 .user-menu { position: relative; display: flex }
 .user-menu-trigger {
   background: none; border: 0; padding: 5px 8px; border-radius: 6px; font-size: 13px;
@@ -118,12 +128,12 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
   background: var(--surface); color: var(--ink); border: 1px solid var(--border);
   border-radius: 8px; box-shadow: 0 8px 24px var(--shadow);
 }
-.user-menu-list [role="menuitem"] {
+.user-menu-list [role="menuitem"], .user-menu-list [role="menuitemradio"] {
   display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
   background: none; color: var(--ink); font: inherit; font-size: 13.5px;
   text-align: left; text-decoration: none; cursor: pointer;
 }
-.user-menu-list [role="menuitem"]:hover { background: var(--hover-tint) }
+.user-menu-list [role="menuitem"]:hover, .user-menu-list [role="menuitemradio"]:hover { background: var(--hover-tint) }
 
 .error {
   background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);
@@ -224,6 +234,9 @@ table.sessions { width: 100%; border-collapse: collapse; background: var(--surfa
 table.sessions th, table.sessions td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-soft) }
 table.sessions tbody tr { cursor: pointer }
 table.sessions tbody tr:hover { background: var(--hover-tint) }
+/* Rows that are not links: no pointer, no hover tint */
+table.sessions.static-rows tbody tr { cursor: default }
+table.sessions.static-rows tbody tr:hover { background: none }
 
 /* Per-row delete: quiet until the row is hovered, so the list stays calm */
 .row-delete-cell { width: 1%; text-align: right; white-space: nowrap }
@@ -502,10 +515,12 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   border: 1px solid var(--tint-border); background: var(--tint); border-radius: 8px;
   padding: 10px 12px; margin-top: 8px;
 }
-.question-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px }
+.question { min-width: 0; overflow-wrap: anywhere }
+.question-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; min-width: 0 }
 .question-options button {
   background: var(--surface); border: 1px solid var(--tint-control-border); color: var(--ink); border-radius: 6px;
   padding: 9px 12px; cursor: pointer; font: inherit; text-align: left; width: 100%;
+  white-space: normal; overflow-wrap: anywhere; box-sizing: border-box;
 }
 .question-options button:hover { border-color: var(--accent); background: var(--tint-hover) }
 .question-other-toggle { color: var(--ink-dim); font-style: italic }

@@ -6,7 +6,9 @@ import {
   DashboardSummary,
   deleteDashboard,
   listDashboards,
+  listSessions,
   renameDashboard,
+  SessionSummary,
   setDashboardPublic
 } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
@@ -22,12 +24,25 @@ interface Props {
 /** Lists saved dashboards; new ones are created in design sessions. */
 export function DashboardList({ canDesign }: Props) {
   const [dashboards, setDashboards] = useState<DashboardSummary[] | null>(null)
+  const [drafts, setDrafts] = useState<SessionSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const [doomed, setDoomed] = useState<DashboardSummary | null>(null)
   const [renaming, setRenaming] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
     listDashboards().then((r) => setDashboards(r.dashboards), (e: Error) => setError(e.message))
+    // A dashboard only gets a row once the agent saves it; until then the draft
+    // lives in its design session, listed here so it is not mistaken for lost
+    listSessions().then(
+      // Sessions opened and never used are not drafts worth listing
+      (r) =>
+        setDrafts(
+          r.sessions.filter(
+            (s) => s.kind === "dashboard" && s.status !== "finished" && (s.steps > 0 || s.firstMessage)
+          )
+        ),
+      () => {}
+    )
   }, [])
 
   async function newDashboard(dashboardId?: string) {
@@ -81,7 +96,7 @@ export function DashboardList({ canDesign }: Props) {
       {error ? <div className="error">{error}</div> : null}
       {dashboards === null ? (
         <p>{T`Loading…`}</p>
-      ) : dashboards.length === 0 ? (
+      ) : dashboards.length === 0 && drafts.length === 0 ? (
         <p>
           {canDesign ? T`No dashboards yet. Create one with the designer agent.` : T`No dashboards yet.`}
         </p>
@@ -95,6 +110,19 @@ export function DashboardList({ canDesign }: Props) {
             </tr>
           </thead>
           <tbody>
+            {drafts.map((s) => (
+              <tr key={`draft-${s.id}`} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
+                <td>
+                  <b>{s.firstMessage ?? T`(new)`}</b>
+                  <span className="chip chip-draft">{T`draft`}</span>
+                  <div className="dim">
+                    {s.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}
+                  </div>
+                </td>
+                <td>{new Date(s.updatedAt).toLocaleString()}</td>
+                {canDesign ? <td /> : null}
+              </tr>
+            ))}
             {dashboards.map((d) => (
               <tr key={d.id} onClick={() => openDashboard(d.id)}>
                 <td>

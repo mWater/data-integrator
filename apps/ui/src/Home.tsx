@@ -383,8 +383,8 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
           <LinkCard
             href="#/assistant"
             icon="ask"
-            title={T`Ask a question`}
-            description={T`Plain language, answered from your data, with the query it ran shown.`}
+            title={T`Ask the Assistant`}
+            description={T`Plain-language questions answered from your data, with the query it ran shown. Conversations are saved under Assistant.`}
             fact={T`Reads all ${plural(sources, T`data source`, T`data sources`)}`}
           />
         )}

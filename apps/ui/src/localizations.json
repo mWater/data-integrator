@@ -4489,12 +4489,136 @@
       "es": "Traducir catálogo",
       "mg": "Handika ny katalaogy",
       "sw": "Tafsiri katalogi"
+    },
+    {
+      "_base": "en",
+      "en": "No conversations yet. Ask a question above; it will be saved here.",
+      "fr": "Aucune conversation pour le moment. Posez une question ci-dessus ; elle sera enregistrée ici.",
+      "pt": "Ainda não há conversas. Faça uma pergunta acima; ela será salva aqui.",
+      "es": "Aún no hay conversaciones. Haga una pregunta arriba; se guardará aquí.",
+      "mg": "Mbola tsy misy resaka. Mametraha fanontaniana etsy ambony; hotehirizina eto izany.",
+      "sw": "Bado hakuna mazungumzo. Uliza swali hapo juu; litahifadhiwa hapa."
+    },
+    {
+      "_base": "en",
+      "en": "Design session paused, waiting for you",
+      "fr": "Session de conception en pause, en attente de votre intervention",
+      "pt": "Sessão de criação pausada, aguardando você",
+      "es": "Sesión de diseño en pausa, esperando su respuesta",
+      "mg": "Naato ny fotoam-pandrafetana, miandry anao",
+      "sw": "Kikao cha usanifu kimesitishwa, kinakusubiri"
+    },
+    {
+      "_base": "en",
+      "en": "Design session in progress",
+      "fr": "Session de conception en cours",
+      "pt": "Sessão de criação em andamento",
+      "es": "Sesión de diseño en curso",
+      "mg": "Mandeha ny fotoam-pandrafetana",
+      "sw": "Kikao cha usanifu kinaendelea"
+    },
+    {
+      "_base": "en",
+      "en": "Ask the Assistant",
+      "fr": "Interroger l’Assistant",
+      "pt": "Perguntar ao Assistente",
+      "es": "Preguntar al asistente",
+      "mg": "Anontanio ny Mpanampy",
+      "sw": "Muulize Msaidizi"
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions answered from your data, with the query it ran shown. Conversations are saved under Assistant.",
+      "fr": "Réponses en langage courant à partir de vos données, avec la requête exécutée. Les conversations sont enregistrées sous Assistant.",
+      "pt": "Perguntas em linguagem simples respondidas com base nos seus dados, com exibição da consulta executada. As conversas são salvas no Assistente.",
+      "es": "Respuestas en lenguaje sencillo basadas en sus datos, con la consulta ejecutada. Las conversaciones se guardan en Asistente.",
+      "mg": "Fanontaniana amin’ny fiteny tsotra valiana avy amin’ny angonao, ary aseho ny fangatahana nataony. Tehirizina ao amin’ny Mpanampy ny resaka.",
+      "sw": "Maswali ya lugha rahisi yanajibiwa kutokana na data yako, huku hoja iliyotekelezwa ikionyeshwa. Mazungumzo yanahifadhiwa chini ya Msaidizi."
+    },
+    {
+      "_base": "en",
+      "en": "Source Notes",
+      "fr": "Notes sur les sources",
+      "pt": "Notas sobre fontes",
+      "es": "Notas de la fuente",
+      "mg": "Fanamarihana momba ny loharano",
+      "sw": "Maelezo ya Chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Not integrations: these are the reference notes the designer agent reads while building one, covering a source's publishing quirks, file layouts and working snippets. Nothing here is installed; an integration above may share a name with the note it was built from.",
+      "fr": "Il ne s’agit pas d’intégrations : ce sont les notes de référence que l’agent de conception consulte lors de la création d’une intégration. Elles décrivent les particularités de publication d’une source, l’organisation des fichiers et des extraits de code fonctionnels. Rien ici n’est installé ; une intégration ci-dessus peut porter le même nom que la note utilisée pour la créer.",
+      "pt": "Não são integrações: estas são as notas de referência que o agente de criação consulta ao desenvolver uma integração, incluindo particularidades de publicação da fonte, estruturas de arquivos e trechos de código funcionais. Nada aqui é instalado; uma integração acima pode ter o mesmo nome da nota a partir da qual foi criada.",
+      "es": "No son integraciones: son las notas de referencia que consulta el agente de diseño al crear una integración. Incluyen particularidades de publicación de la fuente, estructuras de archivos y fragmentos funcionales. Aquí no se instala nada; una integración de arriba puede tener el mismo nombre que la nota a partir de la cual se creó.",
+      "mg": "Tsy fampidirana ireo: fanamarihana enti-manondro vakin’ny mpandraharaha mpandrafitra mandritra ny fanamboarana fampidirana iray izy ireo, ka mirakitra ny mampiavaka ny famoahan’ny loharano, ny firafitry ny rakitra ary sombin-kaody azo ampiasaina. Tsy misy apetraka izay ato; mety hitovy anarana amin’ny fanamarihana nanorenana azy ny fampidirana iray etsy ambony.",
+      "sw": "Haya si miunganisho: ni maelezo ya marejeleo ambayo ajenti msanifu husoma wakati wa kuunda muunganisho, yakieleza taratibu zisizo za kawaida za uchapishaji wa chanzo, mipangilio ya faili na vijisehemu vya msimbo vinavyofanya kazi. Hakuna chochote hapa kinachosakinishwa; muunganisho ulio hapo juu unaweza kuwa na jina sawa na dokezo lililotumiwa kuuunda."
+    },
+    {
+      "_base": "en",
+      "en": "Search the library",
+      "fr": "Rechercher dans la bibliothèque",
+      "pt": "Pesquisar na biblioteca",
+      "es": "Buscar en la biblioteca",
+      "mg": "Karohy ao amin’ny katalaogy",
+      "sw": "Tafuta kwenye maktaba"
+    },
+    {
+      "_base": "en",
+      "en": "No entries match.",
+      "fr": "Aucune entrée correspondante.",
+      "pt": "Nenhuma entrada correspondente.",
+      "es": "No hay entradas coincidentes.",
+      "mg": "Tsy misy singa mifanaraka.",
+      "sw": "Hakuna vipengee vinavyolingana."
+    },
+    {
+      "_base": "en",
+      "en": "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country. Any integration can declare its own area instead, so this is a default, not a limit.",
+      "fr": "Les intégrations installées sans zone d’intérêt sont découpées selon cette zone lors de l’exécution. Définissez-la une fois pour que toutes les intégrations de la bibliothèque ciblent votre pays. Chaque intégration peut définir sa propre zone ; il s’agit donc d’une valeur par défaut, et non d’une limite.",
+      "pt": "As integrações instaladas sem uma área de interesse são recortadas com base nesta área durante a execução. Defina-a uma vez para direcionar todas as integrações da biblioteca ao seu país. Qualquer integração pode definir sua própria área; portanto, esta é apenas a área padrão, não um limite.",
+      "es": "Las integraciones instaladas sin un área de interés se recortan según esta área durante la ejecución. Configúrela una vez para dirigir todas las integraciones de la biblioteca a su país. Cada integración puede definir su propia área, por lo que esta es el área predeterminada, no un límite.",
+      "mg": "Ireo fampidirana napetraka tsy misy faritra mahaliana dia ferana amin’ity rehefa alefa. Farito indray mandeha izy ity mba hampitodihana ny fampidirana rehetra ao amin’ny katalaogy amin’ny firenenao. Afaka mamaritra ny faritra azy manokana kosa ny fampidirana tsirairay, ka sanda ampiasaina raha tsy misy hafa ity fa tsy fetra.",
+      "sw": "Miunganisho iliyosakinishwa bila eneo lengwa hupunguzwa kwa mipaka ya eneo hili wakati wa kuendeshwa. Liweke mara moja ili kuelekeza kila muunganisho wa maktaba kwenye nchi yako. Muunganisho wowote unaweza kubainisha eneo lake badala yake, kwa hivyo hili ni chaguo-msingi, si kikomo."
+    },
+    {
+      "_base": "en",
+      "en": "Translate Data Catalog Now",
+      "fr": "Traduire le catalogue de données maintenant",
+      "pt": "Traduzir o catálogo de dados agora",
+      "es": "Traducir ahora el catálogo de datos",
+      "mg": "Adikao izao ny Katalaogin’ny Angona",
+      "sw": "Tafsiri Katalogi ya Data Sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed.",
+      "fr": "Les noms et descriptions des données installées sont traduits automatiquement à mesure que des intégrations sont ajoutées. Utilisez \"Traduire le catalogue de données maintenant\" après avoir ajouté une langue, ou pour les intégrations installées avant la mise en place de la traduction.",
+      "pt": "Os nomes e as descrições dos dados instalados são traduzidos automaticamente à medida que as integrações são adicionadas. Use \"Traduzir o catálogo de dados agora\" após adicionar um idioma ou para integrações instaladas antes de a tradução estar disponível.",
+      "es": "Los nombres y las descripciones de los datos instalados se traducen automáticamente al añadir integraciones. Use \"Traducir ahora el catálogo de datos\" después de añadir un idioma o para las integraciones instaladas antes de que existiera la traducción.",
+      "mg": "Adika ho azy ny anarana sy ny famaritana ny angona napetraka rehefa ampiana ny fampidirana. Ampiasao ny \"Adikao izao ny Katalaogin’ny Angona\" rehefa avy manampy fiteny, na ho an’ireo fampidirana napetraka talohan’ny nisian’ny fandikan-teny.",
+      "sw": "Majina na maelezo ya data iliyosakinishwa hutafsiriwa kiotomatiki miunganisho inapoongezwa. Tumia \"Tafsiri Katalogi ya Data Sasa\" baada ya kuongeza lugha, au kwa miunganisho iliyosakinishwa kabla ya tafsiri kuwepo."
+    },
+    {
+      "_base": "en",
+      "en": "Agent Activity",
+      "fr": "Activité de l’agent",
+      "pt": "Atividade do agente",
+      "es": "Actividad del agente",
+      "mg": "Hetsiky ny mpandraharaha",
+      "sw": "Shughuli za Ajenti"
     }
   ],
   "unused": [
+    "Agent activity ({0} open)",
     "cron (UTC; empty for manual only)",
+    "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",
+    "Ask a question",
+    "Plain language, answered from your data, with the query it ran shown.",
     "{0} already built",
+    "Skills",
+    "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
     "Sharing",
-    "private"
+    "private",
+    "Translate Catalog"
   ]
 }

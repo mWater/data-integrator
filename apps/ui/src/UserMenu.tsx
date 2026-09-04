@@ -42,6 +42,9 @@ export function UserMenu({ user, onSignOut }: { user: User; onSignOut: () => voi
       </button>
       {open && (
         <div className="user-menu-list" role="menu">
+          <a role="menuitem" href="#/sessions" onClick={() => setOpen(false)}>
+            {T`Agent Activity`}
+          </a>
           <a role="menuitem" href="#/settings" onClick={() => setOpen(false)}>
             {T`Settings`}
           </a>

@@ -87,9 +87,13 @@ Name the place, the period, and the measurements you care about.`}
         onSubmit={start}
       />
       {error && <div className="error">{error}</div>}
-      {chats !== null && chats.length > 0 && (
-        <section className="assistant-history">
-          <h2>{T`Past conversations`}</h2>
+      <section className="assistant-history">
+        <h2>{T`Past conversations`}</h2>
+        {chats === null ? (
+          <p className="dim">{T`Loading…`}</p>
+        ) : chats.length === 0 ? (
+          <p className="dim">{T`No conversations yet. Ask a question above; it will be saved here.`}</p>
+        ) : (
           <table className="sessions">
             <thead>
               <tr><th>{T`Question`}</th><th>{T`Status`}</th><th>{T`Updated`}</th><th /></tr>
@@ -118,8 +122,8 @@ Name the place, the period, and the measurements you care about.`}
               ))}
             </tbody>
           </table>
-        </section>
-      )}
+        )}
+      </section>
       {doomed && (
         <ConfirmDelete
           title={T`Delete this conversation?`}

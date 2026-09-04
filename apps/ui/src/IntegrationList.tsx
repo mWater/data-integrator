@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions } from "./api.js"
+import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions, SessionSummary } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
 import { localizeData, cronText } from "./localization.js"
 
@@ -20,17 +20,29 @@ interface IntegrationListProps {
 /** Landing page: installed integrations plus the new-integration flow. */
 export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
-  const [openSessions, setOpenSessions] = useState(0)
+  const [drafts, setDrafts] = useState<SessionSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     listIntegrations().then(r => setIntegrations(r.integrations), err => setError(err.message))
+    // Design sessions still in progress show here as drafts, so a paused
+    // session is found where its result would appear
     listSessions().then(
-      r => setOpenSessions(r.sessions.filter(s => s.status !== "finished").length),
+      // Sessions opened and never used are not drafts worth listing
+      r =>
+        setDrafts(
+          r.sessions.filter(s => s.kind === "designer" && s.status !== "finished" && (s.steps > 0 || s.firstMessage))
+        ),
       () => {}
     )
   }, [])
+
+  // Drafts whose integration already has a row are reachable from that row
+  const orphanDrafts = useMemo(
+    () => drafts.filter(d => !d.integrationId || !(integrations ?? []).some(i => i.id === d.integrationId)),
+    [drafts, integrations]
+  )
 
   const sortedIntegrations = useMemo(
     () =>
@@ -73,9 +85,6 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
         <h1>{T`Integrations`}</h1>
         {canDesign && (
           <div className="list-head-actions">
-            <a className="dim-link" href="#/sessions">
-              {openSessions > 0 ? T`Agent activity (${openSessions} open)` : T`Agent activity`}
-            </a>
             <button
               className="secondary"
               title={T`Install a definition file exported from another deployment; it arrives paused for review`}
@@ -130,7 +139,7 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       {error && <div className="error">{error}</div>}
       {integrations === null ? (
         <p>{T`Loading…`}</p>
-      ) : integrations.length === 0 ? (
+      ) : integrations.length === 0 && orphanDrafts.length === 0 ? (
         <p>{T`Nothing installed yet. New Integration starts a design session; describe what to build there.`}</p>
       ) : (
         <table className="sessions">
@@ -138,6 +147,17 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
             <tr><th>{T`Integration`}</th><th>{T`Trigger`}</th><th>{T`Last run`}</th></tr>
           </thead>
           <tbody>
+            {orphanDrafts.map(d => (
+              <tr key={`draft-${d.id}`} onClick={() => (window.location.hash = `#/session/${d.id}`)}>
+                <td>
+                  <b>{d.integrationId ?? d.firstMessage ?? T`(new)`}</b>
+                  <span className="chip chip-draft">{T`draft`}</span>
+                  <div className="dim">{d.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}</div>
+                </td>
+                <td />
+                <td><span className="dim">{new Date(d.updatedAt).toLocaleString()}</span></td>
+              </tr>
+            ))}
             {sortedIntegrations.map(i => (
               <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
                 <td>

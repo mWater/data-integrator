@@ -183,7 +183,7 @@ export function Settings({ user }: { user: User }) {
 
           <h2>{T`Default area of interest`}</h2>
           <p className="dim">
-            {T`Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.`}
+            {T`Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country. Any integration can declare its own area instead, so this is a default, not a limit.`}
           </p>
           <p>
             {T`Current:`}{" "}
@@ -371,9 +371,14 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, onChange }: Lang
             disabled={busy}
             title={T`Fills missing catalog translations for the offered languages using the configured model`}
           >
-            {T`Translate Catalog`}
+            {T`Translate Data Catalog Now`}
           </button>
         </div>
+      )}
+      {isAdmin && (
+        <p className="dim">
+          {T`Names and descriptions of installed data are translated automatically as integrations are added. Use "Translate Data Catalog Now" after adding a language, or for integrations installed before translation existed.`}
+        </p>
       )}
       {notice && <p className="dim">{notice}</p>}
     </section>
