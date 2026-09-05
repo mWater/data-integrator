@@ -981,3 +981,12 @@ table.users tbody tr:hover { background: none }
   .settings-group-heading { align-items: flex-start; flex-direction: column; gap: 10px }
   .settings-page .locale-checks { grid-template-columns: minmax(0, 1fr) }
 }
+
+/* Keep navigation within the viewport when settings stack on small screens. */
+@media (max-width: 800px) {
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 10px 16px }
+  .topbar .brand { white-space: nowrap }
+  .topbar nav { order: 1; width: 100%; flex-wrap: wrap; gap: 8px 16px }
+  .topbar .user-menu { min-width: 0; max-width: 100% }
+  .topbar .user-menu-trigger { min-width: 0; overflow-wrap: anywhere; white-space: normal }
+}
