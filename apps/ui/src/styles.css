@@ -699,17 +699,6 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   border-radius: 6px; font: inherit;
 }
 
-/* Settings sections */
-/* Section pills under the Settings heading: quiet until hovered */
-.settings-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 22px }
-.settings-nav a {
-  font-size: 12.5px; color: var(--ink-dim); text-decoration: none; padding: 4px 11px;
-  border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
-}
-.settings-nav a:hover { color: var(--ink); border-color: var(--ink-faint); background: var(--hover-tint) }
-.settings-section { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border) }
-.settings-section h2 { margin-top: 0 }
-
 /* Users table: sessions styling without clickable rows */
 table.users tbody tr { cursor: default }
 table.users tbody tr:hover { background: none }
@@ -941,3 +930,54 @@ table.users tbody tr:hover { background: none }
 .terms dd { margin: 0; color: var(--ink-dim); font-size: 13.5px; line-height: 1.5 }
 .steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; max-width: 70ch }
 .steps li { line-height: 1.45 }
+
+/* Settings use a shared description/control grid, stacked on smaller screens. */
+.settings-page { max-width: 1000px; padding-bottom: 56px }
+.settings-header { margin-bottom: 32px }
+.settings-header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em }
+.settings-header p, .settings-group-heading p { margin: 0; color: var(--ink-muted) }
+.settings-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 28px 0 12px }
+.settings-group-heading h2 { margin: 0 0 3px; font-size: 16px; font-weight: 600 }
+.settings-group-heading p { font-size: 13px }
+.settings-users-link { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; color: var(--link); font-size: 13px; text-decoration: none }
+.settings-users-link:hover { text-decoration: underline }
+.settings-group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden }
+.settings-row { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr); gap: 40px; padding: 24px 28px }
+.settings-row + .settings-row { border-top: 1px solid var(--border) }
+.settings-row-heading h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600 }
+.settings-row-heading p { margin: 0; max-width: 32ch; color: var(--ink-muted); font-size: 13px; line-height: 1.55 }
+.settings-row-content { min-width: 0 }
+.settings-row-content > :first-child { margin-top: 0 }
+.settings-row-content > :last-child { margin-bottom: 0 }
+.settings-value { margin: 0 }
+.settings-page .title-form, .settings-page .password-form { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 0 }
+.settings-page .title-form input, .settings-page .password-form input,
+.settings-page .aoi-editor select { width: 100%; min-width: 0; padding: 9px 11px; margin: 0; font: inherit; border: 1px solid var(--control-border); border-radius: 6px }
+.settings-page .password-form label { gap: 6px; font-size: 13px }
+.settings-page .password-form > button { align-self: flex-start; margin-top: 4px }
+.settings-actions, .settings-page .aoi-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 4px }
+.settings-page button { font: inherit; font-size: 13px; padding: 8px 14px }
+.settings-page .aoi-editor { border: 0; padding: 0; margin: 0; min-width: 0; align-items: stretch; gap: 14px }
+.settings-page .aoi-mode { flex-wrap: wrap; gap: 8px 20px; font-size: 13px }
+.settings-page input[type="radio"], .settings-page input[type="checkbox"] { accent-color: var(--accent); margin: 0 }
+.settings-page .aoi-mode label { display: inline-flex; align-items: center; gap: 6px }
+.settings-page .aoi-bbox { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.settings-page .aoi-bbox input { width: 100%; font: inherit; padding: 9px 11px; border-color: var(--control-border) }
+.settings-page .aoi-bbox label { text-transform: capitalize; gap: 6px }
+.settings-page .locale-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0 0 16px }
+.settings-page .locale-checks label { gap: 8px; font-size: 13px }
+.settings-details { margin-top: 12px; color: var(--ink-muted); font-size: 12.5px; overflow-wrap: anywhere }
+.settings-details summary { cursor: pointer; width: fit-content }
+.settings-details p { margin-bottom: 0 }
+.settings-theme-options { display: inline-flex; padding: 3px; gap: 3px; background: var(--page); border: 1px solid var(--border); border-radius: 8px }
+.settings-theme-options button { border: 1px solid transparent; background: transparent; color: var(--ink-dim); border-radius: 5px; padding: 7px 18px }
+.settings-theme-options button:hover { color: var(--ink); background: var(--hover-tint) }
+.settings-theme-options button[aria-pressed="true"] { background: var(--surface); color: var(--ink); border-color: var(--control-border); box-shadow: 0 1px 3px var(--shadow) }
+.settings-page :is(input, select, button, a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.settings-loading, .settings-group > .error { margin: 20px 28px }
+@media (max-width: 680px) {
+  .settings-row { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 22px 20px }
+  .settings-row-heading p { max-width: none }
+  .settings-group-heading { align-items: flex-start; flex-direction: column; gap: 10px }
+  .settings-page .locale-checks { grid-template-columns: minmax(0, 1fr) }
+}

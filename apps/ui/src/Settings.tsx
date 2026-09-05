@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react"
 import {
   CatalogTranslation,
   setLocalesSetting,
@@ -19,6 +19,21 @@ import { UsersSection } from "./UsersSection.js"
 /** Shown as the home page title when the deployment has not set one. */
 const DEFAULT_SITE_TITLE = "Data Integrator"
 
+/** Shared layout keeps descriptions and controls aligned across settings. */
+function SettingsRow({ id, title, description, children }: {
+  id: string; title: string; description: string; children: ReactNode
+}) {
+  return (
+    <section className="settings-row" id={id} aria-labelledby={`${id}-heading`}>
+      <div className="settings-row-heading">
+        <h3 id={`${id}-heading`}>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <div className="settings-row-content">{children}</div>
+    </section>
+  )
+}
+
 /**
  * The deployment's display name, shown as the home page heading. Blank restores
  * the default, so there is no separate clear action.
@@ -26,6 +41,7 @@ const DEFAULT_SITE_TITLE = "Data Integrator"
 function SiteTitleSection({ initial, isAdmin }: { initial: string | null; isAdmin: boolean }) {
   const [title, setTitle] = useState(initial ?? "")
   const [saved, setSaved] = useState(initial)
+  const [notice, setNotice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -37,6 +53,7 @@ function SiteTitleSection({ initial, isAdmin }: { initial: string | null; isAdmi
       const result = await setSiteTitle(title)
       setSaved(result.site_title)
       setTitle(result.site_title ?? "")
+      setNotice(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -45,32 +62,27 @@ function SiteTitleSection({ initial, isAdmin }: { initial: string | null; isAdmi
   }
 
   return (
-    <>
-      <h2>{T`Deployment name`}</h2>
-      <p className="dim">
-        {T`The heading on the home page. Name it after the deployment, for example "Madagascar Data Integrator".`}
-      </p>
-      <p>
-        {T`Current:`} <b>{saved ?? DEFAULT_SITE_TITLE}</b>
-        {saved === null && <span className="dim"> {T`(default)`}</span>}
-      </p>
+    <SettingsRow id="settings-title" title={T`Deployment name`} description={T`The name shown on the home page.`}>
       {error && <div className="error">{error}</div>}
       {isAdmin ? (
         <form className="title-form" onSubmit={save}>
           <input
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => { setTitle(e.target.value); setNotice(false) }}
             placeholder={DEFAULT_SITE_TITLE}
             maxLength={120}
             aria-label={T`Deployment name`}
           />
-          <button disabled={busy || title.trim() === (saved ?? "")}>{T`Save`}</button>
           <span className="dim">{T`Leave blank to use “${DEFAULT_SITE_TITLE}”.`}</span>
+          <div className="settings-actions">
+            <button disabled={busy || title.trim() === (saved ?? "")}>{busy ? T`Saving…` : T`Save Changes`}</button>
+            {notice && <span className="dim" role="status">{T`Saved.`}</span>}
+          </div>
         </form>
       ) : (
-        <p className="dim">{T`Only administrators can change settings.`}</p>
+        <p className="settings-value">{saved ?? DEFAULT_SITE_TITLE}</p>
       )}
-    </>
+    </SettingsRow>
   )
 }
 
@@ -83,19 +95,15 @@ function formatBbox(bbox: [number, number, number, number]): string {
 function ThemeSection() {
   const { preference, setPreference } = useAppTheme()
   return (
-    <section className="settings-section" id="settings-theme">
-      <h2>{T`Theme`}</h2>
-      <p className="dim">{T`Changes the appearance for you on this device only.`}</p>
-      <select
-        value={preference}
-        onChange={e => setPreference(e.target.value as ThemePreference)}
-        aria-label={T`Theme`}
-      >
-        <option value="light">{T`Light`}</option>
-        <option value="dark">{T`Dark`}</option>
-        <option value="system">{T`Match system`}</option>
-      </select>
-    </section>
+    <SettingsRow id="settings-theme" title={T`Appearance`} description={T`Choose a theme for this device. Changes apply immediately.`}>
+      <div className="settings-theme-options" role="group" aria-label={T`Theme`}>
+        {([["light", T`Light`], ["dark", T`Dark`], ["system", T`System`]] as [ThemePreference, string][]).map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={preference === value} onClick={() => setPreference(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </SettingsRow>
   )
 }
 
@@ -115,6 +123,9 @@ export function Settings({ user }: { user: User }) {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const [aoiBusy, setAoiBusy] = useState(false)
+  const [aoiError, setAoiError] = useState<string | null>(null)
+
   // Editor state: a country selection or a custom box
   const [mode, setMode] = useState<"country" | "custom">("country")
   const [iso3, setIso3] = useState("")
@@ -125,7 +136,15 @@ export function Settings({ user }: { user: User }) {
   useEffect(() => {
     Promise.all([getSettings(), listCountries()]).then(
       ([settings, countryList]) => {
-        setCurrent(settings.settings.default_aoi)
+        const area = settings.settings.default_aoi
+        setCurrent(area)
+        if (area) {
+          const country = countryList.countries.find(c => area.countries?.length === 1 &&
+            c.iso3 === area.countries[0] && c.bbox.every((v, i) => v === area.bbox[i]))
+          setMode(country ? "country" : "custom")
+          setIso3(country?.iso3 ?? "")
+          setCustom({ west: String(area.bbox[0]), south: String(area.bbox[1]), east: String(area.bbox[2]), north: String(area.bbox[3]) })
+        }
         setSiteTitleState(settings.settings.site_title)
         setLocales(settings.settings.locales)
         setSupportedLocales(settings.supportedLocales)
@@ -139,9 +158,17 @@ export function Settings({ user }: { user: User }) {
 
   const selected = useMemo(() => countries.find(c => c.iso3 === iso3) ?? null, [countries, iso3])
 
+  const customValues = [custom.west, custom.south, custom.east, custom.north]
+  const aoiDirty = mode === "country"
+    ? !!selected && !(current?.countries?.length === 1 && current.countries[0] === iso3 &&
+      selected.bbox.every((v, i) => v === current.bbox[i]))
+    : customValues.every(v => v.trim() && Number.isFinite(Number(v))) &&
+      !(current && !current.countries?.length && customValues.every((v, i) => Number(v) === current.bbox[i]))
+
   async function save() {
-    setError(null)
+    setAoiError(null)
     setNotice(null)
+    setAoiBusy(true)
     try {
       let aoi: DefaultAoi
       if (mode === "country") {
@@ -149,7 +176,7 @@ export function Settings({ user }: { user: User }) {
         aoi = { bbox: selected.bbox, countries: [selected.iso3], name: selected.name }
       } else {
         const values = [custom.west, custom.south, custom.east, custom.north].map(Number)
-        if (values.some(v => !Number.isFinite(v)))
+        if (Object.values(custom).some(v => !v.trim()) || values.some(v => !Number.isFinite(v)))
           throw new Error(T`All four bbox values are required`)
         aoi = { bbox: values as [number, number, number, number] }
       }
@@ -157,146 +184,140 @@ export function Settings({ user }: { user: User }) {
       setCurrent(result.default_aoi)
       setNotice(T`Saved. Future runs of integrations without their own AOI use this area.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setAoiError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAoiBusy(false)
     }
   }
 
   async function clear() {
-    setError(null)
+    setAoiError(null)
     setNotice(null)
+    setAoiBusy(true)
     try {
       await clearDefaultAoi()
       setCurrent(null)
+      setIso3("")
+      setMode("country")
+      setCustom({ west: "", south: "", east: "", north: "" })
       setNotice(T`Cleared. Integrations without an AOI ingest their source's full extent.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setAoiError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAoiBusy(false)
     }
   }
 
-  /** Scrolls to a section without touching the route hash. */
-  function jump(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
-
-  const sections: [string, string][] = [
-    ["settings-title", T`Deployment name`],
-    ["settings-aoi", T`Area of interest`],
-    ["settings-languages", T`Languages`],
-    ["settings-theme", T`Theme`],
-    ["settings-password", T`Password`]
-  ]
-
   return (
-    <main className="list-page">
-      <h1>{T`Settings`}</h1>
-      <nav className="settings-nav" aria-label={T`Settings sections`}>
-        {sections.map(([id, label]) => (
-          <a key={id} href="#/settings" onClick={e => { e.preventDefault(); jump(id) }}>
-            {label}
-          </a>
-        ))}
-        {isAdmin && <a href="#/settings/users">{T`Users`}</a>}
-      </nav>
-      {error && <div className="error">{error}</div>}
-      {!loaded ? (
-        <p>{T`Loading…`}</p>
-      ) : (
-        <>
-          <div id="settings-title">
+    <main className="list-page settings-page">
+      <header className="settings-header">
+        <h1>{T`Settings`}</h1>
+        <p>{T`Manage your deployment and personal preferences.`}</p>
+      </header>
+      <div className="settings-group-heading">
+        <div><h2>{T`Deployment`}</h2><p>{T`Shared settings for everyone using this deployment.`}</p></div>
+        {isAdmin && <a className="settings-users-link" href="#/settings/users">{T`Manage Users`} <span aria-hidden="true">→</span></a>}
+      </div>
+      {!isAdmin && <p className="dim">{T`Only administrators can change deployment settings.`}</p>}
+      <div className="settings-group">
+        {error && <div className="error">{error}</div>}
+        {!loaded ? (
+          <p className="settings-loading">{error ? T`Unable to load settings. Please reload to try again.` : T`Loading…`}</p>
+        ) : (
+          <>
             <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />
-          </div>
-
-          <h2 id="settings-aoi">{T`Default area of interest`}</h2>
-          <p className="dim">
-            {T`Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country. Any integration can declare its own area instead, so this is a default, not a limit.`}
-          </p>
-          <p>
-            {T`Current:`}{" "}
-            {current ? (
-              <b>
-                {current.name ?? current.countries?.join(", ") ?? T`custom`} {formatBbox(current.bbox)}
-              </b>
-            ) : (
-              <span className="dim">{T`none — integrations ingest their source's full extent`}</span>
-            )}
-          </p>
-          {isAdmin ? (
-            <div className="aoi-editor">
-              <div className="aoi-mode">
-                <label>
-                  <input
-                    type="radio"
-                    checked={mode === "country"}
-                    onChange={() => setMode("country")}
-                  />{" "}
-                  {T`Country`}
-                </label>
-                <label>
-                  <input type="radio" checked={mode === "custom"} onChange={() => setMode("custom")} />{" "}
-                  {T`Custom bounding box`}
-                </label>
-              </div>
-              {mode === "country" ? (
-                <select value={iso3} onChange={e => setIso3(e.target.value)}>
-                  <option value="">{T`Pick a country…`}</option>
-                  {countries.map(c => (
-                    <option key={c.iso3} value={c.iso3}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="aoi-bbox">
-                  {(
-                    [
-                      ["west", T`west`],
-                      ["south", T`south`],
-                      ["east", T`east`],
-                      ["north", T`north`]
-                    ] as const
-                  ).map(([edge, label]) => (
-                    <label key={edge}>
-                      {label}
+            <SettingsRow id="settings-aoi" title={T`Default area of interest`} description={T`Default region for integrations. Individual integrations can override it.`}>
+              {aoiError && <div className="error" role="alert">{aoiError}</div>}
+              {isAdmin ? (
+                <fieldset className="aoi-editor" aria-label={T`Default area of interest`} disabled={aoiBusy} onChange={() => { setNotice(null); setAoiError(null) }}>
+                  <div className="aoi-mode">
+                    <label>
                       <input
-                        type="number"
-                        step="any"
-                        value={custom[edge]}
-                        onChange={e => setCustom({ ...custom, [edge]: e.target.value })}
-                      />
+                        type="radio"
+                        name="settings-aoi-mode"
+                        checked={mode === "country"}
+                        onChange={() => setMode("country")}
+                      />{" "}
+                      {T`Country`}
                     </label>
-                  ))}
-                </div>
+                    <label>
+                      <input type="radio" name="settings-aoi-mode" checked={mode === "custom"} onChange={() => setMode("custom")} />{" "}
+                      {T`Custom bounding box`}
+                    </label>
+                  </div>
+                  {mode === "country" ? (
+                    <select aria-label={T`Country`} value={iso3} onChange={e => setIso3(e.target.value)}>
+                      <option value="">{T`Pick a country…`}</option>
+                      {countries.map(c => (
+                        <option key={c.iso3} value={c.iso3}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="aoi-bbox">
+                      {(
+                        [
+                          ["west", T`west`],
+                          ["south", T`south`],
+                          ["east", T`east`],
+                          ["north", T`north`]
+                        ] as const
+                      ).map(([edge, label]) => (
+                        <label key={edge}>
+                          {label}
+                          <input
+                            type="number"
+                            step="any"
+                            value={custom[edge]}
+                            onChange={e => setCustom({ ...custom, [edge]: e.target.value })}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <div className="aoi-actions">
+                    <button onClick={save} disabled={aoiBusy || !aoiDirty}>
+                      {aoiBusy ? T`Saving…` : T`Save Changes`}
+                    </button>
+                    {current && (
+                      <button className="secondary" onClick={clear}>
+                        {T`Reset to Full Extent`}
+                      </button>
+                    )}
+                  </div>
+                  {notice && <p className="dim" role="status">{notice}</p>}
+                </fieldset>
+              ) : (
+                <p className="settings-value">{current?.name ?? current?.countries?.join(", ") ?? (current ? T`Custom bounding box` : T`Full source extent`)}</p>
               )}
-              <div className="aoi-actions">
-                <button onClick={save}>{T`Save`}</button>
-                {current && (
-                  <button className="secondary" onClick={clear}>
-                    {T`Clear`}
-                  </button>
-                )}
-              </div>
-              {notice && <p className="dim">{notice}</p>}
-            </div>
-          ) : (
-            <p className="dim">{T`Only administrators can change settings.`}</p>
-          )}
-        </>
-      )}
-      {loaded && translation && (
-        <LanguagesSection
-          isAdmin={isAdmin}
-          locales={locales}
-          supportedLocales={supportedLocales}
-          translation={translation}
-          onChange={codes => {
-            setLocales(codes)
-            // Narrow the navbar picker immediately, not just on next load
-            setOfferedLocales(codes)
-          }}
-        />
-      )}
-      <ThemeSection />
-      <ChangePasswordSection />
+              {current ? (
+                <details className="settings-details"><summary>{T`Saved area details`}</summary><p>{formatBbox(current.bbox)}</p></details>
+              ) : <p className="dim">{T`No default region. Integrations use their source’s full extent.`}</p>}
+            </SettingsRow>
+          </>
+        )}
+        {loaded && translation && (
+          <LanguagesSection
+            isAdmin={isAdmin}
+            locales={locales}
+            supportedLocales={supportedLocales}
+            translation={translation}
+            onChange={codes => {
+              setLocales(codes)
+              // Narrow the navbar picker immediately, not just on next load
+              setOfferedLocales(codes)
+            }}
+          />
+        )}
+      </div>
+      <div className="settings-group-heading">
+        <div><h2>{T`Personal`}</h2><p>{T`Preferences and security for your account.`}</p></div>
+      </div>
+      <div className="settings-group">
+        <ThemeSection />
+        <ChangePasswordSection />
+      </div>
     </main>
   )
 }
@@ -400,11 +421,7 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onC
   const dirty = draft.slice().sort().join(",") !== locales.slice().sort().join(",")
 
   return (
-    <section className="settings-section" id="settings-languages">
-      <h2>{T`Languages`}</h2>
-      <p className="dim">
-        {T`Languages this deployment offers. The language picker shows them, and the data catalog (names, descriptions, caveats) is translated into each one automatically when you add it. Interface languages are fixed per release; this narrows the offer.`}
-      </p>
+    <SettingsRow id="settings-languages" title={T`Languages`} description={T`Choose the languages available in the language picker and data catalog.`}>
       {error && <div className="error">{error}</div>}
       <div className="locale-checks">
         {supportedLocales.map(locale => (
@@ -422,13 +439,14 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onC
       {isAdmin && (
         <div className="aoi-actions">
           <button onClick={() => void save()} disabled={busy || !dirty || draft.length === 0}>
-            {T`Save`}
+            {busy ? T`Saving…` : T`Save Changes`}
           </button>
         </div>
       )}
-      {notice && <p className="dim">{notice}</p>}
-      {isAdmin && jobLine() && <p className="dim">{jobLine()}</p>}
-    </section>
+      <p className="dim">{T`Adding a language starts a background translation of the data catalog.`}</p>
+      {notice && <p className="dim" role="status">{notice}</p>}
+      {isAdmin && jobLine() && <details className="settings-details"><summary>{T`Translation details`}</summary><p>{jobLine()}</p></details>}
+    </SettingsRow>
   )
 }
 
@@ -468,8 +486,7 @@ function ChangePasswordSection() {
   }
 
   return (
-    <section className="settings-section" id="settings-password">
-      <h2>{T`Change password`}</h2>
+    <SettingsRow id="settings-password" title={T`Password`} description={T`Use a password with at least 8 characters.`}>
       {error && <div className="error">{error}</div>}
       <form className="password-form" onSubmit={submit}>
         <label>
@@ -503,8 +520,8 @@ function ChangePasswordSection() {
           />
         </label>
         <button disabled={busy || !current || !next || !confirm}>{T`Change Password`}</button>
-        {notice && <p className="dim">{notice}</p>}
+        {notice && <p className="dim" role="status">{notice}</p>}
       </form>
-    </section>
+    </SettingsRow>
   )
 }
