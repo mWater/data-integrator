@@ -25,6 +25,7 @@ export function DataSources() {
   const [sources, setSources] = useState<DataSource[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
+  const [filter, setFilter] = useState<"all" | "table" | "raster">("all")
 
   useEffect(() => {
     listSources().then(r => setSources(r.sources), err => setError(err.message))
@@ -34,22 +35,17 @@ export function DataSources() {
     if (!sources) return []
     const q = query.trim().toLowerCase()
     return sources
-      .filter(source => matches(source, q))
+      .filter(source => (filter === "all" || source.kind === filter) && matches(source, q))
       .sort(
         (a, b) =>
           localizeData(a.name).localeCompare(localizeData(b.name), undefined, { sensitivity: "base" }) ||
           a.id.localeCompare(b.id)
       )
-  }, [sources, query])
-
-  /** Tables open their table page; rasters open on the map. */
-  function open(source: DataSource) {
-    window.location.hash = source.kind === "raster" ? `#/layer/${source.id}` : `#/table/${source.id}`
-  }
+  }, [sources, query, filter])
 
   return (
-    <main className="list-page">
-      <h1>{T`Data`}</h1>
+    <main className="list-page catalog-page">
+      <header className="catalog-header"><h1>{T`Data`}</h1><p>{T`Explore the tables and map layers in your deployment.`}</p></header>
       {error && <div className="error">{error}</div>}
       {sources === null ? (
         <p>{T`Loading…`}</p>
@@ -59,7 +55,7 @@ export function DataSources() {
         </p>
       ) : (
         <>
-          <div className="new-session">
+          <div className="catalog-toolbar">
             <input
               type="search"
               value={query}
@@ -67,37 +63,38 @@ export function DataSources() {
               placeholder={T`Search sources`}
               aria-label={T`Search sources`}
             />
+            <div className="catalog-filters" role="group" aria-label={T`Filter data sources`}>
+              {([["all", T`All`], ["table", T`Tables`], ["raster", T`Raster Layers`]] as const).map(([value, label]) => (
+                <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label} <span>{sources.filter(s => value === "all" || s.kind === value).length}</span></button>
+              ))}
+            </div>
           </div>
+          <p className="catalog-count" role="status">{shown.length === 1 ? T`1 source` : T`${shown.length} sources`}</p>
           {shown.length === 0 ? (
-            <p className="dim">{T`No sources match.`}</p>
+            <div className="catalog-empty"><h2>{T`No sources found`}</h2><p>{T`Try another search or view all sources.`}</p><button className="secondary" onClick={() => { setQuery(""); setFilter("all") }}>{T`Clear Filters`}</button></div>
           ) : (
-            <table className="sessions">
-              <thead>
-                <tr><th>{T`Source`}</th><th>{T`Kind`}</th><th>{T`Contents`}</th><th>{T`Updated`}</th></tr>
-              </thead>
-              <tbody>
-                {shown.map(source => (
-                  <tr key={`${source.kind}:${source.id}`} onClick={() => open(source)}>
-                    <td>
-                      <b>{localizeData(source.name)}</b>
-                      {source.description && <div className="source-description">{localizeData(source.description)}</div>}
-                      <div className="source-from">{T`from ${localizeData(source.integrationName)}`}</div>
-                    </td>
-                    <td><span className={`chip chip-${source.kind}`}>{kindLabel(source.kind)}</span></td>
-                    <td>
-                      {source.kind === "table"
-                        ? source.rows === null
-                          ? T`no data yet`
-                          : T`${source.rows.toLocaleString()} rows · ${source.columns} columns`
-                        : source.snapshots === 1
-                          ? T`${source.snapshots} snapshot`
-                          : T`${source.snapshots} snapshots`}
-                    </td>
-                    <td>{source.updatedAt ? formatDateTime(source.updatedAt) : <span className="dim">{T`never`}</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="catalog-list">
+              {shown.map(source => {
+                const href = source.kind === "raster" ? `#/layer/${source.id}` : `#/table/${source.id}`
+                return <article className="catalog-entry" key={`${source.kind}:${source.id}`}>
+                  <div className="catalog-copy">
+                    <div className="catalog-name"><a href={href}>{localizeData(source.name)}</a><span className={`chip chip-${source.kind}`}>{kindLabel(source.kind)}</span></div>
+                    {source.description && <p className="catalog-description">{localizeData(source.description)}</p>}
+                    <a className="catalog-origin" href={`#/integration/${source.integrationId}`}>{T`from ${localizeData(source.integrationName)}`}</a>
+                  </div>
+                  <div className="catalog-meta">
+                    <span>{source.kind === "table"
+                      ? source.rows === null ? T`No data yet` : T`${source.rows.toLocaleString()} rows · ${source.columns} columns`
+                      : source.snapshots === 1 ? T`1 snapshot` : T`${source.snapshots ?? 0} snapshots`}</span>
+                    <span className="catalog-date-label">{source.kind === "raster" ? T`Latest observation` : T`Last ingested`}</span>
+                    {source.updatedAt ? <time dateTime={source.updatedAt} title={formatDateTime(source.updatedAt)}>{source.kind === "raster"
+                      ? new Date(source.updatedAt).toLocaleDateString(undefined, {timeZone: "UTC", year: "numeric", month: "short", day: "numeric"})
+                      : formatDateTime(source.updatedAt)}</time> : <span className="dim">{T`Not available`}</span>}
+                  </div>
+                  <a className="catalog-open" href={href}>{source.kind === "raster" ? T`View Map` : T`Open Table`} <span aria-hidden="true">→</span></a>
+                </article>
+              })}
+            </div>
           )}
         </>
       )}

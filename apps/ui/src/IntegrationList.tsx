@@ -11,6 +11,34 @@ export function triggerLabel(trigger: { cron?: string; webhook?: boolean }): str
   return parts.join(" + ") || T`manual`
 }
 
+/** Keep failures distinct from integrations deliberately paused by an editor. */
+function needsAttention(i: IntegrationSummary): boolean {
+  return i.lastRunStatus === "failed" || i.lastRunStatus === "timeout"
+}
+
+function runLabel(status: string | null): string {
+  switch (status) {
+    case "succeeded": return T`Succeeded`
+    case "failed": return T`Failed`
+    case "timeout": return T`Timed Out`
+    case "running": return T`Running`
+    case "queued": return T`Queued`
+    case "cancelled": return T`Cancelled`
+    default: return status ?? T`Not Run Yet`
+  }
+}
+
+/** Relative summaries keep exact timestamps available on hover. */
+function runAge(iso: string): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+  if (minutes < 1) return T`Just now`
+  if (minutes < 60) return T`${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return T`${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return days === 1 ? T`Yesterday` : T`${days}d ago`
+}
+
 /** Props for the integration list. */
 interface IntegrationListProps {
   /** False for viewers: hides the new-integration flow */
@@ -22,6 +50,8 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [integrations, setIntegrations] = useState<IntegrationSummary[] | null>(null)
   const [drafts, setDrafts] = useState<SessionSummary[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const [filter, setFilter] = useState<"all" | "attention" | "running" | "paused">("all")
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -56,6 +86,13 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
     [integrations]
   )
 
+  const matchesFilter = (i: IntegrationSummary) => filter === "all" ||
+    (filter === "attention" ? needsAttention(i) : filter === "paused" ? !i.enabled : i.lastRunStatus === "running" || i.lastRunStatus === "queued")
+  const q = query.trim().toLowerCase()
+  const shown = sortedIntegrations.filter(i => matchesFilter(i) &&
+    [localizeData(i.name), localizeData(i.description), i.id].some(text => text.toLowerCase().includes(q)))
+  const shownDrafts = orphanDrafts.filter(d => [d.integrationId, d.firstMessage].some(text => (text ?? "").toLowerCase().includes(q)))
+
   /** Imports a definition file exported by another deployment; it lands paused. */
   async function onImportFile(file: File) {
     setError(null)
@@ -80,9 +117,9 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
   }
 
   return (
-    <main className="list-page">
+    <main className="list-page catalog-page">
       <div className="list-head">
-        <h1>{T`Integrations`}</h1>
+        <div className="catalog-header"><h1>{T`Integrations`}</h1><p>{T`Monitor runs and manage how your data stays current.`}</p></div>
         {canDesign && (
           <div className="list-head-actions">
             <button
@@ -142,46 +179,51 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
       ) : integrations.length === 0 && orphanDrafts.length === 0 ? (
         <p>{T`Nothing installed yet. New Integration starts a design session; describe what to build there.`}</p>
       ) : (
-        <table className="sessions">
-          <thead>
-            <tr><th>{T`Integration`}</th><th>{T`Trigger`}</th><th>{T`Last run`}</th></tr>
-          </thead>
-          <tbody>
-            {orphanDrafts.map(d => (
-              <tr key={`draft-${d.id}`} onClick={() => (window.location.hash = `#/session/${d.id}`)}>
-                <td>
-                  <b>{d.integrationId ?? d.firstMessage ?? T`(new)`}</b>
-                  <span className="chip chip-draft">{T`draft`}</span>
-                  <div className="dim">{d.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}</div>
-                </td>
-                <td />
-                <td><span className="dim">{formatDateTime(d.updatedAt)}</span></td>
-              </tr>
-            ))}
-            {sortedIntegrations.map(i => (
-              <tr key={i.id} onClick={() => (window.location.hash = `#/integration/${i.id}`)}>
-                <td>
-                  <b>{localizeData(i.name)}</b>
-                  {i.status === "draft" && <span className="chip chip-draft">{T`draft`}</span>}
-                  {!i.enabled && <span className="chip chip-paused integration-state-chip">{T`paused`}</span>}
-                  {i.description && <div className="dim clamp-2">{localizeData(i.description)}</div>}
-                  <div className="dim">{i.id}</div>
-                </td>
-                <td>{triggerLabel(i.trigger)}</td>
-                <td>
-                  {i.lastRunStatus ? (
-                    <>
-                      <span className={`chip chip-${i.lastRunStatus}`}>{i.lastRunStatus}</span>{" "}
-                      <span className="dim">{i.lastRunAt ? formatDateTime(i.lastRunAt) : ""}</span>
-                    </>
-                  ) : (
-                    <span className="dim">{T`never`}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <div className="catalog-toolbar">
+            <input type="search" aria-label={T`Search integrations`} placeholder={T`Search integrations`} value={query} onChange={e => setQuery(e.target.value)} />
+            <div className="catalog-filters" role="group" aria-label={T`Filter integrations`}>
+              {([
+                ["all", T`All`, integrations.length],
+                ["attention", T`Needs Attention`, integrations.filter(needsAttention).length],
+                ["running", T`Running`, integrations.filter(i => i.lastRunStatus === "running" || i.lastRunStatus === "queued").length],
+                ["paused", T`Paused`, integrations.filter(i => !i.enabled).length]
+              ] as const).map(([value, label, count]) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label} <span>{count}</span></button>)}
+            </div>
+          </div>
+          <p className="catalog-count" role="status">{shown.length === 1 ? T`1 integration` : T`${shown.length} integrations`}</p>
+          {shown.length === 0 ? <div className="catalog-empty">
+            <h2>{filter === "attention" && !q ? T`No failed runs` : T`No integrations found`}</h2>
+            <p>{T`Try another search or view all integrations.`}</p>
+            <button className="secondary" onClick={() => { setQuery(""); setFilter("all") }}>{T`Clear Filters`}</button>
+          </div> : <div className="catalog-list">
+            {shown.map(i => <article className="catalog-entry integration-entry" key={i.id}>
+              <div className="catalog-copy">
+                <div className="catalog-name"><a href={`#/integration/${i.id}`}>{localizeData(i.name)}</a>
+                  {i.status === "draft" && <span className="chip chip-draft">{T`Draft`}</span>}
+                  {!i.enabled && <span className="chip chip-paused">{T`Paused`}</span>}
+                </div>
+                {i.description && <p className="catalog-description">{localizeData(i.description)}</p>}
+                <span className="catalog-schedule">{T`Schedule:`} {triggerLabel(i.trigger)}</span>
+              </div>
+              <div className="catalog-meta">
+                <span className="catalog-date-label">{T`Latest run`}</span>
+                <span className={`chip chip-${i.lastRunStatus ?? "idle"}`}>{runLabel(i.lastRunStatus)}</span>
+                {i.lastRunAt && <time dateTime={i.lastRunAt} title={formatDateTime(i.lastRunAt)}>{runAge(i.lastRunAt)}</time>}
+              </div>
+              <a className="catalog-open" href={`#/integration/${i.id}`}>{T`Open Integration`} <span aria-hidden="true">→</span></a>
+            </article>)}
+          </div>}
+          {shownDrafts.length > 0 && <section className="catalog-drafts">
+            <h2>{T`Designs in Progress`}</h2>
+            <div className="catalog-list">{shownDrafts.map(d => <article className="catalog-entry" key={d.id}>
+              <div className="catalog-copy"><div className="catalog-name"><a href={`#/session/${d.id}`}>{d.integrationId ?? d.firstMessage ?? T`New integration`}</a></div>
+                <p className="catalog-description">{d.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}</p>
+              </div><a className="catalog-open" href={`#/session/${d.id}`}>{T`Continue Design`} <span aria-hidden="true">→</span></a>
+            </article>)}</div>
+          </section>}
+        </>
+
       )}
     </main>
   )
