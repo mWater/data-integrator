@@ -1,7 +1,7 @@
 ---
 name: GDO drought source
 description: Copernicus Global Drought Observatory datasets - directory layout, version discovery, GPCC vs ERA5 variants, NetCDF conventions, SPI semantics
-verified: 2026-08-26
+verified: 2026-09-05
 ---
 
 # Copernicus Global Drought Observatory (GDO/EDO)
@@ -54,6 +54,23 @@ date is newer than the cursor.
   ocean/missing cells are NaN in the source.
 - Publication lags roughly a month; a monthly check offset into the month
   (e.g. the 10th) reliably finds the newest file.
+
+## Other GDO datasets (same layout, ten-daily)
+
+All follow `<var>_m_gdo_<firstdate>_<lastdate>_t.nc` with dates naming the
+first and last dekad in the file (dekads start on the 1st, 11th, 21st):
+
+- `GDO_Fraction_of_Absorbed_Photosynthetically_Active_Radiation_Anomalies_fAPAR_VIIRS/`
+  - variable `fpanv`, 0.083 degree, lat 90 to -56; ~170 MB per year. Use
+  VIIRS: the MODIS series (`fapan`, `_wld_` files) stopped in 2022.
+- `GDO_Risk_of_Drought_Impacts_for_Agriculture/` - variable `rdria`, 1
+  degree, classes 0 none / 1 low / 2 medium / 3 high (categorical: nearest
+  resampling). This is the global stand-in for the Combined Drought
+  Indicator, which exists only for Europe (`EDO_Combined_Drought_Indicator/`).
+- `GDO_Soil_Moisture_Index_Anomaly/` - variable `smang`; `GDO_Ensemble_Soil_Moisture_Anomaly/`.
+
+Keeping every dekad is the natural cadence for these; a snapshot's period is
+the dekad start to the next dekad start (`timestampEnd`).
 
 ## The productCfg endpoint
 

@@ -219,6 +219,17 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
     })
   }, [sessionId])
 
+  // A design link (#/design?prompt=) lands here with the request in the hash
+  // query: it goes into the composer, and the query is dropped from the
+  // address so a reload does not write it in again
+  useEffect(() => {
+    const [base, query] = window.location.hash.split("?")
+    const prompt = new URLSearchParams(query ?? "").get("prompt")
+    if (!prompt) return
+    setInput(prompt)
+    window.history.replaceState(null, "", base)
+  }, [sessionId])
+
   useEffect(() => {
     refresh()
     const unsubscribe = subscribeEvents(sessionId, event => onEvent(event))

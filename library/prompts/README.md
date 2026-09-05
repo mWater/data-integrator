@@ -40,6 +40,8 @@ state, and derived analytics enter one at a time.
 | 6 | `fpar` | secrets, 10-daily cadence | |
 | 7 | `flood_extent_gfm` | SAR-derived product, event-driven data | scope: GFM stands in for raw SAR |
 | 8 | `insitu_sensors` | webhook trigger, tabular merge | generic entry, no single upstream |
+| 9 | `fapar_anomaly_gdo` | ten-daily time-series, full-cadence snapshots | hand-authored from the GDO skill |
+| 10 | `drought_risk_gdo` | categorical raster | RDrI-Agri stands in for the Europe-only CDI |
 
 Parked: UNICEF datasources (identified with UNICEF during the Deliverable 2
 consultations; add prompts when named). FABDEM (CC BY-NC-SA, a non-commercial

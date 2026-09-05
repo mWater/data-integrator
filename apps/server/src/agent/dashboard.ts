@@ -5,6 +5,7 @@ import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js
 import { buildDashboard } from "../dashboards/build.js"
 import { DashboardQuery, executeStoredQuery, validateQueries } from "../dashboards/queries.js"
 import { saveDashboard } from "../dashboards/service.js"
+import { searchLibrary } from "./libraryTool.js"
 import { describeSchema, RASTER_SQL_GUIDE } from "./shared.js"
 
 /** Build outcome carried in client state; the preview mounts bundleJs/bundleCss. */
@@ -47,6 +48,8 @@ export interface DashboardDeps {
   pool: pg.Pool
   /** Language model for the session loop */
   model: LanguageModel
+  /** Library root, for search_library; absent means no library */
+  libraryPath?: string | null
 }
 
 /** Fresh state for a new dashboard session; schemas are captured at creation. */
@@ -228,9 +231,11 @@ across filters. Give every multi-series chart labels; keep grids and axes recess
 (the kit does this).
 
 Rules: never fabricate data; if a query returns nothing, say so and ask. If a panel
-needs a derived product SQL cannot honestly compute (see the raster guide), say so
-and tell the user an integration must produce it as a table or layer first; design
-the dashboard against that missing input rather than approximating it. Installed
+needs data that is not in the schema, or a derived product SQL cannot honestly
+compute (see the raster guide), say so and call search_library: when an entry
+covers it, give its install link exactly as returned, as a markdown link, and
+design the dashboard against that input once installed; when nothing fits, give
+the design-session link the tool returns. Never approximate the missing input. Installed
 data covers the deployment's area of interest (it was clipped at ingest); say that
 plainly when asked about places outside it, and that an integration with its own
 area can cover them. Most users are water and sanitation staff, not GIS
@@ -324,6 +329,13 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
           layers: z.array(z.string()).describe("The complete raster layer id list (replaces the previous one)")
         })
       }),
+      search_library: tool({
+        description:
+          "Search the deployment's integration Library for ready-made sources matching a missing input (plain words: 'river discharge', 'drought', 'population'). Returns matching entries with install status, what they produce, and the links to give the user: an install link for entries not yet installed, or a design-session link when nothing fits.",
+        inputSchema: z.object({
+          query: z.string().describe("The data being asked for, in plain words")
+        })
+      }),
       sample_query: tool({
         description:
           "Run one exploratory read-only SELECT against the data schema (50-row cap). Inline literal values rather than parameters.",
@@ -378,6 +390,11 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
         return this.setQueries(state, args.queries as DashboardQuery[])
       case "set_layers":
         return await this.setLayers(state, args.layers as string[])
+      case "search_library": {
+        const locale =
+          (await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]?.locale ?? "en"
+        return { result: await searchLibrary(this.deps.pool, this.deps.libraryPath ?? null, String(args.query ?? ""), locale) }
+      }
       case "sample_query":
         return await this.sampleQuery(String(args.sql ?? ""))
       case "ask_user":

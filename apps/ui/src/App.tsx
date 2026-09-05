@@ -13,10 +13,11 @@ import { IntegrationView } from "./IntegrationView.js"
 import { Login } from "./Login.js"
 import { SessionList } from "./SessionList.js"
 import { SessionView } from "./SessionView.js"
-import { Settings } from "./Settings.js"
+import { Settings, UsersPage } from "./Settings.js"
 import { TablePage } from "./TablePage.js"
 import { Library } from "./Library.js"
 import { HowItWorks } from "./HowItWorks.js"
+import { DesignStart } from "./DesignStart.js"
 import { UserMenu } from "./UserMenu.js"
 
 // The layer page owns the maplibre chunk; keep it out of the first paint
@@ -44,6 +45,12 @@ interface Route {
   dashboardId: string | null
   /** True on the settings page */
   settings: boolean
+  /** True on the Users page (admin) */
+  settingsUsers: boolean
+  /** Library entry whose install confirmation should open (#/library?install=) */
+  libraryInstall: string | null
+  /** Request text for a new design session (#/design?prompt=); null elsewhere */
+  designPrompt: string | null
   /** True on the AI & data privacy page */
   aiPrivacy: boolean
   /** True on the library page */
@@ -76,6 +83,9 @@ function parseHash(): Route {
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
     settings: hash === "#/settings",
+    settingsUsers: hash === "#/settings/users",
+    libraryInstall: hash === "#/library" ? new URLSearchParams(query ?? "").get("install") : null,
+    designPrompt: hash === "#/design" ? (new URLSearchParams(query ?? "").get("prompt") ?? "") : null,
     aiPrivacy: hash === "#/ai-privacy",
     library: hash === "#/library",
     howItWorks: hash === "#/how-it-works",
@@ -274,7 +284,11 @@ export function App() {
       ) : route.howItWorks ? (
         <HowItWorks />
       ) : route.library ? (
-        <Library user={user} />
+        <Library user={user} installId={route.libraryInstall} />
+      ) : route.designPrompt !== null ? (
+        <DesignStart prompt={route.designPrompt} canDesign={canDesign} />
+      ) : route.settingsUsers ? (
+        <UsersPage user={user} />
       ) : route.settings ? (
         <Settings user={user} />
       ) : route.aiPrivacy ? (

@@ -5200,6 +5200,105 @@
       "es": "Detalles de la sesión",
       "mg": "Antsipirian’ny fotoam-piasana",
       "sw": "Maelezo ya kipindi"
+    },
+    {
+      "_base": "en",
+      "en": "Design an integration",
+      "fr": "Concevoir une intégration",
+      "pt": "Criar uma integração",
+      "es": "Diseñar una integración",
+      "mg": "Mamolavola fampidirana iray",
+      "sw": "Buni ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Viewers cannot run design sessions. Ask an editor to build this request:",
+      "fr": "Les lecteurs ne peuvent pas lancer de sessions de conception. Demandez à un éditeur de réaliser cette demande :",
+      "pt": "Os visualizadores não podem iniciar sessões de design. Peça a um editor para criar esta solicitação:",
+      "es": "Los visualizadores no pueden iniciar sesiones de diseño. Pida a un editor que cree esta solicitud:",
+      "mg": "Tsy afaka manao fotoam-pamolavolana ny mpijery. Mangataha amin'ny mpanitsy iray hanatanteraka ity fangatahana ity:",
+      "sw": "Watazamaji hawawezi kuendesha vipindi vya usanifu. Mwombe mhariri ashughulikie ombi hili:"
+    },
+    {
+      "_base": "en",
+      "en": "Starting a design session…",
+      "fr": "Démarrage d’une session de conception…",
+      "pt": "Iniciando uma sessão de design…",
+      "es": "Iniciando una sesión de diseño…",
+      "mg": "Manomboka fotoam-pamolavolana…",
+      "sw": "Inaanzisha kipindi cha usanifu…"
+    },
+    {
+      "_base": "en",
+      "en": "Source:",
+      "fr": "Source :",
+      "pt": "Fonte:",
+      "es": "Fuente:",
+      "mg": "Loharano:",
+      "sw": "Chanzo:"
+    },
+    {
+      "_base": "en",
+      "en": "website",
+      "fr": "site web",
+      "pt": "site",
+      "es": "sitio web",
+      "mg": "tranonkala",
+      "sw": "tovuti"
+    },
+    {
+      "_base": "en",
+      "en": "documentation",
+      "fr": "documentation",
+      "pt": "documentação",
+      "es": "documentación",
+      "mg": "antontan-taratasy",
+      "sw": "nyaraka"
+    },
+    {
+      "_base": "en",
+      "en": "time-series layer",
+      "fr": "couche de séries chronologiques",
+      "pt": "camada de série temporal",
+      "es": "capa de series temporales",
+      "mg": "sosona andiam-potoana",
+      "sw": "tabaka la mfululizo wa muda"
+    },
+    {
+      "_base": "en",
+      "en": "layer",
+      "fr": "couche",
+      "pt": "camada",
+      "es": "capa",
+      "mg": "sosona",
+      "sw": "tabaka"
+    },
+    {
+      "_base": "en",
+      "en": "Password",
+      "fr": "Mot de passe",
+      "pt": "Senha",
+      "es": "Contraseña",
+      "mg": "Teny miafina",
+      "sw": "Nenosiri"
+    },
+    {
+      "_base": "en",
+      "en": "Settings sections",
+      "fr": "Sections des paramètres",
+      "pt": "Seções de configurações",
+      "es": "Secciones de configuración",
+      "mg": "Fizarana fikirana",
+      "sw": "Sehemu za mipangilio"
+    },
+    {
+      "_base": "en",
+      "en": "Only administrators can manage users.",
+      "fr": "Seuls les administrateurs peuvent gérer les utilisateurs.",
+      "pt": "Somente administradores podem gerenciar usuários.",
+      "es": "Solo los administradores pueden gestionar usuarios.",
+      "mg": "Ny mpitantana ihany no afaka mitantana ny mpampiasa.",
+      "sw": "Wasimamizi pekee wanaweza kudhibiti watumiaji."
     }
   ],
   "unused": [

@@ -64,7 +64,7 @@ export async function createManagedUser(
 /** All users, oldest first. */
 export async function listUsers(pool: pg.Pool): Promise<ManagedUser[]> {
   const result = await pool.query(
-    "SELECT id, email, role, disabled, created_at FROM app.users ORDER BY created_at"
+    "SELECT id, email, role, disabled, created_at FROM app.users ORDER BY lower(email)"
   )
   return result.rows.map(toManagedUser)
 }

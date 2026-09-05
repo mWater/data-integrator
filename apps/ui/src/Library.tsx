@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from "react"
 import {
   DefaultAoi,
+  getLibraryEntry,
   getSettings,
   getSkill,
   installLibraryEntry,
+  LibraryDefinition,
   LibraryEntry,
   listLibrary,
   listSkills,
@@ -111,13 +113,85 @@ function statusLabels(): Record<LibraryEntry["status"], string> {
 }
 
 /**
+ * What an entry produces and where it comes from: the declared tables with
+ * their columns, the layers with their bands, and the source's provenance and
+ * caveats. Shown in place when a row is clicked.
+ */
+function EntryDetail({ definition }: { definition: LibraryDefinition }) {
+  const source = definition.source
+  return (
+    <div className="library-detail">
+      {source && (
+        <div className="library-detail-source">
+          <b>{T`Source:`}</b> {localizeData(source.name)}
+          {source.provider ? ` · ${source.provider}` : ""}
+          {source.license ? ` · ${source.license}` : ""}
+          {source.url && (
+            <>
+              {" · "}
+              <a href={source.url} target="_blank" rel="noreferrer">
+                {T`website`}
+              </a>
+            </>
+          )}
+          {source.documentation && (
+            <>
+              {" · "}
+              <a href={source.documentation} target="_blank" rel="noreferrer">
+                {T`documentation`}
+              </a>
+            </>
+          )}
+          {source.limitations && <p className="dim">{localizeData(source.limitations)}</p>}
+        </div>
+      )}
+      {definition.destinations.map(d => (
+        <div className="library-detail-dest" key={d.kind === "table" ? `t:${d.tableId}` : `r:${d.layerId}`}>
+          <div>
+            <span className={`chip ${d.kind === "table" ? "chip-table" : "chip-raster"}`}>
+              {d.kind === "table" ? T`table` : d.temporality === "time-series" ? T`time-series layer` : T`layer`}
+            </span>{" "}
+            <b>{d.name ? localizeData(d.name) : d.kind === "table" ? d.tableId : d.layerId}</b>{" "}
+            <span className="dim">{d.kind === "table" ? d.tableId : d.layerId}</span>
+            {d.description && <div className="dim">{localizeData(d.description)}</div>}
+          </div>
+          <ul className="library-fields">
+            {(d.kind === "table" ? d.columns : d.bands).map(f => (
+              <li key={f.id}>
+                {f.name ? localizeData(f.name) : f.id}
+                <span className="dim">
+                  {" "}
+                  {f.id}
+                  {d.kind === "table" && "type" in f ? ` · ${(f as { type: string }).type}` : ""}
+                  {f.units ? ` · ${f.units}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Props for the Library page. */
+interface LibraryProps {
+  /** Signed-in user; viewers see the catalog without install controls */
+  user: User
+  /** Entry whose install confirmation opens on arrival (from an agent's install link) */
+  installId?: string | null
+}
+
+/**
  * The integration library: every entry the deployment's library ships,
  * installable in one confirmation. Installing copies the entry's values into
  * the integration's definition; updating keeps the deployment-owned fields
  * (area of interest, schedule, limits).
  */
-export function Library({ user }: { user: User }) {
+export function Library({ user, installId }: LibraryProps) {
   const [entries, setEntries] = useState<LibraryEntry[] | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [details, setDetails] = useState<Record<string, LibraryDefinition>>({})
   const [defaultAoi, setDefaultAoi] = useState<DefaultAoi | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -136,6 +210,30 @@ export function Library({ user }: { user: User }) {
     refresh()
     getSettings().then(r => setDefaultAoi(r.settings.default_aoi), () => {})
   }, [])
+
+  // An agent's install link lands with the entry named: open its confirmation
+  // (editors) or its details (viewers) and bring it into view
+  useEffect(() => {
+    if (!installId || !entries) return
+    const entry = entries.find(e => e.id === installId)
+    if (!entry) return
+    if (canDesign && entry.status !== "installed") setConfirming(entry.id)
+    else toggle(entry.id, true)
+    setTimeout(() => document.getElementById(`library-${entry.id}`)?.scrollIntoView({ block: "center" }), 50)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installId, entries === null])
+
+  /** Opens or closes an entry's detail row, fetching the definition once. */
+  function toggle(id: string, open?: boolean) {
+    const next = open ?? expanded !== id
+    setExpanded(next ? id : null)
+    if (next && !details[id]) {
+      getLibraryEntry(id).then(
+        r => setDetails(prev => ({ ...prev, [id]: r.definition })),
+        err => setError(err.message)
+      )
+    }
+  }
 
   // Name, description, source and destination ids all count, in every language
   // the entry carries: entry names are often product codes, so "drought" (or
@@ -205,14 +303,19 @@ export function Library({ user }: { user: User }) {
         {shown.length === 0 ? (
           <p className="dim">{T`No entries match.`}</p>
         ) : (
-        <table className="sessions static-rows">
+        <table className="sessions library-table">
           <thead>
             <tr><th>{T`Integration`}</th><th>{T`Cadence`}</th><th>{T`Destinations`}</th><th>{T`Status`}</th>{canDesign && <th />}</tr>
           </thead>
           <tbody>
             {shown.map(entry => (
               <Fragment key={entry.id}>
-                <tr>
+                <tr
+                  id={`library-${entry.id}`}
+                  className={expanded === entry.id ? "expanded" : undefined}
+                  onClick={() => toggle(entry.id)}
+                  aria-expanded={expanded === entry.id}
+                >
                   <td>
                     <b>{localizeData(entry.name)}</b>
                     {entry.description && <div className="dim">{localizeData(entry.description)}</div>}
@@ -241,13 +344,20 @@ export function Library({ user }: { user: User }) {
                   {canDesign && (
                     <td>
                       {entry.status !== "installed" && (
-                        <button onClick={() => { setConfirming(confirming === entry.id ? null : entry.id); setInstalled(null) }}>
+                        <button onClick={e => { e.stopPropagation(); setConfirming(confirming === entry.id ? null : entry.id); setInstalled(null) }}>
                           {entry.status === "not_installed" ? T`Install` : T`Update`}
                         </button>
                       )}
                     </td>
                   )}
                 </tr>
+                {expanded === entry.id && (
+                  <tr className="library-expanded">
+                    <td colSpan={canDesign ? 5 : 4}>
+                      {details[entry.id] ? <EntryDetail definition={details[entry.id]} /> : <p className="dim">{T`Loading…`}</p>}
+                    </td>
+                  </tr>
+                )}
                 {confirming === entry.id && (
                   <tr key={`${entry.id}-confirm`} className="library-confirm">
                     <td colSpan={canDesign ? 5 : 4}>

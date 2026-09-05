@@ -13,7 +13,7 @@ import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
 import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
 import { getHomeSummary } from "./home.js"
-import { installLibraryEntry, listLibrary } from "./library.js"
+import { installLibraryEntry, listLibrary, loadLibraryEntry } from "./library.js"
 import { parseCron } from "./cron.js"
 import { loadSkill, loadSkillsIndex, skillsDir } from "./skills.js"
 import { listSources, tableGeometry } from "./sources.js"
@@ -881,6 +881,20 @@ async function route(
       return
     }
     json(res, 200, skill)
+    return
+  }
+
+  // One entry in full (code elided): what the Library page shows when a row expands
+  const libraryEntryMatch = pathname.match(/^\/api\/library\/([a-z][a-z0-9_]*)$/)
+  if (libraryEntryMatch && req.method === "GET") {
+    const definition = libraryPath ? await loadLibraryEntry(libraryPath, libraryEntryMatch[1]) : null
+    if (!definition) {
+      json(res, 404, { error: "unknown library entry" })
+      return
+    }
+    const { code: _code, ...rest } = definition
+    void _code
+    json(res, 200, { definition: rest })
     return
   }
 

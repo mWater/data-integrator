@@ -15,6 +15,7 @@ import { getSecrets } from "../secrets.js"
 import { getLocales } from "../settings.js"
 import { detectBaseLocale, refreshChangedStrings, translateDefinition, wrapDefinitionStrings } from "../localizeCatalog.js"
 import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
+import { searchLibrary } from "./libraryTool.js"
 
 /** Client state of a designer session: the draft and its certification. */
 export interface DesignerState {
@@ -38,6 +39,8 @@ export interface DesignerDeps extends ExecutorDeps {
   model: LanguageModel
   /** library/skills directory; absent or missing on disk means no skills */
   skillsDir?: string | null
+  /** Library root, for search_library; absent means no library */
+  libraryPath?: string | null
 }
 
 /** Plain text of a draft field that may be a plain string or a LocalizedString. */
@@ -198,6 +201,12 @@ this integration's own destinations.
 0. If the draft id is empty, choose one (short snake_case derived from the request)
    and save an initial definition with write_definition before anything else; the
    sandbox tools are rejected until the draft has an id.
+0b. For a new integration, call search_library with the request's key terms before
+   exploring anything. If an entry covers the request (e.g. "river discharge" when a
+   GloFAS entry exists) and is not installed, say so and ask_user whether to install
+   it from the Library instead of building: give the install link the tool returned
+   as a markdown link, and only keep building if the user chooses to. If it is
+   installed already, say so and ask whether the request is really a change to it.
 1. Explore candidate sources with run_snippet (network is live; print what you learn).
 2. Propose a plan and wait for confirmation - always, even when the request seems
    fully specified: in plain text, tell the user the data source you chose (name
@@ -330,6 +339,13 @@ ${index}`
           sql: z.string().describe("A single SELECT (or WITH...SELECT) statement")
         })
       }),
+      search_library: tool({
+        description:
+          "Search the deployment's integration Library for a ready-made entry covering a request (plain words: 'river discharge', 'drought', 'population'). Returns matching entries with install status, what they produce, and an install link to offer the user instead of building from scratch.",
+        inputSchema: z.object({
+          query: z.string().describe("The data being asked for, in plain words")
+        })
+      }),
       read_skill: tool({
         description:
           "Read the full text of a skill from the index in the system prompt: source and technique know-how (protocols, file layouts, quirks, working snippets). Read the relevant skill before designing against a source it covers.",
@@ -386,6 +402,8 @@ ${index}`
         return await this.queryTable(String(args.sql ?? ""), sessionId)
       case "read_skill":
         return this.readSkill(String(args.id ?? ""))
+      case "search_library":
+        return { result: await searchLibrary(this.deps.pool, this.deps.libraryPath ?? null, String(args.query ?? ""), await this.sessionLocale(sessionId)) }
       case "lookup_country":
         return { result: lookupCountry(String(args.query ?? "")) }
       case "ask_user":
@@ -395,6 +413,12 @@ ${index}`
       default:
         return { result: `Unknown tool ${name}` }
     }
+  }
+
+  /** Locale the session was opened in, so library names read the way the user's catalog does. */
+  private async sessionLocale(sessionId: string): Promise<string> {
+    const row = (await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+    return row?.locale ?? "en"
   }
 
   /** Returns the draft as JSON, eliding code by default. */

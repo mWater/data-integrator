@@ -183,8 +183,7 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <section className="settings-section">
-      <h2>{T`Users`}</h2>
+    <section className="users-section">
       <p className="dim">
         {T`New and reset passwords are generated and shown once. Disabling a user keeps their history but blocks sign-in; there is no delete.`}
       </p>

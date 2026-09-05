@@ -3,3 +3,6 @@ dist/
 *.tsbuildinfo
 .dev/
 .env
+
+# Python bytecode from compiling library entries locally
+__pycache__/

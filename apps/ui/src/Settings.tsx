@@ -83,7 +83,7 @@ function formatBbox(bbox: [number, number, number, number]): string {
 function ThemeSection() {
   const { preference, setPreference } = useAppTheme()
   return (
-    <section className="settings-section">
+    <section className="settings-section" id="settings-theme">
       <h2>{T`Theme`}</h2>
       <p className="dim">{T`Changes the appearance for you on this device only.`}</p>
       <select
@@ -173,17 +173,40 @@ export function Settings({ user }: { user: User }) {
     }
   }
 
+  /** Scrolls to a section without touching the route hash. */
+  function jump(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const sections: [string, string][] = [
+    ["settings-title", T`Deployment name`],
+    ["settings-aoi", T`Area of interest`],
+    ["settings-languages", T`Languages`],
+    ["settings-theme", T`Theme`],
+    ["settings-password", T`Password`]
+  ]
+
   return (
     <main className="list-page">
       <h1>{T`Settings`}</h1>
+      <nav className="settings-nav" aria-label={T`Settings sections`}>
+        {sections.map(([id, label]) => (
+          <a key={id} href="#/settings" onClick={e => { e.preventDefault(); jump(id) }}>
+            {label}
+          </a>
+        ))}
+        {isAdmin && <a href="#/settings/users">{T`Users`}</a>}
+      </nav>
       {error && <div className="error">{error}</div>}
       {!loaded ? (
         <p>{T`Loading…`}</p>
       ) : (
         <>
-          <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />
+          <div id="settings-title">
+            <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />
+          </div>
 
-          <h2>{T`Default area of interest`}</h2>
+          <h2 id="settings-aoi">{T`Default area of interest`}</h2>
           <p className="dim">
             {T`Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country. Any integration can declare its own area instead, so this is a default, not a limit.`}
           </p>
@@ -272,9 +295,30 @@ export function Settings({ user }: { user: User }) {
           }}
         />
       )}
-      {isAdmin && <UsersSection currentUser={user} />}
       <ThemeSection />
       <ChangePasswordSection />
+    </main>
+  )
+}
+
+/**
+ * User administration on its own page: the table grows with the deployment,
+ * so it no longer shares the scrolling settings page. Admins only.
+ */
+export function UsersPage({ user }: { user: User }) {
+  return (
+    <main className="list-page">
+      <div className="session-head">
+        <h1>{T`Users`}</h1>
+        <span className="session-actions">
+          <a href="#/settings">← {T`Settings`}</a>
+        </span>
+      </div>
+      {user.role === "admin" ? (
+        <UsersSection currentUser={user} />
+      ) : (
+        <p className="dim">{T`Only administrators can manage users.`}</p>
+      )}
     </main>
   )
 }
@@ -356,7 +400,7 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onC
   const dirty = draft.slice().sort().join(",") !== locales.slice().sort().join(",")
 
   return (
-    <section className="settings-section">
+    <section className="settings-section" id="settings-languages">
       <h2>{T`Languages`}</h2>
       <p className="dim">
         {T`Languages this deployment offers. The language picker shows them, and the data catalog (names, descriptions, caveats) is translated into each one automatically when you add it. Interface languages are fixed per release; this narrows the offer.`}
@@ -424,7 +468,7 @@ function ChangePasswordSection() {
   }
 
   return (
-    <section className="settings-section">
+    <section className="settings-section" id="settings-password">
       <h2>{T`Change password`}</h2>
       {error && <div className="error">{error}</div>}
       <form className="password-form" onSubmit={submit}>

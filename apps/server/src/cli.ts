@@ -300,7 +300,7 @@ async function main(): Promise<number> {
         }
         const runner = new Runner()
         await runner.ensureReady()
-        const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath) }
+        const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath), libraryPath: config.libraryPath }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
         const service = AgentService.forDesigner(pool, deps)
 
@@ -422,11 +422,12 @@ async function main(): Promise<number> {
         const deps = buildDeps(pool, new Runner(), config)
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
         const model = buildModel(config)
+        const libraryPath = config.libraryPath
         const agent = model
-          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: skillsDir(config.libraryPath) })
+          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: skillsDir(libraryPath), libraryPath })
           : null
-        const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model }) : null
-        const assistantAgent = model ? AgentService.forAssistant(pool, { pool, model }) : null
+        const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model, libraryPath }) : null
+        const assistantAgent = model ? AgentService.forAssistant(pool, { pool, model, libraryPath }) : null
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))
         // Cron scheduling and queue draining need the job runner; the API

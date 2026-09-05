@@ -1105,6 +1105,61 @@ export function getSkill(id: string): Promise<SkillDetail> {
   return request(`/api/skills/${id}`)
 }
 
+/** One declared destination of a library entry, as the expanded row shows it. */
+export type LibraryDestination =
+  | {
+      /** Table destination */
+      kind: "table"
+      /** Destination table id */
+      tableId: string
+      /** Display name */
+      name?: LocalizedString
+      /** What the table contains */
+      description?: LocalizedString
+      /** Declared columns */
+      columns: TableColumn[]
+    }
+  | {
+      /** Raster destination */
+      kind: "raster"
+      /** Destination layer id */
+      layerId: string
+      /** Display name */
+      name?: LocalizedString
+      /** What the layer shows */
+      description?: LocalizedString
+      /** Time-series or current-only */
+      temporality: string
+      /** Declared bands */
+      bands: { id: string; name?: LocalizedString; units?: string }[]
+    }
+
+/** A library entry's definition with the fields the Library page expands, code elided. */
+export interface LibraryDefinition {
+  /** Entry id */
+  id: string
+  /** Source provenance */
+  source?: {
+    name: LocalizedString
+    url?: string
+    provider?: string
+    license?: string
+    documentation?: string
+    limitations?: LocalizedString
+  }
+  /** Declared destinations */
+  destinations: LibraryDestination[]
+  /** Runtime image id */
+  runtime: string
+  /** Everything else in the definition */
+  [key: string]: unknown
+}
+
+/** A library entry's full definition, code elided. */
+export function getLibraryEntry(id: string): Promise<{ definition: LibraryDefinition }> {
+  return request(`/api/library/${id}`)
+}
+
 /** Installs or updates a library entry; optionally starts the first ingest. */
 export function installLibraryEntry(id: string, runNow: boolean): Promise<{ version: number; runId: string | null }> {
   return request(`/api/library/${id}/install`, {

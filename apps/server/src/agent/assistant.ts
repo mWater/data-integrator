@@ -11,6 +11,7 @@ import { z } from "zod"
 import { AgentImplementation, ToolOutcome } from "./types.js"
 import { executeStoredQuery } from "../dashboards/queries.js"
 import { lookupCountry } from "../countries.js"
+import { searchLibrary } from "./libraryTool.js"
 import { describeSchema, RASTER_SQL_GUIDE } from "./shared.js"
 import { getDefaultAoi } from "../settings.js"
 
@@ -62,6 +63,8 @@ export interface AssistantDeps {
   pool: pg.Pool
   /** Language model for the session loop */
   model: LanguageModel
+  /** Library root, for search_library; absent means no library */
+  libraryPath?: string | null
 }
 
 /** Fresh state for a new assistant session. */
@@ -119,14 +122,18 @@ run jobs, or change anything.
 - Call list_schema before your first query (and again when unsure); never guess table
   or column names.
 - Place names and bounding boxes come from lookup_country, never from memory.
-- When asked for data that is not in the schema, say so plainly and point at the
-  integration Library (an editor can install a source) or a design session. Do not
-  approximate the missing data from what exists unless the user asks for that.
+- When asked for data that is not in the schema, say so plainly, then call
+  search_library with the request's key terms. If an entry covers it, name it and
+  give its install link exactly as returned, as a markdown link (an editor installs
+  it in one click; the data arrives after the first run). If nothing fits, give the
+  design-session link the tool returns, which opens a design session with the
+  request already written. Never send the user off to "find a source" themselves,
+  and do not approximate the missing data from what exists unless the user asks.
 - The same applies when the inputs exist but the answer needs processing beyond
   SQL's reach (see the raster guide): name the inputs that exist, say an integration
-  must compute the derivation (it can consume other installed data as inputs), and
-  point at the Library or a design session rather than standing in a SQL
-  approximation.
+  must compute the derivation (it can consume other installed data as inputs), check
+  search_library for one, and otherwise give the design-session link rather than
+  standing in a SQL approximation.
 - Installed data covers the deployment's area of interest because it was clipped to
   that area when ingested. When asked about a place outside it, say exactly that
   (not that access is forbidden) and explain that an integration can be installed
@@ -278,6 +285,13 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
         inputSchema: z.object({
           query: z.string().describe("Country name (partial matches allowed) or ISO3 code")
         })
+      }),
+      search_library: tool({
+        description:
+          "Search the deployment's integration Library for ready-made sources matching a request (plain words: 'river discharge', 'drought', 'population'). Returns matching entries with install status, what they produce, and the links to give the user: an install link for entries not yet installed, or a design-session link when nothing fits.",
+        inputSchema: z.object({
+          query: z.string().describe("The data being asked for, in plain words")
+        })
       })
     }
   }
@@ -315,9 +329,18 @@ export class AssistantImplementation implements AgentImplementation<AssistantSta
         return await this.showMap(state, args as unknown as ShowMapInput)
       case "lookup_country":
         return { result: lookupCountry(String(args.query ?? "")) }
+      case "search_library":
+        return { result: await searchLibrary(this.deps.pool, this.deps.libraryPath ?? null, String(args.query ?? ""), await this.sessionLocale(sessionId)) }
       default:
         return { result: `Unknown tool ${name}` }
     }
+  }
+
+  /** Locale the chat was opened in, so library names read the way the user's catalog does. */
+  private async sessionLocale(sessionId?: string): Promise<string> {
+    if (!sessionId) return "en"
+    const row = (await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+    return row?.locale ?? "en"
   }
 
   /**

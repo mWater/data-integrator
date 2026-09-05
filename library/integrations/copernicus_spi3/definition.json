@@ -3,12 +3,12 @@
   "code": "",
   "name": {
     "_base": "en",
-    "en": "Copernicus SPI-3 drought index",
-    "fr": "Indice de sécheresse SPI-3 de Copernicus",
-    "pt": "Índice de seca SPI-3 do Copernicus",
-    "es": "Índice de sequía SPI-3 de Copernicus",
-    "mg": "Tondro haintany SPI-3 Copernicus",
-    "sw": "Kielezo cha ukame cha Copernicus SPI-3"
+    "en": "Copernicus GDO SPI-3 drought index",
+    "fr": "Indice de sécheresse SPI-3 du GDO Copernicus",
+    "pt": "Índice de seca SPI-3 do GDO Copernicus",
+    "es": "Índice de sequía SPI-3 del GDO de Copernicus",
+    "mg": "Tondro haintany SPI-3 an'ny Copernicus GDO",
+    "sw": "Kielezo cha ukame cha Copernicus GDO SPI-3"
   },
   "limits": {
     "cpus": 2,
