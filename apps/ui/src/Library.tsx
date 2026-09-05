@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   DefaultAoi,
   getLibraryEntry,
@@ -54,7 +54,7 @@ function SkillsSection() {
     <section className="skills-section">
       <h2>{T`Source Notes`}</h2>
       <p className="dim">
-        {T`Not integrations: these are the reference notes the designer agent reads while building one, covering a source's publishing quirks, file layouts and working snippets. Nothing here is installed; an integration above may share a name with the note it was built from.`}
+        {T`Reference material the designer uses to build integrations. Open a note to explore a source or technique.`}
       </p>
       {error && <div className="error">{error}</div>}
       {skills === null ? (
@@ -106,9 +106,9 @@ function allTranslations(value: LocalizedString | string | null | undefined): st
  */
 function statusLabels(): Record<LibraryEntry["status"], string> {
   return {
-    not_installed: T`not installed`,
-    installed: T`installed`,
-    update_available: T`update available`
+    not_installed: T`Not Installed`,
+    installed: T`Installed`,
+    update_available: T`Update Available`
   }
 }
 
@@ -174,6 +174,16 @@ function EntryDetail({ definition }: { definition: LibraryDefinition }) {
   )
 }
 
+/** Summarize outputs without exposing storage identifiers in the catalog. */
+function outputLabels(entry: LibraryEntry): string[] {
+  const tables = entry.destinations.filter(d => d.kind === "table").length
+  const layers = entry.destinations.length - tables
+  return [
+    tables ? (tables === 1 ? T`1 table` : T`${tables} tables`) : "",
+    layers ? (layers === 1 ? T`1 raster layer` : T`${layers} raster layers`) : ""
+  ].filter(Boolean)
+}
+
 /** Props for the Library page. */
 interface LibraryProps {
   /** Signed-in user; viewers see the catalog without install controls */
@@ -199,6 +209,7 @@ export function Library({ user, installId }: LibraryProps) {
   const [busy, setBusy] = useState(false)
   const [installed, setInstalled] = useState<{ id: string; version: number; ran: boolean } | null>(null)
   const [query, setQuery] = useState("")
+  const [filter, setFilter] = useState<"all" | "installed" | "updates">("all")
 
   const canDesign = user.role !== "viewer"
 
@@ -217,6 +228,8 @@ export function Library({ user, installId }: LibraryProps) {
     if (!installId || !entries) return
     const entry = entries.find(e => e.id === installId)
     if (!entry) return
+    setQuery("")
+    setFilter("all")
     if (canDesign && entry.status !== "installed") setConfirming(entry.id)
     else toggle(entry.id, true)
     setTimeout(() => document.getElementById(`library-${entry.id}`)?.scrollIntoView({ block: "center" }), 50)
@@ -240,8 +253,9 @@ export function Library({ user, installId }: LibraryProps) {
   // "seca") has to find the SPI-3 entry whatever the interface language
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q || !entries) return entries ?? []
-    return entries.filter(entry =>
+    return (entries ?? []).filter(entry =>
+      (filter === "all" || (filter === "installed" ? entry.status !== "not_installed" : entry.status === "update_available")) &&
+      (!q ||
       [
         entry.id,
         allTranslations(entry.name),
@@ -252,9 +266,9 @@ export function Library({ user, installId }: LibraryProps) {
       ]
         .join(" ")
         .toLowerCase()
-        .includes(q)
+        .includes(q))
     )
-  }, [entries, query])
+  }, [entries, query, filter])
 
   async function install(entry: LibraryEntry) {
     setBusy(true)
@@ -272,14 +286,14 @@ export function Library({ user, installId }: LibraryProps) {
   }
 
   return (
-    <main className="list-page">
-      <h1>{T`Library`}</h1>
-      <p className="dim">
-        {T`Ready-made integrations shipped with this deployment. Installing copies the entry's settings into your integration; updates keep your area of interest, schedule, and limits.`}
-      </p>
+    <main className="list-page library-page">
+      <header className="library-header">
+        <h1>{T`Library`}</h1>
+        <p>{T`Ready-made integrations to bring new data into your deployment.`}</p>
+      </header>
       {error && <div className="error">{error}</div>}
       {installed && (
-        <p>
+        <p className="library-notice" role="status">
           {installed.ran
             ? T`Installed ${<a href={`#/integration/${installed.id}`}>{installed.id}</a>} (v${installed.version}); first ingest started.`
             : T`Installed ${<a href={`#/integration/${installed.id}`}>{installed.id}</a>} (v${installed.version}).`}
@@ -291,113 +305,114 @@ export function Library({ user, installId }: LibraryProps) {
         <p>{T`This deployment has no library configured.`}</p>
       ) : (
         <>
-        <div className="new-session">
+        <div className="library-toolbar">
           <input
             type="search"
+            disabled={busy}
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => { setQuery(e.target.value); setConfirming(null) }}
             placeholder={T`Search the library`}
             aria-label={T`Search the library`}
           />
-        </div>
-        {shown.length === 0 ? (
-          <p className="dim">{T`No entries match.`}</p>
-        ) : (
-        <table className="sessions library-table">
-          <thead>
-            <tr><th>{T`Integration`}</th><th>{T`Cadence`}</th><th>{T`Destinations`}</th><th>{T`Status`}</th>{canDesign && <th />}</tr>
-          </thead>
-          <tbody>
-            {shown.map(entry => (
-              <Fragment key={entry.id}>
-                <tr
-                  id={`library-${entry.id}`}
-                  className={expanded === entry.id ? "expanded" : undefined}
-                  onClick={() => toggle(entry.id)}
-                  aria-expanded={expanded === entry.id}
-                >
-                  <td>
-                    <b>{localizeData(entry.name)}</b>
-                    {entry.description && <div className="dim">{localizeData(entry.description)}</div>}
-                    {entry.source && (
-                      <div className="dim">
-                        {[entry.source.provider ?? localizeData(entry.source.name), entry.source.license]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </div>
-                    )}
-                  </td>
-                  <td>{triggerLabel(entry.trigger)}</td>
-                  <td>
-                    {entry.destinations.map(d => (
-                      <span key={`${d.kind}:${d.id}`} className="chip" style={{ marginRight: 4 }}>
-                        {d.id}
-                      </span>
-                    ))}
-                  </td>
-                  <td>
-                    <span className={`chip ${entry.status === "installed" ? "chip-finished" : entry.status === "update_available" ? "chip-paused" : ""}`}>
-                      {statusLabels()[entry.status]}
-                      {entry.installedVersion !== null ? ` (v${entry.installedVersion})` : ""}
-                    </span>
-                  </td>
-                  {canDesign && (
-                    <td>
-                      {entry.status !== "installed" && (
-                        <button onClick={e => { e.stopPropagation(); setConfirming(confirming === entry.id ? null : entry.id); setInstalled(null) }}>
-                          {entry.status === "not_installed" ? T`Install` : T`Update`}
-                        </button>
-                      )}
-                    </td>
-                  )}
-                </tr>
-                {expanded === entry.id && (
-                  <tr className="library-expanded">
-                    <td colSpan={canDesign ? 5 : 4}>
-                      {details[entry.id] ? <EntryDetail definition={details[entry.id]} /> : <p className="dim">{T`Loading…`}</p>}
-                    </td>
-                  </tr>
-                )}
-                {confirming === entry.id && (
-                  <tr key={`${entry.id}-confirm`} className="library-confirm">
-                    <td colSpan={canDesign ? 5 : 4}>
-                      <div className="library-confirm-body">
-                        <div>
-                          <b>{T`Schedule:`}</b> {triggerLabel(entry.trigger)}
-                          {entry.trigger.cron ? <span className="dim"> {T`(cron ${entry.trigger.cron})`}</span> : null}
-                        </div>
-                        <div>
-                          <b>{T`Area of interest:`}</b>{" "}
-                          {entry.status === "update_available" ? (
-                            <span>{T`unchanged — keeps the installed integration's area`}</span>
-                          ) : defaultAoi ? (
-                            <span>
-                              {T`deployment default — ${defaultAoi.name ?? T`custom`} [${defaultAoi.bbox.map(v => v.toFixed(2)).join(", ")}]`}
-                            </span>
-                          ) : (
-                            <span>{T`none set — the source's full extent`}</span>
-                          )}
-                        </div>
-                        <label>
-                          <input type="checkbox" checked={runNow} onChange={e => setRunNow(e.target.checked)} />{" "}
-                          {T`Run first ingest now`}
-                        </label>
-                        <div className="aoi-actions">
-                          <button disabled={busy} onClick={() => install(entry)}>
-                            {busy ? T`Installing…` : entry.status === "not_installed" ? T`Install` : T`Update`}
-                          </button>
-                          <button className="secondary" onClick={() => setConfirming(null)}>
-                            {T`Cancel`}
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
+          <div className="library-filters" role="group" aria-label={T`Filter integrations`}>
+            {([
+              ["all", T`All`, entries.length],
+              ["installed", T`Installed`, entries.filter(e => e.status !== "not_installed").length],
+              ["updates", T`Updates`, entries.filter(e => e.status === "update_available").length]
+            ] as const).map(([value, label, count]) => (
+              <button key={value} type="button" aria-pressed={filter === value} disabled={busy} onClick={() => { setFilter(value); setConfirming(null) }}>
+                {label} <span>{count}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
+        <p className="library-result-count" role="status">{shown.length === 1 ? T`1 integration` : T`${shown.length} integrations`}</p>
+        {shown.length === 0 ? (
+          <div className="library-empty">
+            <h2>{filter === "updates" && !query.trim() ? T`Everything is up to date` : T`No integrations found`}</h2>
+            <p>{T`Try another search or view all integrations.`}</p>
+            <button className="secondary" onClick={() => { setQuery(""); setFilter("all"); setConfirming(null) }}>{T`Clear Filters`}</button>
+          </div>
+        ) : (
+        <div className="library-entries">
+            {shown.map(entry => (
+              <article key={entry.id} id={`library-${entry.id}`} className="library-entry">
+                <div className="library-entry-summary">
+                  <button
+                    className="library-entry-toggle"
+                    aria-label={localizeData(entry.name)}
+                    aria-expanded={expanded === entry.id}
+                    aria-controls={`library-detail-${entry.id}`}
+                    onClick={() => toggle(entry.id)}
+                  >
+                    <svg className="library-caret" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
+                    <span className="library-entry-copy">
+                      <span className="library-entry-name">{localizeData(entry.name)}</span>
+                      {entry.description && <span className="library-entry-description">{localizeData(entry.description)}</span>}
+                      <span className="library-entry-outputs">
+                        {outputLabels(entry).map(label => <span key={label}>{label}</span>)}
+                        <span className="library-detail-hint">{expanded === entry.id ? T`Hide details` : T`View details`}</span>
+                      </span>
+                    </span>
+                  </button>
+                  <div className="library-entry-actions">
+                    {entry.status !== "not_installed" && <span className={`chip ${entry.status === "installed" ? "chip-finished" : "chip-paused"}`}>{statusLabels()[entry.status]}</span>}
+                    {canDesign && entry.status !== "installed" ? (
+                      <button disabled={busy} aria-expanded={confirming === entry.id} aria-controls={confirming === entry.id ? `library-confirm-${entry.id}` : undefined} onClick={() => { setConfirming(confirming === entry.id ? null : entry.id); setInstalled(null) }}>
+                        {entry.status === "not_installed" ? T`Install` : T`Update`}
+                      </button>
+                    ) : entry.status !== "not_installed" ? (
+                      <a href={`#/integration/${entry.id}`}>{T`Open Integration`} <span aria-hidden="true">→</span></a>
+                    ) : <span className="dim">{statusLabels()[entry.status]}</span>}
+                  </div>
+                </div>
+                <div id={`library-detail-${entry.id}`} hidden={expanded !== entry.id} className="library-entry-detail">
+                  {expanded === entry.id && <>
+                    {entry.description && <p className="library-full-description">{localizeData(entry.description)}</p>}
+                    <dl className="library-entry-facts">
+                      <div><dt>{T`Default schedule`}</dt><dd>{triggerLabel(entry.trigger)}</dd></div>
+                      {entry.installedVersion !== null && <div><dt>{T`Installed version`}</dt><dd>{entry.installedVersion}</dd></div>}
+                    </dl>
+                    {details[entry.id] ? <EntryDetail definition={details[entry.id]} /> : <p className="dim">{T`Loading…`}</p>}
+                  </>}
+                </div>
+                {confirming === entry.id && (
+                  <div id={`library-confirm-${entry.id}`} className="library-confirm-body" role="region" aria-label={T`Confirm installation`}>
+                    <h3>{entry.status === "update_available" ? T`Update integration` : T`Install integration`}</h3>
+                    <div>
+                      <b>{T`Schedule:`}</b> {entry.status === "update_available" ? T`Keeps your current schedule` : triggerLabel(entry.trigger)}
+                      {entry.status !== "update_available" && entry.trigger.cron ? <span className="dim"> {T`(cron ${entry.trigger.cron})`}</span> : null}
+                    </div>
+                    <div>
+                      <b>{T`Area of interest:`}</b>{" "}
+                      {entry.status === "update_available" ? (
+                        <span>{T`unchanged — keeps the installed integration's area`}</span>
+                      ) : defaultAoi ? (
+                        <span>
+                          {T`deployment default — ${defaultAoi.name ?? T`custom`} [${defaultAoi.bbox.map(v => v.toFixed(2)).join(", ")}]`}
+                        </span>
+                      ) : (
+                        <span>{T`none set — the source's full extent`}</span>
+                      )}
+                    </div>
+                    {entry.status === "update_available" && <p className="dim">{T`Your area of interest, schedule, and limits are preserved.`}</p>}
+                    <label>
+                      <input type="checkbox" disabled={busy} checked={runNow} onChange={e => setRunNow(e.target.checked)} />{" "}
+                      {T`Run ingestion now`}
+                    </label>
+                    <div className="aoi-actions">
+                      <button disabled={busy} onClick={() => install(entry)}>
+                        {busy ? (entry.status === "update_available" ? T`Updating…` : T`Installing…`) : entry.status === "not_installed" ? T`Install` : T`Update`}
+                      </button>
+                      <button className="secondary" disabled={busy} onClick={() => setConfirming(null)}>
+                        {T`Cancel`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            ))}
+        </div>
         )}
         </>
       )}
