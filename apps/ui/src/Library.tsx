@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 import { useEffect, useMemo, useState } from "react"
 import {
   DefaultAoi,
@@ -214,6 +215,7 @@ export function Library({ user, installId }: LibraryProps) {
   const canDesign = user.role !== "viewer"
 
   function refresh() {
+    setError(null)
     listLibrary().then(r => setEntries(r.entries), err => setError(err.message))
   }
 
@@ -291,7 +293,7 @@ export function Library({ user, installId }: LibraryProps) {
         <h1>{T`Library`}</h1>
         <p>{T`Ready-made integrations to bring new data into your deployment.`}</p>
       </header>
-      {error && <div className="error">{error}</div>}
+      {error && entries !== null && <div className="error" role="alert">{error}</div>}
       {installed && (
         <p className="library-notice" role="status">
           {installed.ran
@@ -300,7 +302,7 @@ export function Library({ user, installId }: LibraryProps) {
         </p>
       )}
       {entries === null ? (
-        <p>{T`Loading…`}</p>
+        <LoadState error={error} onRetry={refresh} />
       ) : entries.length === 0 ? (
         <p>{T`This deployment has no library configured.`}</p>
       ) : (

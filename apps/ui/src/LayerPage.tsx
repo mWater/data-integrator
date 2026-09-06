@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /**
  * One raster layer, the way TablePage is one table: what it is on the left,
  * the pixels on the right. Bands and snapshots are both switchable, since a
@@ -103,6 +104,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const { mode } = useAppTheme()
   const [layer, setLayer] = useState<LayerDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [bandId, setBandId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const [controlsOpen, setControlsOpen] = useState(false)
@@ -119,13 +121,20 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   })
 
   useEffect(() => {
+    let cancelled = false
+    setError(null)
+    setLayer(null)
+    mapRef.current?.remove()
+    mapRef.current = null
     getLayer(layerId, sessionId).then(detail => {
+      if (cancelled) return
       setLayer(detail)
       setBandId(detail.bands[0]?.id ?? null)
       const current = detail.snapshots.findIndex(s => s.id === detail.currentSnapshotId)
       setIndex(current >= 0 ? current : Math.max(0, detail.snapshots.length - 1))
-    }, err => setError(err.message))
-  }, [layerId, sessionId])
+    }, err => { if (!cancelled) setError(err.message) })
+    return () => { cancelled = true }
+  }, [layerId, sessionId, retry])
 
   // The map is created once the layer is known, so the first tiles are right.
   // A theme flip rebuilds it on the other basemap style.
@@ -239,11 +248,11 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   if (error) {
     return (
       <main className="list-page">
-        <div className="error">{error}</div>
+        <a className="page-back" href="#/data">← {T`Data`}</a><LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       </main>
     )
   }
-  if (!layer) return null
+  if (!layer) return <main className="list-page"><a className="page-back" href="#/data">← {T`Data`}</a><LoadState onRetry={() => setRetry(n => n + 1)} /></main>
 
   const band = layer.bands.find(b => b.id === bandId) ?? layer.bands[0]
   const snapshot = layer.snapshots[index]
@@ -269,6 +278,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
         if (e.key === "Escape" && controlsOpen) { setControlsOpen(false); controlsToggle.current?.focus() }
       }}>
         <div className="layer-head">
+          <a className="page-back" href="#/data">← {T`Data`}</a>
           <h1>{localizeData(layer.name)}</h1>
           <div className="dim">{layer.id}</div>
           <a className="dim-link" href={`#/integration/${layer.integrationId}`}>

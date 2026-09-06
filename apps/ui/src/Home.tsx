@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /**
  * Landing page. Two states: a welcome that explains where data comes from
  * while there is none, and an action-first page once there is. Everything
@@ -444,18 +445,21 @@ export function Home({ user }: { user: User }) {
   const [home, setHome] = useState<HomeSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [retry, setRetry] = useState(0)
+
   useEffect(() => {
+    setError(null)
     getHome().then(setHome, (e: Error) => setError(e.message))
-  }, [])
+  }, [retry])
 
   if (error) {
     return (
       <main className="home">
-        <div className="error">{error}</div>
+        <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       </main>
     )
   }
-  if (!home) return null
+  if (!home) return <main className="home"><LoadState onRetry={() => setRetry(n => n + 1)} /></main>
 
   const canDesign = user.role !== "viewer"
   return home.hasData ? <Active home={home} canDesign={canDesign} /> : <Welcome home={home} canDesign={canDesign} />

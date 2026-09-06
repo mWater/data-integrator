@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { LoadState } from "./LoadState.js"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createSession, importIntegration, IntegrationSummary, listIntegrations, listSessions, SessionSummary } from "./api.js"
 import { ensureAiAck } from "./aiAck.js"
 import { cronText, formatDateTime, localizeData } from "./localization.js"
@@ -53,9 +54,46 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<"all" | "attention" | "running" | "paused">("all")
   const fileInput = useRef<HTMLInputElement>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [checkedAt, setCheckedAt] = useState<string | null>(null)
+  const inFlight = useRef(false)
+  const mounted = useRef(false)
+  const refresh = useCallback(async () => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setRefreshing(true)
+    setLoadError(null)
+    try {
+      const result = await listIntegrations()
+      if (mounted.current) {
+        setIntegrations(result.integrations)
+        setCheckedAt(new Date().toISOString())
+      }
+    } catch (err) {
+      if (mounted.current) setLoadError(err instanceof Error ? err.message : String(err))
+    } finally {
+      inFlight.current = false
+      if (mounted.current) setRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
-    listIntegrations().then(r => setIntegrations(r.integrations), err => setError(err.message))
+    mounted.current = true
+    void refresh()
+    return () => { mounted.current = false }
+  }, [refresh])
+
+  const hasActiveRuns = integrations?.some(i => i.lastRunStatus === "running" || i.lastRunStatus === "queued")
+  useEffect(() => {
+    const refreshVisible = () => { if (!document.hidden) void refresh() }
+    const timer = setInterval(refreshVisible, hasActiveRuns ? 5000 : 30000)
+    document.addEventListener("visibilitychange", refreshVisible)
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", refreshVisible) }
+  }, [refresh, hasActiveRuns])
+
+
+  useEffect(() => {
     // Design sessions still in progress show here as drafts, so a paused
     // session is found where its result would appear
     listSessions().then(
@@ -174,8 +212,13 @@ export function IntegrationList({ canDesign }: IntegrationListProps) {
         />
       )}
       {error && <div className="error">{error}</div>}
+      <div className="status-refresh">
+        <span className="dim" role="status">{refreshing ? T`Checking status…` : checkedAt ? T`Status checked ${formatDateTime(checkedAt)}` : T`Status has not been checked yet`}</span>
+        <button className="secondary" disabled={refreshing} onClick={() => void refresh()}>{T`Refresh`}</button>
+      </div>
+      {loadError && integrations !== null && <LoadState error={loadError} onRetry={() => void refresh()} />}
       {integrations === null ? (
-        <p>{T`Loading…`}</p>
+        <LoadState error={loadError} onRetry={() => void refresh()} />
       ) : integrations.length === 0 && orphanDrafts.length === 0 ? (
         <p>{T`Nothing installed yet. New Integration starts a design session; describe what to build there.`}</p>
       ) : (

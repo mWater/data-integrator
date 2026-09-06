@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react"
 import {
   CatalogTranslation,
@@ -119,6 +120,7 @@ export function Settings({ user }: { user: User }) {
   const [supportedLocales, setSupportedLocales] = useState<{ code: string; name: string }[]>([])
   const [translation, setTranslation] = useState<CatalogTranslation | null>(null)
   const [countries, setCountries] = useState<CountryBox[]>([])
+  const [retry, setRetry] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -134,6 +136,7 @@ export function Settings({ user }: { user: User }) {
   const isAdmin = user.role === "admin"
 
   useEffect(() => {
+    setError(null)
     Promise.all([getSettings(), listCountries()]).then(
       ([settings, countryList]) => {
         const area = settings.settings.default_aoi
@@ -154,7 +157,7 @@ export function Settings({ user }: { user: User }) {
       },
       err => setError(err.message)
     )
-  }, [])
+  }, [retry])
 
   const selected = useMemo(() => countries.find(c => c.iso3 === iso3) ?? null, [countries, iso3])
 
@@ -220,9 +223,8 @@ export function Settings({ user }: { user: User }) {
       </div>
       {!isAdmin && <p className="dim">{T`Only administrators can change deployment settings.`}</p>}
       <div className="settings-group">
-        {error && <div className="error">{error}</div>}
         {!loaded ? (
-          <p className="settings-loading">{error ? T`Unable to load settings. Please reload to try again.` : T`Loading…`}</p>
+          <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
         ) : (
           <>
             <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />

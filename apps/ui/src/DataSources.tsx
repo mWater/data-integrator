@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 import { useEffect, useMemo, useState } from "react"
 import { DataSource, listSources } from "./api.js"
 import { formatDateTime, localizeData } from "./localization.js"
@@ -24,12 +25,14 @@ function matches(source: DataSource, q: string): boolean {
 export function DataSources() {
   const [sources, setSources] = useState<DataSource[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<"all" | "table" | "raster">("all")
 
   useEffect(() => {
+    setError(null)
     listSources().then(r => setSources(r.sources), err => setError(err.message))
-  }, [])
+  }, [retry])
 
   const shown = useMemo(() => {
     if (!sources) return []
@@ -46,9 +49,9 @@ export function DataSources() {
   return (
     <main className="list-page catalog-page">
       <header className="catalog-header"><h1>{T`Data`}</h1><p>{T`Explore the tables and map layers in your deployment.`}</p></header>
-      {error && <div className="error">{error}</div>}
+      {error && sources !== null && <div className="error" role="alert">{error}</div>}
       {sources === null ? (
-        <p>{T`Loading…`}</p>
+        <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       ) : sources.length === 0 ? (
         <p>
           {T`No data yet. Data sources appear here once an ${<a href="#/integrations">{T`integration`}</a>} runs.`}

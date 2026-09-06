@@ -402,8 +402,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       : null
   return (
     <main className={`session-page${previewFull ? " preview-full" : ""}`} ref={pageRef}>
+      {isDashboard && <div className="session-view-switch" role="group" aria-label={T`Dashboard workspace`}>
+        <button className="secondary" aria-pressed={!previewFull} onClick={() => setPreviewFull(false)}>{T`Chat`}</button>
+        <button className="secondary" aria-pressed={previewFull} onClick={() => setPreviewFull(true)}>{T`Preview`}</button>
+      </div>}
       <div className="conversation">
         <div className={`session-head${isDashboard ? " compact" : ""}`}>
+          <a className="page-back" href={isDashboard ? "#/dashboards" : isAssistant ? "#/ask" : "#/integrations"}>
+            ← {isDashboard ? T`Dashboards` : isAssistant ? T`Ask` : T`Integrations`}
+          </a>
           {/* Ids are plumbing: the title is the display name, or a placeholder
               until the agent names what it is building. Beside a preview it
               stays small; the dashboard carries its own heading */}

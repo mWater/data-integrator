@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 import { useEffect, useState } from "react"
 import { listSessions, SessionSummary } from "./api.js"
 import { formatDateTime } from "./localization.js"
@@ -15,18 +16,20 @@ function statusLabels(): Record<string, string> {
 export function SessionList() {
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
+    setError(null)
     // Questions live on the Ask page; this list is design work
     listSessions().then(r => setSessions(r.sessions.filter(s => s.kind !== "assistant")), err => setError(err.message))
-  }, [])
+  }, [retry])
 
   return (
     <main className="list-page">
       <h1>{T`Agent activity`}</h1>
-      {error && <div className="error">{error}</div>}
+      {error && sessions !== null && <div className="error" role="alert">{error}</div>}
       {sessions === null ? (
-        <p>{T`Loading…`}</p>
+        <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       ) : sessions.length === 0 ? (
         <p>{T`No design sessions yet. Start one with New Integration on the Integrations page.`}</p>
       ) : (
@@ -37,7 +40,7 @@ export function SessionList() {
           <tbody>
             {sessions.map(s => (
               <tr key={s.id} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
-                <td>{s.integrationId ?? <span className="dim">{s.firstMessage ?? T`(new)`}</span>}</td>
+                <td><a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{s.integrationId ?? s.firstMessage ?? T`(new)`}</a></td>
                 <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
                 <td>{s.steps}</td>
                 <td>{formatDateTime(s.updatedAt)}</td>
