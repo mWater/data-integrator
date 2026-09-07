@@ -1,0 +1,389 @@
+{
+  "id": "mwater_admin_regions",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "mWater Administrative Regions",
+    "fr": "Régions administratives mWater",
+    "pt": "Regiões administrativas mWater",
+    "es": "Regiones administrativas de mWater",
+    "mg": "Faritra ara-pitantanana mWater",
+    "sw": "Maeneo ya kiutawala ya mWater"
+  },
+  "description": {
+    "_base": "en",
+    "en": "Administrative boundaries for the deployment's countries, from the country down to the finest available level, with a stable id per region and the full containment hierarchy on every row. Loaded from the versioned public release at data.mwater.co.",
+    "fr": "Limites administratives des pays du déploiement, du pays jusqu’au niveau disponible le plus détaillé, avec un identifiant stable par région et la hiérarchie complète de rattachement sur chaque ligne. Chargées depuis la version publique publiée sur data.mwater.co.",
+    "pt": "Limites administrativas dos países da implantação, desde o país até ao nível disponível mais detalhado, com um identificador estável por região e a hierarquia completa de pertença em cada linha. Carregadas a partir da versão pública controlada em data.mwater.co.",
+    "es": "Límites administrativos de los países de la implementación, desde el país hasta el nivel disponible más detallado, con un identificador estable por región y la jerarquía completa de pertenencia en cada fila. Cargados desde la versión pública publicada en data.mwater.co.",
+    "mg": "Sisintany ara-pitantanan’ireo firenena ampiasana ny rafitra, manomboka amin’ny firenena ka hatramin’ny ambaratonga madinika indrindra misy, miaraka amin’ny mari-panondro raikitra isaky ny faritra sy ny ambaratongam-pifampidirana feno isaky ny andalana. Nalaina avy amin’ny famoahana ampahibemaso misy kinova ao amin’ny data.mwater.co.",
+    "sw": "Mipaka ya kiutawala ya nchi za utekelezaji, kuanzia nchi hadi kiwango cha kina zaidi kinachopatikana, ikiwa na kitambulisho thabiti kwa kila eneo na mfuatano kamili wa maeneo yanayolijumuisha katika kila safu. Imepakiwa kutoka toleo la umma lenye matoleo katika data.mwater.co."
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 1200000
+  },
+  "source": {
+    "url": "https://data.mwater.co/#admin-regions",
+    "name": {
+      "_base": "en",
+      "en": "mWater Administrative Regions",
+      "fr": "Régions administratives mWater",
+      "pt": "Regiões administrativas mWater",
+      "es": "Regiones administrativas de mWater",
+      "mg": "Faritra ara-pitantanana mWater",
+      "sw": "Maeneo ya kiutawala ya mWater"
+    },
+    "license": "CC-BY-4.0",
+    "provider": "mWater",
+    "limitations": {
+      "_base": "en",
+      "en": "Derived from GADM 2.8 and updated by mWater with national and partner boundary data; rows still carrying GADM geometry are marked in the source column. Boundaries are for practical monitoring use and imply no position on the legal status of any territory. Levels available differ by country, and a few geometries may need repair before overlay operations (the loader repairs them).",
+      "fr": "Dérivées de GADM 2.8 et mises à jour par mWater avec des données de limites nationales et de partenaires ; les lignes conservant une géométrie GADM sont signalées dans la colonne source. Ces limites sont destinées au suivi pratique et n’impliquent aucune position sur le statut juridique d’un territoire. Les niveaux disponibles varient selon le pays et quelques géométries peuvent nécessiter une réparation avant les opérations de superposition (le chargeur les répare).",
+      "pt": "Derivadas do GADM 2.8 e atualizadas pela mWater com dados de limites nacionais e de parceiros; as linhas que ainda contêm geometria GADM estão assinaladas na coluna de origem. Os limites destinam-se à monitorização prática e não implicam qualquer posição sobre o estatuto jurídico de nenhum território. Os níveis disponíveis variam por país, e algumas geometrias podem precisar de reparação antes das operações de sobreposição (o carregador repara-as).",
+      "es": "Derivados de GADM 2.8 y actualizados por mWater con datos de límites nacionales y de socios; las filas que aún contienen geometría GADM están marcadas en la columna de origen. Los límites se destinan al monitoreo práctico y no implican postura alguna sobre la situación jurídica de ningún territorio. Los niveles disponibles varían según el país y algunas geometrías pueden requerir reparación antes de las operaciones de superposición (el cargador las repara).",
+      "mg": "Nalaina avy amin’ny GADM 2.8 ary nohavaozin’ny mWater tamin’ny angon-tsisintany nasionaly sy avy amin’ny mpiara-miombon’antoka; marihina ao amin’ny tsanganana loharano ireo andalana mbola mampiasa jeometria GADM. Natao ho an’ny fanaraha-maso azo ampiharina ireo sisintany ary tsy maneho hevitra momba ny sata ara-dalànan’ny faritany rehetra. Miovaova arakaraka ny firenena ny ambaratonga misy, ary mety mila amboarina ny jeometria sasany alohan’ny fampifanindriana (amboarin’ny mpampiditra izany).",
+      "sw": "Imetokana na GADM 2.8 na kusasishwa na mWater kwa data za mipaka za kitaifa na za washirika; safu ambazo bado zina jiometri ya GADM zimetiwa alama katika safu wima ya chanzo. Mipaka hii ni ya ufuatiliaji wa kiutendaji na haimaanishi msimamo wowote kuhusu hadhi ya kisheria ya eneo lolote. Viwango vinavyopatikana hutofautiana kwa nchi, na baadhi ya jiometri zinaweza kuhitaji kurekebishwa kabla ya shughuli za ufunikaji (kipakiaji huzirekebisha)."
+    },
+    "documentation": "https://data.mwater.co/llms.txt"
+  },
+  "runtime": "python3.12",
+  "trigger": {
+    "cron": "0 5 3 * *"
+  },
+  "contract": 2,
+  "destinations": [
+    {
+      "kind": "table",
+      "tableId": "admin_regions",
+      "name": {
+        "_base": "en",
+        "en": "Administrative regions",
+        "fr": "Régions administratives",
+        "pt": "Regiões administrativas",
+        "es": "Regiones administrativas",
+        "mg": "Faritra ara-pitantanana",
+        "sw": "Maeneo ya kiutawala"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "id",
+          "name": {
+            "_base": "en",
+            "en": "Region id",
+            "fr": "Identifiant de région",
+            "pt": "Identificador da região",
+            "es": "Identificador de región",
+            "mg": "Mari-panondron’ny faritra",
+            "sw": "Kitambulisho cha eneo"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "iso3",
+          "name": {
+            "_base": "en",
+            "en": "Country code (ISO3)",
+            "fr": "Code pays (ISO3)",
+            "pt": "Código do país (ISO3)",
+            "es": "Código de país (ISO3)",
+            "mg": "Kaodin’ny firenena (ISO3)",
+            "sw": "Msimbo wa nchi (ISO3)"
+          },
+          "type": "text"
+        },
+        {
+          "id": "level",
+          "name": {
+            "_base": "en",
+            "en": "Administrative level",
+            "fr": "Niveau administratif",
+            "pt": "Nível administrativo",
+            "es": "Nivel administrativo",
+            "mg": "Ambaratonga ara-pitantanana",
+            "sw": "Kiwango cha kiutawala"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "name",
+          "name": {
+            "_base": "en",
+            "en": "Name",
+            "fr": "Nom",
+            "pt": "Nome",
+            "es": "Nombre",
+            "mg": "Anarana",
+            "sw": "Jina"
+          },
+          "type": "text"
+        },
+        {
+          "id": "local_name",
+          "name": {
+            "_base": "en",
+            "en": "Local name",
+            "fr": "Nom local",
+            "pt": "Nome local",
+            "es": "Nombre local",
+            "mg": "Anarana eo an-toerana",
+            "sw": "Jina la mahali"
+          },
+          "type": "text"
+        },
+        {
+          "id": "full_name",
+          "name": {
+            "_base": "en",
+            "en": "Full name",
+            "fr": "Nom complet",
+            "pt": "Nome completo",
+            "es": "Nombre completo",
+            "mg": "Anarana feno",
+            "sw": "Jina kamili"
+          },
+          "type": "text"
+        },
+        {
+          "id": "type",
+          "name": {
+            "_base": "en",
+            "en": "Region type",
+            "fr": "Type de région",
+            "pt": "Tipo de região",
+            "es": "Tipo de región",
+            "mg": "Karazan’ny faritra",
+            "sw": "Aina ya eneo"
+          },
+          "type": "text"
+        },
+        {
+          "id": "local_type",
+          "name": {
+            "_base": "en",
+            "en": "Local region type",
+            "fr": "Type local de région",
+            "pt": "Tipo local de região",
+            "es": "Tipo local de región",
+            "mg": "Karazan’ny faritra eo an-toerana",
+            "sw": "Aina ya eneo kwa jina la mahali"
+          },
+          "type": "text"
+        },
+        {
+          "id": "leaf",
+          "name": {
+            "_base": "en",
+            "en": "Finest level (no subdivisions)",
+            "fr": "Niveau le plus détaillé (sans subdivisions)",
+            "pt": "Nível mais detalhado (sem subdivisões)",
+            "es": "Nivel más detallado (sin subdivisiones)",
+            "mg": "Ambaratonga madinika indrindra (tsy misy fizaràna)",
+            "sw": "Kiwango cha kina zaidi (hakuna migawanyo)"
+          },
+          "type": "boolean"
+        },
+        {
+          "id": "parent_id",
+          "name": {
+            "_base": "en",
+            "en": "Parent region id",
+            "fr": "Identifiant de la région parente",
+            "pt": "Identificador da região principal",
+            "es": "Identificador de la región superior",
+            "mg": "Mari-panondron’ny faritra iankinana",
+            "sw": "Kitambulisho cha eneo kuu"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level0",
+          "name": {
+            "_base": "en",
+            "en": "Country region id",
+            "fr": "Identifiant de la région pays",
+            "pt": "Identificador da região do país",
+            "es": "Identificador de la región del país",
+            "mg": "Mari-panondron’ny faritry ny firenena",
+            "sw": "Kitambulisho cha eneo la nchi"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level1",
+          "name": {
+            "_base": "en",
+            "en": "Level 1 region id",
+            "fr": "Identifiant de la région de niveau 1",
+            "pt": "Identificador da região de nível 1",
+            "es": "Identificador de la región de nivel 1",
+            "mg": "Mari-panondron’ny faritra ambaratonga 1",
+            "sw": "Kitambulisho cha eneo la kiwango cha 1"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level2",
+          "name": {
+            "_base": "en",
+            "en": "Level 2 region id",
+            "fr": "Identifiant de la région de niveau 2",
+            "pt": "Identificador da região de nível 2",
+            "es": "Identificador de la región de nivel 2",
+            "mg": "Mari-panondron’ny faritra ambaratonga 2",
+            "sw": "Kitambulisho cha eneo la kiwango cha 2"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level3",
+          "name": {
+            "_base": "en",
+            "en": "Level 3 region id",
+            "fr": "Identifiant de la région de niveau 3",
+            "pt": "Identificador da região de nível 3",
+            "es": "Identificador de la región de nivel 3",
+            "mg": "Mari-panondron’ny faritra ambaratonga 3",
+            "sw": "Kitambulisho cha eneo la kiwango cha 3"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level4",
+          "name": {
+            "_base": "en",
+            "en": "Level 4 region id",
+            "fr": "Identifiant de la région de niveau 4",
+            "pt": "Identificador da região de nível 4",
+            "es": "Identificador de la región de nivel 4",
+            "mg": "Mari-panondron’ny faritra ambaratonga 4",
+            "sw": "Kitambulisho cha eneo la kiwango cha 4"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level5",
+          "name": {
+            "_base": "en",
+            "en": "Level 5 region id",
+            "fr": "Identifiant de la région de niveau 5",
+            "pt": "Identificador da região de nível 5",
+            "es": "Identificador de la región de nivel 5",
+            "mg": "Mari-panondron’ny faritra ambaratonga 5",
+            "sw": "Kitambulisho cha eneo la kiwango cha 5"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "source",
+          "name": {
+            "_base": "en",
+            "en": "Boundary source",
+            "fr": "Source des limites",
+            "pt": "Origem dos limites",
+            "es": "Origen de los límites",
+            "mg": "Loharanon’ny sisintany",
+            "sw": "Chanzo cha mipaka"
+          },
+          "type": "text"
+        },
+        {
+          "id": "release",
+          "name": {
+            "_base": "en",
+            "en": "Dataset release",
+            "fr": "Version du jeu de données",
+            "pt": "Versão do conjunto de dados",
+            "es": "Versión del conjunto de datos",
+            "mg": "Famoahana ny tahirin-kevitra",
+            "sw": "Toleo la seti ya data"
+          },
+          "type": "text"
+        },
+        {
+          "id": "geometry",
+          "name": {
+            "_base": "en",
+            "en": "Boundary geometry",
+            "fr": "Géométrie des limites",
+            "pt": "Geometria dos limites",
+            "es": "Geometría de los límites",
+            "mg": "Jeometrian’ny sisintany",
+            "sw": "Jiometri ya mipaka"
+          },
+          "type": "geometry"
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "tableId": "admin_region_levels",
+      "name": {
+        "_base": "en",
+        "en": "Administrative level names",
+        "fr": "Noms des niveaux administratifs",
+        "pt": "Nomes dos níveis administrativos",
+        "es": "Nombres de los niveles administrativos",
+        "mg": "Anaran’ny ambaratonga ara-pitantanana",
+        "sw": "Majina ya viwango vya kiutawala"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "iso3",
+          "name": {
+            "_base": "en",
+            "en": "Country code (ISO3)",
+            "fr": "Code pays (ISO3)",
+            "pt": "Código do país (ISO3)",
+            "es": "Código de país (ISO3)",
+            "mg": "Kaodin’ny firenena (ISO3)",
+            "sw": "Msimbo wa nchi (ISO3)"
+          },
+          "type": "text"
+        },
+        {
+          "id": "country",
+          "name": {
+            "_base": "en",
+            "en": "Country",
+            "fr": "Pays",
+            "pt": "País",
+            "es": "País",
+            "mg": "Firenena",
+            "sw": "Nchi"
+          },
+          "type": "text"
+        },
+        {
+          "id": "level",
+          "name": {
+            "_base": "en",
+            "en": "Administrative level",
+            "fr": "Niveau administratif",
+            "pt": "Nível administrativo",
+            "es": "Nivel administrativo",
+            "mg": "Ambaratonga ara-pitantanana",
+            "sw": "Kiwango cha kiutawala"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "name",
+          "name": {
+            "_base": "en",
+            "en": "Level name",
+            "fr": "Nom du niveau",
+            "pt": "Nome do nível",
+            "es": "Nombre del nivel",
+            "mg": "Anaran’ny ambaratonga",
+            "sw": "Jina la kiwango"
+          },
+          "type": "text"
+        }
+      ]
+    }
+  ]
+}
