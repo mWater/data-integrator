@@ -46,7 +46,8 @@ test("expected tables exist in app schema", { skip: !AVAILABLE }, async () => {
   for (const expected of [
     "migrations", "integration_versions", "integrations", "runs", "webhook_events",
     "raster_layers", "raster_snapshots", "data_tables", "agent_sessions",
-    "users", "auth_sessions", "secrets", "settings", "dashboards", "dashboard_versions"
+    "users", "auth_sessions", "integration_secrets", "settings", "dashboards", "dashboard_versions",
+    "raster_sources"
   ]) {
     assert.ok(tables.includes(expected), `missing app.${expected}`)
   }
@@ -78,14 +79,18 @@ test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: 
   )
   await pool.query(
     `INSERT INTO app.raster_layers (id, integration_id, name, temporality, bands)
-     VALUES ('test-layer', 'test-int', 'Test', 'time-series', '[]')`
+     VALUES ('test-layer', 'test-int', '{"_base": "en", "en": "Test"}', 'time-series', '[]')`
   )
   const snapshot = await pool.query(
-    `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, path, bands, run_id)
-     VALUES ('test-layer', now(), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326),
-             'test-layer/s1.tif', '["pop"]', $1)
+    `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, bands, run_id)
+     VALUES ('test-layer', now(), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326), '["pop"]', $1)
      RETURNING id`,
     [run.rows[0].id]
+  )
+  await pool.query(
+    `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint)
+     VALUES ($1, 0, 'test-layer/s1.tif', ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326))`,
+    [snapshot.rows[0].id]
   )
   // Promotion: flip status and current pointer in one transaction
   const client = await pool.connect()
@@ -161,7 +166,7 @@ test("dashboards.current_version cannot dangle", { skip: !AVAILABLE }, async () 
 test("install versioning: bump on change, no-op on re-install, created_by recorded", { skip: !AVAILABLE }, async () => {
   const definition: IntegrationDefinition = {
     id: "ver_int",
-    name: "Versioning",
+    name: { _base: "en", en: "Versioning" },
     trigger: {},
     runtime: "node22",
     destinations: [
@@ -178,10 +183,10 @@ test("install versioning: bump on change, no-op on re-install, created_by record
   assert.deepEqual(await installIntegration(pool, definition, "ready", userId), { version: 1 })
   // Re-installing the same definition is a no-op, not a new version
   assert.deepEqual(await installIntegration(pool, definition), { version: 1 })
-  assert.deepEqual(await installIntegration(pool, { ...definition, name: "Versioning 2" }), { version: 2 })
+  assert.deepEqual(await installIntegration(pool, { ...definition, name: { _base: "en", en: "Versioning 2" } }), { version: 2 })
 
   const versions = await pool.query(
-    `SELECT version, created_by, definition->>'name' AS name FROM app.integration_versions
+    `SELECT version, created_by, definition->'name'->>'en' AS name FROM app.integration_versions
      WHERE integration_id = 'ver_int' ORDER BY version`
   )
   assert.deepEqual(versions.rows, [

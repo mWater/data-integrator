@@ -19,7 +19,7 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /** A webhook-triggered integration and a cron-only one that must not accept events. */
 const HOOKED: IntegrationDefinition = {
   id: "hooked",
-  name: "Webhook demo",
+  name: { _base: "en", en: "Webhook demo" },
   trigger: { webhook: true },
   runtime: "node22",
   destinations: [{ kind: "table", tableId: "hooked_rows", action: "replace", columns: [{ id: "name", type: "text" }] }],

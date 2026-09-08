@@ -19,9 +19,9 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /** The library entry the tests install and update. */
 const DEFINITION = {
   id: "lib_demo",
-  name: "Library demo",
-  description: "A demo entry",
-  source: { name: "Demo source", provider: "Demo Org", license: "CC-BY-4.0" },
+  name: { _base: "en", en: "Library demo" },
+  description: { _base: "en", en: "A demo entry" },
+  source: { name: { _base: "en", en: "Demo source" }, provider: "Demo Org", license: "CC-BY-4.0" },
   trigger: { cron: "0 6 1 * *" },
   runtime: "node22",
   destinations: [
@@ -117,7 +117,7 @@ test("library: browse, role-gated install, update detection with carry-over", as
   // Library moves: update detected; updating carries the local AOI over
   await writeFile(
     path.join(libraryPath, "integrations", "lib_demo", "definition.json"),
-    JSON.stringify({ ...DEFINITION, description: "A better demo entry" })
+    JSON.stringify({ ...DEFINITION, description: { _base: "en", en: "A better demo entry" } })
   )
   const afterEdit = await (await call("/api/library", viewerBearer)).json()
   assert.equal(afterEdit.entries[0].status, "update_available")
@@ -125,7 +125,7 @@ test("library: browse, role-gated install, update detection with carry-over", as
   const updated = await (await call("/api/library/lib_demo/install", editorBearer, { method: "POST", body: "{}" })).json()
   assert.equal(updated.version, 3)
   const detail = await (await call("/api/integrations/lib_demo", viewerBearer)).json()
-  assert.equal(detail.definition.description, "A better demo entry")
+  assert.deepEqual(detail.definition.description, { _base: "en", en: "A better demo entry" })
   assert.equal(detail.definition.aoi, null, "local full-extent AOI carried over")
 
   const versions = await (await call("/api/integrations/lib_demo/versions", viewerBearer)).json()

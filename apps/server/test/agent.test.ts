@@ -530,7 +530,7 @@ test("designer: an unbound draft is named by the first write_definition", async 
   assert.match(run.result, /no integration id/)
 
   const defJson = (id: string) =>
-    JSON.stringify({ id, name: id, trigger: {}, runtime: "python3.12", destinations: [], code: "", contract: 2 })
+    JSON.stringify({ id, name: { _base: "en", en: id }, trigger: {}, runtime: "python3.12", destinations: [], code: "", contract: 2 })
 
   const badId = await designer.execute("write_definition", { definitionJson: defJson("Bad-Id") }, state, noEvents, SID)
   assert.match(badId.result, /Invalid integration id/)
@@ -566,7 +566,7 @@ test("designer: an unbound draft is named by the first write_definition", async 
 test("integrations API: list and detail reflect an installed definition", async () => {
   const definition: IntegrationDefinition = {
     id: "api_demo",
-    name: "API Demo",
+    name: { _base: "en", en: "API Demo" },
     trigger: { cron: "0 0 * * *" },
     runtime: "node22",
     destinations: [
@@ -580,14 +580,14 @@ test("integrations API: list and detail reflect an installed definition", async 
   const list = await listIntegrations(pool)
   const summary = list.find(i => i.id === "api_demo")
   assert.ok(summary)
-  assert.equal(summary.name, "API Demo")
+  assert.deepEqual(summary.name, { _base: "en", en: "API Demo" })
   assert.equal(summary.destinations, 1)
   assert.equal(summary.status, "ready")
   assert.equal(summary.lastRunStatus, null)
 
   const detail = await getIntegration(pool, "api_demo")
   assert.ok(detail)
-  assert.equal(detail.definition.name, "API Demo")
+  assert.deepEqual(detail.definition.name, { _base: "en", en: "API Demo" })
   assert.equal(detail.runs.length, 0)
   // ensureTable ran at install, so the destination exists with zero rows
   assert.deepEqual(detail.destinations, [{ kind: "table", id: "api_demo_rows", count: 0 }])
@@ -600,7 +600,7 @@ test("sources: the catalog lists destination tables of installed integrations", 
   const table = sources.find(s => s.kind === "table" && s.id === "api_demo_rows")
   assert.ok(table)
   assert.equal(table.integrationId, "api_demo")
-  assert.equal(table.integrationName, "API Demo")
+  assert.deepEqual(table.integrationName, { _base: "en", en: "API Demo" })
   assert.equal(table.rows, 0) // table exists from install; nothing has run
   assert.equal(table.columns, 1)
   assert.equal(table.updatedAt, null)
@@ -609,7 +609,7 @@ test("sources: the catalog lists destination tables of installed integrations", 
 test("integrations: design-session installs stay draft until promoted", async () => {
   const definition: IntegrationDefinition = {
     id: "draft_demo",
-    name: "Draft Demo",
+    name: { _base: "en", en: "Draft Demo" },
     trigger: {},
     runtime: "node22",
     destinations: [],

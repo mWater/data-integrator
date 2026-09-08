@@ -28,7 +28,7 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /** Integration owning the queryable fixture table and a raster layer. */
 const SOURCE: IntegrationDefinition = {
   id: "asst_src",
-  name: "Assistant source",
+  name: { _base: "en", en: "Assistant source" },
   trigger: {},
   runtime: "node22",
   destinations: [
@@ -256,9 +256,9 @@ test("show_map: validates layers, geometry declarations, and dates", async () =>
 
 test("list_schema and lookup_country ground the model", async () => {
   const a = impl()
-  const schema = await a.execute("list_schema", {}, initialAssistantState(), () => {}, "s1")
+  const schema = await a.execute("list_schema", {}, initialAssistantState(), () => {}, randomUUID())
   assert.match(schema.result, /asst_sites: name text, level number \(m\), geom geometry/)
-  assert.match(schema.result, /asst_rain \(time-series\): band 1=rain \(mm\)/)
+  assert.match(schema.result, /asst_rain "asst_rain" \(time-series\): band 1=rain \(mm\)/)
 
   const country = await a.execute("lookup_country", { query: "madagascar" }, initialAssistantState(), () => {}, "s1")
   assert.match(country.result, /Madagascar \(MDG\): bbox \[/)

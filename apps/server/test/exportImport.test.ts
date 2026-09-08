@@ -19,8 +19,8 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /** An installed integration with an explicit AOI, to prove export strips it. */
 const SHARED: IntegrationDefinition = {
   id: "shared_demo",
-  name: "Shared demo",
-  source: { name: "Demo source", provider: "Demo Org", license: "CC-BY-4.0" },
+  name: { _base: "en", en: "Shared demo" },
+  source: { name: { _base: "en", en: "Demo source" }, provider: "Demo Org", license: "CC-BY-4.0" },
   trigger: { cron: "0 6 1 * *" },
   aoi: { bbox: [43, -26, 51, -11] },
   runtime: "node22",

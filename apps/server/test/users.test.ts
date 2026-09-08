@@ -79,13 +79,13 @@ test("admin routes gate: 403 for non-admins, 401 unauthenticated", async () => {
   assert.equal(noAuth.status, 401)
 })
 
-test("list users: full rows, oldest first", async () => {
+test("list users: full rows, sorted by email", async () => {
   const res = await fetch(`${base}/api/users`, { headers: { cookie: rootCookie } })
   assert.equal(res.status, 200)
   const { users } = await res.json()
   assert.deepEqual(
     users.map((u: { email: string }) => u.email),
-    ["root@example.org", "ed@example.org"]
+    ["ed@example.org", "root@example.org"]
   )
   for (const u of users) {
     assert.match(u.id, /^[0-9a-f-]{36}$/)

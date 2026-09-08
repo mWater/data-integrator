@@ -22,7 +22,7 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 function definitionWith(id: string, secrets: string[]): IntegrationDefinition {
   return {
     id,
-    name: id,
+    name: { _base: "en", en: id },
     trigger: {},
     runtime: "node22",
     destinations: [],

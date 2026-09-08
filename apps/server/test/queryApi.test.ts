@@ -21,7 +21,7 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /** Integration owning the queryable fixture table. */
 const SOURCE: IntegrationDefinition = {
   id: "q_src",
-  name: "Query source",
+  name: { _base: "en", en: "Query source" },
   trigger: {},
   runtime: "node22",
   destinations: [

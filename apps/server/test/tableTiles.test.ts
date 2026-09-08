@@ -35,7 +35,7 @@ const PLAIN_TABLE: TableDestination = {
 }
 const DEFINITION: IntegrationDefinition = {
   id: "tiles_demo",
-  name: "Tiles demo",
+  name: { _base: "en", en: "Tiles demo" },
   trigger: {},
   runtime: "node22",
   destinations: [GEO_TABLE, PLAIN_TABLE],

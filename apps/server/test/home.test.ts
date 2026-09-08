@@ -21,7 +21,7 @@ let pool: pg.Pool
 /** Healthy integration: one table that receives rows. */
 const LOADER: IntegrationDefinition = {
   id: "home_loader",
-  name: "Home loader",
+  name: { _base: "en", en: "Home loader" },
   trigger: {},
   runtime: "python3.12",
   destinations: [
@@ -34,7 +34,7 @@ const LOADER: IntegrationDefinition = {
 /** Broken integration: declares a table but its latest run failed. */
 const BROKEN: IntegrationDefinition = {
   id: "home_broken",
-  name: "Home broken",
+  name: { _base: "en", en: "Home broken" },
   trigger: {},
   runtime: "python3.12",
   destinations: [

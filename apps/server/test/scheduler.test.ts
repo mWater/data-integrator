@@ -15,7 +15,7 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 function definition(id: string, cron: string | null): IntegrationDefinition {
   return {
     id,
-    name: id,
+    name: { _base: "en", en: id },
     trigger: cron ? { cron } : {},
     runtime: "node22",
     destinations: [{ kind: "table", tableId: `${id}_rows`, action: "replace", columns: [{ id: "v", type: "text" }] }],
