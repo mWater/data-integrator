@@ -153,6 +153,11 @@ Return: {data?: {tableId: [row objects matching declared columns]}, tables?: [{t
 path (relative to /out), format? "geojson"|"fgb"|"gpkg"|"csv"}], rasters?: [{layerId,
 path (relative to /out, e.g. "pop_2023.tif"), timestamp, timestampEnd?, footprint?
 [w,s,e,n], crs?, metadata?}], state?: any}. Geometry columns take GeoJSON; raster files should be COGs.
+A raster snapshot is normally one file (path). When the product is a set of tiles too
+large to merge (high resolution over a large extent), give sources: [{path, footprint?}]
+instead of path and the tiles are mosaicked at read time. sources: [] publishes an empty
+snapshot, meaning nothing was observed for that time (an all-clear hazard map); it
+replaces the previous snapshot. Leaving the raster out means no update.
 data is inline rows and travels through stdout, which is capped at 10 MB total. For
 anything larger, and for any geometry-heavy table (boundaries, catchments, road networks),
 write the rows to /out as a file instead and declare it in tables[]: geopandas

@@ -19,6 +19,8 @@ test("sample reads a COG pixel at a WGS84 point", async () => {
     "-a_srs", "EPSG:4326", "-a_ullr", "10", "10", "30", "0", tif
   ])
   const tiles = new TileRenderer(new RasterStore(root), path.join(root, "cache"))
-  assert.equal(await tiles.sample("snap.tif", 1, 20, 5), 7)
-  assert.equal(await tiles.sample("snap.tif", 1, 0, 0), null)
+  const sources = [{ path: "snap.tif", bbox: [10, 0, 30, 10] as [number, number, number, number] }]
+  assert.equal(await tiles.sample(sources, 1, 20, 5), 7)
+  assert.equal(await tiles.sample(sources, 1, 0, 0), null)
+  assert.equal(await tiles.sample([], 1, 20, 5), null)
 })

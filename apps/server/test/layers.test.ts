@@ -26,18 +26,18 @@ let snapshotId: string
 /** Two bands, so band selection has something to choose between. */
 const LAYERED: IntegrationDefinition = {
   id: "layer_src",
-  name: "Layer source",
+  name: { _base: "en", en: "Layer source" },
   trigger: {},
   runtime: "python3.12",
   destinations: [
     {
       kind: "raster",
       layerId: "drought",
-      name: "Drought indices",
+      name: { _base: "en", en: "Drought indices" },
       temporality: "time-series",
       bands: [
-        { id: "spei3", name: "SPEI-3", units: "index", rendering: { colorMap: [{ value: 0, color: "#fff" }] } },
-        { id: "spei6", name: "SPEI-6", units: "index" }
+        { id: "spei3", name: { _base: "en", en: "SPEI-3" }, units: "index", rendering: { colorMap: [{ value: 0, color: "#fff" }] } },
+        { id: "spei6", name: { _base: "en", en: "SPEI-6" }, units: "index" }
       ]
     }
   ],
@@ -57,13 +57,18 @@ before(async () => {
   )
   const snapshot = await pool.query(
     `INSERT INTO app.raster_snapshots
-       (layer_id, observed_at, footprint, crs, path, bands, size_bytes, run_id, status)
+       (layer_id, observed_at, footprint, crs, bands, size_bytes, run_id, status)
      VALUES ('drought', now(), ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))', 4326),
-             'EPSG:4326', 'drought/a.tif', $1, 1024, $2, 'promoted')
+             'EPSG:4326', $1, 1024, $2, 'promoted')
      RETURNING id`,
     [JSON.stringify(LAYERED.destinations[0].bands), run.rows[0].id]
   )
   snapshotId = snapshot.rows[0].id
+  await pool.query(
+    `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint, size_bytes)
+     VALUES ($1, 0, 'drought/a.tif', ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))', 4326), 1024)`,
+    [snapshotId]
+  )
   await pool.query("UPDATE app.raster_layers SET current_snapshot_id = $1 WHERE id = 'drought'", [snapshotId])
 
   server = createApiServer(pool, new TileRenderer(new RasterStore("/nonexistent"), "/nonexistent"))
@@ -88,9 +93,9 @@ test("layer detail carries bands, snapshots and provenance", async () => {
   assert.equal(res.status, 200)
   const layer = await res.json()
   assert.equal(layer.id, "drought")
-  assert.equal(layer.name, "Drought indices")
+  assert.deepEqual(layer.name, { _base: "en", en: "Drought indices" })
   assert.equal(layer.integrationId, "layer_src")
-  assert.equal(layer.integrationName, "Layer source")
+  assert.deepEqual(layer.integrationName, { _base: "en", en: "Layer source" })
   assert.equal(layer.temporality, "time-series")
   assert.deepEqual(layer.bands.map((b: { id: string }) => b.id), ["spei3", "spei6"])
   assert.equal(layer.snapshots.length, 1)

@@ -224,7 +224,7 @@ export interface InManifest {
 /** One materialized input: raster snapshots or a table extract. */
 export type InManifestInput = RasterInManifestInput | TableInManifestInput
 
-/** Raster input as materialized: one COG file per selected snapshot. */
+/** Raster input as materialized: one openable path per selected snapshot. */
 export interface RasterInManifestInput {
   /** Discriminator */
   kind: "raster"
@@ -234,10 +234,14 @@ export interface RasterInManifestInput {
   snapshots: InManifestSnapshot[]
 }
 
-/** One materialized catalog snapshot file. */
+/**
+ * One materialized catalog snapshot. Single-file snapshots are the COG
+ * itself; multi-file snapshots are a VRT over their files, which GDAL and
+ * rasterio open like any raster; empty snapshots have no path.
+ */
 export interface InManifestSnapshot {
-  /** Path relative to /in */
-  path: string
+  /** Path relative to /in; null for an empty snapshot */
+  path: string | null
   /** Catalog snapshot id, recorded on the run for lineage */
   snapshotId: string
   /** Observation time (or period start) of the snapshot */
@@ -399,20 +403,38 @@ export interface TableArtifact {
 /** Formats accepted for a table file; all are read with OGR. */
 export type TableArtifactFormat = "geojson" | "fgb" | "gpkg" | "csv"
 
-/** One raster file produced by a run, registered as a catalog snapshot. */
+/**
+ * One raster snapshot produced by a run. A snapshot is one file (`path`) or a
+ * set of files (`sources`) that together cover the observation: tiled
+ * products at high resolution over large extents (10-degree flood tiles,
+ * per-country population grids) stay as tiles and are mosaicked at read
+ * time. Exactly one of `path` or `sources` is given. An empty `sources`
+ * array publishes an empty snapshot: nothing was observed, and it supersedes
+ * the previous snapshot like any other. Omitting the artifact means no update.
+ */
 export interface RasterArtifact {
   /** Destination layer the snapshot belongs to */
   layerId: string
-  /** Path relative to /out */
-  path: string
+  /** Path relative to /out, for a single-file snapshot */
+  path?: string
+  /** Files making up the snapshot, mosaicked at read time; [] publishes an empty snapshot */
+  sources?: RasterSource[]
   /** Observation time (or period start) of this snapshot */
   timestamp: string
   /** Period end when the snapshot covers a range */
   timestampEnd?: string
-  /** [west, south, east, north], EPSG:4326; server derives from the file when absent */
+  /** [west, south, east, north], EPSG:4326, of a single-file snapshot; server derives from the file when absent */
   footprint?: [number, number, number, number]
-  /** CRS of the file, e.g. "EPSG:4326"; server derives from the file when absent */
+  /** CRS shared by every file, e.g. "EPSG:4326"; server derives from the files when absent */
   crs?: string
   /** Free-form metadata stored on the snapshot */
   metadata?: Record<string, unknown>
+}
+
+/** One file of a multi-file raster snapshot. */
+export interface RasterSource {
+  /** Path relative to /out */
+  path: string
+  /** [west, south, east, north], EPSG:4326; server derives from the file when absent */
+  footprint?: [number, number, number, number]
 }

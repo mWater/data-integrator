@@ -27,7 +27,7 @@ let store: RasterStore
 /** Source integration: one table, one raster layer. */
 const SOURCE: IntegrationDefinition = {
   id: "del_source",
-  name: "Delete source",
+  name: { _base: "en", en: "Delete source" },
   trigger: {},
   runtime: "python3.12",
   destinations: [
@@ -46,7 +46,7 @@ const SOURCE: IntegrationDefinition = {
 /** Derived integration reading the source's table. */
 const DERIVED: IntegrationDefinition = {
   id: "del_derived",
-  name: "Delete derived",
+  name: { _base: "en", en: "Delete derived" },
   trigger: {},
   runtime: "python3.12",
   inputs: { src: { kind: "table", tableId: "del_rows" } },
@@ -80,11 +80,16 @@ before(async () => {
   await mkdir(path.dirname(store.absolute("del_layer/snap.tif")), { recursive: true })
   await writeFile(store.absolute("del_layer/snap.tif"), "tif")
   await pool.query(
-    `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, path, bands, run_id, status)
+    `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, bands, run_id, status)
      VALUES ('22222222-2222-2222-2222-222222222222', 'del_layer', '2026-08-01T00:00:00Z',
              ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326),
-             'EPSG:4326', 'del_layer/snap.tif', '["v"]', $1, 'promoted')`,
+             'EPSG:4326', '["v"]', $1, 'promoted')`,
     [run.rows[0].id]
+  )
+  await pool.query(
+    `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint)
+     VALUES ('22222222-2222-2222-2222-222222222222', 0, 'del_layer/snap.tif',
+             ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326))`
   )
   await pool.query("UPDATE app.raster_layers SET current_snapshot_id = '22222222-2222-2222-2222-222222222222' WHERE id = 'del_layer'")
   await pool.query("INSERT INTO app.webhook_events (integration_id, payload) VALUES ('del_source', '{}')")
@@ -158,7 +163,7 @@ test("delete removes everything owned and frees the names", { skip: !AVAILABLE }
   await access(store.absolute("del_layer/snap.tif"))
 
   // Freed names are claimable by a new integration
-  await installIntegration(pool, { ...SOURCE, id: "del_reclaimer", name: "Reclaimer" })
+  await installIntegration(pool, { ...SOURCE, id: "del_reclaimer", name: { _base: "en", en: "Reclaimer" } })
   const owner = await pool.query("SELECT integration_id FROM app.data_tables WHERE id = 'del_rows'")
   assert.equal(owner.rows[0].integration_id, "del_reclaimer")
 })

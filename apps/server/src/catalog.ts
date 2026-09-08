@@ -4,12 +4,12 @@ import { randomUUID } from "node:crypto"
 import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
-import { RasterArtifact, RasterLayerDestination } from "@data-integrator/definitions"
+import { RasterArtifact, RasterLayerDestination, RasterSource } from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
 
 const execFileP = promisify(execFile)
 
-/** Footprint and CRS of a raster file, derived or artifact-declared. */
+/** Footprint and CRS of a raster file, derived or declared. */
 interface RasterInfo {
   /** GeoJSON Polygon geometry in EPSG:4326 */
   footprint: object
@@ -17,25 +17,38 @@ interface RasterInfo {
   crs: string
 }
 
-/** Converts an artifact bbox to a GeoJSON Polygon. */
-function bboxPolygon(bbox: [number, number, number, number]): object {
+/** [west, south, east, north] in EPSG:4326. */
+type Bbox = [number, number, number, number]
+
+/** Converts a bbox to a GeoJSON Polygon. */
+function bboxPolygon(bbox: Bbox): object {
   const [w, s, e, n] = bbox
   return { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] }
 }
 
-/** Reads footprint and CRS from the file via gdalinfo when the artifact omits them. */
-async function rasterInfo(file: string, artifact: RasterArtifact): Promise<RasterInfo> {
-  if (artifact.footprint && artifact.crs) {
-    return { footprint: bboxPolygon(artifact.footprint), crs: artifact.crs }
+/** Envelope of a GeoJSON Polygon (any ring shape, as gdalinfo's wgs84Extent may be). */
+function polygonBbox(polygon: object): Bbox {
+  const ring = (polygon as { coordinates: number[][][] }).coordinates[0]
+  const bbox: Bbox = [Infinity, Infinity, -Infinity, -Infinity]
+  for (const [x, y] of ring) {
+    bbox[0] = Math.min(bbox[0], x)
+    bbox[1] = Math.min(bbox[1], y)
+    bbox[2] = Math.max(bbox[2], x)
+    bbox[3] = Math.max(bbox[3], y)
   }
+  return bbox
+}
+
+/** Reads footprint and CRS from the file via gdalinfo when not declared. */
+async function rasterInfo(file: string, declared: string, footprint?: Bbox, crs?: string): Promise<RasterInfo> {
+  if (footprint && crs) return { footprint: bboxPolygon(footprint), crs }
   const { stdout } = await execFileP("gdalinfo", ["-json", file], { maxBuffer: 16 * 1024 * 1024 })
   const info = JSON.parse(stdout)
-  const footprint = artifact.footprint ? bboxPolygon(artifact.footprint) : info.wgs84Extent
-  if (!footprint) throw new Error(`No footprint for ${artifact.path}: not georeferenced and none declared`)
+  const polygon = footprint ? bboxPolygon(footprint) : info.wgs84Extent
+  if (!polygon) throw new Error(`No footprint for ${declared}: not georeferenced and none declared`)
   const wkt: string = info.coordinateSystem?.wkt ?? ""
   const epsg = wkt.match(/ID\["EPSG",(\d+)\]\]\s*$/) ?? wkt.match(/AUTHORITY\["EPSG","(\d+)"\]\]\s*$/)
-  const crs = artifact.crs ?? (epsg ? `EPSG:${epsg[1]}` : "unknown")
-  return { footprint, crs }
+  return { footprint: polygon, crs: crs ?? (epsg ? `EPSG:${epsg[1]}` : "unknown") }
 }
 
 /** Ensures the raster_layers row for a destination exists and is owned by this integration. */
@@ -100,11 +113,52 @@ export async function ensureScratchLayer(
   )
 }
 
+/** One stored file of a snapshot, ready to register. */
+export interface StoredSource {
+  /** Position in the artifact's file list */
+  ordinal: number
+  /** Store-relative path */
+  relPath: string
+  /** GeoJSON Polygon footprint, EPSG:4326 */
+  footprint: object
+  /** File size */
+  sizeBytes: number
+}
+
+/** A snapshot's files in the store plus what registration needs. */
+export interface StoredSnapshot {
+  /** Catalog id assigned to the snapshot */
+  snapshotId: string
+  /** Stored files in ordinal order; empty for an empty snapshot */
+  sources: StoredSource[]
+  /** Envelope of all sources as a GeoJSON Polygon; null when empty */
+  footprint: object | null
+  /** CRS shared by the sources */
+  crs: string
+  /** Band ids in file band order */
+  bandIds: string[]
+  /** Total bytes across sources */
+  sizeBytes: number
+}
+
 /**
- * Stores one artifact file (before the commit transaction; failures leave only
- * GC-able orphans) and returns the values needed to register it. layerRowId is
- * the raster_layers row the snapshot belongs to: the declared layerId for real
- * runs, the session's scratch layer id for design runs.
+ * The artifact's files as declared: `path` is one file, `sources` is a list
+ * (possibly empty). Declaring both, or neither, is a contract error.
+ */
+function declaredSources(artifact: RasterArtifact): RasterSource[] {
+  if (artifact.path !== undefined && artifact.sources !== undefined) {
+    throw new Error(`Raster for ${artifact.layerId} declares both path and sources; use one`)
+  }
+  if (artifact.path !== undefined) return [{ path: artifact.path, footprint: artifact.footprint }]
+  if (artifact.sources !== undefined) return artifact.sources
+  throw new Error(`Raster for ${artifact.layerId} declares neither path nor sources`)
+}
+
+/**
+ * Stores a snapshot's files (before the commit transaction; failures leave
+ * only GC-able orphans) and returns the values needed to register it.
+ * layerRowId is the raster_layers row the snapshot belongs to: the declared
+ * layerId for real runs, the session's scratch layer id for design runs.
  */
 export async function storeArtifact(
   store: RasterStore,
@@ -112,55 +166,88 @@ export async function storeArtifact(
   artifact: RasterArtifact,
   bandIds: string[],
   layerRowId: string = artifact.layerId
-): Promise<{ snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[]; sizeBytes: number }> {
-  const file = resolveArtifactPath(outDir, artifact.path)
-  const stats = await stat(file).catch(() => null)
-  if (!stats?.isFile()) {
-    const listing = await readdir(outDir, { recursive: true }).catch(() => [] as string[])
-    throw new Error(
-      `Declared raster "${artifact.path}" not found in /out. ` +
-        `/out contains: ${listing.length > 0 ? listing.join(", ") : "(nothing)"}. ` +
-        `Write the file to /out and declare its path relative to /out.`
-    )
-  }
-  const info = await rasterInfo(file, artifact)
+): Promise<StoredSnapshot> {
   const snapshotId = randomUUID()
-  const relPath = `${layerRowId}/${snapshotId}.tif`
-  await store.put(file, relPath)
-  return { snapshotId, relPath, info, bandIds, sizeBytes: stats.size }
+  const sources: StoredSource[] = []
+  let crs: string | null = artifact.crs ?? null
+  for (const [ordinal, source] of declaredSources(artifact).entries()) {
+    const file = resolveArtifactPath(outDir, source.path)
+    const stats = await stat(file).catch(() => null)
+    if (!stats?.isFile()) {
+      const listing = await readdir(outDir, { recursive: true }).catch(() => [] as string[])
+      throw new Error(
+        `Declared raster "${source.path}" not found in /out. ` +
+          `/out contains: ${listing.length > 0 ? listing.join(", ") : "(nothing)"}. ` +
+          `Write the file to /out and declare its path relative to /out.`
+      )
+    }
+    const info = await rasterInfo(file, source.path, source.footprint, crs ?? undefined)
+    if (crs !== null && info.crs !== crs) {
+      throw new Error(`Raster "${source.path}" is ${info.crs}; the snapshot's other files are ${crs}`)
+    }
+    crs = info.crs
+    const relPath = `${layerRowId}/${snapshotId}/${ordinal}.tif`
+    await store.put(file, relPath)
+    sources.push({ ordinal, relPath, footprint: info.footprint, sizeBytes: stats.size })
+  }
+  const bboxes = sources.map(s => polygonBbox(s.footprint))
+  const footprint =
+    bboxes.length === 0
+      ? null
+      : bboxPolygon([
+          Math.min(...bboxes.map(b => b[0])),
+          Math.min(...bboxes.map(b => b[1])),
+          Math.max(...bboxes.map(b => b[2])),
+          Math.max(...bboxes.map(b => b[3]))
+        ])
+  return {
+    snapshotId,
+    sources,
+    footprint,
+    crs: crs ?? "unknown",
+    bandIds,
+    sizeBytes: sources.reduce((sum, s) => sum + s.sizeBytes, 0)
+  }
 }
 
 /**
- * Registers a stored artifact as a promoted snapshot inside the caller's commit
- * transaction: inserts the row, supersedes the old snapshot for current-only
- * layers, and advances the layer's current pointer when this snapshot is the
- * newest promoted one.
+ * Registers a stored snapshot as promoted inside the caller's commit
+ * transaction: inserts the snapshot and its sources, supersedes the old
+ * snapshot for current-only layers, and advances the layer's current pointer
+ * when this snapshot is the newest promoted one. An empty snapshot goes
+ * through the same steps: it is the observation that nothing was there.
  */
 export async function registerSnapshot(
   client: pg.ClientBase,
   runId: string,
   artifact: RasterArtifact,
-  stored: { snapshotId: string; relPath: string; info: RasterInfo; bandIds: string[]; sizeBytes: number },
+  stored: StoredSnapshot,
   temporality: "time-series" | "current-only",
   layerRowId: string = artifact.layerId
 ): Promise<void> {
   await client.query(
     `INSERT INTO app.raster_snapshots
-       (id, layer_id, observed_at, observed_end, footprint, crs, path, bands, run_id, status, size_bytes)
-     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, $9, 'promoted', $10)`,
+       (id, layer_id, observed_at, observed_end, footprint, crs, bands, run_id, status, size_bytes)
+     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, 'promoted', $9)`,
     [
       stored.snapshotId,
       layerRowId,
       artifact.timestamp,
       artifact.timestampEnd ?? null,
-      JSON.stringify(stored.info.footprint),
-      stored.info.crs,
-      stored.relPath,
+      stored.footprint === null ? null : JSON.stringify(stored.footprint),
+      stored.crs,
       JSON.stringify(stored.bandIds),
       runId,
       stored.sizeBytes
     ]
   )
+  for (const source of stored.sources) {
+    await client.query(
+      `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint, size_bytes)
+       VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), $5)`,
+      [stored.snapshotId, source.ordinal, source.relPath, JSON.stringify(source.footprint), source.sizeBytes]
+    )
+  }
   if (temporality === "current-only") {
     await client.query(
       `UPDATE app.raster_snapshots SET status = 'superseded'
@@ -185,4 +272,22 @@ export async function registerSnapshot(
      ) WHERE id = $1`,
     [layerRowId]
   )
+}
+
+/** Store-relative paths and footprint envelopes of a snapshot's files, in ordinal order. */
+export async function snapshotSources(client: pg.ClientBase | pg.Pool, snapshotId: string): Promise<SourceRef[]> {
+  const result = await client.query(
+    `SELECT path, ST_XMin(footprint) AS w, ST_YMin(footprint) AS s, ST_XMax(footprint) AS e, ST_YMax(footprint) AS n
+     FROM app.raster_sources WHERE snapshot_id = $1 ORDER BY ordinal`,
+    [snapshotId]
+  )
+  return result.rows.map(r => ({ path: r.path, bbox: [Number(r.w), Number(r.s), Number(r.e), Number(r.n)] }))
+}
+
+/** One file of a snapshot as readers need it. */
+export interface SourceRef {
+  /** Store-relative path */
+  path: string
+  /** [west, south, east, north] envelope, EPSG:4326 */
+  bbox: Bbox
 }

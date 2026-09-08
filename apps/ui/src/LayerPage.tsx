@@ -321,6 +321,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
               {interval && snapshot.observed_end && (
                 <div className="dim">{T`through ${snapshotLabel(snapshot.observed_end, true)}`}</div>
               )}
+              {snapshot.sources === 0 && <div className="dim">{T`Nothing observed: this snapshot is empty.`}</div>}
               {layer.snapshots.length > 1 && (
                 <>
                   <input

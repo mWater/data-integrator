@@ -360,6 +360,8 @@ export interface LayerSnapshot {
   observed_at: string
   /** End of the observed period (ISO) for interval layers, else null */
   observed_end: string | null
+  /** Number of files in the snapshot; 0 is a published "nothing observed" */
+  sources: number
 }
 
 /**

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
+import { snapshotSources } from "./catalog.js"
 import { AgentService } from "./agent/service.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
@@ -697,20 +698,31 @@ async function route(
     return
   }
 
+  // One file of a snapshot; ?source=<ordinal> picks among a multi-file
+  // snapshot's files (default the first). Empty snapshots have nothing to send.
   const downloadMatch = pathname.match(/^\/api\/snapshots\/([0-9a-f-]+)\/download$/)
   if (downloadMatch && store) {
-    const snapshot = await pool.query(
-      "SELECT layer_id, path FROM app.raster_snapshots WHERE id = $1 AND status <> 'pending'",
-      [downloadMatch[1]]
+    const ordinal = Number(searchParams.get("source") ?? "0")
+    const source = await pool.query(
+      `SELECT s.layer_id, src.path, (SELECT count(*) FROM app.raster_sources WHERE snapshot_id = s.id)::int AS sources
+       FROM app.raster_snapshots s
+       LEFT JOIN app.raster_sources src ON src.snapshot_id = s.id AND src.ordinal = $2
+       WHERE s.id = $1 AND s.status <> 'pending'`,
+      [downloadMatch[1], Number.isInteger(ordinal) ? ordinal : -1]
     )
-    if (snapshot.rows.length === 0) {
+    if (source.rows.length === 0) {
       json(res, 404, { error: "unknown snapshot" })
       return
     }
-    const { layer_id, path: relPath } = snapshot.rows[0]
+    const { layer_id, path: relPath, sources } = source.rows[0]
+    if (relPath === null) {
+      json(res, 404, { error: sources === 0 ? "empty snapshot" : `unknown source; snapshot has ${sources}` })
+      return
+    }
+    const suffix = sources > 1 ? `_${ordinal}` : ""
     res.writeHead(200, {
       "content-type": "image/tiff",
-      "content-disposition": `attachment; filename="${layer_id}_${downloadMatch[1]}.tif"`
+      "content-disposition": `attachment; filename="${layer_id}_${downloadMatch[1]}${suffix}.tif"`
     })
     createReadStream(store.absolute(relPath)).pipe(res)
     return
@@ -729,9 +741,10 @@ async function route(
        LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
        LEFT JOIN LATERAL (
          SELECT json_agg(json_build_object(
-                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end
+                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end,
+                  'sources', (SELECT count(*) FROM app.raster_sources WHERE snapshot_id = s2.id)
                 ) ORDER BY observed_at) AS snapshots
-         FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
+         FROM app.raster_snapshots s2 WHERE layer_id = l.id AND status = 'promoted'
        ) sn ON true
        WHERE ${session ? "l.session_id = $1" : "l.session_id IS NULL"}
        ORDER BY l.id`,
@@ -760,10 +773,11 @@ async function route(
        LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
        LEFT JOIN LATERAL (
          SELECT json_agg(json_build_object(
-                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end
+                  'id', id, 'observed_at', observed_at, 'observed_end', observed_end,
+                  'sources', (SELECT count(*) FROM app.raster_sources WHERE snapshot_id = s2.id)
                 ) ORDER BY observed_at) AS snapshots,
                 sum(size_bytes) AS size_bytes
-         FROM app.raster_snapshots WHERE layer_id = l.id AND status = 'promoted'
+         FROM app.raster_snapshots s2 WHERE layer_id = l.id AND status = 'promoted'
        ) sn ON true
        WHERE l.id = $1 AND ${session ? "l.session_id = $2" : "l.session_id IS NULL"}`,
       session ? [layerMatch[1], session] : [layerMatch[1]]
@@ -805,7 +819,7 @@ async function route(
     }
     const session = searchParams.get("session")
     const snapshot = await pool.query(
-      `SELECT s.path, l.bands FROM app.raster_snapshots s
+      `SELECT l.bands FROM app.raster_snapshots s
        JOIN app.raster_layers l ON l.id = s.layer_id
        WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'
          AND ${session ? "l.session_id = $3" : "l.session_id IS NULL"}`,
@@ -823,7 +837,7 @@ async function route(
       json(res, 404, { error: `unknown band "${bandId}"` })
       return
     }
-    const sampled = await tiles.sample(snapshot.rows[0].path, bandIndex + 1, lon, lat)
+    const sampled = await tiles.sample(await snapshotSources(pool, snapshotId), bandIndex + 1, lon, lat)
     const nodata = band.nodata
     const value =
       sampled == null || (nodata != null && Number.isFinite(nodata) && sampled === nodata) ? null : sampled
@@ -1459,7 +1473,7 @@ async function serveRasterTile(
   y: number
 ): Promise<void> {
   const snapshot = await pool.query(
-    `SELECT s.path, l.bands FROM app.raster_snapshots s
+    `SELECT l.bands FROM app.raster_snapshots s
      JOIN app.raster_layers l ON l.id = s.layer_id
      WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'`,
     [snapshotId, layerId]
@@ -1480,7 +1494,7 @@ async function serveRasterTile(
   const png = await tiles.tile(
     layerId,
     snapshotId,
-    snapshot.rows[0].path,
+    await snapshotSources(pool, snapshotId),
     band.id,
     rendering,
     z,

@@ -58,17 +58,22 @@ before(async () => {
   }
   await pool.query(
     `INSERT INTO app.raster_layers (id, integration_id, name, temporality, bands)
-     VALUES ('rsql_layer', 'rsql_int', 'Test', 'time-series', '[]')`
+     VALUES ('rsql_layer', 'rsql_int', '{"_base": "en", "en": "Test"}', 'time-series', '[]')`
   )
   const run = await pool.query(
     `INSERT INTO app.runs (integration_id, trigger, status) VALUES ('rsql_int', 'manual', 'succeeded') RETURNING id`
   )
   await pool.query(
-    `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, path, bands, run_id, status)
+    `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, bands, run_id, status)
      VALUES ('11111111-1111-1111-1111-111111111111', 'rsql_layer', '2026-08-01T00:00:00Z',
              ST_GeomFromText('POLYGON((10 0, 30 0, 30 10, 10 10, 10 0))', 4326),
-             'EPSG:4326', 'rsql_layer/snap.tif', '["v"]', $1, 'promoted')`,
+             'EPSG:4326', '["v"]', $1, 'promoted')`,
     [run.rows[0].id]
+  )
+  await pool.query(
+    `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint)
+     VALUES ('11111111-1111-1111-1111-111111111111', 0, 'rsql_layer/snap.tif',
+             ST_GeomFromText('POLYGON((10 0, 30 0, 30 10, 10 10, 10 0))', 4326))`
   )
 }, { timeout: 120_000 })
 
@@ -87,7 +92,7 @@ test("out-db registration makes raster values queryable in SQL", async () => {
     observedAt: "2026-08-01T00:00:00Z",
     observedEnd: null,
     crs: "EPSG:4326",
-    absolutePath: tifPath
+    absolutePaths: [tifPath]
   })
 
   const tiles = await pool.query("SELECT count(*)::int AS n FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
@@ -132,7 +137,7 @@ test("out-db registration makes raster values queryable in SQL", async () => {
     observedAt: "2026-08-01T00:00:00Z",
     observedEnd: null,
     crs: "EPSG:4326",
-    absolutePath: tifPath
+    absolutePaths: [tifPath]
   })
   const again = await pool.query("SELECT count(*)::int AS n FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
   assert.equal(again.rows[0].n, 1)
@@ -157,7 +162,7 @@ test("unknown CRS is refused; ESRI authority codes resolve via spatial_ref_sys",
     layerId: "rsql_layer",
     observedAt: "2026-08-01T00:00:00Z",
     observedEnd: null,
-    absolutePath: tifPath
+    absolutePaths: [tifPath]
   }
   await assert.rejects(registerRasterSql(pool, { ...ref, crs: "unknown" }), /unparseable CRS/)
   await assert.rejects(registerRasterSql(pool, { ...ref, crs: "EPSG:999999" }), /unknown to spatial_ref_sys/)

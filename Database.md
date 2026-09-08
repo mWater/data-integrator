@@ -118,7 +118,9 @@ touched mid-design.
 
 Insert as `pending`; promotion flips status and `current_snapshot_id` in one
 transaction. time-series layers keep promoted history; current-only marks the
-old snapshot `superseded` (file deleted asynchronously).
+old snapshot `superseded` (files deleted asynchronously). A snapshot's pixels
+live in its `raster_sources` rows: one for a single-file snapshot, many for a
+tiled product, none for an empty snapshot (a published "nothing observed").
 
 | column | type | notes |
 |---|---|---|
@@ -126,13 +128,27 @@ old snapshot `superseded` (file deleted asynchronously).
 | layer_id | text fk | |
 | observed_at | timestamptz | RasterArtifact.timestamp; named to avoid the type keyword |
 | observed_end | timestamptz null | RasterArtifact.timestampEnd |
-| footprint | geometry(Polygon, 4326) | |
-| crs | text | CRS of the file; source grids are preserved, never warped at ingest |
-| path | text | relative to the raster store root |
+| footprint | geometry(Polygon, 4326) null | envelope of all sources; null when empty |
+| crs | text | CRS shared by the files; source grids are preserved, never warped at ingest |
 | bands | jsonb | band ids in file order |
-| size_bytes | bigint | |
+| size_bytes | bigint | total across sources |
 | run_id | uuid | producing run (lineage) |
 | status | text | pending, promoted, superseded |
+
+### raster_sources
+
+The files of a snapshot, in declaration order. Tiles, sampling, SQL
+registration and /in materialization read a snapshot through its sources:
+one file is used directly, several are mosaicked with a VRT.
+
+| column | type | notes |
+|---|---|---|
+| id | uuid pk | |
+| snapshot_id | uuid fk | cascades on snapshot delete |
+| ordinal | int | position in RasterArtifact.sources; unique per snapshot |
+| path | text | relative to the raster store root |
+| footprint | geometry(Polygon, 4326) | |
+| size_bytes | bigint | |
 | created_at | timestamptz | |
 
 ### data_tables
@@ -295,7 +311,7 @@ tiles, and downloads are unaffected.
 | layer_id | text | |
 | snapshot_id | uuid fk | cascades on snapshot delete |
 | observed_at, observed_end | timestamptz | snapshot validity, for time filtering in SQL |
-| rast | raster | 256px out-db tiles referencing the COG |
+| rast | raster | 256px out-db tiles referencing one source file; a tiled snapshot has rows for each file |
 
 ## Migrations
 
@@ -305,19 +321,14 @@ migrations). Applies to the app schema only; data is definition-driven.
 
 ## Raster store
 
-Postgres never holds raster bytes; snapshots store paths relative to a store
-root, layout `<layerId>/<snapshotId>.tif`. The store code path is always a
+Postgres never holds raster bytes; sources store paths relative to a store
+root, layout `<layerId>/<snapshotId>/<ordinal>.tif`. The store code path is always a
 plain directory: local disk by default, and S3-compatible backends attach as a
 FUSE mount (rclone/s3fs, one systemd unit; ~zero overhead for COG reads in
 mWater production experience). No S3 SDK, no /vsis3/ credentials in GDAL.
 Snapshot files are immutable; deletion happens only through supersede cleanup.
 
-Rasters are not registered in PostGIS (no out-db raster table, unlike mWater):
-no query-time path computes over raster bytes. Raster-to-number crossings are
-batch products of jobs (zonal stats, exposure) landing in data tables; tiles and
-point lookups go through GDAL against the COGs. If query-time raster SQL is ever
-needed, out-db registration on promotion is an additive change; path stays
-authoritative.
+Promoted snapshots are also mirrored as out-db PostGIS rasters (the `rasters` table above) so SQL can read pixels at query time; tiles and point lookups go through GDAL against the COGs.
 
 ## Conventions
 

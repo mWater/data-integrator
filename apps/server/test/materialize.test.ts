@@ -24,7 +24,7 @@ const OGR = await execFileP("ogr2ogr", ["--version"]).then(() => true, () => fal
 /** Source integration owning the table and layer the tests extract from. */
 const SOURCE: IntegrationDefinition = {
   id: "mat_src",
-  name: "Materialize source",
+  name: { _base: "en", en: "Materialize source" },
   trigger: {},
   runtime: "node22",
   destinations: [
@@ -90,10 +90,15 @@ before(async () => {
     const id = randomUUID()
     await writeFile(path.join(storeDir, "mat_layer", `${id}.tif`), `fake tif ${i}`)
     await pool.query(
-      `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, path, bands, run_id, status)
-       VALUES ($1, 'mat_layer', $2, ST_SetSRID(ST_MakeEnvelope(44, -20, 48, -18), 4326), 'EPSG:4326', $3, $4,
-               '00000000-0000-4000-8000-000000000001', $5)`,
-      [id, `2026-${month}-01T00:00:00Z`, `mat_layer/${id}.tif`, JSON.stringify(["b1", "b2"]), status]
+      `INSERT INTO app.raster_snapshots (id, layer_id, observed_at, footprint, crs, bands, run_id, status)
+       VALUES ($1, 'mat_layer', $2, ST_SetSRID(ST_MakeEnvelope(44, -20, 48, -18), 4326), 'EPSG:4326', $3,
+               '00000000-0000-4000-8000-000000000001', $4)`,
+      [id, `2026-${month}-01T00:00:00Z`, JSON.stringify(["b1", "b2"]), status]
+    )
+    await pool.query(
+      `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint)
+       VALUES ($1, 0, $2, ST_SetSRID(ST_MakeEnvelope(44, -20, 48, -18), 4326))`,
+      [id, `mat_layer/${id}.tif`]
     )
   }
   await pool.query(

@@ -38,6 +38,16 @@ The alternative that also works: write a plain tiled GTiff first, then
 - Keep the native grid unless the destination declares otherwise; warping
   to EPSG:4326 is for sources already in it, not a default.
 
+## One file or many
+
+A snapshot is one COG (`path`) unless the product is a tile set that cannot
+be merged: high resolution over a large extent (global 90 m flood tiles,
+per-country population grids). Then declare `sources: [{path, footprint?}]`
+and keep the tiles as they are; the platform mosaics them at read time and
+registers each in SQL under the one snapshot. Do not mosaic tiles into one
+file merely for tidiness. `sources: []` is the way to publish "nothing
+observed" for a time (an all-clear day); omitting the raster means no update.
+
 ## Discipline
 
 - Always set and **declare** nodata: `-dstnodata` on the file and `nodata`

@@ -431,8 +431,8 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
             layerId: layerRowFor(artifact.layerId),
             observedAt: artifact.timestamp,
             observedEnd: artifact.timestampEnd ?? null,
-            crs: stored.info.crs,
-            absolutePath: path.resolve(deps.store.absolute(stored.relPath))
+            crs: stored.crs,
+            absolutePaths: stored.sources.map(source => path.resolve(deps.store.absolute(source.relPath)))
           }
           if (scratch) await validateRasterSqlRef(client, ref)
           else await registerRasterSqlInTx(client, ref)

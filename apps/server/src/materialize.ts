@@ -13,6 +13,7 @@ import {
   TableInputRef
 } from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
+import { snapshotSources } from "./catalog.js"
 
 const execFileP = promisify(execFile)
 
@@ -53,7 +54,12 @@ export async function materializeInputs(
   return manifest
 }
 
-/** Copies the selected snapshots of a layer into /in/<inputId>/. */
+/**
+ * Materializes the selected snapshots of a layer under /in/<inputId>/: a
+ * single-file snapshot as its COG, a multi-file snapshot as its files plus a
+ * VRT over them (the manifest path), an empty snapshot as a manifest entry
+ * with no path.
+ */
 async function materializeRaster(
   deps: MaterializeDeps,
   inputId: string,
@@ -64,12 +70,12 @@ async function materializeRaster(
   if (layer.rows.length === 0) throw new Error(`Input ${inputId}: unknown layer ${ref.layerId}`)
 
   // Duplicate observed_at (a republished period) resolves to the newest snapshot
-  const base = `SELECT DISTINCT ON (observed_at) id, observed_at, observed_end, path, bands
+  const base = `SELECT DISTINCT ON (observed_at) id, observed_at, observed_end, bands
                 FROM app.raster_snapshots WHERE layer_id = $1 AND status = 'promoted'`
   let result
   if (ref.select === "current") {
     result = await deps.pool.query(
-      `SELECT s.id, s.observed_at, s.observed_end, s.path, s.bands
+      `SELECT s.id, s.observed_at, s.observed_end, s.bands
        FROM app.raster_layers l JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
        WHERE l.id = $1`,
       [ref.layerId]
@@ -94,10 +100,26 @@ async function materializeRaster(
   const snapshots: InManifestSnapshot[] = []
   for (const row of result.rows) {
     const timestamp = row.observed_at.toISOString()
-    const fileName = `${timestamp.replace(/:/g, "-")}.tif`
-    await linkOrCopy(deps.store.absolute(row.path), path.join(dir, fileName))
+    const stem = timestamp.replace(/:/g, "-")
+    const sources = await snapshotSources(deps.pool, row.id)
+    let manifestPath: string | null = null
+    if (sources.length === 1) {
+      await linkOrCopy(deps.store.absolute(sources[0].path), path.join(dir, `${stem}.tif`))
+      manifestPath = `${inputId}/${stem}.tif`
+    } else if (sources.length > 1) {
+      await mkdir(path.join(dir, stem), { recursive: true })
+      const files: string[] = []
+      for (const [ordinal, source] of sources.entries()) {
+        await linkOrCopy(deps.store.absolute(source.path), path.join(dir, stem, `${ordinal}.tif`))
+        files.push(`${stem}/${ordinal}.tif`)
+      }
+      // Relative arguments from the VRT's own directory keep the VRT
+      // relocatable: it resolves inside the container at /in as written here
+      await execFileP("gdalbuildvrt", ["-q", `${stem}.vrt`, ...files], { cwd: dir })
+      manifestPath = `${inputId}/${stem}.vrt`
+    }
     snapshots.push({
-      path: `${inputId}/${fileName}`,
+      path: manifestPath,
       snapshotId: row.id,
       timestamp,
       timestampEnd: row.observed_end ? row.observed_end.toISOString() : undefined,

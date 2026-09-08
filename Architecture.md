@@ -95,9 +95,13 @@ is a plain module with no magic globals:
 
 The return value becomes stdout. The sandbox is the container, not the language.
 
-`RasterArtifact`: `{ layerId, path, timestamp, footprint?, crs?, metadata? }`. The server
-validates tabular output against destination schemas and registers raster artifacts in the
-catalog. Jobs never touch Postgres or the raster store directly.
+`RasterArtifact`: `{ layerId, path | sources, timestamp, timestampEnd?, footprint?, crs?,
+metadata? }`. A snapshot is one file (`path`) or a set of files (`sources: [{ path,
+footprint? }]`) mosaicked at read time, for tiled products too large to merge. `sources:
+[]` publishes an empty snapshot: nothing observed at that time, superseding the previous
+one, which is distinct from omitting the artifact (no update). The server validates
+tabular output against destination schemas and registers raster artifacts in the catalog.
+Jobs never touch Postgres or the raster store directly.
 
 `TableArtifact`: `{ tableId, path, format? }`, format inferred from the extension. The
 server loads the file into a staging table with ogr2ogr, then applies it to the

@@ -263,7 +263,7 @@ export interface DeleteIntegrationResult {
   ok: boolean
   /** data.* tables dropped. */
   tables: number
-  /** Raster snapshots deleted; their store files are in snapshotPaths. */
+  /** Raster snapshots deleted; their store files (every source) are in snapshotPaths. */
   snapshots: number
   /** Store-relative COG paths of the deleted snapshots (delete post-commit). */
   snapshotPaths: string[]
@@ -318,7 +318,8 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
     await client.query("DELETE FROM app.data_tables WHERE integration_id = $1", [integrationId])
 
     const snapshots = await client.query(
-      `SELECT s.id, s.path FROM app.raster_snapshots s
+      `SELECT s.id, (SELECT array_agg(src.path) FROM app.raster_sources src WHERE src.snapshot_id = s.id) AS paths
+       FROM app.raster_snapshots s
        JOIN app.raster_layers l ON l.id = s.layer_id
        WHERE l.integration_id = $1 AND l.session_id IS NULL`,
       [integrationId]
@@ -348,7 +349,7 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
       ok: true,
       tables: usage.tables.length,
       snapshots: snapshots.rows.length,
-      snapshotPaths: snapshots.rows.map(r => r.path as string),
+      snapshotPaths: snapshots.rows.flatMap(r => (r.paths as string[] | null) ?? []),
       layerIds: usage.layers,
       runs: runs.rowCount ?? 0,
       sessions: sessions.rowCount ?? 0

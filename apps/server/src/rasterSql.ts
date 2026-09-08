@@ -33,8 +33,8 @@ export interface SnapshotRef {
   observedEnd: string | null
   /** "AUTH:code" (e.g. "EPSG:4326", "ESRI:54009"); must resolve in spatial_ref_sys */
   crs: string
-  /** Absolute path of the stored COG, as the database server must see it */
-  absolutePath: string
+  /** Absolute paths of the stored COGs, as the database server must see them; empty for an empty snapshot */
+  absolutePaths: string[]
 }
 
 /**
@@ -79,59 +79,65 @@ async function describeRaster(snapshotId: string, absolutePath: string) {
 }
 
 /**
- * Proves a snapshot would register (CRS resolvable, file describable)
+ * Proves a snapshot would register (CRS resolvable, files describable)
  * without inserting anything. Scratch runs call this so certification
  * catches registration failures during design, not on the first
  * production run.
  */
 export async function validateRasterSqlRef(
   client: pg.ClientBase,
-  ref: Pick<SnapshotRef, "snapshotId" | "crs" | "absolutePath">
+  ref: Pick<SnapshotRef, "snapshotId" | "crs" | "absolutePaths">
 ): Promise<void> {
+  if (ref.absolutePaths.length === 0) return
   await resolveSrid(client, ref.snapshotId, ref.crs)
-  await describeRaster(ref.snapshotId, ref.absolutePath)
+  for (const file of ref.absolutePaths) await describeRaster(ref.snapshotId, file)
 }
 
 /**
  * Registers one snapshot inside the caller's transaction, replacing any
- * previous registration. Throws with a clear message when the CRS is not in
- * spatial_ref_sys, gdalinfo fails, or the database rejects out-db access.
- * Call enableOutDbSession on the client before opening the transaction.
+ * previous registration: one tiled out-db raster per source file, all under
+ * the snapshot id. An empty snapshot registers nothing, so SQL over that
+ * time sees no pixels, which is the truth. Throws with a clear message when
+ * the CRS is not in spatial_ref_sys, gdalinfo fails, or the database rejects
+ * out-db access. Call enableOutDbSession on the client before opening the
+ * transaction.
  */
 export async function registerRasterSqlInTx(client: pg.ClientBase, ref: SnapshotRef): Promise<void> {
-  const srid = await resolveSrid(client, ref.snapshotId, ref.crs)
-  const { width, height, gt, bandCount } = await describeRaster(ref.snapshotId, ref.absolutePath)
-
   await client.query("DELETE FROM data.rasters WHERE snapshot_id = $1", [ref.snapshotId])
-  await client.query(
-    `INSERT INTO data.rasters (layer_id, snapshot_id, observed_at, observed_end, rast)
-     SELECT $1, $2, $3, $4,
-            ST_Tile(
-              ST_AddBand(
-                ST_MakeEmptyRaster($5::int, $6::int, $7, $8, $9, $10, $11, $12, $13::int),
-                1, $14::text, (SELECT array_agg(i) FROM generate_series(1, $15::int) i)
-              ),
-              $16::int, $16::int
-            )`,
-    [
-      ref.layerId,
-      ref.snapshotId,
-      ref.observedAt,
-      ref.observedEnd,
-      width,
-      height,
-      gt[0], // upper-left x
-      gt[3], // upper-left y
-      gt[1], // x scale
-      gt[5], // y scale
-      gt[2], // x skew
-      gt[4], // y skew
-      srid,
-      ref.absolutePath,
-      bandCount,
-      TILE_SIZE
-    ]
-  )
+  if (ref.absolutePaths.length === 0) return
+  const srid = await resolveSrid(client, ref.snapshotId, ref.crs)
+  for (const file of ref.absolutePaths) {
+    const { width, height, gt, bandCount } = await describeRaster(ref.snapshotId, file)
+    await client.query(
+      `INSERT INTO data.rasters (layer_id, snapshot_id, observed_at, observed_end, rast)
+       SELECT $1, $2, $3, $4,
+              ST_Tile(
+                ST_AddBand(
+                  ST_MakeEmptyRaster($5::int, $6::int, $7, $8, $9, $10, $11, $12, $13::int),
+                  1, $14::text, (SELECT array_agg(i) FROM generate_series(1, $15::int) i)
+                ),
+                $16::int, $16::int
+              )`,
+      [
+        ref.layerId,
+        ref.snapshotId,
+        ref.observedAt,
+        ref.observedEnd,
+        width,
+        height,
+        gt[0], // upper-left x
+        gt[3], // upper-left y
+        gt[1], // x scale
+        gt[5], // y scale
+        gt[2], // x skew
+        gt[4], // y skew
+        srid,
+        file,
+        bandCount,
+        TILE_SIZE
+      ]
+    )
+  }
 }
 
 /**
@@ -176,11 +182,14 @@ export async function registerMissingRasters(
   pool: pg.Pool,
   storeAbsolute: (relPath: string) => string
 ): Promise<{ registered: number; pruned: number; failures: string[] }> {
+  // Empty snapshots have nothing to register and never count as missing
   const missing = await pool.query(
-    `SELECT s.id, s.layer_id, s.observed_at, s.observed_end, s.crs, s.path
+    `SELECT s.id, s.layer_id, s.observed_at, s.observed_end, s.crs,
+            (SELECT array_agg(path ORDER BY ordinal) FROM app.raster_sources WHERE snapshot_id = s.id) AS paths
      FROM app.raster_snapshots s
      LEFT JOIN data.rasters r ON r.snapshot_id = s.id
      WHERE s.status = 'promoted' AND r.snapshot_id IS NULL
+       AND EXISTS (SELECT 1 FROM app.raster_sources WHERE snapshot_id = s.id)
        AND s.layer_id IN (SELECT id FROM app.raster_layers WHERE integration_id IS NOT NULL)`
   )
   let registered = 0
@@ -193,7 +202,7 @@ export async function registerMissingRasters(
         observedAt: row.observed_at.toISOString(),
         observedEnd: row.observed_end ? row.observed_end.toISOString() : null,
         crs: row.crs,
-        absolutePath: path.resolve(storeAbsolute(row.path))
+        absolutePaths: (row.paths as string[]).map(p => path.resolve(storeAbsolute(p)))
       })
       registered++
     } catch (err) {

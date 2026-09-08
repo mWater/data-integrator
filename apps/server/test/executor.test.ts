@@ -37,7 +37,7 @@ const AVAILABLE = PODMAN && RUNSC && HAS_IMAGE
 /** End-to-end definition: rows into a merge table plus one COG snapshot per run. */
 const DEFINITION: IntegrationDefinition = {
   id: "e2e_test",
-  name: "E2E test",
+  name: { _base: "en", en: "E2E test" },
   trigger: { cron: "0 0 * * *" },
   runtime: "python3.12",
   destinations: [
@@ -155,8 +155,9 @@ test("first run: rows, snapshot, state, stats", { skip: !AVAILABLE }, async () =
   assert.ok(rows.rows.every(r => r._run_id === runId))
 
   const snapshot = await pool.query(
-    `SELECT s.status, s.crs, s.path, l.current_snapshot_id = s.id AS is_current
-     FROM app.raster_snapshots s JOIN app.raster_layers l ON l.id = s.layer_id`
+    `SELECT s.status, s.crs, src.path, l.current_snapshot_id = s.id AS is_current
+     FROM app.raster_snapshots s JOIN app.raster_layers l ON l.id = s.layer_id
+     JOIN app.raster_sources src ON src.snapshot_id = s.id`
   )
   assert.equal(snapshot.rows.length, 1)
   assert.equal(snapshot.rows[0].status, "promoted")
@@ -195,6 +196,93 @@ test("second run: state chains, merge updates, current pointer advances", { skip
   assert.equal(registered.rows[0].n, 2)
 }, { timeout: 180_000 })
 
+test("tiled snapshot: many files register as one snapshot; an empty one supersedes it", { skip: !AVAILABLE }, async () => {
+  // First run writes two adjacent tiles; the second reports nothing observed
+  const tiled: IntegrationDefinition = {
+    id: "e2e_tiled",
+    name: { _base: "en", en: "Tiled" },
+    trigger: {},
+    runtime: "python3.12",
+    destinations: [
+      {
+        kind: "raster",
+        layerId: "e2e_tiled_layer",
+        temporality: "current-only",
+        bands: [{ id: "v", units: "m" }]
+      }
+    ],
+    code: `
+import numpy as np
+import rasterio
+from rasterio.transform import from_origin
+
+def run(ctx):
+    n = ((ctx.previous_state or {}).get("n") or 0) + 1
+    if n == 2:
+        return {"rasters": [{"layerId": "e2e_tiled_layer", "sources": [],
+                             "timestamp": "2026-02-01T00:00:00Z"}], "state": {"n": n}}
+    for i, west in enumerate([10.0, 11.0]):
+        with rasterio.open(
+            f"{ctx.out_dir}/tile{i}.tif", "w", driver="GTiff",
+            width=100, height=100, count=1, dtype="float32",
+            crs="EPSG:4326", transform=from_origin(west, 1.0, 0.01, 0.01),
+        ) as dst:
+            dst.write((np.ones((100, 100)) * (i + 1)).astype("float32"), 1)
+    return {"rasters": [{"layerId": "e2e_tiled_layer",
+                         "sources": [{"path": "tile0.tif"}, {"path": "tile1.tif"}],
+                         "timestamp": f"2026-0{n}-01T00:00:00Z"}], "state": {"n": n}}
+`,
+    contract: 2
+  }
+  await installIntegration(pool, tiled)
+  const runTiled = async () => {
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_tiled', 'manual', 'queued')`)
+    const run = await claimNextRun(pool, "test-worker")
+    assert.ok(run)
+    await executeRun(deps, run!)
+    const result = await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [run!.id])
+    assert.equal(result.rows[0].status, "succeeded", result.rows[0].error)
+  }
+
+  await runTiled()
+  const first = await pool.query(
+    `SELECT s.id, ST_XMin(s.footprint) AS w, ST_XMax(s.footprint) AS e,
+            (SELECT count(*)::int FROM app.raster_sources WHERE snapshot_id = s.id) AS sources,
+            (SELECT count(*)::int FROM data.rasters WHERE snapshot_id = s.id) AS registered
+     FROM app.raster_snapshots s WHERE s.layer_id = 'e2e_tiled_layer' AND s.status = 'promoted'`
+  )
+  assert.equal(first.rows.length, 1)
+  assert.equal(first.rows[0].sources, 2)
+  // Snapshot footprint spans both tiles; SQL sees both files under one snapshot
+  assert.equal(Number(first.rows[0].w), 10)
+  assert.equal(Number(first.rows[0].e), 12)
+  assert.equal(first.rows[0].registered, 2)
+  const values = await pool.query(
+    `SELECT ST_Value(rast, 1, ST_SetSRID(ST_MakePoint(11.5, 0.5), 4326)) AS v FROM data.rasters
+     WHERE snapshot_id = $1 AND ST_Intersects(rast, ST_SetSRID(ST_MakePoint(11.5, 0.5), 4326))`,
+    [first.rows[0].id]
+  )
+  assert.equal(values.rows.length, 1)
+  assert.equal(Number(values.rows[0].v), 2)
+
+  await runTiled()
+  const after = await pool.query(
+    `SELECT s.id, s.status, s.footprint IS NULL AS no_footprint, l.current_snapshot_id = s.id AS is_current,
+            (SELECT count(*)::int FROM app.raster_sources WHERE snapshot_id = s.id) AS sources,
+            (SELECT count(*)::int FROM data.rasters WHERE snapshot_id = s.id) AS registered
+     FROM app.raster_snapshots s JOIN app.raster_layers l ON l.id = s.layer_id
+     WHERE s.layer_id = 'e2e_tiled_layer' ORDER BY s.observed_at`
+  )
+  assert.equal(after.rows.length, 2)
+  assert.equal(after.rows[0].status, "superseded")
+  // The empty snapshot is current, has no footprint, and registers no pixels
+  assert.equal(after.rows[1].status, "promoted")
+  assert.ok(after.rows[1].is_current)
+  assert.ok(after.rows[1].no_footprint)
+  assert.equal(after.rows[1].sources, 0)
+  assert.equal(after.rows[1].registered, 0)
+}, { timeout: 180_000 })
+
 test("failing code marks the run failed with the traceback", { skip: !AVAILABLE }, async () => {
   const broken: IntegrationDefinition = {
     ...DEFINITION,
@@ -222,12 +310,13 @@ test("failing code marks the run failed with the traceback", { skip: !AVAILABLE 
 test("derived integration: /in materialization and lineage", { skip: !AVAILABLE }, async () => {
   const derived: IntegrationDefinition = {
     id: "e2e_derived",
-    name: "Derived",
+    name: { _base: "en", en: "Derived" },
     trigger: {},
     runtime: "python3.12",
     inputs: {
       src: { kind: "table", tableId: "e2e_rows", format: "json" },
-      snaps: { kind: "raster", layerId: "e2e_layer", select: { latest: 2 } }
+      snaps: { kind: "raster", layerId: "e2e_layer", select: { latest: 2 } },
+      tiles: { kind: "raster", layerId: "e2e_tiled_layer", select: "current" }
     },
     destinations: [
       {
@@ -236,7 +325,8 @@ test("derived integration: /in materialization and lineage", { skip: !AVAILABLE 
         action: "replace",
         columns: [
           { id: "src_rows", type: "integer" },
-          { id: "snap_files", type: "integer" }
+          { id: "snap_files", type: "integer" },
+          { id: "tile_value", type: "number" }
         ]
       }
     ],
@@ -250,12 +340,21 @@ def run(ctx):
     snaps = manifest["inputs"]["snaps"]["snapshots"]
     for s in snaps:
         assert os.path.exists(f"{ctx.in_dir}/{s['path']}"), s["path"]
-    return {"data": {"e2e_derived_rows": [{"src_rows": len(rows), "snap_files": len(snaps)}]}}
+    # A tiled snapshot arrives as one VRT that rasterio opens like any raster
+    tiles = manifest["inputs"]["tiles"]["snapshots"]
+    assert len(tiles) == 1 and tiles[0]["path"].endswith(".vrt"), tiles
+    import rasterio
+    with rasterio.open(f"{ctx.in_dir}/{tiles[0]['path']}") as src:
+        value = float(next(src.sample([(11.5, 0.5)]))[0])
+    return {"data": {"e2e_derived_rows": [{"src_rows": len(rows), "snap_files": len(snaps), "tile_value": value}]}}
 `,
     contract: 2
   }
   await installIntegration(pool, derived)
   const srcCount = Number((await pool.query("SELECT count(*) AS n FROM data.e2e_rows")).rows[0].n)
+  // Third tiled run: tiles again (n = 3), so the current snapshot has two files
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_tiled', 'manual', 'queued')`)
+  await executeRun(deps, (await claimNextRun(pool, "test-worker"))!)
 
   await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_derived', 'manual', 'queued')`)
   const run = await claimNextRun(pool, "test-worker")
@@ -268,15 +367,16 @@ def run(ctx):
   assert.equal(final.rows[0].inputs.inputs.snaps.snapshots.length, 2)
   assert.equal(final.rows[0].inputs.inputs.src.rowCount, srcCount)
 
-  const out = await pool.query("SELECT src_rows, snap_files FROM data.e2e_derived_rows")
+  const out = await pool.query("SELECT src_rows, snap_files, tile_value FROM data.e2e_derived_rows")
   assert.equal(Number(out.rows[0].src_rows), srcCount)
   assert.equal(Number(out.rows[0].snap_files), 2)
+  assert.equal(Number(out.rows[0].tile_value), 2)
 }, { timeout: 180_000 })
 
 test("table file: rows travel through /out and land atomically", { skip: !AVAILABLE }, async () => {
   const fileDef: IntegrationDefinition = {
     id: "e2e_file",
-    name: "File channel",
+    name: { _base: "en", en: "File channel" },
     trigger: {},
     runtime: "python3.12",
     destinations: [
@@ -344,7 +444,7 @@ def run(ctx):
 test("workDiskMb: over-quota /work warns, then refuses the next run", { skip: !AVAILABLE }, async () => {
   const quotaDef: IntegrationDefinition = {
     id: "e2e_quota",
-    name: "Quota",
+    name: { _base: "en", en: "Quota" },
     trigger: {},
     runtime: "python3.12",
     limits: { workDiskMb: 1 },
@@ -420,7 +520,10 @@ test("scratch run: session schema, preview layer, no install, cleanup", { skip: 
   const layers = await pool.query("SELECT id FROM app.raster_layers WHERE session_id = $1", [sessionId])
   assert.equal(layers.rows.length, 1)
   assert.equal(layers.rows[0].id, scratchLayerId(sessionId, "e2e_layer"))
-  const snapshot = await pool.query("SELECT path FROM app.raster_snapshots WHERE layer_id = $1", [layers.rows[0].id])
+  const snapshot = await pool.query(
+    "SELECT src.path FROM app.raster_snapshots s JOIN app.raster_sources src ON src.snapshot_id = s.id WHERE s.layer_id = $1",
+    [layers.rows[0].id]
+  )
   assert.equal(snapshot.rows.length, 1)
   await access(deps.store.absolute(snapshot.rows[0].path))
 
@@ -436,7 +539,7 @@ test("scratch run: session schema, preview layer, no install, cleanup", { skip: 
 test("disk monitor kills a job that overruns its /work quota", { skip: !AVAILABLE }, async () => {
   await installIntegration(pool, {
     id: "e2e_hog",
-    name: "Disk hog",
+    name: { _base: "en", en: "Disk hog" },
     trigger: {},
     runtime: "python3.12",
     limits: { workDiskMb: 5, timeoutMs: 120_000 },

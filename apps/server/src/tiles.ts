@@ -7,6 +7,7 @@ import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { BandRendering } from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
+import { SourceRef } from "./catalog.js"
 
 const execFileP = promisify(execFile)
 
@@ -20,6 +21,24 @@ function tileBounds(z: number, x: number, y: number): [number, number, number, n
   const maxY = MERCATOR_EXTENT - y * size
   return [minX, maxY - size, minX + size, maxY]
 }
+
+/** WGS84 [west, south, east, north] of a slippy tile. */
+function tileBbox(z: number, x: number, y: number): [number, number, number, number] {
+  const n = 2 ** z
+  const lat = (ty: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * ty) / n))) * 180) / Math.PI
+  return [(x / n) * 360 - 180, lat(y + 1), ((x + 1) / n) * 360 - 180, lat(y)]
+}
+
+/** Whether two [w, s, e, n] boxes overlap. */
+function overlaps(a: [number, number, number, number], b: [number, number, number, number]): boolean {
+  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1]
+}
+
+/** A fully transparent PNG, served for tiles no source covers. */
+const EMPTY_TILE = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64"
+)
 
 /** gdaldem color-relief ramp text from a color map; nodata renders transparent. */
 function rampText(rendering: BandRendering): string {
@@ -51,10 +70,12 @@ export class TileRenderer {
   }
 
   /**
-   * Returns the PNG for one tile, rendering and caching on miss.
-   * @param snapshotPath - Store-relative path of the snapshot COG
+   * Returns the PNG for one tile, rendering and caching on miss. Sources
+   * not touching the tile are skipped; several touching it are mosaicked
+   * through a VRT; none touching it is a transparent tile.
+   * @param sources - The snapshot's files with their footprints
    * @param bandId - Band being drawn; part of the cache key, since bands of one
-   *   snapshot share a path but render to different pixels
+   *   snapshot share files but render to different pixels
    * @param rendering - Band rendering config (color map, resampling)
    * @param alive - Rendering stops between steps once this returns false
    *   (the requester hung up); the tile resolves to null instead
@@ -62,7 +83,7 @@ export class TileRenderer {
   async tile(
     layerId: string,
     snapshotId: string,
-    snapshotPath: string,
+    sources: SourceRef[],
     bandId: string,
     rendering: BandRendering,
     z: number,
@@ -82,6 +103,10 @@ export class TileRenderer {
       // render below
     }
 
+    const bbox = tileBbox(z, x, y)
+    const touching = sources.filter(source => overlaps(source.bbox, bbox))
+    if (touching.length === 0) return EMPTY_TILE
+
     const [minX, minY, maxX, maxY] = tileBounds(z, x, y)
     const work = path.join(tmpdir(), `tile-${randomUUID().slice(0, 8)}`)
     await mkdir(work, { recursive: true })
@@ -93,11 +118,16 @@ export class TileRenderer {
       const png = path.join(work, "tile.png")
       const resampling = rendering.resampling === "average" ? "average" : "near"
       if (!alive()) return null
+      let input = this.store.absolute(touching[0].path)
+      if (touching.length > 1) {
+        input = path.join(work, "mosaic.vrt")
+        await execFileP("gdalbuildvrt", ["-q", input, ...touching.map(source => this.store.absolute(source.path))])
+      }
       await execFileP("gdalwarp", [
         "-q", "-t_srs", "EPSG:3857",
         "-te", String(minX), String(minY), String(maxX), String(maxY),
         "-ts", "256", "256", "-r", resampling,
-        this.store.absolute(snapshotPath), warped
+        input, warped
       ])
       if (!alive()) return null
       await execFileP("gdaldem", ["color-relief", "-q", "-alpha", warped, ramp, colored])
@@ -113,22 +143,26 @@ export class TileRenderer {
   }
 
   /**
-   * Reads one pixel of a snapshot COG at a WGS84 lon/lat. Null when the
-   * point is outside the raster, the file cannot be read, or the value is
-   * not a finite number.
+   * Reads one pixel of a snapshot at a WGS84 lon/lat, from the first of its
+   * files covering the point that yields a value. Null when no file covers
+   * the point, none can be read, or the value is not a finite number.
    */
-  async sample(snapshotPath: string, bandIndex: number, lon: number, lat: number): Promise<number | null> {
-    try {
-      const { stdout } = await execFileP(
-        "gdallocationinfo",
-        ["-valonly", "-wgs84", "-b", String(bandIndex), this.store.absolute(snapshotPath), String(lon), String(lat)],
-        { timeout: 15_000 }
-      )
-      const value = Number(stdout.trim())
-      return Number.isFinite(value) ? value : null
-    } catch {
-      return null
+  async sample(sources: SourceRef[], bandIndex: number, lon: number, lat: number): Promise<number | null> {
+    for (const source of sources) {
+      if (!overlaps(source.bbox, [lon, lat, lon, lat])) continue
+      try {
+        const { stdout } = await execFileP(
+          "gdallocationinfo",
+          ["-valonly", "-wgs84", "-b", String(bandIndex), this.store.absolute(source.path), String(lon), String(lat)],
+          { timeout: 15_000 }
+        )
+        const value = Number(stdout.trim())
+        if (Number.isFinite(value)) return value
+      } catch {
+        // unreadable or outside this file; try the next
+      }
     }
+    return null
   }
 
   /** Removes a layer's whole cache subtree (all snapshots); missing is fine. */
