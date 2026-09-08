@@ -386,7 +386,7 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
           <LinkCard
             href="#/explore"
             icon="ask"
-            title={T`Explore the data`}
+            title={T`Ask a question`}
             description={T`Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Explore.`}
             fact={T`Reads all ${plural(sources, T`data source`, T`data sources`)}`}
           />
@@ -414,8 +414,8 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
         <LinkCard
           href="#/data"
           icon="data"
-          title={T`Explore your data`}
-          description={T`Browse the tables and layers directly, or open them on the map.`}
+          title={T`Browse the data`}
+          description={T`See the tables and layers directly, or open them on the map.`}
           fact={`${plural(counts.tables, T`table`, T`tables`)} · ${plural(counts.rasters, T`raster layer`, T`raster layers`)}`}
         />
       </div>

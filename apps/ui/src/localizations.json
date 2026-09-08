@@ -6307,6 +6307,24 @@
       "es": "Use una contraseña de al menos 8 caracteres.",
       "mg": "Mampiasà tenimiafina misy tarehintsoratra 8 farafahakeliny.",
       "sw": "Tumia nenosiri lenye angalau herufi 8."
+    },
+    {
+      "_base": "en",
+      "en": "Browse the data",
+      "fr": "Parcourir les données",
+      "pt": "Explorar os dados",
+      "es": "Explorar los datos",
+      "mg": "Jereo ny angona",
+      "sw": "Vinjari data"
+    },
+    {
+      "_base": "en",
+      "en": "See the tables and layers directly, or open them on the map.",
+      "fr": "Consultez directement les tables et les couches, ou ouvrez-les sur la carte.",
+      "pt": "Veja as tabelas e camadas diretamente ou abra-as no mapa.",
+      "es": "Consulte las tablas y capas directamente o ábralas en el mapa.",
+      "mg": "Jereo mivantana ny tabilao sy ny sosona, na sokafy eo amin’ny sarintany.",
+      "sw": "Tazama majedwali na tabaka moja kwa moja, au uzifungue kwenye ramani."
     }
   ],
   "unused": [
@@ -6336,9 +6354,10 @@
     "Contents",
     "{0} snapshot",
     "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.",
-    "Ask a question",
     "Plain language, answered from your data, with the query it ran shown.",
     "{0} already built",
+    "Explore your data",
+    "Browse the tables and layers directly, or open them on the map.",
     "Skills",
     "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
     "not installed",
