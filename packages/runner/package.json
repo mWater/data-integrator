@@ -1,5 +1,5 @@
 {
-  "name": "@data-integrator/runner",
+  "name": "@pathfinder/runner",
   "version": "0.1.0",
   "description": "Sandboxed job runner: podman + gVisor execution of integration jobs",
   "license": "Apache-2.0",

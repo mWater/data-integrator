@@ -1,6 +1,6 @@
 # Architecture
 
-Open-source, self-hosted data integrator (Apache 2.0, DPG-aligned). Ingests multi-source
+mWater Pathfinder: open-source, self-hosted data integrator (Apache 2.0, DPG-aligned). Ingests multi-source
 water/climate data (mostly raster), harmonizes it, stores it in PostgreSQL/PostGIS plus a
 file-backed raster store, and exposes it via API, dashboard, and Explore, an AI query agent. An agentic
 AI designs, tests, and maintains the ingestion pipelines.

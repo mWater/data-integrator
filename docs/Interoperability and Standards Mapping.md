@@ -51,9 +51,9 @@ serializations:
   by QGIS, ArcGIS, web mapping libraries, and spatial ETL tools.
 
 Geometry columns accept GeoJSON on ingestion and are stored in WGS 84.
-Column types are drawn from a small declared vocabulary (text, numeric,
-integer, boolean, timestamp, date, json, geometry) that maps onto standard
-SQL types, so the schema of every destination table is portable.
+Column types are drawn from a small declared vocabulary (text, number,
+integer, boolean, date, datetime, geometry, enum, json) that maps onto
+standard SQL types, so the schema of every destination table is portable.
 
 ### 2.2 Raster data
 
@@ -73,16 +73,16 @@ Consequences:
 
 Source-side, integrations commonly consume NetCDF (including CF-convention
 files), GRIB2, HDF, GeoPackage, shapefile archives, and plain GeoTIFF; the
-Python runtime image carries the geospatial stack (GDAL and friends) to read
-them. Harmonization to the storage formats above happens inside the
-integration, so upstream format diversity never reaches consumers.
+runtime images carry an open geospatial stack that reads them.
+Harmonization to the storage formats above happens inside the integration,
+so upstream format diversity never reaches consumers.
 
 ### 2.3 Map tiles
 
 - **Raster tiles** are 256-pixel PNG tiles in the XYZ addressing scheme in
-  Web Mercator — the convention consumed by every mainstream web mapping
-  client (MapLibre, Leaflet, OpenLayers, Google-style slippy maps). Tile
-  URLs pin the snapshot id, making them immutable and safely cacheable.
+  Web Mercator, the convention consumed by every mainstream web mapping
+  client (MapLibre, Leaflet, OpenLayers among them). Tile URLs pin the
+  snapshot id, making them immutable and safely cacheable.
 - **Vector tiles** are Mapbox Vector Tile 2.1 protocol buffers, produced for
   dashboard map queries and for direct map views of destination tables with
   geometry.
@@ -128,7 +128,7 @@ model configured.
 ### 4.2 Webhooks (push ingestion)
 
 Push-capable sources deliver events by HTTP POST of a JSON body to a
-per-integration capability URL — an unguessable URL that is itself the
+per-integration capability URL: an unguessable URL that is itself the
 credential, rotatable by an administrator. Payload conventions are
 deliberately liberal: a single JSON object, an array of objects, or an
 `{"events": [...]}` wrapper are all accepted; malformed events are rejected
@@ -145,8 +145,8 @@ with OGC Simple Features / SQL-MM spatial functions under a read-only role
 scoped to destination data and the catalog. Promoted raster snapshots are
 registered as out-of-database rasters in this surface, so zonal statistics
 and point sampling run in SQL without pixels entering the database. For
-national analysts, this is a familiar, standard interface: any PostGIS
-literate user or BI tool can be granted the same read-only role.
+national analysts, this is a familiar, standard interface: any analyst or
+BI tool fluent in spatial SQL can be granted the same read-only role.
 
 ## 5. Ingestion-side protocols
 
@@ -239,6 +239,6 @@ An implementation is interoperable with this ecosystem when it:
    authentication and the role model of 4.1;
 5. accepts webhook payloads per 4.2 on rotatable capability URLs.
 
-Everything else — server language, database engine, container sandbox, tile
-renderer, AI provider — is an implementation choice, substitutable without
+Everything else (server language, database engine, container sandbox, tile
+renderer, AI provider) is an implementation choice, substitutable without
 breaking any client, source, or shared library entry.

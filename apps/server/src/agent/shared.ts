@@ -1,7 +1,7 @@
 /** Prompt/schema building blocks shared by the SQL-facing agents. */
 
 import pg from "pg"
-import { localizeString } from "@data-integrator/definitions"
+import { localizeString } from "@pathfinder/definitions"
 import { listTables } from "../queryApi.js"
 
 /**

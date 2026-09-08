@@ -5,10 +5,10 @@ import { promisify } from "node:util"
 import { mkdtemp, readFile, access } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { Runner, parseJobOutput } from "@data-integrator/runner"
+import { Runner, parseJobOutput } from "@pathfinder/runner"
 
 const execFileP = promisify(execFile)
-const IMAGE = "localhost/integrator-runtime-node:dev"
+const IMAGE = "localhost/pathfinder-runtime-node:dev"
 
 async function ok(cmd: string, args: string[]): Promise<boolean> {
   try {

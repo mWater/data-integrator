@@ -29,7 +29,7 @@ export function Login({ onLogin }: LoginProps) {
   return (
     <main className="login-page">
       <form className="login-card" onSubmit={onSubmit}>
-        <h1>Data Integrator</h1>
+        <h1>mWater Pathfinder</h1>
         <input
           type="email"
           value={email}

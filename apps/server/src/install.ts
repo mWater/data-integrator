@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import pg from "pg"
-import { IntegrationDefinition } from "@data-integrator/definitions"
+import { IntegrationDefinition } from "@pathfinder/definitions"
 import { ensureTable, ident } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
 import { parseAoi } from "./settings.js"

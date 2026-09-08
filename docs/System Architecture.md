@@ -9,9 +9,12 @@ ingestion pipelines themselves.
 
 The architecture is modular, standards-based, and technology-agnostic. It
 specifies components by their responsibilities and contracts so that any
-vendor can implement it with their own technology choices. Section 12 maps
-the architecture onto the reference implementation delivered with this
-document; nothing elsewhere in the document depends on those choices.
+vendor can implement it with their own technology choices. Section 7 maps
+the architecture onto the reference implementation (mWater Pathfinder, the
+proof of concept developed under the same terms of reference and published
+under the same open-source license); nothing elsewhere in the document
+depends on those choices, and no part of the architecture requires that
+implementation.
 
 Companion documents:
 
@@ -223,10 +226,11 @@ The job contract is language-agnostic:
 
 A per-language harness in each runtime image maps this contract onto a single
 entrypoint function, so integration code is a plain module with no
-platform-specific imports. Two runtime images are specified, one for a
-JavaScript runtime and one for Python with the geospatial stack (GDAL,
-rasterio, xarray and friends); further languages are additional images
-implementing the same harness contract, verified by shared contract tests.
+platform-specific imports. Two runtime images are specified, one for
+JavaScript and one for Python, the latter carrying an open geospatial stack
+(raster, array, and vector libraries) that the library's integrations rely
+on; further languages are additional images implementing the same harness
+contract, verified by shared contract tests.
 
 Jobs never touch the database or the raster store. The engine validates
 tabular output against the declared destination schema and applies it
@@ -235,7 +239,7 @@ rows), and registers raster artifacts in the catalog. This is the boundary
 that makes sandboxing meaningful: code inside the sandbox produces data,
 and the platform outside the sandbox decides what to do with it.
 
-Sandbox properties (see also section 9):
+Sandbox properties (see also section 5):
 
 - Rootless containers with a second isolation layer intercepting syscalls.
 - Read-only root filesystem, no capabilities, per-job CPU, memory, disk, and
@@ -279,8 +283,8 @@ which is itself an interoperability path.
 
 **Raster plane.** Raster data stays out of the database. Snapshots are
 cloud-optimized GeoTIFF files in a store that is a local filesystem by
-default (low-connectivity deployments) or an S3-compatible object store, with
-an identical layout either way. A relational catalog records layers,
+default (low-connectivity deployments) or an object store with HTTP range
+reads, with an identical layout either way. A relational catalog records layers,
 snapshots, and bands with footprints, timestamps, units, and rendering hints.
 
 - Snapshots are immutable once promoted. Time-series layers retain history
@@ -297,18 +301,18 @@ snapshots, and bands with footprints, timestamps, units, and rendering hints.
 ```mermaid
 flowchart LR
   subgraph catalog[Relational catalog]
-    L[Layer] --> S1[Snapshot 2026-06]
-    L --> S2[Snapshot 2026-07]
-    L --> S3[Snapshot 2026-08 current]
+    L[Layer] --> SN1[Snapshot 2026-06]
+    L --> SN2[Snapshot 2026-07]
+    L --> SN3[Snapshot 2026-08 current]
   end
   subgraph store[Raster store]
     F1[COG file]
     F2[COG file]
     F3[COG file]
   end
-  S1 --> F1
-  S2 --> F2
-  S3 --> F3
+  SN1 --> F1
+  SN2 --> F2
+  SN3 --> F3
 ```
 
 ### 3.6 Access layer
@@ -452,14 +456,15 @@ Low-connectivity operation is a design constraint, not an afterthought:
 
 Every component above is specified by contract: the definition format, the
 job payload and mount layout, the queue semantics, the storage split, the
-API surface, and the security boundaries. The reference implementation
-realizes them as follows.
+API surface, and the security boundaries. The reference implementation,
+mWater Pathfinder, realizes them as follows. This table is descriptive, not
+normative: it records one set of choices that satisfies the contracts.
 
 | Architecture component | Reference implementation |
 |---|---|
 | Application server | Node.js (TypeScript), single process serving API, dashboard, scheduler, and agents |
 | Relational database | PostgreSQL with PostGIS |
-| Raster store | Local filesystem (S3-compatible optional); cloud-optimized GeoTIFF |
+| Raster store | Local filesystem (S3-compatible object storage optional); cloud-optimized GeoTIFF |
 | Sandbox | podman (rootless) with gVisor syscall isolation; nftables egress policy |
 | Runtime images | `node22` and `python3.12` OCI images with the geospatial stack in Python |
 | Job queue | Database-backed queue with partial unique indexes for serialization |

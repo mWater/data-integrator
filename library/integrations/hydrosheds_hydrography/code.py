@@ -147,7 +147,7 @@ def run(ctx):
     cache_dir = Path(ctx.work_dir) / "hydrosheds_downloads"
     cache_dir.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
-    session.headers["User-Agent"] = "Data-Integrator-HydroSHEDS/1.0"
+    session.headers["User-Agent"] = "Pathfinder-HydroSHEDS/1.0"
 
     regions = _select_regions(session, cache_dir, aoi_parts)
     if not regions:

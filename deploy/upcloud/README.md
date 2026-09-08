@@ -33,7 +33,7 @@ data.
 The repo is private, so the simplest path is to push your local checkout:
 
 ```sh
-rsync -a --exclude node_modules --exclude .git/hooks ./ root@<ip>:/opt/data-integrator/
+rsync -a --exclude node_modules --exclude .git/hooks ./ root@<ip>:/opt/pathfinder/
 ```
 
 (Alternatively set `REPO_URL` — including a token for private access — and the
@@ -45,7 +45,7 @@ script clones it for you.)
 ssh root@<ip>
 ADMIN_EMAIL=you@example.org \
 OPENROUTER_API_KEY=sk-or-... \
-  bash /opt/data-integrator/deploy/upcloud/setup.sh
+  bash /opt/pathfinder/deploy/upcloud/setup.sh
 ```
 
 The API key is optional — without it everything except the designer agent
@@ -58,9 +58,9 @@ What the script sets up:
 - Node 22, pnpm, GDAL, rootless podman + nftables, gVisor `runsc`
 - PostgreSQL 16 + PostGIS with an `integrator` database
 - Builds the workspace and both runtime images as a dedicated `integrator` user
-- Config in `/etc/data-integrator/env` (every variable documented in the
-  repo's `.env.example`), data under `/var/lib/data-integrator`
-- `data-integrator.service` systemd unit (restarts on failure and on reboot)
+- Config in `/etc/pathfinder/env` (every variable documented in the
+  repo's `.env.example`), data under `/var/lib/pathfinder`
+- `pathfinder.service` systemd unit (restarts on failure and on reboot)
 - Caddy on 80/443 proxying to the app on 127.0.0.1:8080
 - ufw allowing only 22/80/443 (the app listens on all interfaces, so this
   keeps plain-HTTP :8080 off the internet); skip with `SETUP_FIREWALL=0`
@@ -81,7 +81,7 @@ tree has to be handed back to the `integrator` user before the build, and
 
 ```sh
 # logs
-ssh root@<ip> journalctl -u data-integrator -f
+ssh root@<ip> journalctl -u pathfinder -f
 ```
 
 `setup.sh` is also safe to re-run; it keeps the existing env file (and secret
@@ -92,14 +92,14 @@ key) and skips work already done.
 To wipe a box back to empty (fresh database, no data) without reprovisioning:
 
 ```sh
-systemctl stop data-integrator
+systemctl stop pathfinder
 sudo -u postgres dropdb integrator
 sudo -u postgres createdb -O integrator integrator
 sudo -u postgres psql -d integrator -c "CREATE EXTENSION postgis"
 sudo -u postgres psql -d integrator -c "CREATE EXTENSION postgis_raster"
 sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on"
 sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'"
-rm -rf /var/lib/data-integrator/{raster-store,work,tile-cache}
+rm -rf /var/lib/pathfinder/{raster-store,work,tile-cache}
 ```
 
 then migrate, recreate the admin, and restart (the `run_cli` shape from
@@ -123,7 +123,7 @@ at Cloudflare, `cloudflared` dials out and proxies to the app on
 3. On the server:
 
    ```sh
-   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/data-integrator/deploy/upcloud/cloudflare-tunnel.sh
+   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/pathfinder/deploy/upcloud/cloudflare-tunnel.sh
    ```
 
 The script installs `cloudflared` as a systemd service, stops Caddy, and
@@ -155,3 +155,13 @@ upctl server delete --delete-storages integrator-test
 - For a real (sub)domain, prefer the Cloudflare Tunnel section above. A plain
   A record also works (swap the hostname in `/etc/caddy/Caddyfile` and reload)
   but leaves the origin IP public.
+
+## Hosts provisioned before the Pathfinder rename
+
+Hosts set up while the project was called Data Integrator keep the old names
+until re-provisioned: `/opt/data-integrator`, `/etc/data-integrator/env`,
+`/var/lib/data-integrator`, the `data-integrator` systemd unit, the
+`integrator` database and role, and `INTEGRATOR_SECRET_KEY` (still honored).
+The scripts here target the new names, so either provision a fresh host or
+move the directories, rename the unit, and update `APP_DIR` and `ENV_FILE`
+before pointing the scripts at an old host.

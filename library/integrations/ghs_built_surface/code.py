@@ -177,7 +177,7 @@ def run(ctx):
     projected_bounds = _projected_bounds(geometry)
 
     session = requests.Session()
-    session.headers.update({"User-Agent": "DataIntegrator-GHSL/1.0"})
+    session.headers.update({"User-Agent": "Pathfinder-GHSL/1.0"})
     listing_response = session.get(TILE_BASE, timeout=(30, 120))
     listing_response.raise_for_status()
     available = set(re.findall(r'href="([^"]+\.zip)"', listing_response.text))

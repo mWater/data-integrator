@@ -1,6 +1,6 @@
 import pg from "pg"
 import { ident } from "./destinations.js"
-import { LocalizedString } from "@data-integrator/definitions"
+import { LocalizedString } from "@pathfinder/definitions"
 
 /** One data source in the catalog: a destination table or a raster layer. */
 export interface DataSource {

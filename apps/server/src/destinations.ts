@@ -2,7 +2,7 @@ import { execFile } from "node:child_process"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { ColumnSpec, TableArtifact, TableArtifactFormat, TableDestination } from "@data-integrator/definitions"
+import { ColumnSpec, TableArtifact, TableArtifactFormat, TableDestination } from "@pathfinder/definitions"
 
 const execFileP = promisify(execFile)
 

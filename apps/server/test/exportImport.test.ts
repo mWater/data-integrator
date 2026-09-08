@@ -11,7 +11,7 @@ import { createApiServer } from "../src/server.js"
 import { installIntegration } from "../src/install.js"
 import { TileRenderer } from "../src/tiles.js"
 import { RasterStore } from "../src/rasterStore.js"
-import { IntegrationDefinition } from "@data-integrator/definitions"
+import { IntegrationDefinition } from "@pathfinder/definitions"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")

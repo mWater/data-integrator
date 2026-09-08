@@ -8,7 +8,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
 import pg from "pg"
-import { TableDestination } from "@data-integrator/definitions"
+import { TableDestination } from "@pathfinder/definitions"
 import { migrate } from "../src/migrations.js"
 import {
   ensureTable,

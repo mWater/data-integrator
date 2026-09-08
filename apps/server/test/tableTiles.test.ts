@@ -12,7 +12,7 @@ import { installIntegration } from "../src/install.js"
 import { ensureTable } from "../src/destinations.js"
 import { TileRenderer } from "../src/tiles.js"
 import { RasterStore } from "../src/rasterStore.js"
-import { IntegrationDefinition, TableDestination } from "@data-integrator/definitions"
+import { IntegrationDefinition, TableDestination } from "@pathfinder/definitions"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")

@@ -42,7 +42,7 @@ the transcript and rendered natively by the host UI:
   browser, CSV download.
 - **chart** — the kit `Chart` component's declarative spec ({type, data, x,
   series, labels, stacked}) bound to a query result. The UI imports `Chart`
-  and `DataTable` from `@data-integrator/kit` directly (plain themed React
+  and `DataTable` from `@pathfinder/kit` directly (plain themed React
   components); assistant charts and dashboard charts are the same renderer.
   The assistant emits the declarative subset only — never raw ECharts.
 - **map** — {layers: [catalog layerIds], geojson from query rows, fit},

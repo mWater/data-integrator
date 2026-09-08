@@ -6,8 +6,8 @@
 import { useEffect, useRef } from "react"
 // Themes come from /host so the eager bundle skips the component barrel
 // (and its echarts side effects); kit components load with the blocks chunk
-import { darkTheme, lightTheme, mountDashboardFrame } from "@data-integrator/kit/host"
-import { KIT_VERSION } from "@data-integrator/kit/version"
+import { darkTheme, lightTheme, mountDashboardFrame } from "@pathfinder/kit/host"
+import { KIT_VERSION } from "@pathfinder/kit/version"
 import { DashboardMeta, execDashboardQuery, getDashboardMeta } from "./api.js"
 import { useAppTheme } from "./theme.js"
 import { localizeData } from "./localization.js"

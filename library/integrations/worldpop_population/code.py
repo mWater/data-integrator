@@ -116,7 +116,7 @@ def _run_command(args, cwd):
 def run(ctx):
     countries, bbox = _runtime_aoi(ctx)
     session = requests.Session()
-    session.headers.update({"User-Agent": "Data-Integrator-WorldPop/1.0"})
+    session.headers.update({"User-Agent": "Pathfinder-WorldPop/1.0"})
     release = _latest_release(session)
     records = _records(session, release, countries)
     previous = ctx.previous_state or {}

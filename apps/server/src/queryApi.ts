@@ -1,5 +1,5 @@
 import pg from "pg"
-import { LocalizedString, ColumnSpec, FilterSpec } from "@data-integrator/definitions"
+import { LocalizedString, ColumnSpec, FilterSpec } from "@pathfinder/definitions"
 import { buildWhere, tableColumns } from "./materialize.js"
 
 /** Hard cap on rows per request; page with limit/offset beyond it. */

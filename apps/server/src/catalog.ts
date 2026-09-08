@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto"
 import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
-import { RasterArtifact, RasterLayerDestination, RasterSource } from "@data-integrator/definitions"
+import { RasterArtifact, RasterLayerDestination, RasterSource } from "@pathfinder/definitions"
 import { RasterStore } from "./rasterStore.js"
 
 const execFileP = promisify(execFile)

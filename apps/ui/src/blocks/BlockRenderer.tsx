@@ -4,8 +4,8 @@
  * echarts and maplibre load only when a transcript actually contains blocks.
  */
 
-import { darkTheme, lightTheme } from "@data-integrator/kit/host"
-import { KitTheme } from "@data-integrator/kit"
+import { darkTheme, lightTheme } from "@pathfinder/kit/host"
+import { KitTheme } from "@pathfinder/kit"
 import { AssistantResult } from "../api.js"
 import { useAppTheme } from "../theme.js"
 import { ChartBlock } from "./ChartBlock.js"

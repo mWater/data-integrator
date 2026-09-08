@@ -16,18 +16,18 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.39
         version: 3.0.39(zod@4.4.3)
-      '@data-integrator/definitions':
-        specifier: workspace:*
-        version: link:../../packages/definitions
-      '@data-integrator/kit':
-        specifier: workspace:*
-        version: link:../../packages/kit
-      '@data-integrator/runner':
-        specifier: workspace:*
-        version: link:../../packages/runner
       '@openrouter/ai-sdk-provider':
         specifier: ^3.0.0
         version: 3.0.0(ai@7.0.55(zod@4.4.3))(zod@4.4.3)
+      '@pathfinder/definitions':
+        specifier: workspace:*
+        version: link:../../packages/definitions
+      '@pathfinder/kit':
+        specifier: workspace:*
+        version: link:../../packages/kit
+      '@pathfinder/runner':
+        specifier: workspace:*
+        version: link:../../packages/runner
       '@tailwindcss/cli':
         specifier: ^4.3.3
         version: 4.3.3
@@ -68,10 +68,10 @@ importers:
 
   apps/ui:
     dependencies:
-      '@data-integrator/definitions':
+      '@pathfinder/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@data-integrator/kit':
+      '@pathfinder/kit':
         specifier: workspace:*
         version: link:../../packages/kit
       cronstrue:
@@ -193,7 +193,7 @@ importers:
 
   runtimes/node:
     devDependencies:
-      '@data-integrator/runner':
+      '@pathfinder/runner':
         specifier: workspace:*
         version: link:../../packages/runner
       '@types/node':
@@ -208,7 +208,7 @@ importers:
 
   runtimes/python:
     devDependencies:
-      '@data-integrator/runner':
+      '@pathfinder/runner':
         specifier: workspace:*
         version: link:../../packages/runner
       '@types/node':

@@ -11,7 +11,7 @@
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
-import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
+import { LocalizedString, IntegrationDefinition } from "@pathfinder/definitions"
 import { canonicalDefinition, installIntegration, ID_PATTERN } from "./install.js"
 
 /** Fields the deployment owns once installed: carried over on update, ignored in update detection. */

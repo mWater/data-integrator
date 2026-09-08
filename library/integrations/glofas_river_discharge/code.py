@@ -337,7 +337,7 @@ def run(ctx):
     session = requests.Session()
     session.headers.update({
         "PRIVATE-TOKEN": token.strip(),
-        "User-Agent": "Data-Integrator-GloFAS/1.0",
+        "User-Agent": "Pathfinder-GloFAS/1.0",
     })
 
     collection, constraints = _catalogue_and_constraints(session)

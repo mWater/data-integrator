@@ -11,7 +11,7 @@
 #   ADMIN_EMAIL          (required) first admin account; password is printed once at the end
 #   OPENROUTER_API_KEY   (optional) enables the designer agent
 #   ANTHROPIC_API_KEY    (optional) alternative agent provider
-#   REPO_URL             (optional) git URL to clone if /opt/data-integrator doesn't exist
+#   REPO_URL             (optional) git URL to clone if /opt/pathfinder doesn't exist
 #                        yet; for a private repo, rsync your checkout there instead
 #   REPO_REF             (optional) branch/tag to clone, default main
 #   SETUP_FIREWALL       default 1; ufw allowing only 22/80/443 (the app itself
@@ -21,10 +21,10 @@ set -euo pipefail
 ADMIN_EMAIL=${ADMIN_EMAIL:?set ADMIN_EMAIL=you@example.org}
 REPO_REF=${REPO_REF:-main}
 SETUP_FIREWALL=${SETUP_FIREWALL:-1}
-APP_DIR=/opt/data-integrator
-APP_USER=integrator
-DATA_DIR=/var/lib/data-integrator
-ENV_FILE=/etc/data-integrator/env
+APP_DIR=/opt/pathfinder
+APP_USER=pathfinder
+DATA_DIR=/var/lib/pathfinder
+ENV_FILE=/etc/pathfinder/env
 export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Base packages"
@@ -66,19 +66,19 @@ fi
 echo "==> PostgreSQL database"
 systemctl enable --now postgresql
 DB_PASS=$(openssl rand -hex 16)
-sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='integrator'" | grep -q 1 ||
-  sudo -u postgres psql -c "CREATE USER integrator PASSWORD '${DB_PASS}'"
-sudo -u postgres psql -c "ALTER USER integrator PASSWORD '${DB_PASS}'"
-sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='integrator'" | grep -q 1 ||
-  sudo -u postgres createdb -O integrator integrator
-sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis"
-# Migrations run as the unprivileged integrator user, so the superuser-only parts
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='pathfinder'" | grep -q 1 ||
+  sudo -u postgres psql -c "CREATE USER pathfinder PASSWORD '${DB_PASS}'"
+sudo -u postgres psql -c "ALTER USER pathfinder PASSWORD '${DB_PASS}'"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='pathfinder'" | grep -q 1 ||
+  sudo -u postgres createdb -O pathfinder pathfinder
+sudo -u postgres psql -d pathfinder -c "CREATE EXTENSION IF NOT EXISTS postgis"
+# Migrations run as the unprivileged pathfinder user, so the superuser-only parts
 # happen here: postgis_raster is not a trusted extension, and 0006 needs the
 # sql_engine role to exist (ADMIN OPTION lets that migration grant it onward).
-sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis_raster"
+sudo -u postgres psql -d pathfinder -c "CREATE EXTENSION IF NOT EXISTS postgis_raster"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='sql_engine'" | grep -q 1 ||
   sudo -u postgres psql -c "CREATE ROLE sql_engine NOLOGIN"
-sudo -u postgres psql -c "GRANT sql_engine TO integrator WITH ADMIN OPTION"
+sudo -u postgres psql -c "GRANT sql_engine TO pathfinder WITH ADMIN OPTION"
 
 echo "==> App user"
 id "$APP_USER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$APP_USER"
@@ -106,33 +106,33 @@ as_app() {
 echo "==> Build (pnpm + runtime images; this is the slow part)"
 as_app "pnpm install --frozen-lockfile"
 as_app "pnpm -r build"
-as_app "podman build -t localhost/integrator-runtime-python:dev runtimes/python/"
-as_app "podman build -t localhost/integrator-runtime-node:dev runtimes/node/"
+as_app "podman build -t localhost/pathfinder-runtime-python:dev runtimes/python/"
+as_app "podman build -t localhost/pathfinder-runtime-node:dev runtimes/node/"
 
 echo "==> Environment file"
-mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache} /etc/data-integrator
+mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache} /etc/pathfinder
 chown -R "$APP_USER:$APP_USER" "$DATA_DIR"
 # Out-db raster SQL: Postgres reads the COGs directly (postgres user needs
 # traverse+read on the store) and the out-db settings are superuser-set
 chmod 755 "$DATA_DIR" "$DATA_DIR"/raster-store
 setfacl -R -d -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
 setfacl -R -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
-sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on" || true
-sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'" || true
+sudo -u postgres psql -c "ALTER DATABASE pathfinder SET postgis.enable_outdb_rasters = on" || true
+sudo -u postgres psql -c "ALTER DATABASE pathfinder SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'" || true
 if [ ! -f "$ENV_FILE" ]; then
   cat > "$ENV_FILE" <<EOF
-DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator
+DATABASE_URL=postgres://pathfinder:${DB_PASS}@127.0.0.1:5432/pathfinder
 PORT=8080
 RASTER_STORE_PATH=${DATA_DIR}/raster-store
 WORK_ROOT=${DATA_DIR}/work
 TILE_CACHE_PATH=${DATA_DIR}/tile-cache
-INTEGRATOR_SECRET_KEY=$(openssl rand -base64 32)
+PATHFINDER_SECRET_KEY=$(openssl rand -base64 32)
 EOF
   [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" >> "$ENV_FILE"
   [ -n "${ANTHROPIC_API_KEY:-}" ] && echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" >> "$ENV_FILE"
 else
   # keep the existing file (and its secret key), but refresh the DB password we just set
-  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator|" "$ENV_FILE"
+  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgres://pathfinder:${DB_PASS}@127.0.0.1:5432/pathfinder|" "$ENV_FILE"
 fi
 chown root:"$APP_USER" "$ENV_FILE"
 chmod 640 "$ENV_FILE"
@@ -146,9 +146,9 @@ run_cli migrate
 ADMIN_OUTPUT=$(run_cli user add "$ADMIN_EMAIL" admin 2>&1) || ADMIN_OUTPUT="(user add failed - probably already exists: $ADMIN_OUTPUT)"
 
 echo "==> systemd service"
-cat > /etc/systemd/system/data-integrator.service <<EOF
+cat > /etc/systemd/system/pathfinder.service <<EOF
 [Unit]
-Description=Data Integrator test server
+Description=mWater Pathfinder test server
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -165,7 +165,7 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-systemctl enable --now data-integrator
+systemctl enable --now pathfinder
 
 echo "==> HTTPS via Caddy + sslip.io"
 PUBLIC_IP=$(curl -4fsS https://ifconfig.me || curl -4fsS https://api.ipify.org)
@@ -194,6 +194,6 @@ echo
 echo " Admin account:"
 echo "   ${ADMIN_OUTPUT}"
 echo
-echo " Service:  systemctl status data-integrator"
-echo " Logs:     journalctl -u data-integrator -f"
+echo " Service:  systemctl status pathfinder"
+echo " Logs:     journalctl -u pathfinder -f"
 echo "============================================================"

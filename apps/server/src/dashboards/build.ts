@@ -23,7 +23,7 @@ const ALLOWED_IMPORTS = new Set(["react", "react/jsx-runtime", "@kit/ui"])
  * The kit version this server builds against, recorded on each saved version
  * as provenance. It is not a pin: the loader uses the current kit either way.
  */
-export { KIT_VERSION } from "@data-integrator/kit/version"
+export { KIT_VERSION } from "@pathfinder/kit/version"
 
 /** Result of a dashboard build. */
 export interface DashboardBuildResult {
@@ -44,7 +44,7 @@ mountDashboard(Dashboard)
 `
 
 function kitTypesPath(): string {
-  return path.join(path.dirname(require.resolve("@data-integrator/kit")), "index.d.ts")
+  return path.join(path.dirname(require.resolve("@pathfinder/kit")), "index.d.ts")
 }
 
 function reactTypesDir(): string {

@@ -20,7 +20,7 @@ NODATA = -9999.0
 BACKFILL_MONTHS = 24
 SOURCE_VARIANT = "gdo-era5-spi3-final-dekad"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "DataIntegrator-Copernicus-SPI3/2.0"})
+SESSION.headers.update({"User-Agent": "Pathfinder-Copernicus-SPI3/2.0"})
 
 
 def get_text(url):

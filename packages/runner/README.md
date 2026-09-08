@@ -1,4 +1,4 @@
-# @data-integrator/runner
+# @pathfinder/runner
 
 Payload-opaque job executor over rootless podman + gVisor. Owns sandboxing, resource
 limits, mounts (`/in` read-only, `/work`, `/out`), and the egress policy (public
@@ -6,14 +6,14 @@ internet allowed, private/link-local/CGNAT denied via nftables in the rootless i
 netns). Knows nothing about integrations, queues, or destinations.
 
 ```ts
-import { Runner, parseJobOutput } from "@data-integrator/runner"
+import { Runner, parseJobOutput } from "@pathfinder/runner"
 
 const runner = new Runner()
 await runner.ensureReady() // verifies podman+runsc, creates job network, applies egress rules
 
 const result = await runner.run(
   {
-    image: "ghcr.io/data-integrator/runtime-python:latest",
+    image: "ghcr.io/pathfinder/runtime-python:latest",
     payload: { definition, secrets, previousState, params },
     mounts: { inDir, workDir, outDir },
     limits: { cpus: 2, memoryMb: 2048, timeoutMs: 900_000 }

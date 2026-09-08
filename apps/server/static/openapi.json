@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Data Integrator API",
+    "title": "mWater Pathfinder API",
     "version": "0.1.0",
     "description": "Query interface over the harmonized dataset: tabular destinations and the raster catalog. Authenticate with a session cookie (UI) or a personal access token (Authorization: Bearer dit_...). Data access works with no AI configured."
   },

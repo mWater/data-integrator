@@ -6,7 +6,7 @@
  */
 
 import pg from "pg"
-import { Aoi, SUPPORTED_LOCALES } from "@data-integrator/definitions"
+import { Aoi, SUPPORTED_LOCALES } from "@pathfinder/definitions"
 import { COUNTRIES } from "./countries.js"
 
 /**
@@ -26,7 +26,7 @@ export const DEFAULT_AOI_KEY = "default_aoi"
 export const SITE_TITLE_KEY = "site_title"
 
 /** Title to fall back to when the deployment has not set one. */
-export const DEFAULT_SITE_TITLE = "Data Integrator"
+export const DEFAULT_SITE_TITLE = "mWater Pathfinder"
 
 /** Reads one setting; null when unset. */
 export async function getSetting<T>(pool: pg.Pool, key: string): Promise<T | null> {

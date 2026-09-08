@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { LanguageModel, ToolSet, tool } from "ai"
 import { z } from "zod"
-import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
+import { IntegrationDefinition, RuntimeId } from "@pathfinder/definitions"
 import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
@@ -91,7 +91,7 @@ const FAIL_STREAK_WARN = 3
 const FAIL_STREAK_PAUSE = 5
 
 /** System prompt: definition format, code contract, and the design workflow. */
-const SYSTEM = `You are the integration designer for the Data Integrator platform. You design and
+const SYSTEM = `You are the integration designer for the mWater Pathfinder platform. You design and
 repair one integration per session: a JSON definition plus one self-contained code file
 that ingests external data into Postgres tables and/or the raster catalog.
 
@@ -757,7 +757,7 @@ ${index}`
   private async loadSecrets(state: DesignerState): Promise<Record<string, string> | string> {
     const names = state.definition.secrets ?? []
     if (names.length === 0) return {}
-    if (!this.deps.secretKey) return "Error: definition declares secrets but INTEGRATOR_SECRET_KEY is not configured"
+    if (!this.deps.secretKey) return "Error: definition declares secrets but PATHFINDER_SECRET_KEY is not configured"
     try {
       return await getSecrets(this.deps.pool, this.deps.secretKey, state.definition.id, names)
     } catch (err) {

@@ -5,12 +5,12 @@
  * locale change will not reach it without a reload.
  */
 import cronstrue from "cronstrue"
-import { type LocalizedString } from "@data-integrator/definitions"
+import { type LocalizedString } from "@pathfinder/definitions"
 import { Localizer, type LocalizerData } from "ez-localize"
 import localizations from "./localizations.json"
 
 /** localStorage key holding the operator's chosen locale. */
-const LOCALE_KEY = "dataIntegrator.locale"
+const LOCALE_KEY = "pathfinder.locale"
 
 const data = localizations as LocalizerData
 

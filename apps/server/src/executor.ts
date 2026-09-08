@@ -4,8 +4,8 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { Runner, parseJobOutput } from "@data-integrator/runner"
-import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
+import { Runner, parseJobOutput } from "@pathfinder/runner"
+import { IntegrationDefinition, RunResult } from "@pathfinder/definitions"
 import {
   applyRows,
   applyStagedTable,
@@ -522,6 +522,6 @@ async function finishRun(
 
 /** Secret key or a clear error when definitions need secrets and none is configured. */
 function requireKey(deps: ExecutorDeps): Buffer {
-  if (!deps.secretKey) throw new Error("INTEGRATOR_SECRET_KEY is not configured")
+  if (!deps.secretKey) throw new Error("PATHFINDER_SECRET_KEY is not configured")
   return deps.secretKey
 }

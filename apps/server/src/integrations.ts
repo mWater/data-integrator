@@ -1,5 +1,5 @@
 import pg from "pg"
-import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
+import { LocalizedString, IntegrationDefinition } from "@pathfinder/definitions"
 
 /** Summary row for the integrations list. */
 export interface IntegrationSummary {

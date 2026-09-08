@@ -1,5 +1,5 @@
 {
-  "name": "@data-integrator/kit",
+  "name": "@pathfinder/kit",
   "version": "0.1.0",
   "description": "Dashboard component kit: the sanctioned UI surface for agent-designed dashboards",
   "license": "Apache-2.0",
