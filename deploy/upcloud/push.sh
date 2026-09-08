@@ -13,7 +13,7 @@ set -euo pipefail
 TARGET=${1:?usage: push.sh root@<ip>}
 IMAGES=${IMAGES:-0}
 APP_DIR=/opt/pathfinder
-APP_USER=integrator
+APP_USER=pathfinder
 ENV_FILE=/etc/pathfinder/env
 
 # Push the whole checkout regardless of where this was invoked from
