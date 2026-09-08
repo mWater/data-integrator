@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /** Full-page dashboard viewer: a slim toolbar over the sandboxed frame. */
 
 import { useEffect, useRef, useState } from "react"
@@ -18,11 +19,16 @@ interface Props {
 export function DashboardView({ dashboardId, canDesign }: Props) {
   const [detail, setDetail] = useState<DashboardDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const printRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
-    getDashboard(dashboardId).then(setDetail, (e: Error) => setError(e.message))
-  }, [dashboardId])
+    let cancelled = false
+    setError(null)
+    setDetail(null)
+    getDashboard(dashboardId).then(d => { if (!cancelled) setDetail(d) }, (e: Error) => { if (!cancelled) setError(e.message) })
+    return () => { cancelled = true }
+  }, [dashboardId, retry])
 
   async function edit() {
     setError(null)
@@ -35,12 +41,13 @@ export function DashboardView({ dashboardId, canDesign }: Props) {
     }
   }
 
-  if (error) return <main className="list-page"><p className="error">{error}</p></main>
-  if (!detail) return null
+  if (error) return <main className="list-page"><a className="page-back" href="#/dashboards">← {T`Dashboards`}</a><LoadState error={error} onRetry={() => setRetry(n => n + 1)} /></main>
+  if (!detail) return <main className="list-page"><LoadState onRetry={() => setRetry(n => n + 1)} /></main>
 
   return (
     <main className="dashboard-page">
       <div className="dashboard-toolbar">
+        <a className="page-back" href="#/dashboards">← {T`Dashboards`}</a>
         <h1>{detail.name}</h1>
         {detail.public && <span className="chip chip-public">{T`public`}</span>}
         <span className="spacer" />

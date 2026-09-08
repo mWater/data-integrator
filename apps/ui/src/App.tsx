@@ -247,18 +247,23 @@ export function App() {
     )
   }
 
+  const activeSection = route.tableId || route.layerId || route.data ? "data"
+    : route.dashboardId || route.dashboards ? "dashboards"
+    : route.integrationId || route.integrations || route.designPrompt !== null ? "integrations"
+    : route.library ? "library" : route.ask ? "ask"
+    : route.sessionId || route.sessions || route.settings || route.settingsUsers || route.aiPrivacy || route.howItWorks ? null : "home"
   const canDesign = user.role !== "viewer"
   return (
     <div className="app">
       <header className="topbar">
         <a href="#/" className="brand">Data Integrator</a>
         <nav>
-          <a href="#/">{T`Home`}</a>
-          <a href="#/data">{T`Data`}</a>
-          <a href="#/ask">{T`Ask`}</a>
-          <a href="#/integrations">{T`Integrations`}</a>
-          <a href="#/library">{T`Library`}</a>
-          <a href="#/dashboards">{T`Dashboards`}</a>
+          <a href="#/" aria-current={activeSection === "home" ? "page" : undefined}>{T`Home`}</a>
+          <a href="#/data" aria-current={activeSection === "data" ? "page" : undefined}>{T`Data`}</a>
+          <a href="#/ask" aria-current={activeSection === "ask" ? "page" : undefined}>{T`Ask`}</a>
+          <a href="#/integrations" aria-current={activeSection === "integrations" ? "page" : undefined}>{T`Integrations`}</a>
+          <a href="#/library" aria-current={activeSection === "library" ? "page" : undefined}>{T`Library`}</a>
+          <a href="#/dashboards" aria-current={activeSection === "dashboards" ? "page" : undefined}>{T`Dashboards`}</a>
         </nav>
         <span style={{ flex: 1 }} />
         <LanguageToggle locale={locale} onLocaleChange={setLocale} />

@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /** Dashboards list page. */
 
 import { useEffect, useState } from "react"
@@ -27,10 +28,12 @@ export function DashboardList({ canDesign }: Props) {
   const [dashboards, setDashboards] = useState<DashboardSummary[] | null>(null)
   const [drafts, setDrafts] = useState<SessionSummary[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [doomed, setDoomed] = useState<DashboardSummary | null>(null)
   const [renaming, setRenaming] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
+    setError(null)
     listDashboards().then((r) => setDashboards(r.dashboards), (e: Error) => setError(e.message))
     // A dashboard only gets a row once the agent saves it; until then the draft
     // lives in its design session, listed here so it is not mistaken for lost
@@ -44,7 +47,7 @@ export function DashboardList({ canDesign }: Props) {
         ),
       () => {}
     )
-  }, [])
+  }, [retry])
 
   async function newDashboard(dashboardId?: string) {
     if (!(await ensureAiAck())) return
@@ -94,9 +97,9 @@ export function DashboardList({ canDesign }: Props) {
           </button>
         ) : null}
       </div>
-      {error ? <div className="error">{error}</div> : null}
+      {error && dashboards !== null ? <div className="error" role="alert">{error}</div> : null}
       {dashboards === null ? (
-        <p>{T`Loading…`}</p>
+        <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       ) : dashboards.length === 0 && drafts.length === 0 ? (
         <p>
           {canDesign ? T`No dashboards yet. Create one with the designer agent.` : T`No dashboards yet.`}
@@ -114,7 +117,7 @@ export function DashboardList({ canDesign }: Props) {
             {drafts.map((s) => (
               <tr key={`draft-${s.id}`} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
                 <td>
-                  <b>{s.firstMessage ?? T`(new)`}</b>
+                  <a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{s.firstMessage ?? T`(new)`}</a>
                   <span className="chip chip-draft">{T`draft`}</span>
                   <div className="dim">
                     {s.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}
@@ -127,7 +130,7 @@ export function DashboardList({ canDesign }: Props) {
             {dashboards.map((d) => (
               <tr key={d.id} onClick={() => openDashboard(d.id)}>
                 <td>
-                  <b>{d.name}</b>
+                  <a href={`#/dashboard/${d.id}`} onClick={e => e.stopPropagation()}>{d.name}</a>
                   {d.public ? (
                     <span
                       className="chip chip-public"

@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /**
  * One raster layer, the way TablePage is one table: what it is on the left,
  * the pixels on the right. Bands and snapshots are both switchable, since a
@@ -103,8 +104,11 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const { mode } = useAppTheme()
   const [layer, setLayer] = useState<LayerDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [bandId, setBandId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
+  const [controlsOpen, setControlsOpen] = useState(false)
+  const controlsToggle = useRef<HTMLButtonElement>(null)
   const [opacity, setOpacity] = useState(0.65)
   const opacityRef = useRef(opacity)
   const inspectRef = useRef({
@@ -117,13 +121,20 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   })
 
   useEffect(() => {
+    let cancelled = false
+    setError(null)
+    setLayer(null)
+    mapRef.current?.remove()
+    mapRef.current = null
     getLayer(layerId, sessionId).then(detail => {
+      if (cancelled) return
       setLayer(detail)
       setBandId(detail.bands[0]?.id ?? null)
       const current = detail.snapshots.findIndex(s => s.id === detail.currentSnapshotId)
       setIndex(current >= 0 ? current : Math.max(0, detail.snapshots.length - 1))
-    }, err => setError(err.message))
-  }, [layerId, sessionId])
+    }, err => { if (!cancelled) setError(err.message) })
+    return () => { cancelled = true }
+  }, [layerId, sessionId, retry])
 
   // The map is created once the layer is known, so the first tiles are right.
   // A theme flip rebuilds it on the other basemap style.
@@ -202,6 +213,13 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer, bandId, mode])
 
+  useEffect(() => {
+    if (!container.current) return
+    const observer = new ResizeObserver(() => mapRef.current?.resize())
+    observer.observe(container.current)
+    return () => observer.disconnect()
+  }, [layer])
+
   // Band and time changes only swap the source's tile template. Retiling is
   // debounced: a slider drag emits every intermediate snapshot, and reloading
   // tiles for each one queues hundreds of requests the browser must drain
@@ -230,11 +248,11 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   if (error) {
     return (
       <main className="list-page">
-        <div className="error">{error}</div>
+        <a className="page-back" href="#/data">← {T`Data`}</a><LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       </main>
     )
   }
-  if (!layer) return null
+  if (!layer) return <main className="list-page"><a className="page-back" href="#/data">← {T`Data`}</a><LoadState onRetry={() => setRetry(n => n + 1)} /></main>
 
   const band = layer.bands.find(b => b.id === bandId) ?? layer.bands[0]
   const snapshot = layer.snapshots[index]
@@ -249,9 +267,18 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   }
 
   return (
-    <main className="layer-page">
-      <aside className="layer-side">
+    <main className={`layer-page${controlsOpen ? " layer-controls-open" : ""}`}>
+      <div className="layer-mobile-toolbar">
+        <div><strong>{localizeData(layer.name)}</strong>{snapshot && <span>{snapshotLabel(snapshot.observed_at, interval)}</span>}</div>
+        <button ref={controlsToggle} className="secondary" aria-expanded={controlsOpen} aria-controls="layer-controls" onClick={() => setControlsOpen(!controlsOpen)}>
+          {controlsOpen ? T`Hide Controls` : T`Map Controls`}
+        </button>
+      </div>
+      <aside id="layer-controls" className="layer-side" aria-label={T`Map controls`} onKeyDown={e => {
+        if (e.key === "Escape" && controlsOpen) { setControlsOpen(false); controlsToggle.current?.focus() }
+      }}>
         <div className="layer-head">
+          <a className="page-back" href="#/data">← {T`Data`}</a>
           <h1>{localizeData(layer.name)}</h1>
           <div className="dim">{layer.id}</div>
           <a className="dim-link" href={`#/integration/${layer.integrationId}`}>

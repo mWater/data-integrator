@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { DataSource, getTableGeometry, getTableRows, listSources, listTableSchemas, TableColumn } from "./api.js"
 import { formatDateTime, localizeData } from "./localization.js"
@@ -15,6 +16,7 @@ interface TablePageProps {
 export function TablePage({ tableId }: TablePageProps) {
   const [source, setSource] = useState<DataSource | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [geometry, setGeometry] = useState<{
     geometryColumn: string | null
     extent: [number, number, number, number] | null
@@ -40,10 +42,11 @@ export function TablePage({ tableId }: TablePageProps) {
       if (found) setSource(found)
       else setError(T`No table "${tableId}"`)
     }, err => setError(err.message))
-  }, [tableId])
+  }, [tableId, retry])
 
   return (
     <main className="list-page wide">
+      <a className="page-back" href="#/data">← {T`Data`}</a>
       <div className="session-head">
         <h1>{source ? localizeData(source.name) : tableId}</h1>
         {source && <span className="chip chip-table">{T`table`}</span>}
@@ -59,8 +62,7 @@ export function TablePage({ tableId }: TablePageProps) {
           {source.updatedAt ? ` · ${T`updated ${formatDateTime(source.updatedAt)}`}` : ""}
         </p>
       )}
-      {error && <div className="error">{error}</div>}
-      {!source && !error && <p>{T`Loading…`}</p>}
+      {!source && <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />}
       {source && geometry?.geometryColumn && (
         <div className="view-toggle">
           <button className={view === "data" ? "" : "secondary"} onClick={() => setView("data")}>
@@ -112,12 +114,13 @@ export function DataTab({ integrationId, tableIds, running, columnSpecs }: DataT
   const [tableId, setTableId] = useState(tableIds[0])
   const [preview, setPreview] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     setPreview(null)
     setError(null)
     getTableRows(integrationId, tableId).then(setPreview, err => setError(err.message))
-  }, [integrationId, tableId, running])
+  }, [integrationId, tableId, running, retry])
 
   return (
     <div>
@@ -128,8 +131,7 @@ export function DataTab({ integrationId, tableIds, running, columnSpecs }: DataT
           ))}
         </select>
       )}
-      {error && <div className="error">{error}</div>}
-      {!preview && !error && <p>{T`Loading…`}</p>}
+      {!preview && <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />}
       {preview && preview.rows.length === 0 && <p>{T`No rows yet.`}</p>}
       {preview && preview.rows.length > 0 && (
         <div className="data-scroll">

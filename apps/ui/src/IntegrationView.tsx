@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CountryBox,
   createSession,
@@ -154,7 +154,8 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   // Data leads when there is data to show; raster-only integrations lead with runs
   const tab = picked ?? (tableIds.length > 0 ? "data" : "runs")
   return (
-    <main className="list-page wide">
+    <main className="list-page integration-page">
+      <a className="integration-back" href="#/integrations">← {T`Integrations`}</a>
       <div className="list-head">
         <div className="list-head-title">
           <h1>{localizeData(definition.name)}</h1>
@@ -302,7 +303,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
         />
       )}
       {tab === "definition" && (
-        <>
+        <div className="integration-definition">
           <ScheduleSection detail={detail} canDesign={canDesign} isAdmin={isAdmin} onChanged={refresh} />
           {canDesign && (
             <SecretsSection
@@ -313,8 +314,8 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
           )}
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <DefinitionTab definition={definition} />
-          <VersionsSection integrationId={integrationId} currentVersion={detail.version} />
-        </>
+          <details className="definition-history"><summary>{T`Version History`}</summary><VersionsSection integrationId={integrationId} currentVersion={detail.version} /></details>
+        </div>
       )}
       {tab === "code" && <pre className="pane pane-block pane-code">{definition.code}</pre>}
     </main>
@@ -387,6 +388,14 @@ function formatBbox(bbox: [number, number, number, number]): string {
 }
 
 /** Props for the schedule section. */
+/** Consistent description and form layout for integration configuration. */
+function DefinitionSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return <section className="definition-section">
+    <div className="definition-section-heading"><h2>{title}</h2><p>{description}</p></div>
+    <div className="definition-section-content">{children}</div>
+  </section>
+}
+
 interface ScheduleSectionProps {
   /** True for admins: enables webhook token rotation */
   isAdmin: boolean
@@ -409,8 +418,13 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
   const [webhook, setWebhook] = useState(trigger.webhook === true)
   const [delay, setDelay] = useState(String(trigger.webhookDelaySeconds ?? 0))
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [hookPath, setHookPath] = useState<string | null>(null)
+
+  const dirty = fromCronDraft(cronDraft) !== (trigger.cron ?? null) ||
+    webhook !== (trigger.webhook === true) ||
+    (webhook && Number(delay) !== (trigger.webhookDelaySeconds ?? 0))
 
   // The capability URL is only fetched when the integration accepts webhooks
   useEffect(() => {
@@ -434,6 +448,7 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
   async function save() {
     setError(null)
     setNotice(null)
+    setBusy(true)
     try {
       const delaySeconds = webhook ? Number(delay) || 0 : 0
       const result = await setIntegrationTrigger(detail.id, {
@@ -447,12 +462,13 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
     }
   }
 
   return (
-    <div className="aoi-section">
-      <h3>{T`Schedule`}</h3>
+    <DefinitionSection title={T`Schedule`} description={T`Choose when this integration runs. Pause it from the actions menu to temporarily stop runs.`}>
       {!canDesign && (
         <p>
           {T`Current:`} <b>{triggerLabel(trigger)}</b>
@@ -460,7 +476,7 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
       )}
       {error && <div className="error">{error}</div>}
       {canDesign && (
-        <div className="aoi-editor">
+        <fieldset className="aoi-editor" disabled={busy} aria-label={T`Schedule`} onChange={() => setNotice(null)}>
           <CronEditor draft={cronDraft} onChange={setCronDraft} />
           <label>
             <input type="checkbox" checked={webhook} onChange={e => setWebhook(e.target.checked)} /> {T`Accept webhook events`}
@@ -479,13 +495,13 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
             </p>
           )}
           <div className="aoi-actions">
-            <button onClick={save}>{T`Save`}</button>
-            <span className="dim">{T`Saving archives a new definition version. Pause instead to stop runs temporarily.`}</span>
+            <button onClick={save} disabled={busy || !dirty}>{busy ? T`Saving…` : T`Save Changes`}</button>
+            <span className="dim">{T`Changes are saved to version history.`}</span>
           </div>
-          {notice && <p className="dim">{notice}</p>}
-        </div>
+          {notice && <p className="dim" role="status">{notice}</p>}
+        </fieldset>
       )}
-    </div>
+    </DefinitionSection>
   )
 }
 
@@ -515,8 +531,9 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
   const [defaultAoi, setDefaultAoi] = useState<DefaultAoi | null>(null)
   const [choice, setChoice] = useState<AoiChoice>(!aoiPresent ? "inherit" : aoi === null ? "full" : "custom")
   const [iso3, setIso3] = useState("")
-  const [custom, setCustom] = useState({ west: "", south: "", east: "", north: "" })
+  const [custom, setCustom] = useState({ west: String(aoi?.bbox[0] ?? ""), south: String(aoi?.bbox[1] ?? ""), east: String(aoi?.bbox[2] ?? ""), north: String(aoi?.bbox[3] ?? "") })
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
@@ -548,9 +565,17 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
       </>
     )
 
+  const customValues = [custom.west, custom.south, custom.east, custom.north]
+  const dirty = choice === "inherit" ? aoiPresent
+    : choice === "full" ? !aoiPresent || aoi !== null
+    : choice === "country" ? !!selected && !(aoi?.countries?.length === 1 && aoi.countries[0] === iso3 && selected.bbox.every((v, i) => v === aoi.bbox[i]))
+    : customValues.every(v => v.trim() && Number.isFinite(Number(v))) &&
+      !(aoi && !aoi.countries?.length && customValues.every((v, i) => Number(v) === aoi.bbox[i]))
+
   async function save() {
     setError(null)
     setNotice(null)
+    setBusy(true)
     try {
       let body: Parameters<typeof setIntegrationAoi>[1]
       if (choice === "inherit" || choice === "full") body = { mode: choice }
@@ -569,18 +594,19 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
     }
   }
 
   return (
-    <div className="aoi-section">
-      <h3>{T`Area of interest`}</h3>
-      <p>
-        {T`Current:`} <b>{current}</b>
+    <DefinitionSection title={T`Area of interest`} description={T`Use the deployment default or choose a region for this integration.`}>
+      <p className="definition-current">
+        {T`Saved area:`} <b>{current}</b>
       </p>
       {error && <div className="error">{error}</div>}
       {canDesign && (
-        <div className="aoi-editor">
+        <fieldset className="aoi-editor" disabled={busy} aria-label={T`Area of interest`} onChange={() => setNotice(null)}>
           <div className="aoi-mode">
             {(
               [
@@ -591,12 +617,12 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
               ] as [AoiChoice, string][]
             ).map(([value, label]) => (
               <label key={value}>
-                <input type="radio" checked={choice === value} onChange={() => setChoice(value)} /> {label}
+                <input type="radio" name="integration-aoi" checked={choice === value} onChange={() => setChoice(value)} /> {label}
               </label>
             ))}
           </div>
           {choice === "country" && (
-            <select value={iso3} onChange={e => setIso3(e.target.value)}>
+            <select aria-label={T`Country`} value={iso3} onChange={e => setIso3(e.target.value)}>
               <option value="">{T`Pick a country…`}</option>
               {countries.map(c => (
                 <option key={c.iso3} value={c.iso3}>
@@ -621,13 +647,13 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
             </div>
           )}
           <div className="aoi-actions">
-            <button onClick={save}>{T`Save`}</button>
-            <span className="dim">{T`Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.`}</span>
+            <button onClick={save} disabled={busy || !dirty}>{busy ? T`Saving…` : T`Save Changes`}</button>
+            <span className="dim">{T`Applies to future runs. Expanding the region requires a backfill for existing data.`}</span>
           </div>
-          {notice && <p className="dim">{notice}</p>}
-        </div>
+          {notice && <p className="dim" role="status">{notice}</p>}
+        </fieldset>
       )}
-    </div>
+    </DefinitionSection>
   )
 }
 
@@ -734,7 +760,7 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
   const source = definition.source as { name?: LocalizedString; url?: string; license?: string } | undefined
   const destinations = (definition.destinations ?? []) as (TableDest | RasterDest)[]
   return (
-    <div className="definition-tab">
+    <DefinitionSection title={T`Source & Outputs`} description={T`Where the data comes from and what this integration produces.`}>
       {definition.description != null && <p>{localizeData(definition.description as LocalizedString | string)}</p>}
       <dl className="facts">
         {source?.name && (
@@ -750,20 +776,18 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
             </dd>
           </>
         )}
-        <dt>{T`Schedule`}</dt>
-        <dd>{triggerLabel((definition.trigger ?? {}) as { cron?: string })}</dd>
       </dl>
       {destinations.map(dest =>
         dest.kind === "table" ? (
-          <div key={dest.tableId} className="dest-def">
-            <h3>
+          <details key={dest.tableId} className="dest-def">
+            <summary>
               {dest.tableId}{" "}
               <span className="dim">
                 {dest.mergeColumns
                   ? T`table · ${dest.action} on ${dest.mergeColumns.join(", ")}`
                   : T`table · ${dest.action}`}
               </span>
-            </h3>
+            </summary>
             <table className="sessions">
               <thead>
                 <tr><th>{T`Column`}</th><th>{T`Type`}</th><th>{T`Units`}</th></tr>
@@ -786,13 +810,13 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </details>
         ) : (
-          <div key={dest.layerId} className="dest-def">
-            <h3>
+          <details key={dest.layerId} className="dest-def">
+            <summary>
               {dest.name ? localizeData(dest.name) : dest.layerId}{" "}
               <span className="dim">{T`raster · ${dest.temporality}`}</span>
-            </h3>
+            </summary>
             <table className="sessions">
               <thead>
                 <tr><th>{T`Band`}</th><th>{T`Units`}</th></tr>
@@ -806,10 +830,10 @@ function DefinitionTab({ definition }: DefinitionTabProps) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </details>
         )
       )}
-    </div>
+    </DefinitionSection>
   )
 }
 

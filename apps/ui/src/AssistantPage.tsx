@@ -1,3 +1,4 @@
+import { LoadState } from "./LoadState.js"
 /**
  * The assistant page: a compose-first welcome screen (no blank chat) plus the
  * list of past conversations. Available to every role; the assistant is
@@ -41,14 +42,16 @@ function TrashIcon() {
 export function AssistantPage() {
   const [chats, setChats] = useState<SessionSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const [doomed, setDoomed] = useState<SessionSummary | null>(null)
 
   useEffect(() => {
+    setError(null)
     listSessions().then(
       r => setChats(r.sessions.filter(s => s.kind === "assistant")),
       err => setError(err.message)
     )
-  }, [])
+  }, [retry])
 
   async function confirmDelete(chat: SessionSummary) {
     setDoomed(null)
@@ -87,11 +90,11 @@ Name the place, the period, and the measurements you care about.`}
         submitLabel={T`Ask`}
         onSubmit={start}
       />
-      {error && <div className="error">{error}</div>}
+      {error && chats !== null && <div className="error" role="alert">{error}</div>}
       <section className="assistant-history">
         <h2>{T`Past questions`}</h2>
         {chats === null ? (
-          <p className="dim">{T`Loading…`}</p>
+          <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
         ) : chats.length === 0 ? (
           <p className="dim">{T`No questions yet. Ask one above; it will be saved here.`}</p>
         ) : (
@@ -102,7 +105,7 @@ Name the place, the period, and the measurements you care about.`}
             <tbody>
               {chats.map(s => (
                 <tr key={s.id} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
-                  <td>{s.firstMessage ?? <span className="dim">{T`(empty)`}</span>}</td>
+                  <td><a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{s.firstMessage ?? T`(empty)`}</a></td>
                   <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
                   <td>{formatDateTime(s.updatedAt)}</td>
                   <td className="row-delete-cell">
