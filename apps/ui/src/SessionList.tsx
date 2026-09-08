@@ -20,7 +20,7 @@ export function SessionList() {
 
   useEffect(() => {
     setError(null)
-    // Questions live on the Ask page; this list is design work
+    // Questions live on the Explore page; this list is design work
     listSessions().then(r => setSessions(r.sessions.filter(s => s.kind !== "assistant")), err => setError(err.message))
   }, [retry])
 

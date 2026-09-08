@@ -408,8 +408,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
       </div>}
       <div className="conversation">
         <div className={`session-head${isDashboard ? " compact" : ""}`}>
-          <a className="page-back" href={isDashboard ? "#/dashboards" : isAssistant ? "#/ask" : "#/integrations"}>
-            ← {isDashboard ? T`Dashboards` : isAssistant ? T`Ask` : T`Integrations`}
+          <a className="page-back" href={isDashboard ? "#/dashboards" : isAssistant ? "#/explore" : "#/integrations"}>
+            ← {isDashboard ? T`Dashboards` : isAssistant ? T`Explore` : T`Integrations`}
           </a>
           {/* Ids are plumbing: the title is the display name, or a placeholder
               until the agent names what it is building. Beside a preview it

@@ -51,7 +51,7 @@ function Compact() {
       className="flow-svg flow-compact"
       viewBox="0 0 660 62"
       role="img"
-      aria-label={T`Integrations write to Data. Dashboards, Ask, and the Map and API read from Data.`}
+      aria-label={T`Integrations write to Data. Dashboards, Explore, and the Map and API read from Data.`}
     >
       <Arrows suffix="c" />
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -63,7 +63,7 @@ function Compact() {
       <g fontFamily="inherit" textAnchor="middle" fill="currentColor">
         <text x="71" y="38" fontSize="12.5">{T`Integrations`}</text>
         <text x="309" y="38" fontSize="12.5" fontWeight="600" fill="var(--accent)">{T`Data`}</text>
-        <text x="564" y="38" fontSize="12.5">{T`Dashboards, Ask, Map`}</text>
+        <text x="564" y="38" fontSize="12.5">{T`Dashboards, Explore, Map`}</text>
       </g>
 
       <g stroke="var(--accent)" strokeWidth="1.75" fill="none">
@@ -86,7 +86,7 @@ function Full() {
       className="flow-svg flow-full"
       viewBox="0 0 880 180"
       role="img"
-      aria-label={T`Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, Ask, and the Map and API all read from Data.`}
+      aria-label={T`Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, Explore, and the Map and API all read from Data.`}
     >
       <Arrows suffix="f" />
 
@@ -114,7 +114,7 @@ function Full() {
         <text x="516" y="86" fontSize="14" fontWeight="600" fill="var(--accent)">{T`Data`}</text>
         <text x="516" y="104" fontSize="11.5" fill="var(--accent)" opacity=".85">{T`tables + raster layers`}</text>
         <text x="760" y="41" fontSize="13">{T`Dashboards`}</text>
-        <text x="760" y="95" fontSize="13">{T`Ask`}</text>
+        <text x="760" y="95" fontSize="13">{T`Explore`}</text>
         <text x="760" y="149" fontSize="13">{T`Map and API`}</text>
       </g>
 

@@ -22,7 +22,7 @@ export function AiPrivacy({ ai }: AiPrivacyProps) {
       <h1>{T`AI and Data Privacy`}</h1>
 
       <p>
-        {T`Three features of this platform use a large language model: the integration designer, Ask (questions about the data), and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.`}
+        {T`Three features of this platform use a large language model: the integration designer, Explore (questions about the data), and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.`}
       </p>
 
       <h2>{T`Where the model runs`}</h2>

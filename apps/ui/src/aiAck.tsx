@@ -91,7 +91,7 @@ export function AiAckHost() {
       <div className="confirm-dialog ai-ack-dialog" role="dialog" aria-modal="true" aria-label={T`AI features and your data`}>
         <h2>{T`AI features and your data`}</h2>
         <p>
-          {T`The AI features (integration designer, Ask, and dashboard builder) work by sending context to an external model provider, ${provider}. Each request can include:`}
+          {T`The AI features (integration designer, Explore, and dashboard builder) work by sending context to an external model provider, ${provider}. Each request can include:`}
         </p>
         <ul>
           <li>{T`your messages`}</li>

@@ -384,10 +384,10 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
       <div className="home-actions">
         {home.ai.assistant && (
           <LinkCard
-            href="#/ask"
+            href="#/explore"
             icon="ask"
-            title={T`Ask about the data`}
-            description={T`Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Ask.`}
+            title={T`Explore the data`}
+            description={T`Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Explore.`}
             fact={T`Reads all ${plural(sources, T`data source`, T`data sources`)}`}
           />
         )}

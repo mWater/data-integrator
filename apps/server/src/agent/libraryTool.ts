@@ -1,6 +1,6 @@
 /**
  * The library as the agents see it: one search over the deployment's
- * installable entries, shared by Ask, the dashboard builder and the designer.
+ * installable entries, shared by Explore, the dashboard builder and the designer.
  * The point is that "that data is not here" becomes "install X from the
  * Library" with a link the user can act on, or a link that opens a design
  * session with the request already written when nothing in the library fits.

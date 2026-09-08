@@ -38,7 +38,7 @@ function TrashIcon() {
   )
 }
 
-/** The Ask-about-the-data page: welcome composer + past conversations. */
+/** The Explore page: welcome composer + past conversations. */
 export function AssistantPage() {
   const [chats, setChats] = useState<SessionSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -80,14 +80,14 @@ export function AssistantPage() {
             <path d="M8 10.5h8M8 14h5" />
           </svg>
         }
-        title={T`Ask about the data`}
+        title={T`Explore the data`}
         blurb={T`Plain-language questions, answered from the platform's ingested data with tables, charts, and maps - every answer carries its SQL and a CSV download.`}
         placeholder={T`Describe the data you want, e.g.:
 rainfall and groundwater levels for southern Madagascar over the last 6 months
 
 Name the place, the period, and the measurements you care about.`}
         hints={hints()}
-        submitLabel={T`Ask`}
+        submitLabel={T`Explore`}
         onSubmit={start}
       />
       {error && chats !== null && <div className="error" role="alert">{error}</div>}
@@ -96,7 +96,7 @@ Name the place, the period, and the measurements you care about.`}
         {chats === null ? (
           <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
         ) : chats.length === 0 ? (
-          <p className="dim">{T`No questions yet. Ask one above; it will be saved here.`}</p>
+          <p className="dim">{T`No questions yet. Ask one above; it is saved here.`}</p>
         ) : (
           <table className="sessions">
             <thead>

@@ -5299,10 +5299,1020 @@
       "es": "Solo los administradores pueden gestionar usuarios.",
       "mg": "Ny mpitantana ihany no afaka mitantana ny mpampiasa.",
       "sw": "Wasimamizi pekee wanaweza kudhibiti watumiaji."
+    },
+    {
+      "_base": "en",
+      "en": "The AI features (integration designer, Explore, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
+      "fr": "Les fonctionnalités d’IA (concepteur d’intégrations, Explorer et créateur de tableaux de bord) fonctionnent en envoyant des éléments de contexte à un fournisseur de modèles externe, {0}. Chaque requête peut inclure :",
+      "pt": "Os recursos de IA (designer de integrações, Explorar e criador de painéis) funcionam enviando contexto a um provedor externo de modelos, {0}. Cada solicitação pode incluir:",
+      "es": "Las funciones de IA (diseñador de integraciones, Explorar y creador de paneles) envían contexto a un proveedor externo de modelos, {0}. Cada solicitud puede incluir:",
+      "mg": "Miasa amin'ny fandefasana ny toe-javatra ilaina any amin'ny mpamatsy maodely ivelany, {0}, ireo endri-javatra AI (mpamolavola fampidirana, Explore ary mpanamboatra tabilao fanaraha-maso). Ny fangatahana tsirairay dia mety ahitana:",
+      "sw": "Vipengele vya AI (zana ya kusanifu miunganisho, Chunguza, na zana ya kuunda dashibodi) hufanya kazi kwa kutuma muktadha kwa mtoa huduma wa modeli wa nje, {0}. Kila ombi linaweza kujumuisha:"
+    },
+    {
+      "_base": "en",
+      "en": "Three features of this platform use a large language model: the integration designer, Explore (questions about the data), and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
+      "fr": "Trois fonctionnalités de cette plateforme utilisent un grand modèle de langage : le concepteur d’intégrations, Explorer (questions sur les données) et le créateur de tableaux de bord. Tout le reste - exécutions d’ingestion planifiées, webhooks, cartes, tables, consultation des tableaux de bord - n’utilise aucun modèle et n’envoie aucune donnée où que ce soit.",
+      "pt": "Três recursos desta plataforma usam um modelo de linguagem de grande escala: o designer de integrações, Explorar (perguntas sobre os dados) e o criador de painéis. Todo o resto - execuções de ingestão agendadas, webhooks, mapas, tabelas e visualização de painéis - não envolve nenhum modelo e não envia nada a lugar algum.",
+      "es": "Tres funciones de esta plataforma utilizan un modelo de lenguaje de gran tamaño: el diseñador de integraciones, Explorar (preguntas sobre los datos) y el creador de paneles. Todo lo demás - ejecuciones programadas de ingesta, webhooks, mapas, tablas y visualización de paneles - no utiliza ningún modelo ni envía nada a ninguna parte.",
+      "mg": "Endri-javatra telo amin'ity sehatra ity no mampiasa maodelin-teny lehibe: ny mpamolavola fampidirana, Explore (fanontaniana momba ny angona), ary ny mpanamboatra tabilao fanaraha-maso. Ny zavatra hafa rehetra - fampandehanana fampidirana voalahatra, webhooks, sarintany, tabilao, fijerena tabilao fanaraha-maso - dia tsy mampiasa maodely ary tsy mandefa na inona na inona na aiza na aiza.",
+      "sw": "Vipengele vitatu vya mfumo huu hutumia modeli kubwa ya lugha: zana ya kusanifu miunganisho, Chunguza (maswali kuhusu data), na zana ya kuunda dashibodi. Kila kitu kingine - uendeshaji ulioratibiwa wa uingizaji data, webhooks, ramani, majedwali, dashibodi zinazotazamwa - hakihusishi modeli yoyote wala kutuma chochote popote."
+    },
+    {
+      "_base": "en",
+      "en": "Explore",
+      "fr": "Explorer",
+      "pt": "Explorar",
+      "es": "Explorar",
+      "mg": "Explore",
+      "sw": "Chunguza"
+    },
+    {
+      "_base": "en",
+      "en": "Explore the data",
+      "fr": "Explorer les données",
+      "pt": "Explorar os dados",
+      "es": "Explorar los datos",
+      "mg": "Karohy ny angona",
+      "sw": "Chunguza data"
+    },
+    {
+      "_base": "en",
+      "en": "No questions yet. Ask one above; it is saved here.",
+      "fr": "Aucune question pour le moment. Posez-en une ci-dessus ; elle sera enregistrée ici.",
+      "pt": "Ainda não há perguntas. Faça uma acima; ela será salva aqui.",
+      "es": "Aún no hay preguntas. Haz una arriba; se guardará aquí.",
+      "mg": "Mbola tsy misy fanontaniana. Mametraha iray etsy ambony; voatahiry eto izany.",
+      "sw": "Bado hakuna maswali. Uliza moja hapo juu; litahifadhiwa hapa."
+    },
+    {
+      "_base": "en",
+      "en": "Explore the tables and map layers in your deployment.",
+      "fr": "Explorer les tables et les couches cartographiques de votre déploiement.",
+      "pt": "Explore as tabelas e camadas de mapa da sua implantação.",
+      "es": "Explora las tablas y capas de mapa de tu implementación.",
+      "mg": "Karohy ireo tabilao sy sosona sarintany ao amin'ny fametrahanao.",
+      "sw": "Chunguza majedwali na safu za ramani katika mfumo wako."
+    },
+    {
+      "_base": "en",
+      "en": "Filter data sources",
+      "fr": "Filtrer les sources de données",
+      "pt": "Filtrar fontes de dados",
+      "es": "Filtrar fuentes de datos",
+      "mg": "Sivano ny loharanon'angona",
+      "sw": "Chuja vyanzo vya data"
+    },
+    {
+      "_base": "en",
+      "en": "All",
+      "fr": "Tout",
+      "pt": "Todas",
+      "es": "Todas",
+      "mg": "Rehetra",
+      "sw": "Vyote"
+    },
+    {
+      "_base": "en",
+      "en": "Tables",
+      "fr": "Tables",
+      "pt": "Tabelas",
+      "es": "Tablas",
+      "mg": "Tabilao",
+      "sw": "Majedwali"
+    },
+    {
+      "_base": "en",
+      "en": "Raster Layers",
+      "fr": "Couches raster",
+      "pt": "Camadas raster",
+      "es": "Capas ráster",
+      "mg": "Sosona raster",
+      "sw": "Safu za rasta"
+    },
+    {
+      "_base": "en",
+      "en": "1 source",
+      "fr": "1 source",
+      "pt": "1 fonte",
+      "es": "1 fuente",
+      "mg": "Loharano 1",
+      "sw": "Chanzo 1"
+    },
+    {
+      "_base": "en",
+      "en": "{0} sources",
+      "fr": "{0} sources",
+      "pt": "{0} fontes",
+      "es": "{0} fuentes",
+      "mg": "Loharano {0}",
+      "sw": "Vyanzo {0}"
+    },
+    {
+      "_base": "en",
+      "en": "No sources found",
+      "fr": "Aucune source trouvée",
+      "pt": "Nenhuma fonte encontrada",
+      "es": "No se encontraron fuentes",
+      "mg": "Tsy nahitana loharano",
+      "sw": "Hakuna vyanzo vilivyopatikana"
+    },
+    {
+      "_base": "en",
+      "en": "Try another search or view all sources.",
+      "fr": "Essayez une autre recherche ou affichez toutes les sources.",
+      "pt": "Tente outra pesquisa ou veja todas as fontes.",
+      "es": "Prueba otra búsqueda o consulta todas las fuentes.",
+      "mg": "Manandrama fikarohana hafa na jereo ny loharano rehetra.",
+      "sw": "Jaribu utafutaji mwingine au uone vyanzo vyote."
+    },
+    {
+      "_base": "en",
+      "en": "Clear Filters",
+      "fr": "Effacer les filtres",
+      "pt": "Limpar filtros",
+      "es": "Borrar filtros",
+      "mg": "Esory ny sivana",
+      "sw": "Futa vichujio"
+    },
+    {
+      "_base": "en",
+      "en": "1 snapshot",
+      "fr": "1 instantané",
+      "pt": "1 instantâneo",
+      "es": "1 instantánea",
+      "mg": "Dika voatahiry 1",
+      "sw": "Nakala 1 ya wakati maalum"
+    },
+    {
+      "_base": "en",
+      "en": "Latest observation",
+      "fr": "Observation la plus récente",
+      "pt": "Observação mais recente",
+      "es": "Observación más reciente",
+      "mg": "Fanamarihana farany",
+      "sw": "Uchunguzi wa karibuni zaidi"
+    },
+    {
+      "_base": "en",
+      "en": "Last ingested",
+      "fr": "Dernière ingestion",
+      "pt": "Última ingestão",
+      "es": "Última ingesta",
+      "mg": "Nampidirina farany",
+      "sw": "Mara ya mwisho kuingizwa"
+    },
+    {
+      "_base": "en",
+      "en": "Not available",
+      "fr": "Indisponible",
+      "pt": "Não disponível",
+      "es": "No disponible",
+      "mg": "Tsy misy",
+      "sw": "Haipatikani"
+    },
+    {
+      "_base": "en",
+      "en": "View Map",
+      "fr": "Afficher la carte",
+      "pt": "Ver mapa",
+      "es": "Ver mapa",
+      "mg": "Jereo ny sarintany",
+      "sw": "Tazama ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Open Table",
+      "fr": "Ouvrir la table",
+      "pt": "Abrir tabela",
+      "es": "Abrir tabla",
+      "mg": "Sokafy ny tabilao",
+      "sw": "Fungua jedwali"
+    },
+    {
+      "_base": "en",
+      "en": "Integrations write to Data. Dashboards, Explore, and the Map and API read from Data.",
+      "fr": "Les intégrations écrivent dans Données. Les tableaux de bord, Explorer, la Carte et l’API lisent les données depuis Données.",
+      "pt": "As integrações gravam em Dados. Painéis, Explorar, Mapa e API leem de Dados.",
+      "es": "Las integraciones escriben en Datos. Los paneles, Explorar, el Mapa y la API leen de Datos.",
+      "mg": "Manoratra ao amin'ny Angona ny Fampidirana. Mamaky avy ao amin'ny Angona ny tabilao fanaraha-maso, Explore, Sarintany ary API.",
+      "sw": "Miunganisho huandika kwenye Data. Dashibodi, Chunguza, na Ramani na API husoma kutoka kwenye Data."
+    },
+    {
+      "_base": "en",
+      "en": "Dashboards, Explore, Map",
+      "fr": "Tableaux de bord, Explorer, Carte",
+      "pt": "Painéis, Explorar, Mapa",
+      "es": "Paneles, Explorar, Mapa",
+      "mg": "Tabilao fanaraha-maso, Explore, Sarintany",
+      "sw": "Dashibodi, Chunguza, Ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, Explore, and the Map and API all read from Data.",
+      "fr": "Deux méthodes facultatives permettent d’ajouter une intégration : la décrire à l’agent ou en installer une prête à l’emploi depuis la bibliothèque. Toutes deux alimentent les Intégrations. Les intégrations écrivent dans Données. Les tableaux de bord, Explorer, la Carte et l’API lisent tous les données depuis Données.",
+      "pt": "Há duas formas opcionais de adicionar uma integração: descrevê-la ao agente ou instalar uma pronta da biblioteca. Ambas levam a Integrações. As integrações gravam em Dados. Painéis, Explorar, Mapa e API leem de Dados.",
+      "es": "Hay dos formas opcionales de añadir una integración: describírsela al agente o instalar una ya preparada de la biblioteca. Ambas llevan a Integraciones. Las integraciones escriben en Datos. Los paneles, Explorar, el Mapa y la API leen de Datos.",
+      "mg": "Misy fomba roa tsy voatery hanampiana fampidirana: mamaritra izany amin'ny mpanampy AI na mametraka iray efa vonona avy amin'ny katalaogy; samy mitondra any amin'ny Fampidirana ireo. Manoratra ao amin'ny Angona ny Fampidirana. Mamaky avy ao amin'ny Angona ny tabilao fanaraha-maso, Explore, Sarintany ary API.",
+      "sw": "Njia mbili za hiari za kuongeza muunganisho, kuuelezea kwa wakala au kusakinisha muunganisho uliotayarishwa kutoka maktaba, zote huishia kwenye Miunganisho. Miunganisho huandika kwenye Data. Dashibodi, Chunguza, na Ramani na API zote husoma kutoka kwenye Data."
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Explore.",
+      "fr": "Des réponses en langage naturel à partir de vos données, avec la requête exécutée. Vos questions sont enregistrées dans Explorer.",
+      "pt": "Perguntas em linguagem simples respondidas com base nos seus dados, exibindo a consulta executada. Suas perguntas são salvas em Explorar.",
+      "es": "Preguntas en lenguaje natural respondidas a partir de tus datos, mostrando la consulta ejecutada. Tus preguntas se guardan en Explorar.",
+      "mg": "Fanontaniana amin'ny fiteny tsotra valiana avy amin'ny angonao, ary aseho ny fangatahana nampiasaina. Tehirizina ao amin'ny Explore ny fanontanianao.",
+      "sw": "Maswali ya lugha ya kawaida hujibiwa kutoka kwenye data yako, huku hoja iliyotumika ikionyeshwa. Maswali yako huhifadhiwa chini ya Chunguza."
+    },
+    {
+      "_base": "en",
+      "en": "Plain-language questions answered from the data already installed, with the query that produced each answer and a download of the result. Explore only reads; it never fetches new data.",
+      "fr": "Des réponses en langage naturel à partir des données déjà installées, avec la requête ayant produit chaque réponse et le résultat à télécharger. Explorer lit uniquement les données ; il n’en récupère jamais de nouvelles.",
+      "pt": "Perguntas em linguagem simples respondidas com base nos dados já instalados, com a consulta que gerou cada resposta e a opção de baixar o resultado. Explorar apenas lê; nunca busca novos dados.",
+      "es": "Preguntas en lenguaje natural respondidas a partir de los datos ya instalados, con la consulta que produjo cada respuesta y una descarga del resultado. Explorar solo lee; nunca obtiene datos nuevos.",
+      "mg": "Fanontaniana amin'ny fiteny tsotra valiana avy amin'ny angona efa napetraka, miaraka amin'ny fangatahana namokatra ny valiny tsirairay sy ny fampidinana ny valiny. Mamaky fotsiny ny Explore; tsy maka angona vaovao mihitsy izy.",
+      "sw": "Maswali ya lugha ya kawaida hujibiwa kutoka kwenye data iliyosakinishwa tayari, pamoja na hoja iliyotoa kila jibu na chaguo la kupakua matokeo. Chunguza husoma tu; haileti kamwe data mpya."
+    },
+    {
+      "_base": "en",
+      "en": "Explore the data or build a dashboard",
+      "fr": "Explorer les données ou créer un tableau de bord",
+      "pt": "Explorar os dados ou criar um painel",
+      "es": "Explora los datos o crea un panel",
+      "mg": "Karohy ny angona na manamboara tabilao fanaraha-maso",
+      "sw": "Chunguza data au unda dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Explore answers one-off questions; the dashboard agent turns a description into a page you can share.",
+      "fr": "Explorer répond aux questions ponctuelles ; l’agent de tableaux de bord transforme une description en page partageable.",
+      "pt": "Explorar responde a perguntas pontuais; o agente de painéis transforma uma descrição em uma página que você pode compartilhar.",
+      "es": "Explorar responde preguntas puntuales; el agente de paneles convierte una descripción en una página que puedes compartir.",
+      "mg": "Mamaly fanontaniana indray mandeha ny Explore; mamadika famaritana ho pejy azo zaraina ny mpanampy mpanamboatra tabilao fanaraha-maso.",
+      "sw": "Chunguza hujibu maswali ya mara moja; wakala wa dashibodi hubadilisha maelezo kuwa ukurasa unaoweza kushiriki."
+    },
+    {
+      "_base": "en",
+      "en": "Succeeded",
+      "fr": "Réussie",
+      "pt": "Concluída",
+      "es": "Completada",
+      "mg": "Vita soa aman-tsara",
+      "sw": "Imefaulu"
+    },
+    {
+      "_base": "en",
+      "en": "Failed",
+      "fr": "Échouée",
+      "pt": "Falhou",
+      "es": "Fallida",
+      "mg": "Tsy nahomby",
+      "sw": "Imeshindwa"
+    },
+    {
+      "_base": "en",
+      "en": "Timed Out",
+      "fr": "Délai dépassé",
+      "pt": "Tempo esgotado",
+      "es": "Tiempo de espera agotado",
+      "mg": "Tapitra ny fotoana",
+      "sw": "Muda umeisha"
+    },
+    {
+      "_base": "en",
+      "en": "Running",
+      "fr": "En cours",
+      "pt": "Em execução",
+      "es": "En ejecución",
+      "mg": "Mandeha",
+      "sw": "Inaendeshwa"
+    },
+    {
+      "_base": "en",
+      "en": "Queued",
+      "fr": "En attente",
+      "pt": "Na fila",
+      "es": "En cola",
+      "mg": "Miandry an-daharana",
+      "sw": "Kwenye foleni"
+    },
+    {
+      "_base": "en",
+      "en": "Cancelled",
+      "fr": "Annulée",
+      "pt": "Cancelada",
+      "es": "Cancelada",
+      "mg": "Nofoanana",
+      "sw": "Imeghairiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Not Run Yet",
+      "fr": "Pas encore exécutée",
+      "pt": "Ainda não executada",
+      "es": "Aún no ejecutada",
+      "mg": "Mbola tsy nalefa",
+      "sw": "Bado haijaendeshwa"
+    },
+    {
+      "_base": "en",
+      "en": "Just now",
+      "fr": "À l’instant",
+      "pt": "Agora mesmo",
+      "es": "Ahora mismo",
+      "mg": "Vao izao",
+      "sw": "Sasa hivi"
+    },
+    {
+      "_base": "en",
+      "en": "Yesterday",
+      "fr": "Hier",
+      "pt": "Ontem",
+      "es": "Ayer",
+      "mg": "Omaly",
+      "sw": "Jana"
+    },
+    {
+      "_base": "en",
+      "en": "Monitor runs and manage how your data stays current.",
+      "fr": "Suivez les exécutions et gérez la mise à jour de vos données.",
+      "pt": "Monitore as execuções e gerencie como seus dados são mantidos atualizados.",
+      "es": "Supervisa las ejecuciones y gestiona cómo se mantienen actualizados tus datos.",
+      "mg": "Araho ny fampandehanana ary tantano ny fomba hitazonana ny angonao ho vaovao.",
+      "sw": "Fuatilia uendeshaji na udhibiti jinsi data yako inavyoendelea kusasishwa."
+    },
+    {
+      "_base": "en",
+      "en": "Checking status…",
+      "fr": "Vérification du statut…",
+      "pt": "Verificando o status…",
+      "es": "Comprobando estado…",
+      "mg": "Manamarina ny sata…",
+      "sw": "Inakagua hali…"
+    },
+    {
+      "_base": "en",
+      "en": "Status checked {0}",
+      "fr": "Statut vérifié {0}",
+      "pt": "Status verificado em {0}",
+      "es": "Estado comprobado {0}",
+      "mg": "Voamarina ny sata {0}",
+      "sw": "Hali ilikaguliwa {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Status has not been checked yet",
+      "fr": "Le statut n’a pas encore été vérifié",
+      "pt": "O status ainda não foi verificado",
+      "es": "Aún no se ha comprobado el estado",
+      "mg": "Tsy mbola nohamarinina ny sata",
+      "sw": "Hali bado haijakaguliwa"
+    },
+    {
+      "_base": "en",
+      "en": "Refresh",
+      "fr": "Actualiser",
+      "pt": "Atualizar",
+      "es": "Actualizar",
+      "mg": "Havaozy",
+      "sw": "Onyesha upya"
+    },
+    {
+      "_base": "en",
+      "en": "Search integrations",
+      "fr": "Rechercher des intégrations",
+      "pt": "Pesquisar integrações",
+      "es": "Buscar integraciones",
+      "mg": "Hikaroka fampidirana",
+      "sw": "Tafuta miunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "Filter integrations",
+      "fr": "Filtrer les intégrations",
+      "pt": "Filtrar integrações",
+      "es": "Filtrar integraciones",
+      "mg": "Hanivana fampidirana",
+      "sw": "Chuja miunganisho"
+    },
+    {
+      "_base": "en",
+      "en": "Needs Attention",
+      "fr": "Attention requise",
+      "pt": "Requer atenção",
+      "es": "Requiere atención",
+      "mg": "Mila jerena",
+      "sw": "Inahitaji kushughulikiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Paused",
+      "fr": "En pause",
+      "pt": "Pausada",
+      "es": "En pausa",
+      "mg": "Naato",
+      "sw": "Umesitishwa"
+    },
+    {
+      "_base": "en",
+      "en": "1 integration",
+      "fr": "1 intégration",
+      "pt": "1 integração",
+      "es": "1 integración",
+      "mg": "Fampidirana 1",
+      "sw": "muunganisho 1"
+    },
+    {
+      "_base": "en",
+      "en": "{0} integrations",
+      "fr": "{0} intégrations",
+      "pt": "{0} integrações",
+      "es": "{0} integraciones",
+      "mg": "Fampidirana {0}",
+      "sw": "miunganisho {0}"
+    },
+    {
+      "_base": "en",
+      "en": "No failed runs",
+      "fr": "Aucune exécution échouée",
+      "pt": "Nenhuma execução com falha",
+      "es": "No hay ejecuciones fallidas",
+      "mg": "Tsy misy fampandehanana tsy nahomby",
+      "sw": "Hakuna uendeshaji ulioshindwa"
+    },
+    {
+      "_base": "en",
+      "en": "No integrations found",
+      "fr": "Aucune intégration trouvée",
+      "pt": "Nenhuma integração encontrada",
+      "es": "No se encontraron integraciones",
+      "mg": "Tsy nahitana fampidirana",
+      "sw": "Hakuna miunganisho iliyopatikana"
+    },
+    {
+      "_base": "en",
+      "en": "Try another search or view all integrations.",
+      "fr": "Essayez une autre recherche ou affichez toutes les intégrations.",
+      "pt": "Tente outra pesquisa ou veja todas as integrações.",
+      "es": "Pruebe otra búsqueda o vea todas las integraciones.",
+      "mg": "Manandrama fikarohana hafa na jereo ny fampidirana rehetra.",
+      "sw": "Jaribu utafutaji mwingine au tazama miunganisho yote."
+    },
+    {
+      "_base": "en",
+      "en": "Draft",
+      "fr": "Brouillon",
+      "pt": "Rascunho",
+      "es": "Borrador",
+      "mg": "Volavola",
+      "sw": "Rasimu"
+    },
+    {
+      "_base": "en",
+      "en": "Latest run",
+      "fr": "Dernière exécution",
+      "pt": "Última execução",
+      "es": "Última ejecución",
+      "mg": "Fampandehanana farany",
+      "sw": "Uendeshaji wa karibuni zaidi"
+    },
+    {
+      "_base": "en",
+      "en": "Designs in Progress",
+      "fr": "Conceptions en cours",
+      "pt": "Criações em andamento",
+      "es": "Diseños en curso",
+      "mg": "Famolavolana an-dalam-panaovana",
+      "sw": "Vipindi vya usanifu vinavyoendelea"
+    },
+    {
+      "_base": "en",
+      "en": "Continue Design",
+      "fr": "Poursuivre la conception",
+      "pt": "Continuar criação",
+      "es": "Continuar diseño",
+      "mg": "Tohizo ny famolavolana",
+      "sw": "Endelea na usanifu"
+    },
+    {
+      "_base": "en",
+      "en": "Version History",
+      "fr": "Historique des versions",
+      "pt": "Histórico de versões",
+      "es": "Historial de versiones",
+      "mg": "Tantaran'ny kinova",
+      "sw": "Historia ya matoleo"
+    },
+    {
+      "_base": "en",
+      "en": "Choose when this integration runs. Pause it from the actions menu to temporarily stop runs.",
+      "fr": "Choisissez quand exécuter cette intégration. Mettez-la en pause depuis le menu d’actions pour interrompre temporairement les exécutions.",
+      "pt": "Escolha quando esta integração será executada. Pause-a no menu de ações para interromper temporariamente as execuções.",
+      "es": "Elija cuándo se ejecuta esta integración. Póngala en pausa desde el menú de acciones para detener temporalmente las ejecuciones.",
+      "mg": "Safidio ny fotoana hampandehanana ity fampidirana ity. Ajanony vetivety avy amin'ny menio hetsika izy mba hampitsaharana vonjimaika ny fampandehanana.",
+      "sw": "Chagua wakati wa kuendesha muunganisho huu. Sitisha kupitia menyu ya vitendo ili kusimamisha uendeshaji kwa muda."
+    },
+    {
+      "_base": "en",
+      "en": "Save Changes",
+      "fr": "Enregistrer les modifications",
+      "pt": "Salvar alterações",
+      "es": "Guardar cambios",
+      "mg": "Tehirizo ny fanovana",
+      "sw": "Hifadhi mabadiliko"
+    },
+    {
+      "_base": "en",
+      "en": "Changes are saved to version history.",
+      "fr": "Les modifications sont enregistrées dans l’historique des versions.",
+      "pt": "As alterações são salvas no histórico de versões.",
+      "es": "Los cambios se guardan en el historial de versiones.",
+      "mg": "Voatahiry ao amin'ny tantaran'ny kinova ny fanovana.",
+      "sw": "Mabadiliko yanahifadhiwa kwenye historia ya matoleo."
+    },
+    {
+      "_base": "en",
+      "en": "Use the deployment default or choose a region for this integration.",
+      "fr": "Utilisez la région par défaut du déploiement ou choisissez-en une pour cette intégration.",
+      "pt": "Use o padrão da implantação ou escolha uma região para esta integração.",
+      "es": "Use la opción predeterminada del despliegue o elija una región para esta integración.",
+      "mg": "Ampiasao ny faritra predifain'ny fametrahana na misafidiana faritra ho an'ity fampidirana ity.",
+      "sw": "Tumia chaguo-msingi la utekelezaji au uchague eneo kwa muunganisho huu."
+    },
+    {
+      "_base": "en",
+      "en": "Saved area:",
+      "fr": "Zone enregistrée :",
+      "pt": "Área salva:",
+      "es": "Área guardada:",
+      "mg": "Faritra voatahiry:",
+      "sw": "Eneo lililohifadhiwa:"
+    },
+    {
+      "_base": "en",
+      "en": "Applies to future runs. Expanding the region requires a backfill for existing data.",
+      "fr": "S’applique aux prochaines exécutions. L’extension de la région nécessite un chargement rétrospectif des données existantes.",
+      "pt": "Aplica-se a execuções futuras. Ampliar a região exige o reprocessamento dos dados existentes.",
+      "es": "Se aplica a las ejecuciones futuras. Ampliar la región requiere completar los datos históricos existentes.",
+      "mg": "Mihatra amin'ny fampandehanana ho avy. Mila famenoana angona taloha ny fanitarana ny faritra ho an'ny angona efa misy.",
+      "sw": "Inatumika kwa uendeshaji wa baadaye. Kupanua eneo kunahitaji kujaza upya data iliyopo."
+    },
+    {
+      "_base": "en",
+      "en": "Source & Outputs",
+      "fr": "Source et données produites",
+      "pt": "Fonte e saídas",
+      "es": "Fuente y resultados",
+      "mg": "Loharano sy vokatra",
+      "sw": "Chanzo & matokeo"
+    },
+    {
+      "_base": "en",
+      "en": "Where the data comes from and what this integration produces.",
+      "fr": "Origine des données et éléments produits par cette intégration.",
+      "pt": "A origem dos dados e o que esta integração produz.",
+      "es": "De dónde proceden los datos y qué genera esta integración.",
+      "mg": "Ny niavian'ny angona sy izay vokarin'ity fampidirana ity.",
+      "sw": "Data zinakotoka na matokeo ya muunganisho huu."
+    },
+    {
+      "_base": "en",
+      "en": "Hide Controls",
+      "fr": "Masquer les commandes",
+      "pt": "Ocultar controles",
+      "es": "Ocultar controles",
+      "mg": "Afeno ny fanaraha-maso",
+      "sw": "Ficha vidhibiti"
+    },
+    {
+      "_base": "en",
+      "en": "Map Controls",
+      "fr": "Commandes de la carte",
+      "pt": "Controles do mapa",
+      "es": "Controles del mapa",
+      "mg": "Fanaraha-maso ny sarintany",
+      "sw": "Vidhibiti vya ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Map controls",
+      "fr": "Commandes de la carte",
+      "pt": "Controles do mapa",
+      "es": "Controles del mapa",
+      "mg": "Fanaraha-maso ny sarintany",
+      "sw": "Vidhibiti vya ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Reference material the designer uses to build integrations. Open a note to explore a source or technique.",
+      "fr": "Documents de référence utilisés par le concepteur pour créer des intégrations. Ouvrez une note pour explorer une source ou une technique.",
+      "pt": "Material de referência usado pelo assistente de criação para desenvolver integrações. Abra uma nota para explorar uma fonte ou técnica.",
+      "es": "Material de referencia que el diseñador usa para crear integraciones. Abra una nota para explorar una fuente o técnica.",
+      "mg": "Loharanom-pahalalana ampiasain'ny mpamolavola hananganana fampidirana. Sokafy ny naoty iray hijerena loharano na teknika.",
+      "sw": "Nyenzo za marejeleo anazotumia msanifu kuunda miunganisho. Fungua dokezo ili kuchunguza chanzo au mbinu."
+    },
+    {
+      "_base": "en",
+      "en": "Not Installed",
+      "fr": "Non installée",
+      "pt": "Não instalada",
+      "es": "No instalada",
+      "mg": "Tsy napetraka",
+      "sw": "Haujasakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "Installed",
+      "fr": "Installée",
+      "pt": "Instalada",
+      "es": "Instalada",
+      "mg": "Napetraka",
+      "sw": "Umesakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "Update Available",
+      "fr": "Mise à jour disponible",
+      "pt": "Atualização disponível",
+      "es": "Actualización disponible",
+      "mg": "Misy fanavaozana",
+      "sw": "Sasisho linapatikana"
+    },
+    {
+      "_base": "en",
+      "en": "1 table",
+      "fr": "1 table",
+      "pt": "1 tabela",
+      "es": "1 tabla",
+      "mg": "Tabilao 1",
+      "sw": "jedwali 1"
+    },
+    {
+      "_base": "en",
+      "en": "{0} tables",
+      "fr": "{0} tables",
+      "pt": "{0} tabelas",
+      "es": "{0} tablas",
+      "mg": "Tabilao {0}",
+      "sw": "majedwali {0}"
+    },
+    {
+      "_base": "en",
+      "en": "1 raster layer",
+      "fr": "1 couche raster",
+      "pt": "1 camada raster",
+      "es": "1 capa ráster",
+      "mg": "Sosona raster 1",
+      "sw": "tabaka 1 la raster"
+    },
+    {
+      "_base": "en",
+      "en": "{0} raster layers",
+      "fr": "{0} couches raster",
+      "pt": "{0} camadas raster",
+      "es": "{0} capas ráster",
+      "mg": "Sosona raster {0}",
+      "sw": "matabaka {0} ya raster"
+    },
+    {
+      "_base": "en",
+      "en": "Ready-made integrations to bring new data into your deployment.",
+      "fr": "Intégrations prêtes à l’emploi pour ajouter de nouvelles données à votre déploiement.",
+      "pt": "Integrações prontas para adicionar novos dados à sua implantação.",
+      "es": "Integraciones listas para incorporar nuevos datos a su despliegue.",
+      "mg": "Fampidirana efa vonona hampidirana angona vaovao ao amin'ny fametrahanao.",
+      "sw": "Miunganisho iliyo tayari kuingiza data mpya kwenye utekelezaji wako."
+    },
+    {
+      "_base": "en",
+      "en": "Updates",
+      "fr": "Mises à jour",
+      "pt": "Atualizações",
+      "es": "Actualizaciones",
+      "mg": "Fanavaozana",
+      "sw": "Masasisho"
+    },
+    {
+      "_base": "en",
+      "en": "Everything is up to date",
+      "fr": "Tout est à jour",
+      "pt": "Tudo está atualizado",
+      "es": "Todo está actualizado",
+      "mg": "Efa nohavaozina avokoa ny rehetra",
+      "sw": "Kila kitu kimesasishwa"
+    },
+    {
+      "_base": "en",
+      "en": "View details",
+      "fr": "Afficher les détails",
+      "pt": "Ver detalhes",
+      "es": "Ver detalles",
+      "mg": "Jereo ny antsipiriany",
+      "sw": "Angalia maelezo"
+    },
+    {
+      "_base": "en",
+      "en": "Default schedule",
+      "fr": "Planification par défaut",
+      "pt": "Agendamento padrão",
+      "es": "Programación predeterminada",
+      "mg": "Fandaharam-potoana predifaina",
+      "sw": "Ratiba chaguo-msingi"
+    },
+    {
+      "_base": "en",
+      "en": "Installed version",
+      "fr": "Version installée",
+      "pt": "Versão instalada",
+      "es": "Versión instalada",
+      "mg": "Kinova napetraka",
+      "sw": "Toleo lililosakinishwa"
+    },
+    {
+      "_base": "en",
+      "en": "Confirm installation",
+      "fr": "Confirmer l’installation",
+      "pt": "Confirmar instalação",
+      "es": "Confirmar instalación",
+      "mg": "Hamafiso ny fametrahana",
+      "sw": "Thibitisha usakinishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Update integration",
+      "fr": "Mettre à jour l’intégration",
+      "pt": "Atualizar integração",
+      "es": "Actualizar integración",
+      "mg": "Havaozy ny fampidirana",
+      "sw": "Sasisha ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Install integration",
+      "fr": "Installer l’intégration",
+      "pt": "Instalar integração",
+      "es": "Instalar integración",
+      "mg": "Apetraho ny fampidirana",
+      "sw": "Sakinisha ujumuishaji"
+    },
+    {
+      "_base": "en",
+      "en": "Keeps your current schedule",
+      "fr": "Conserve votre planification actuelle",
+      "pt": "Mantém seu agendamento atual",
+      "es": "Mantiene la programación actual",
+      "mg": "Mitazona ny fandaharam-potoananao ankehitriny",
+      "sw": "Huhifadhi ratiba yako ya sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Your area of interest, schedule, and limits are preserved.",
+      "fr": "Votre zone d’intérêt, votre planification et vos limites sont conservées.",
+      "pt": "Sua área de interesse, seu agendamento e seus limites são preservados.",
+      "es": "Se conservan el área de interés, la programación y los límites.",
+      "mg": "Voatahiry ny faritra mahaliana anao, ny fandaharam-potoana ary ny fetra.",
+      "sw": "Eneo lako la kuvutiwa, ratiba na vikomo vinahifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Run ingestion now",
+      "fr": "Lancer l’ingestion maintenant",
+      "pt": "Executar ingestão agora",
+      "es": "Ejecutar la ingesta ahora",
+      "mg": "Alefaso izao ny fampidirana angona",
+      "sw": "Tekeleza uingizaji data sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Updating…",
+      "fr": "Mise à jour…",
+      "pt": "Atualizando…",
+      "es": "Actualizando…",
+      "mg": "Manavao…",
+      "sw": "Inasasisha…"
+    },
+    {
+      "_base": "en",
+      "en": "Unable to load this content.",
+      "fr": "Impossible de charger ce contenu.",
+      "pt": "Não foi possível carregar este conteúdo.",
+      "es": "No se puede cargar este contenido.",
+      "mg": "Tsy afaka nampiditra ity votoaty ity.",
+      "sw": "Imeshindikana kupakia maudhui haya."
+    },
+    {
+      "_base": "en",
+      "en": "Retry",
+      "fr": "Réessayer",
+      "pt": "Tentar novamente",
+      "es": "Reintentar",
+      "mg": "Andramo indray",
+      "sw": "Jaribu tena"
+    },
+    {
+      "_base": "en",
+      "en": "Dashboard workspace",
+      "fr": "Espace de travail du tableau de bord",
+      "pt": "Espaço de trabalho do painel",
+      "es": "Área de trabajo del panel",
+      "mg": "Toeram-piasan'ny tabilao fanaraha-maso",
+      "sw": "Eneo la kazi la dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Chat",
+      "fr": "Discussion",
+      "pt": "Chat",
+      "es": "Chat",
+      "mg": "Resaka",
+      "sw": "Gumzo"
+    },
+    {
+      "_base": "en",
+      "en": "Preview",
+      "fr": "Aperçu",
+      "pt": "Pré-visualização",
+      "es": "Vista previa",
+      "mg": "Topi-maso",
+      "sw": "Onyesho la awali"
+    },
+    {
+      "_base": "en",
+      "en": "The name shown on the home page.",
+      "fr": "Nom affiché sur la page d’accueil.",
+      "pt": "O nome exibido na página inicial.",
+      "es": "El nombre que se muestra en la página de inicio.",
+      "mg": "Ny anarana aseho eo amin'ny pejy fandraisana.",
+      "sw": "Jina linaloonekana kwenye ukurasa wa mwanzo."
+    },
+    {
+      "_base": "en",
+      "en": "Appearance",
+      "fr": "Apparence",
+      "pt": "Aparência",
+      "es": "Apariencia",
+      "mg": "Endrika",
+      "sw": "Mwonekano"
+    },
+    {
+      "_base": "en",
+      "en": "Choose a theme for this device. Changes apply immediately.",
+      "fr": "Choisissez un thème pour cet appareil. Les modifications s’appliquent immédiatement.",
+      "pt": "Escolha um tema para este dispositivo. As alterações são aplicadas imediatamente.",
+      "es": "Elija un tema para este dispositivo. Los cambios se aplican de inmediato.",
+      "mg": "Misafidiana endrika ho an'ity fitaovana ity. Mihatra avy hatrany ny fanovana.",
+      "sw": "Chagua mandhari ya kifaa hiki. Mabadiliko yatatumika mara moja."
+    },
+    {
+      "_base": "en",
+      "en": "System",
+      "fr": "Système",
+      "pt": "Sistema",
+      "es": "Sistema",
+      "mg": "Rafitra",
+      "sw": "Mfumo"
+    },
+    {
+      "_base": "en",
+      "en": "Manage your deployment and personal preferences.",
+      "fr": "Gérez votre déploiement et vos préférences personnelles.",
+      "pt": "Gerencie sua implantação e suas preferências pessoais.",
+      "es": "Gestione la implementación y sus preferencias personales.",
+      "mg": "Tantano ny sehatra napetrakao sy ny safidinao manokana.",
+      "sw": "Dhibiti utekelezaji wako na mapendeleo binafsi."
+    },
+    {
+      "_base": "en",
+      "en": "Deployment",
+      "fr": "Déploiement",
+      "pt": "Implantação",
+      "es": "Implementación",
+      "mg": "Sehatra napetraka",
+      "sw": "Utekelezaji"
+    },
+    {
+      "_base": "en",
+      "en": "Shared settings for everyone using this deployment.",
+      "fr": "Paramètres communs à tous les utilisateurs de ce déploiement.",
+      "pt": "Configurações compartilhadas por todos que usam esta implantação.",
+      "es": "Configuración compartida para todos los usuarios de esta implementación.",
+      "mg": "Fikirana iombonana ho an'ny mpampiasa rehetra amin'ity sehatra napetraka ity.",
+      "sw": "Mipangilio ya pamoja kwa kila anayetumia utekelezaji huu."
+    },
+    {
+      "_base": "en",
+      "en": "Manage Users",
+      "fr": "Gérer les utilisateurs",
+      "pt": "Gerenciar usuários",
+      "es": "Gestionar usuarios",
+      "mg": "Tantano ny mpampiasa",
+      "sw": "Dhibiti watumiaji"
+    },
+    {
+      "_base": "en",
+      "en": "Only administrators can change deployment settings.",
+      "fr": "Seuls les administrateurs peuvent modifier les paramètres du déploiement.",
+      "pt": "Somente administradores podem alterar as configurações da implantação.",
+      "es": "Solo los administradores pueden cambiar la configuración de la implementación.",
+      "mg": "Ny mpitantana ihany no afaka manova ny firafitry ny sehatra napetraka.",
+      "sw": "Wasimamizi pekee wanaweza kubadilisha mipangilio ya utekelezaji."
+    },
+    {
+      "_base": "en",
+      "en": "Default region for integrations. Individual integrations can override it.",
+      "fr": "Région par défaut des intégrations. Chaque intégration peut en définir une autre.",
+      "pt": "Região padrão para integrações. Cada integração pode definir outra região.",
+      "es": "Región predeterminada para las integraciones. Cada integración puede usar otra región.",
+      "mg": "Faritra voafidy mialoha ho an'ny fampidirana. Afaka mampiasa faritra hafa ny fampidirana tsirairay.",
+      "sw": "Eneo chaguomsingi la ujumuishaji. Kila ujumuishaji unaweza kutumia eneo tofauti."
+    },
+    {
+      "_base": "en",
+      "en": "Reset to Full Extent",
+      "fr": "Rétablir l’emprise totale",
+      "pt": "Redefinir para a extensão total",
+      "es": "Restablecer a la extensión completa",
+      "mg": "Avereno amin'ny velarana manontolo",
+      "sw": "Rejesha eneo lote"
+    },
+    {
+      "_base": "en",
+      "en": "Saved area details",
+      "fr": "Détails de la zone enregistrée",
+      "pt": "Detalhes da área salva",
+      "es": "Detalles del área guardada",
+      "mg": "Antsipirian'ny faritra voatahiry",
+      "sw": "Maelezo ya eneo yaliyohifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "No default region. Integrations use their source’s full extent.",
+      "fr": "Aucune région par défaut. Les intégrations utilisent l’emprise totale de leur source.",
+      "pt": "Nenhuma região padrão. As integrações usam toda a extensão da fonte.",
+      "es": "No hay una región predeterminada. Las integraciones usan la extensión completa de su fuente.",
+      "mg": "Tsy misy faritra voafidy mialoha. Mampiasa ny velarana manontolon'ny loharanony ny fampidirana.",
+      "sw": "Hakuna eneo chaguomsingi. Ujumuishaji hutumia eneo lote la chanzo chake."
+    },
+    {
+      "_base": "en",
+      "en": "Personal",
+      "fr": "Personnel",
+      "pt": "Pessoal",
+      "es": "Personal",
+      "mg": "Manokana",
+      "sw": "Binafsi"
+    },
+    {
+      "_base": "en",
+      "en": "Preferences and security for your account.",
+      "fr": "Préférences et sécurité de votre compte.",
+      "pt": "Preferências e segurança da sua conta.",
+      "es": "Preferencias y seguridad de su cuenta.",
+      "mg": "Safidy sy fiarovana ho an'ny kaontinao.",
+      "sw": "Mapendeleo na usalama wa akaunti yako."
+    },
+    {
+      "_base": "en",
+      "en": "Choose the languages available in the language picker and data catalog.",
+      "fr": "Choisissez les langues disponibles dans le sélecteur de langue et le catalogue de données.",
+      "pt": "Escolha os idiomas disponíveis no seletor de idiomas e no catálogo de dados.",
+      "es": "Elija los idiomas disponibles en el selector de idioma y el catálogo de datos.",
+      "mg": "Fidio ireo fiteny hita ao amin'ny mpifantina fiteny sy ny katalaogin'ny angona.",
+      "sw": "Chagua lugha zinazopatikana katika kichagua lugha na katalogi ya data."
+    },
+    {
+      "_base": "en",
+      "en": "Adding a language starts a background translation of the data catalog.",
+      "fr": "L’ajout d’une langue lance la traduction du catalogue de données en arrière-plan.",
+      "pt": "Adicionar um idioma inicia a tradução do catálogo de dados em segundo plano.",
+      "es": "Al añadir un idioma, se inicia la traducción del catálogo de datos en segundo plano.",
+      "mg": "Ny fampidirana fiteny dia manomboka fandikana ny katalaogin'ny angona any ambadika.",
+      "sw": "Kuongeza lugha huanzisha tafsiri ya katalogi ya data chinichini."
+    },
+    {
+      "_base": "en",
+      "en": "Translation details",
+      "fr": "Détails de la traduction",
+      "pt": "Detalhes da tradução",
+      "es": "Detalles de la traducción",
+      "mg": "Antsipirian'ny fandikana",
+      "sw": "Maelezo ya tafsiri"
+    },
+    {
+      "_base": "en",
+      "en": "Use a password with at least 8 characters.",
+      "fr": "Utilisez un mot de passe d’au moins 8 caractères.",
+      "pt": "Use uma senha com pelo menos 8 caracteres.",
+      "es": "Use una contraseña de al menos 8 caracteres.",
+      "mg": "Mampiasà tenimiafina misy tarehintsoratra 8 farafahakeliny.",
+      "sw": "Tumia nenosiri lenye angalau herufi 8."
     }
   ],
   "unused": [
     "Assistant",
+    "Ask about the data",
+    "Ask",
     "Past conversations",
     "Delete chat",
     "Delete chat: {0}",
@@ -5311,21 +6321,40 @@
     "Dashboards, Assistant, Map",
     "Agent activity ({0} open)",
     "cron (UTC; empty for manual only)",
+    "Saving archives a new definition version. Pause instead to stop runs temporarily.",
+    "Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.",
     "New chat",
-    "Hide details",
     "Show Details",
+    "The heading on the home page. Name it after the deployment, for example \"Madagascar Data Integrator\".",
+    "(default)",
+    "Only administrators can change settings.",
     "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",
+    "none — integrations ingest their source's full extent",
+    "Clear",
+    "Change password",
     "This chat and its answers, tables, and charts are deleted for good.",
+    "Contents",
+    "{0} snapshot",
     "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, the Assistant, and the Map and API all read from Data.",
     "Ask a question",
     "Plain language, answered from your data, with the query it ran shown.",
     "{0} already built",
     "Skills",
     "Source and technique notes the designer agent reads while building an integration: publishing quirks, file layouts, working snippets. Reference material, nothing to install.",
+    "not installed",
+    "installed",
+    "update available",
+    "Ready-made integrations shipped with this deployment. Installing copies the entry's settings into your integration; updates keep your area of interest, schedule, and limits.",
+    "Cadence",
+    "Destinations",
+    "Run first ingest now",
+    "Changes the appearance for you on this device only.",
+    "Match system",
     "The AI features (integration designer, data assistant, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
     "Three features of this platform use a large language model: the integration designer, the data assistant, and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
     "Sharing",
     "private",
+    "No sources match.",
     "Saved. The language picker offers these; new catalog text is translated into them.",
     "Translated {0} strings in {1} integrations; failed: {2}",
     "Nothing to translate — the catalog already covers every offered language.",
@@ -5336,8 +6365,23 @@
     "No conversations yet. Ask a question above; it will be saved here.",
     "Ask the Assistant",
     "Plain-language questions answered from your data, with the query it ran shown. Conversations are saved under Assistant.",
+    "Not integrations: these are the reference notes the designer agent reads while building one, covering a source's publishing quirks, file layouts and working snippets. Nothing here is installed; an integration above may share a name with the note it was built from.",
+    "No entries match.",
+    "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country. Any integration can declare its own area instead, so this is a default, not a limit.",
     "Translate Data Catalog Now",
     "Names and descriptions of installed data are translated automatically as integrations are added. Use \"Translate Data Catalog Now\" after adding a language, or for integrations installed before translation existed.",
-    "Hide the chat and view the dashboard at full width (Esc to return)"
+    "Languages this deployment offers. The language picker shows them, and the data catalog (names, descriptions, caveats) is translated into each one automatically when you add it. Interface languages are fixed per release; this narrows the offer.",
+    "The AI features (integration designer, Ask, and dashboard builder) work by sending context to an external model provider, {0}. Each request can include:",
+    "Three features of this platform use a large language model: the integration designer, Ask (questions about the data), and the dashboard builder. Everything else - scheduled ingestion runs, webhooks, maps, tables, dashboards being viewed - involves no model and sends nothing anywhere.",
+    "No questions yet. Ask one above; it will be saved here.",
+    "Integrations write to Data. Dashboards, Ask, and the Map and API read from Data.",
+    "Dashboards, Ask, Map",
+    "Two optional ways to add an integration, describing it to the agent or installing a ready-made one from the library, both feed into Integrations. Integrations write to Data. Dashboards, Ask, and the Map and API all read from Data.",
+    "Plain-language questions answered from your data, with the query it ran shown. Your questions are saved under Ask.",
+    "Plain-language questions answered from the data already installed, with the query that produced each answer and a download of the result. Ask only reads; it never fetches new data.",
+    "Ask a question or build a dashboard",
+    "Ask answers one-off questions; the dashboard agent turns a description into a page you can share.",
+    "Hide the chat and view the dashboard at full width (Esc to return)",
+    "Settings sections"
   ]
 }

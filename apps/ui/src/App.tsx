@@ -35,7 +35,7 @@ interface Route {
   sessions: boolean
   /** True on the data catalog page */
   data: boolean
-  /** True on the Ask page (plain-language questions over the data) */
+  /** True on the Explore page (plain-language questions over the data) */
   ask: boolean
   /** True on the integrations list page */
   integrations: boolean
@@ -78,7 +78,8 @@ function parseHash(): Route {
     sessions: hash === "#/sessions",
     data: hash === "#/data",
     // #/assistant is the page's old address; links to it still work
-    ask: hash === "#/ask" || hash === "#/assistant",
+    // #/ask and #/assistant are the page's old addresses; links to them still work
+    ask: hash === "#/explore" || hash === "#/ask" || hash === "#/assistant",
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,
@@ -260,7 +261,7 @@ export function App() {
         <nav>
           <a href="#/" aria-current={activeSection === "home" ? "page" : undefined}>{T`Home`}</a>
           <a href="#/data" aria-current={activeSection === "data" ? "page" : undefined}>{T`Data`}</a>
-          <a href="#/ask" aria-current={activeSection === "ask" ? "page" : undefined}>{T`Ask`}</a>
+          <a href="#/explore" aria-current={activeSection === "ask" ? "page" : undefined}>{T`Explore`}</a>
           <a href="#/integrations" aria-current={activeSection === "integrations" ? "page" : undefined}>{T`Integrations`}</a>
           <a href="#/library" aria-current={activeSection === "library" ? "page" : undefined}>{T`Library`}</a>
           <a href="#/dashboards" aria-current={activeSection === "dashboards" ? "page" : undefined}>{T`Dashboards`}</a>

@@ -56,8 +56,8 @@ export function HowItWorks() {
         <Term name={T`Designer agent`}>
           {T`The AI assistant that builds or repairs an integration from a plain-language request. It explores the source, writes and tests the code, and only installs it after a clean run from scratch.`}
         </Term>
-        <Term name={T`Ask`}>
-          {T`Plain-language questions answered from the data already installed, with the query that produced each answer and a download of the result. Ask only reads; it never fetches new data.`}
+        <Term name={T`Explore`}>
+          {T`Plain-language questions answered from the data already installed, with the query that produced each answer and a download of the result. Explore only reads; it never fetches new data.`}
         </Term>
         <Term name={T`Dashboard`}>
           {T`A saved page of charts, tables and maps built by the dashboard agent from your data. Dashboards use frozen queries, so they can be shared publicly without exposing the rest of the system.`}
@@ -78,8 +78,8 @@ export function HowItWorks() {
           <div className="dim">{T`Choose an entry, confirm, and let the first run load the data. It appears under Data as soon as the run finishes.`}</div>
         </li>
         <li>
-          <b>{T`Ask a question or build a dashboard`}</b>
-          <div className="dim">{T`Ask answers one-off questions; the dashboard agent turns a description into a page you can share.`}</div>
+          <b>{T`Explore the data or build a dashboard`}</b>
+          <div className="dim">{T`Explore answers one-off questions; the dashboard agent turns a description into a page you can share.`}</div>
         </li>
       </ol>
       <p className="dim">

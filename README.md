@@ -3,7 +3,7 @@
 Open-source, self-hosted platform that ingests multi-source water and climate data
 (satellite rasters, gridded forecasts, sensor feeds, national databases), harmonizes it,
 and stores it in PostgreSQL/PostGIS plus a file-backed raster store. Integrated data is
-accessed through a documented REST API, a dashboard, and an optional AI assistant. An
+accessed through a documented REST API, a dashboard, and Explore, an optional AI agent for plain-language questions. An
 agentic AI designs and tests the ingestion pipelines; pipeline code runs in sandboxed
 containers (podman + gVisor).
 
@@ -113,7 +113,7 @@ The project is complete when all of these exist.
   parameterized SQL, compiled once and rendered in a sandboxed iframe (see
   Dashboards.md). Ship in the library like integrations; viewable with no AI
   configured.
-- **AI query assistant** *(built)* - Plain-language questions answered through the documented
+- **Explore (AI query agent)** *(built)* - Plain-language questions answered through the documented
   API, using the same swappable model provider. Optional: the platform works without
   it.
 - **Localization** *(UI built)* - Every string in the web UI goes through `ez-localize`,

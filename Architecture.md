@@ -2,7 +2,7 @@
 
 Open-source, self-hosted data integrator (Apache 2.0, DPG-aligned). Ingests multi-source
 water/climate data (mostly raster), harmonizes it, stores it in PostgreSQL/PostGIS plus a
-file-backed raster store, and exposes it via API, dashboard, and an AI assistant. An agentic
+file-backed raster store, and exposes it via API, dashboard, and Explore, an AI query agent. An agentic
 AI designs, tests, and maintains the ingestion pipelines.
 
 Also the proving ground for the next-generation mWater integrator: the runner, integration
@@ -25,7 +25,7 @@ platform later.
   Data sources   │  Server (Node/TypeScript)    │
   (satellite,    │  - REST API + auth (RBAC)    │      ┌─────────────────┐
    GRIB/COG,     │  - Scheduler (DB-backed)     │──────│ React dashboard │
-   APIs,         │  - Agent service (AI SDK)    │      │ + AI assistant  │
+   APIs,         │  - Agent service (AI SDK)    │      │ + Explore agent │
    sensors)      │  - Raster tile service       │      └─────────────────┘
        │         └──────────┬───────────────────┘
        │                    │ submit job / poll / logs
@@ -189,7 +189,7 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 - Raster tiles: server renders PNG tiles from COGs via GDAL CLI (gdalwarp +
   color-relief), long-cache headers, snapshot-pinned URLs. Same approach as mWater's
   RasterTilesController.
-- AI assistant: plain-language query over the integrated data, same swappable model
+- Explore (AI agent): plain-language query over the integrated data, same swappable model
   provider.
 
 ## Scheduling and runs
