@@ -9,9 +9,7 @@ import requests
 from shapely.geometry import box
 
 
-BASE = "https://data.mwater.co/admin-regions"
-# Used only when the deployment has no AOI at all, so a cold run still proves the pipeline
-CERTIFICATION_COUNTRIES = ["MDG"]
+DEFAULT_BASE = "https://data.mwater.co/admin-regions"
 REGION_COLUMNS = [
     "id", "iso3", "level", "name", "local_name", "full_name", "type", "local_type", "leaf",
     "parent_id", "level0", "level1", "level2", "level3", "level4", "level5", "source",
@@ -19,16 +17,14 @@ REGION_COLUMNS = [
 
 
 def _runtime_selection(ctx):
-    """Countries come from params.countries, then the AOI's country list, then the AOI bbox."""
+    """Countries come from params.countries, then the AOI's country list, then the AOI bbox.
+    No AOI at all (the platform's "full source extent") means every published country."""
     params = ctx.params or {}
     aoi = ctx.definition.get("aoi") or {}
     countries = params.get("countries") or aoi.get("countries")
     bbox = params.get("bbox") or aoi.get("bbox")
     if isinstance(countries, str):
         countries = [part.strip() for part in countries.split(",") if part.strip()]
-    if not countries and not bbox:
-        print("No AOI configured; loading the certification country " + ", ".join(CERTIFICATION_COUNTRIES))
-        countries = CERTIFICATION_COUNTRIES
     if countries:
         countries = sorted({str(code).upper() for code in countries})
         if any(not re.fullmatch(r"[A-Z]{3}", code) for code in countries):
@@ -53,13 +49,14 @@ def _countries_from_bbox(manifest, bbox):
 
 def _resolve_release(session, params):
     """The pinned release from params.version, else whatever latest.json names."""
+    base = (params or {}).get("base_url") or DEFAULT_BASE
     version = (params or {}).get("version")
     if version:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(version)):
             raise ValueError("params.version must be a release date like 2026-09-07")
-        manifest_url = f"{BASE}/releases/{version}/manifest.json"
+        manifest_url = f"{base}/releases/{version}/manifest.json"
     else:
-        latest = session.get(f"{BASE}/latest.json", timeout=60)
+        latest = session.get(f"{base}/latest.json", timeout=60)
         latest.raise_for_status()
         manifest_url = latest.json()["manifest"]
     response = session.get(manifest_url, timeout=60)
@@ -93,15 +90,15 @@ def _sha256(path):
     return digest.hexdigest()
 
 
-def _make_valid(frame):
+def _make_valid(frame, label):
     invalid_before = int((~frame.geometry.is_valid).sum())
     if invalid_before:
         frame = frame.copy()
         frame.geometry = frame.geometry.make_valid()
         invalid_after = int((~frame.geometry.is_valid).sum())
         if invalid_after:
-            raise ValueError(f"{invalid_after} geometries remain invalid after make_valid")
-    print(f"Repaired {invalid_before} invalid geometries")
+            raise ValueError(f"{label}: {invalid_after} geometries remain invalid after make_valid")
+        print(f"  {label}: repaired {invalid_before} invalid geometries")
     return frame
 
 
@@ -115,17 +112,26 @@ def run(ctx):
     by_iso3 = {entry["iso3"]: entry for entry in manifest["countries"]}
 
     countries, bbox = _runtime_selection(ctx)
-    if not countries:
+    if not countries and bbox:
         countries = _countries_from_bbox(manifest, bbox)
         print(f"Countries intersecting the AOI bbox: {', '.join(countries) or 'none'}")
+        if not countries:
+            raise ValueError("The AOI matches no published country. Set aoi.countries or params.countries to ISO3 codes.")
     if not countries:
-        raise ValueError("The AOI matches no published country. Set aoi.countries or params.countries to ISO3 codes.")
+        countries = sorted(iso3 for iso3, entry in by_iso3.items() if entry.get("file"))
+        print(f"No AOI configured; loading all {len(countries)} published countries")
 
     layer = "admin_regions_simplified" if params.get("simplified") else "admin_regions"
     cache_dir = Path(ctx.work_dir) / "mwater_admin_regions" / release
     cache_dir.mkdir(parents=True, exist_ok=True)
+    os.makedirs(ctx.out_dir, exist_ok=True)
+    regions_path = Path(ctx.out_dir) / "admin_regions.gpkg"
+    regions_path.unlink(missing_ok=True)
 
-    frames = []
+    # One country at a time, appended to the output file, so a whole-world load never holds
+    # more than one country's geometry in memory
+    loaded = []
+    total = 0
     for iso3 in countries:
         entry = by_iso3.get(iso3)
         if not entry or not entry.get("file"):
@@ -134,32 +140,30 @@ def run(ctx):
         info = entry["file"]
         path = _download(session, manifest["baseUrl"] + info["path"], cache_dir / f"{iso3}.gpkg", info["bytes"], info["sha256"])
         frame = gpd.read_file(path, layer=layer)
+        if frame.crs is None or frame.crs.to_epsg() != 4326:
+            frame = frame.to_crs("EPSG:4326")
+        frame = _make_valid(frame, iso3)
+        frame["leaf"] = frame["leaf"].astype(bool)
+        frame["release"] = release
+        frame = frame[REGION_COLUMNS + ["release", "geometry"]]
+        frame.to_file(regions_path, driver="GPKG", layer="admin_regions", mode="a" if loaded else "w", index=False)
         print(f"  {iso3} {entry['name']}: {len(frame)} regions, levels {sorted(int(k) for k in entry['counts'])}")
-        frames.append(frame)
-    if not frames:
+        loaded.append(iso3)
+        total += len(frame)
+    if not loaded:
         raise ValueError(f"None of {', '.join(countries)} are published in release {release}")
-
-    regions = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs="EPSG:4326")
-    regions = _make_valid(regions)
-    regions["leaf"] = regions["leaf"].astype(bool)
-    regions["release"] = release
-    regions = regions[REGION_COLUMNS + ["release", "geometry"]]
 
     levels_url = manifest["baseUrl"] + manifest["files"]["levels"]["path"]
     levels = pd.read_csv(levels_url)
-    levels = levels[levels["iso3"].isin(set(regions["iso3"]))]
-
-    os.makedirs(ctx.out_dir, exist_ok=True)
-    regions_path = Path(ctx.out_dir) / "admin_regions.fgb"
+    levels = levels[levels["iso3"].isin(set(loaded))]
     levels_path = Path(ctx.out_dir) / "admin_region_levels.csv"
-    regions.to_file(regions_path, driver="FlatGeobuf", index=False)
     levels.to_csv(levels_path, index=False)
-    print(f"Loaded {len(regions)} regions and {len(levels)} level names from release {release} ({layer})")
+    print(f"Loaded {total} regions across {len(loaded)} countries and {len(levels)} level names from release {release} ({layer})")
 
     return {
         "tables": [
-            {"tableId": "admin_regions", "path": regions_path.name, "format": "fgb"},
+            {"tableId": "admin_regions", "path": regions_path.name, "format": "gpkg"},
             {"tableId": "admin_region_levels", "path": levels_path.name, "format": "csv"},
         ],
-        "state": {"release": release, "countries": sorted(set(regions["iso3"])), "layer": layer},
+        "state": {"release": release, "countries": loaded, "layer": layer},
     }

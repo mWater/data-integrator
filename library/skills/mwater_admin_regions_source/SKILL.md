@@ -68,6 +68,11 @@ EPSG:4326).
   (`aoi.countries`) with a `params.countries` override, like WorldPop. Only
   fall back to bbox intersection with the manifest `bbox` values when no
   country list exists, and expect neighbours to appear.
+- No AOI at all (the integration set to the source's full extent, or a
+  deployment without a default) means the whole world: every published
+  country, about 3 GB of geometry. Feasible, but stream it one country at a
+  time into one GeoPackage in /out rather than concatenating in memory, and
+  give the run an hour.
 - Territories without an official ISO code use GADM-style X codes: XKO
   Kosovo, XNC Northern Cyprus, XAD Akrotiri and Dhekelia, XCA Caspian Sea,
   XCL Clipperton, XPI Paracel Islands, XSP Spratly Islands.
