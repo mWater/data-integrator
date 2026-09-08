@@ -100,8 +100,9 @@ node apps/server/dist/cli.js user add you@example.org admin
 # echo 'new-password' | node apps/server/dist/cli.js user passwd you@example.org
 ```
 
-Roles: `admin` (everything), `editor` (integrations and agent sessions),
-`viewer` (read-only). More user commands: `user list`, `user disable <email>`,
+Roles: `admin` (everything, including credentials, settings, users, and
+making dashboards public), `editor` (integrations, dashboards, and agent
+sessions), `viewer` (read-only, plus Explore questions). More user commands: `user list`, `user disable <email>`,
 `user enable <email>`, `user token <email> [name]`.
 
 Once the first admin exists, further users are managed in the UI under

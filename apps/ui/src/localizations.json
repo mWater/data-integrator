@@ -6325,6 +6325,15 @@
       "es": "Consulte las tablas y capas directamente o ábralas en el mapa.",
       "mg": "Jereo mivantana ny tabilao sy ny sosona, na sokafy eo amin’ny sarintany.",
       "sw": "Tazama majedwali na tabaka moja kwa moja, au uzifungue kwenye ramani."
+    },
+    {
+      "_base": "en",
+      "en": "Anyone with the link can view this dashboard without signing in. Made public by {0} on {1}.",
+      "fr": "Toute personne disposant du lien peut consulter ce tableau de bord sans se connecter. Rendu public par {0} le {1}.",
+      "pt": "Qualquer pessoa com o link pode visualizar este painel sem iniciar sessão. Tornado público por {0} em {1}.",
+      "es": "Cualquier persona con el enlace puede ver este panel sin iniciar sesión. {0} lo hizo público el {1}.",
+      "mg": "Afaka mijery ity dashboard ity tsy miditra izay rehetra manana ny rohy. Nataon’i {0} ho azon’ny besinimaro jerena tamin’ny {1}.",
+      "sw": "Mtu yeyote aliye na kiungo anaweza kuona dashibodi hii bila kuingia. Iliwekwa wazi kwa umma na {0} tarehe {1}."
     }
   ],
   "unused": [

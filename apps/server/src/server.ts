@@ -1248,17 +1248,18 @@ async function route(
     return
   }
 
-  // Publish toggle: a public dashboard's view surface (bundle, stored queries,
-  // declared raster layers) opens to unauthenticated viewers
+  // Public toggle: a public dashboard's view surface (bundle, stored queries,
+  // declared raster layers) opens to anyone on the internet, so it is an
+  // admin decision and recorded as such
   const dashboardPublicMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/public$/)
   if (dashboardPublicMatch && req.method === "PUT") {
-    if (user.role === "viewer") {
-      json(res, 403, { error: "Viewers cannot publish dashboards" })
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can make dashboards public or private" })
       return
     }
     const body = await readJsonBody(req)
     const isPublic = body.public === true
-    if (await setDashboardPublic(pool, dashboardPublicMatch[1], isPublic)) json(res, 200, { public: isPublic })
+    if (await setDashboardPublic(pool, dashboardPublicMatch[1], isPublic, user.id)) json(res, 200, { public: isPublic })
     else json(res, 404, { error: "unknown dashboard" })
     return
   }

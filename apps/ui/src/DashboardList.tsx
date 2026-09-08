@@ -21,10 +21,12 @@ import { formatDateTime } from "./localization.js"
 interface Props {
   /** True when the user may start design sessions */
   canDesign: boolean
+  /** True for admins: making a dashboard public is theirs alone */
+  isAdmin: boolean
 }
 
 /** Lists saved dashboards; new ones are created in design sessions. */
-export function DashboardList({ canDesign }: Props) {
+export function DashboardList({ canDesign, isAdmin }: Props) {
   const [dashboards, setDashboards] = useState<DashboardSummary[] | null>(null)
   const [drafts, setDrafts] = useState<SessionSummary[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -134,7 +136,11 @@ export function DashboardList({ canDesign }: Props) {
                   {d.public ? (
                     <span
                       className="chip chip-public"
-                      title={T`Anyone with the link can view this dashboard without signing in`}
+                      title={
+                        d.publishedBy
+                          ? T`Anyone with the link can view this dashboard without signing in. Made public by ${d.publishedBy} on ${formatDateTime(d.publishedAt)}.`
+                          : T`Anyone with the link can view this dashboard without signing in`
+                      }
                     >
                       {T`public`}
                     </span>
@@ -148,9 +154,11 @@ export function DashboardList({ canDesign }: Props) {
                       <button role="menuitem" onClick={() => void newDashboard(d.id)}>
                         {T`Edit with Agent`}
                       </button>
-                      <button role="menuitem" onClick={() => void togglePublic(d)}>
-                        {d.public ? T`Make Private` : T`Make Public`}
-                      </button>
+                      {isAdmin && (
+                        <button role="menuitem" onClick={() => void togglePublic(d)}>
+                          {d.public ? T`Make Private` : T`Make Public`}
+                        </button>
+                      )}
                       <button role="menuitem" onClick={() => setRenaming(d)}>
                         {T`Rename`}
                       </button>

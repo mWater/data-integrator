@@ -774,6 +774,10 @@ export interface DashboardSummary {
   updatedAt: string
   /** True when viewable without signing in */
   public: boolean
+  /** Email of the admin who made it public; null while private */
+  publishedBy: string | null
+  /** When it was made public (ISO); null while private */
+  publishedAt: string | null
 }
 
 /** Full detail from GET /api/dashboards/:id (source and queries are omitted for anonymous viewers). */

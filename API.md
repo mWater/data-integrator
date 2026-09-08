@@ -5,15 +5,29 @@ contract: `GET /api/openapi.json`. Works fully with no AI configured.
 
 ## Authentication
 
-Two interchangeable credentials, both tied to a user and their role
-(admin/editor/viewer; data reads need any role, runs and design sessions need
-editor or admin):
+Two interchangeable credentials, both tied to a user and their role:
 
 - Session cookie: `POST /api/login` with `{email, password}` (what the UI uses).
 - Personal access token: mint with `POST /api/tokens {name, expiresDays?}` (or
   `cli.js user token <email> [name]`), then send `Authorization: Bearer dit_...`.
   The secret is shown once and stored hashed. List with `GET /api/tokens`,
   revoke with `DELETE /api/tokens/:id`.
+
+### Roles
+
+| | viewer | editor | admin |
+|---|---|---|---|
+| Read tables, layers, tiles, snapshots; view dashboards | yes | yes | yes |
+| Explore (plain-language questions) | yes | yes | yes |
+| Design, install, run, schedule, pause, rename, import integrations | | yes | yes |
+| See credential names | | yes | yes |
+| Build, save, rename, delete dashboards | | yes | yes |
+| Make a dashboard public or private (opens its data to the internet) | | | yes |
+| Set or delete credential values; rotate webhook tokens | | | yes |
+| Deployment settings, users, other people's Explore chats | | | yes |
+
+Making a dashboard public is recorded: while public, the dashboard carries
+the admin who did it and when (`PUT /api/dashboards/:id/public {public}`).
 
 ## Tabular data
 

@@ -286,7 +286,7 @@ export function App() {
       ) : route.dashboardId ? (
         <DashboardView dashboardId={route.dashboardId} canDesign={canDesign} />
       ) : route.dashboards ? (
-        <DashboardList canDesign={canDesign} />
+        <DashboardList canDesign={canDesign} isAdmin={user.role === "admin"} />
       ) : route.howItWorks ? (
         <HowItWorks />
       ) : route.library ? (

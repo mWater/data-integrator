@@ -23,6 +23,10 @@ export interface DashboardSummary {
   updatedAt: string
   /** True when the dashboard is viewable without signing in. */
   public: boolean
+  /** Email of the admin who made it public; null while private. */
+  publishedBy: string | null
+  /** When it was made public (ISO 8601); null while private. */
+  publishedAt: string | null
 }
 
 /** Full dashboard detail at its current version. */
@@ -86,33 +90,48 @@ export async function renameDashboard(
   }
 }
 
-/** Sets the public flag; false when no such dashboard exists. */
-export async function setDashboardPublic(pool: pg.Pool, id: string, isPublic: boolean): Promise<boolean> {
-  const result = await pool.query("UPDATE app.dashboards SET public = $2 WHERE id = $1", [id, isPublic])
+/**
+ * Sets the public flag, recording who made it public and when (cleared when
+ * made private); false when no such dashboard exists.
+ */
+export async function setDashboardPublic(pool: pg.Pool, id: string, isPublic: boolean, userId: string): Promise<boolean> {
+  const result = await pool.query(
+    `UPDATE app.dashboards
+     SET public = $2,
+         published_by = CASE WHEN $2 THEN $3::uuid ELSE NULL END,
+         published_at = CASE WHEN $2 THEN now() ELSE NULL END
+     WHERE id = $1`,
+    [id, isPublic, userId]
+  )
   return (result.rowCount ?? 0) > 0
 }
 
 /** Lists dashboards, newest first. */
 export async function listDashboards(pool: pg.Pool): Promise<DashboardSummary[]> {
   const result = await pool.query(
-    "SELECT id, name, current_version, updated_at, public FROM app.dashboards ORDER BY updated_at DESC"
+    `SELECT d.id, d.name, d.current_version, d.updated_at, d.public, d.published_at, u.email AS published_by
+     FROM app.dashboards d LEFT JOIN app.users u ON u.id = d.published_by
+     ORDER BY d.updated_at DESC`
   )
   return result.rows.map((row) => ({
     id: row.id,
     name: row.name,
     currentVersion: row.current_version,
     updatedAt: row.updated_at.toISOString(),
-    public: row.public
+    public: row.public,
+    publishedBy: row.published_by ?? null,
+    publishedAt: row.published_at ? row.published_at.toISOString() : null
   }))
 }
 
 /** Loads a dashboard at its current version; null when absent or unsaved. */
 export async function getDashboard(pool: pg.Pool, id: string): Promise<DashboardDetail | null> {
   const result = await pool.query(
-    `SELECT d.id, d.name, d.current_version, d.updated_at, d.public,
+    `SELECT d.id, d.name, d.current_version, d.updated_at, d.public, d.published_at, u.email AS published_by,
             v.source, v.queries, v.layers, v.kit_version, v.bundle_js, v.bundle_css
      FROM app.dashboards d
      JOIN app.dashboard_versions v ON v.dashboard_id = d.id AND v.version = d.current_version
+     LEFT JOIN app.users u ON u.id = d.published_by
      WHERE d.id = $1`,
     [id]
   )
@@ -124,6 +143,8 @@ export async function getDashboard(pool: pg.Pool, id: string): Promise<Dashboard
     currentVersion: row.current_version,
     updatedAt: row.updated_at.toISOString(),
     public: row.public,
+    publishedBy: row.published_by ?? null,
+    publishedAt: row.published_at ? row.published_at.toISOString() : null,
     source: row.source,
     queries: row.queries,
     layers: row.layers,
