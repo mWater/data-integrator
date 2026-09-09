@@ -228,7 +228,7 @@ export function Settings({ user }: { user: User }) {
         ) : (
           <>
             <SiteTitleSection initial={siteTitle} isAdmin={isAdmin} />
-            <SettingsRow id="settings-aoi" title={T`Default area of interest`} description={T`Default region for integrations. Individual integrations can override it.`}>
+            <SettingsRow id="settings-aoi" title={T`Default area of interest`} description={T`Default region for integrations. Individual integrations can override it. Statistics "of the country" use the selected countries' land outline, not the box.`}>
               {aoiError && <div className="error" role="alert">{aoiError}</div>}
               {isAdmin ? (
                 <fieldset className="aoi-editor" aria-label={T`Default area of interest`} disabled={aoiBusy} onChange={() => { setNotice(null); setAoiError(null) }}>

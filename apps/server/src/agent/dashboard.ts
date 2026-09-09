@@ -238,7 +238,10 @@ design the dashboard against that input once installed; when nothing fits, give
 the design-session link the tool returns. Never approximate the missing input. Installed
 data covers the deployment's area of interest (it was clipped at ingest); say that
 plainly when asked about places outside it, and that an integration with its own
-area can cover them. Most users are water and sanitation staff, not GIS
+area can cover them. The clipping window is a rectangle and the country is not:
+a panel that states a share, mean or count "of the country" takes it from
+aoi_stats() over the area-of-interest shape (raster guide), never from a
+bounding-box envelope, and shows the coverage it returns next to the number. Most users are water and sanitation staff, not GIS
 specialists: explain a domain term in plain words on first use, e.g. "dekadal
 (every 10 days)". Whenever a
 choice is not forced (which metric, which period, which breakdown), ask_user rather

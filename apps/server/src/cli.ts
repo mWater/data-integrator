@@ -25,6 +25,8 @@ import { Runner } from "@pathfinder/runner"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { createPool } from "./db.js"
 import { migrate } from "./migrations.js"
+import { refreshAoi } from "./aoi.js"
+import { getDefaultAoi } from "./settings.js"
 import { installIntegration } from "./install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "./executor.js"
 import { RasterStore } from "./rasterStore.js"
@@ -185,6 +187,9 @@ async function main(): Promise<number> {
       case "migrate": {
         const ran = await migrate(pool, MIGRATIONS_DIR)
         console.log(ran.length ? `Applied: ${ran.join(", ")}` : "Up to date")
+        // The area-of-interest shape derives from a setting; rebuild it so a
+        // fresh or upgraded database has it before anything queries
+        await refreshAoi(pool, await getDefaultAoi(pool))
         return 0
       }
       case "install": {
@@ -419,6 +424,12 @@ async function main(): Promise<number> {
         return 0
       }
       case "serve": {
+        // The area-of-interest shape is derived state; rebuilding it at boot
+        // covers databases migrated before this release and bundled-boundary
+        // updates alike. A missing boundary is logged, never fatal
+        await refreshAoi(pool, await getDefaultAoi(pool)).catch(err =>
+          console.warn(`Area of interest shape not rebuilt: ${err instanceof Error ? err.message : err}`)
+        )
         const deps = buildDeps(pool, new Runner(), config)
         const tiles = new TileRenderer(deps.store, config.tileCachePath)
         const model = buildModel(config)

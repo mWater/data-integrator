@@ -35,6 +35,7 @@ import {
 } from "./dashboards/service.js"
 import { DashboardQuery, executeStoredQuery, executeTableTileQuery, executeTileQuery } from "./dashboards/queries.js"
 import { COUNTRIES } from "./countries.js"
+import { refreshAoi } from "./aoi.js"
 import { getLocales, LOCALES_KEY, parseLocales,
   DEFAULT_AOI_KEY,
   getDefaultAoi,
@@ -466,6 +467,7 @@ async function route(
     }
     if (req.method === "DELETE") {
       await setSetting(pool, DEFAULT_AOI_KEY, null)
+      await refreshAoi(pool, null)
       json(res, 200, { default_aoi: null })
       return
     }
@@ -477,6 +479,8 @@ async function route(
       return
     }
     await setSetting(pool, DEFAULT_AOI_KEY, aoi)
+    // The shape statistics clip to follows the setting
+    await refreshAoi(pool, aoi)
     json(res, 200, { default_aoi: aoi })
     return
   }

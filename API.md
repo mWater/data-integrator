@@ -111,10 +111,19 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 - `GET /api/countries` - baked-in country bounding boxes (Natural Earth
   derived, `{iso3, name, bbox}`) powering AOI pickers, offline.
-- `GET /api/settings` - deployment settings; today `default_aoi`, the AOI
-  that integrations without one of their own inherit at run time.
+- `GET /api/settings` - deployment settings: `default_aoi` (the area that
+  integrations without one of their own inherit at run time), `site_title`,
+  and `locales`.
 - `PUT /api/settings/default_aoi` (admin) - body `{bbox, countries?, name?}`.
-  `DELETE` clears it.
+  `DELETE` clears it. Saving also rebuilds the area's shape: with country
+  codes, the countries' land outlines (Natural Earth 1:10m, lakes removed)
+  cut to the box; without, the box itself. The shape is the `aoi` row of the
+  SQL surface, and `aoi_stats(layer_id, at, threshold, op, band)` returns
+  area-weighted statistics of a raster layer over it (mean, share meeting
+  the condition, coverage, cell size, method, snapshot used, boundary
+  provenance). Coarse pixels are weighted by the part inside the boundary;
+  nodata is excluded. Integrations still fetch by the box: it is a download
+  window, and the shape is what "of the country" statistics clip to.
 
 ## Limits
 

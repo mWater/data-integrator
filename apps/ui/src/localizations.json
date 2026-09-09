@@ -6334,6 +6334,24 @@
       "es": "Cualquier persona con el enlace puede ver este panel sin iniciar sesión. {0} lo hizo público el {1}.",
       "mg": "Afaka mijery ity dashboard ity tsy miditra izay rehetra manana ny rohy. Nataon’i {0} ho azon’ny besinimaro jerena tamin’ny {1}.",
       "sw": "Mtu yeyote aliye na kiungo anaweza kuona dashibodi hii bila kuingia. Iliwekwa wazi kwa umma na {0} tarehe {1}."
+    },
+    {
+      "_base": "en",
+      "en": "Nothing observed: this snapshot is empty.",
+      "fr": "Aucune observation : cet instantané est vide.",
+      "pt": "Nada observado: este snapshot está vazio.",
+      "es": "No se observaron datos: esta instantánea está vacía.",
+      "mg": "Tsy misy angona voamarika: foana ity dika voatahiry ity.",
+      "sw": "Hakuna kilichorekodiwa: snapshot hii haina data."
+    },
+    {
+      "_base": "en",
+      "en": "Default region for integrations. Individual integrations can override it. Statistics \"of the country\" use the selected countries' land outline, not the box.",
+      "fr": "Région par défaut pour les intégrations. Chaque intégration peut la remplacer. Les statistiques « du pays » utilisent le contour terrestre des pays sélectionnés, et non le cadre.",
+      "pt": "Região padrão das integrações. Cada integração pode substituí-la. As estatísticas «do país» usam o contorno terrestre dos países selecionados, não a caixa.",
+      "es": "Región predeterminada para las integraciones. Cada integración puede sustituirla. Las estadísticas «del país» usan el contorno terrestre de los países seleccionados, no el recuadro.",
+      "mg": "Faritra ampiasaina ho azy ho an'ny fampidirana. Azon'ny fampidirana tsirairay ovana izany. Ny antontan'isa \"an'ny firenena\" dia mampiasa ny sisin'ny tanin'ireo firenena voafantina, fa tsy ilay efajoro.",
+      "sw": "Eneo chaguomsingi la miunganisho. Kila muunganisho unaweza kutumia eneo tofauti. Takwimu za \"nchi\" hutumia mipaka ya ardhi ya nchi zilizochaguliwa, si kisanduku."
     }
   ],
   "unused": [
@@ -6410,6 +6428,7 @@
     "Ask a question or build a dashboard",
     "Ask answers one-off questions; the dashboard agent turns a description into a page you can share.",
     "Hide the chat and view the dashboard at full width (Esc to return)",
-    "Settings sections"
+    "Settings sections",
+    "Default region for integrations. Individual integrations can override it."
   ]
 }

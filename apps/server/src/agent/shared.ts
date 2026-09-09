@@ -3,6 +3,7 @@
 import pg from "pg"
 import { localizeString } from "@pathfinder/definitions"
 import { listTables } from "../queryApi.js"
+import { describeAoi } from "../aoi.js"
 
 /**
  * Raster-SQL guidance interpolated into agent prompts. Examples use $1
@@ -17,11 +18,26 @@ rows in ordinary SQL. Sample at features (band index from the layer list):
   JOIN rasters r ON r.layer_id = 'chirps_rainfall'
     AND ST_Intersects(ST_ConvexHull(r.rast), wp.geom)
   WHERE r.observed_at = $1
-Zonal statistics over an area (aggregate across tiles):
+Statistics "of the country" or "of the area": the deployment's area of
+interest is a real shape, not its bounding box. The aoi table holds it (one
+row: name, geom, land_area_km2, boundary_source); it is land only, lakes
+removed. Use the function, never an envelope:
+  SELECT * FROM aoi_stats('spi3', $1, -1, '<')
+  -> mean (area-weighted), share (of land meeting the condition), coverage
+     (share of land with a valid pixel), cells, cell_km2, method,
+     observed_at, observed_end, boundary
+Arguments: layer_id, at (date; the snapshot on or before it, null = newest),
+threshold, op (< <= > >= =), band. Coarse pixels are weighted by the part of
+each that lies inside the boundary; nodata is excluded. A statistic over an
+envelope counts ocean and neighbours and is wrong for any "percent of the
+country" claim. When you report a share from a grid coarser than about
+10 km, say the cell size and the coverage with it.
+Zonal statistics over some other area (a basin, a buffer; aggregate across
+tiles), clip to that geometry:
   SELECT sum((stats).sum) / sum((stats).count) AS mean FROM (
-    SELECT ST_SummaryStats(ST_Clip(r.rast, ST_MakeEnvelope(...,4326))) AS stats
-    FROM rasters r WHERE r.layer_id = '...' AND r.observed_at = $1
-      AND ST_Intersects(ST_ConvexHull(r.rast), ST_MakeEnvelope(...,4326))) t
+    SELECT ST_SummaryStats(ST_Clip(r.rast, b.geom, true)) AS stats
+    FROM rasters r JOIN hydrobasins b ON ST_Intersects(ST_ConvexHull(r.rast), b.geom)
+    WHERE r.layer_id = '...' AND r.observed_at = $1 AND b.hybas_id = ...) t
 Always filter layer_id, observed_at (time-series layers have one snapshot per
 period), and spatially via ST_Intersects(ST_ConvexHull(rast), ...) so only
 the needed tiles are read. Keep clipped areas modest - the 15s timeout is
@@ -83,5 +99,10 @@ export async function describeSchema(pool: pg.Pool, locale = "en"): Promise<stri
                 .join(", ")}`
           )
           .join("\n")
-  return tableBlock + layerBlock
+  // The area of interest as a shape: what "of the country" statistics clip to
+  const aoi = await describeAoi(pool)
+  const aoiBlock = aoi
+    ? `\n\nArea of interest (aoi table, one row; aoi_stats() for statistics over it): ${aoi}`
+    : "\n\nNo area of interest is configured, so aoi_stats() is unavailable; say so if asked for a share of the country."
+  return tableBlock + layerBlock + aoiBlock
 }

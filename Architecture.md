@@ -156,7 +156,13 @@ the agent and the UI edit the same object and every change archives a new attrib
 version. Updating from the library carries the deployment-owned fields (aoi, trigger,
 limits) over from the installed definition. AOI is tri-state: an explicit box clips
 to it, explicit null means the source's full extent, and omitting it inherits the
-deployment default AOI at run time. Definitions are files in a versioned library
+deployment default AOI at run time. The box is a download window, not the country:
+the deployment's default AOI also becomes a shape (`data.aoi`, the selected countries'
+land outlines from bundled Natural Earth 1:10m with lakes removed, cut to the box),
+and `data.aoi_stats()` gives area-weighted statistics of a raster layer over it, with
+coarse pixels weighted by the part inside the boundary and coverage reported. Every
+agent is told that a share "of the country" comes from that, never from the
+envelope. Definitions are files in a versioned library
 directory; the app syncs them to the DB. Secret values never appear in the library. Code is a single self-contained
 file; jobs that outgrow one file split into chained integrations via `inputs`, not
 modules.
