@@ -138,7 +138,7 @@ async function materializeTable(
   inDir: string
 ): Promise<InManifestInput> {
   if (!ID_PATTERN.test(ref.tableId)) throw new Error(`Input ${inputId}: invalid tableId ${ref.tableId}`)
-  const format = ref.format ?? (runtime === "python3.12" ? "gpkg" : "json")
+  const format = ref.format ?? (runtime === "python" ? "gpkg" : "json")
 
   const columns = await tableColumns(deps.pool, ref.tableId)
   if (columns.length === 0) throw new Error(`Input ${inputId}: table ${ref.tableId} does not exist (has it run yet?)`)

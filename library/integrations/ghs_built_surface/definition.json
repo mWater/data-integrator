@@ -39,7 +39,7 @@
     },
     "documentation": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {},
   "contract": 2,
   "description": {

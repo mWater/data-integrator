@@ -10,6 +10,8 @@ export interface JobLimits {
   pidsMax?: number
   /** Size of the writable /tmp tmpfs in MB (rootfs is read-only) */
   tmpfsMb?: number
+  /** Ceiling on /work usage in MB; the job is aborted when a poll finds it exceeded */
+  workDiskMb?: number
 }
 
 /** Host directories bind-mounted into the job container. */
@@ -20,6 +22,16 @@ export interface JobMounts {
   workDir?: string
   /** Artifact output, mounted at /out */
   outDir?: string
+  /** Additional host paths mounted read-only, e.g. a shared raster store */
+  readOnly?: ReadOnlyMount[]
+}
+
+/** A host directory the job may read but not write. */
+export interface ReadOnlyMount {
+  /** Absolute host path */
+  hostPath: string
+  /** Absolute path inside the container */
+  containerPath: string
 }
 
 /** Everything needed to execute one job. */
@@ -38,6 +50,8 @@ export interface JobSpec {
   env?: Record<string, string>
   /** false = --network=none */
   network?: boolean
+  /** Container labels, e.g. the owning run id, so orphans can be found and killed */
+  labels?: Record<string, string>
 }
 
 /** Terminal state of a job. */
@@ -73,6 +87,14 @@ export interface RunnerOptions {
   network?: string
   /** "public-only" (default) blocks private/link-local egress; "open" skips rules. */
   egress?: "public-only" | "open"
+  /**
+   * Additional destinations blocked under "public-only": IPv4/IPv6 addresses
+   * or CIDRs. The default set covers private ranges only, so a deployment
+   * lists its own hosts' public addresses here.
+   */
+  blockedAddresses?: string[]
+  /** How often the /work disk guard polls, in ms (default 30 s) */
+  diskMonitorMs?: number
   /**
    * DNS servers passed to job containers. Defaults to public resolvers: host
    * resolv.conf is unreliable under the rootless netns (systemd-resolved stub

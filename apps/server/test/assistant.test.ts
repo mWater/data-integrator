@@ -30,7 +30,7 @@ const SOURCE: IntegrationDefinition = {
   id: "asst_src",
   name: { _base: "en", en: "Assistant source" },
   trigger: {},
-  runtime: "node22",
+  runtime: "node",
   destinations: [
     {
       kind: "table",

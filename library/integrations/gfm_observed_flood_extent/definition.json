@@ -39,7 +39,7 @@
     },
     "documentation": "https://extwiki.eodc.eu/en/GFM/PUM/DataAccess/STAC"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "cron": "0 6 * * *"
   },

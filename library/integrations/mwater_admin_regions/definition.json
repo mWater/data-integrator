@@ -48,7 +48,7 @@
     },
     "documentation": "https://data.mwater.co/llms.txt"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "cron": "0 5 3 * *"
   },

@@ -26,7 +26,7 @@ const SOURCE: IntegrationDefinition = {
   id: "mat_src",
   name: { _base: "en", en: "Materialize source" },
   trigger: {},
-  runtime: "node22",
+  runtime: "node",
   destinations: [
     {
       kind: "table",
@@ -45,7 +45,7 @@ const SOURCE: IntegrationDefinition = {
 }
 
 /** Derived definition shell around one input. */
-function withInput(inputs: IntegrationDefinition["inputs"], runtime: IntegrationDefinition["runtime"] = "node22") {
+function withInput(inputs: IntegrationDefinition["inputs"], runtime: IntegrationDefinition["runtime"] = "node") {
   return { ...SOURCE, id: "mat_derived", destinations: [], inputs, runtime }
 }
 
@@ -158,7 +158,7 @@ test("table extract: columns, where filter, csv format", async () => {
 test("table extract: gpkg via ogr2ogr", { skip: !OGR }, async () => {
   const { inDir, manifest } = await materialize(
     { src: { kind: "table", tableId: "mat_rows", where: [{ column: "name", op: "in", value: ["alpha", "beta"] }] } },
-    "python3.12" // gpkg is the python default
+    "python" // gpkg is the python default
   )
   const input = manifest.inputs.src
   assert.ok(input.kind === "table")

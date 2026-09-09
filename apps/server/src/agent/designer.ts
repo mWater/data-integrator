@@ -68,7 +68,7 @@ export function initialDesignerState(integrationId = ""): DesignerState {
       // Draft boundary is plain-string; wrapDefinitionStrings localizes at save
       name: integrationId as unknown as IntegrationDefinition["name"],
       trigger: {},
-      runtime: "python3.12",
+      runtime: "python",
       destinations: [],
       code: "",
       contract: 2
@@ -110,7 +110,7 @@ manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], cou
 (omit aoi to inherit the deployment default at run time; explicit null means the source's full extent;
 when writing an explicit aoi, take coordinates from lookup_country — never from memory, so agent-authored
 boxes match the UI pickers exactly),
-runtime ("python3.12" | "node22"), limits? {timeoutMs?, memoryMb?, cpus?},
+runtime ("python" | "node"), limits? {timeoutMs?, memoryMb?, cpus?},
 destinations [below], validation?, code (via edit_code, not write_definition), contract: 2.
 
 Destinations:
@@ -143,9 +143,12 @@ sentences.
 # Code contract
 One file, entrypoint run(ctx).
 Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webhook_data,
-ctx.params, ctx.in_dir, ctx.work_dir, ctx.out_dir.
+ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
-params, inDir, workDir, outDir}).
+params, catalog, inDir, workDir, outDir}).
+catalog maps each declared raster layerId to {snapshots: [{timestamp, timestampEnd?,
+sources}]} already promoted, ascending. Use it to skip periods already published unless
+params.force is set; return no artifact for a period that needs no update.
 webhookData is the batch of deliveries since the last run. Never fail the whole
 batch on a malformed event: load the valid events, skip the bad ones, and report
 each rejection loudly in the log with a rejected count in the result.
@@ -327,7 +330,7 @@ ${index}`
           "Run a throwaway code snippet in the sandbox (same ctx, /work and network as a real run; nothing is committed). Python snippets print to stdout; keep them self-contained.",
         inputSchema: z.object({
           code: z.string().describe("Snippet source"),
-          runtime: z.enum(["python3.12", "node22"]).optional().describe("Defaults to the draft's runtime")
+          runtime: z.enum(["python", "node"]).optional().describe("Defaults to the draft's runtime")
         })
       }),
       run_integration: tool({
@@ -606,7 +609,7 @@ ${index}`
     }
     const claimed = await this.deps.pool.query(
       `UPDATE app.runs SET status = 'running', claimed_by = 'designer', heartbeat_at = now(), started_at = now()
-       WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params`,
+       WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params, attempt`,
       [runId]
     )
     await executeRun(this.deps, claimed.rows[0], {

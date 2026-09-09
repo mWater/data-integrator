@@ -39,7 +39,7 @@
     },
     "documentation": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {},
   "contract": 2,
   "description": {

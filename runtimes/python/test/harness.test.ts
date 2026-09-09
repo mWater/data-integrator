@@ -5,10 +5,11 @@ import { promisify } from "node:util"
 import { mkdtemp, readdir, access } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { Runner, parseJobOutput } from "@pathfinder/runner"
+import { Runner, parseJobOutput } from "@mwater/integration-runner"
 
 const execFileP = promisify(execFile)
-const IMAGE = "localhost/pathfinder-runtime-python:dev"
+/** Image under test; the release script points this at the versioned build. */
+const IMAGE = process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/pathfinder-runtime-python:dev"
 
 async function ok(cmd: string, args: string[]): Promise<boolean> {
   try {
@@ -57,9 +58,12 @@ def run(ctx):
     return {
         "rasters": [{"path": "layer.tif"}],
         "data": {"stats": [{"mean": float(data.mean())}]},
-        "state": {"cursor": (ctx.previous_state or {}).get("cursor", 0) + 1},
+        "state": {"cursor": (ctx.previous_state or {}).get("cursor", 0) + 1, "catalog": ctx.catalog},
     }
 `
+
+/** What the server tells the job it has already published, per raster destination. */
+const CATALOG = { rain: { snapshots: [{ timestamp: "2026-01-01T00:00:00Z", sources: 1 }] } }
 
 test("run mode: entrypoint, mounts, result JSON, print-redirect", { skip: !AVAILABLE }, async () => {
   const outDir = await mkdtemp(path.join(tmpdir(), "pyjob-out-"))
@@ -69,7 +73,8 @@ test("run mode: entrypoint, mounts, result JSON, print-redirect", { skip: !AVAIL
     payload: {
       definition: { code: RUN_CODE },
       previousState: { cursor: 41 },
-      params: { value: 2.5 }
+      params: { value: 2.5 },
+      catalog: CATALOG
     },
     mounts: { outDir }
   })

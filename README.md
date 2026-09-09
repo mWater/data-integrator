@@ -73,7 +73,7 @@ started.
 - [Database.md](Database.md) - Postgres schema, migrations, and raster store layout
 - [Dashboards.md](Dashboards.md) - agent-designed dashboards: React over frozen SQL
 - [packages/runner](packages/runner/) - podman + gVisor job executor (working, tested)
-- [runtimes/](runtimes/) - node22 and python3.12 runtime images with job harnesses
+- [runtimes/](runtimes/) - node and python runtime images with job harnesses
   (working, tested)
 
 ## Major pieces
@@ -83,7 +83,7 @@ The project is complete when all of these exist.
 - **Sandbox job runner** *(built)* - Executes integration code in rootless podman +
   gVisor containers with resource limits, mounts, and a public-only egress policy.
   Payload-opaque, so it ports unchanged to other hosts.
-- **Runtime images** *(built)* - `node22` and `python3.12` images whose harnesses map
+- **Runtime images** *(built)* - `node` and `python` images whose harnesses map
   the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in, including
   the geospatial stack in Python.
 - **Integration library** *(format, first definitions, skills, and UI browser built;

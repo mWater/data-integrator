@@ -77,7 +77,7 @@ test("parseDefaultAoi: rejects malformed values", () => {
 import { resolveAoi } from "../src/executor.js"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 
-const BASE = { id: "t", name: "T", trigger: {}, runtime: "node22", destinations: [], code: "", contract: 2 } as unknown as IntegrationDefinition
+const BASE = { id: "t", name: "T", trigger: {}, runtime: "node", destinations: [], code: "", contract: 2 } as unknown as IntegrationDefinition
 const DEFAULT = { bbox: [11.7, -18.1, 24.1, -4.4] as [number, number, number, number], countries: ["AGO"] }
 
 test("resolveAoi: absent aoi inherits the deployment default", () => {

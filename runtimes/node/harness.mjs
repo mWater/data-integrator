@@ -2,7 +2,7 @@
 /**
  * Runtime harness: maps the job payload onto the integration entrypoint.
  *
- * stdin:  JSON { mode?, definition?, code?, secrets?, previousState?, webhookData?, params? }
+ * stdin:  JSON { mode?, definition?, code?, secrets?, previousState?, webhookData?, params?, catalog? }
  * stdout: run mode: JSON-serialized return value of the default-export run(ctx).
  *         Reserved for the result; console and child-process output are
  *         redirected to stderr (fd-level).
@@ -21,6 +21,7 @@ function buildCtx(payload) {
     previousState: payload.previousState ?? null,
     webhookData: payload.webhookData ?? null,
     params: payload.params ?? {},
+    catalog: payload.catalog ?? {},
     inDir: "/in",
     workDir: "/work",
     outDir: "/out"

@@ -23,7 +23,7 @@ const SOURCE: IntegrationDefinition = {
   id: "q_src",
   name: { _base: "en", en: "Query source" },
   trigger: {},
-  runtime: "node22",
+  runtime: "node",
   destinations: [
     {
       kind: "table",

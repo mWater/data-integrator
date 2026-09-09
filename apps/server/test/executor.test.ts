@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
-import { Runner } from "@pathfinder/runner"
+import { Runner } from "@mwater/integration-runner"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
@@ -39,7 +39,7 @@ const DEFINITION: IntegrationDefinition = {
   id: "e2e_test",
   name: { _base: "en", en: "E2E test" },
   trigger: { cron: "0 0 * * *" },
-  runtime: "python3.12",
+  runtime: "python",
   destinations: [
     {
       kind: "table",
@@ -93,7 +93,7 @@ def run(ctx):
 let db: TestDb
 let pool: pg.Pool
 let deps: ExecutorDeps
-const runner = new Runner({ network: "integrator-jobs-exec", egress: "open" })
+const runner = new Runner({ network: "integrator-jobs-exec", egress: "open", diskMonitorMs: 1000 })
 
 before(async () => {
   if (!AVAILABLE) return
@@ -116,7 +116,7 @@ before(async () => {
     store: new RasterStore(storeRoot),
     workRoot: await mkdtemp(path.join(tmpdir(), "work-root-")),
     secretKey: null,
-    images: { "python3.12": PY_IMAGE },
+    images: { "python": PY_IMAGE },
     databaseUrl: db.url
   }
 }, { timeout: 180_000 })
@@ -202,7 +202,7 @@ test("tiled snapshot: many files register as one snapshot; an empty one supersed
     id: "e2e_tiled",
     name: { _base: "en", en: "Tiled" },
     trigger: {},
-    runtime: "python3.12",
+    runtime: "python",
     destinations: [
       {
         kind: "raster",
@@ -283,6 +283,34 @@ def run(ctx):
   assert.equal(after.rows[1].registered, 0)
 }, { timeout: 180_000 })
 
+test("lost lease: a reclaimed run commits nothing from the stale attempt", { skip: !AVAILABLE }, async () => {
+  const lease: IntegrationDefinition = {
+    id: "e2e_lease",
+    name: { _base: "en", en: "Lease" },
+    trigger: {},
+    runtime: "python",
+    destinations: [
+      { kind: "table", tableId: "e2e_lease_rows", action: "append", columns: [{ id: "n", type: "integer" }] }
+    ],
+    code: `def run(ctx):\n    return {"data": {"e2e_lease_rows": [{"n": 1}]}, "state": {"stale": True}}`,
+    contract: 2
+  }
+  await installIntegration(pool, lease)
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_lease', 'manual', 'queued')`)
+  const run = await claimNextRun(pool, "worker-a")
+  assert.ok(run?.attempt)
+  // The reaper expired worker-a's lease and worker-b reclaimed the run
+  await pool.query("UPDATE app.runs SET attempt = gen_random_uuid(), claimed_by = 'worker-b' WHERE id = $1", [run!.id])
+  await executeRun(deps, run!)
+
+  const row = await pool.query("SELECT status, claimed_by, state_out FROM app.runs WHERE id = $1", [run!.id])
+  assert.equal(row.rows[0].status, "running", "worker-b's claim is untouched")
+  assert.equal(row.rows[0].claimed_by, "worker-b")
+  assert.equal(row.rows[0].state_out, null)
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM data.e2e_lease_rows")).rows[0].n, 0)
+  await pool.query("UPDATE app.runs SET status = 'failed', finished_at = now() WHERE id = $1", [run!.id])
+}, { timeout: 180_000 })
+
 test("failing code marks the run failed with the traceback", { skip: !AVAILABLE }, async () => {
   const broken: IntegrationDefinition = {
     ...DEFINITION,
@@ -312,7 +340,7 @@ test("derived integration: /in materialization and lineage", { skip: !AVAILABLE 
     id: "e2e_derived",
     name: { _base: "en", en: "Derived" },
     trigger: {},
-    runtime: "python3.12",
+    runtime: "python",
     inputs: {
       src: { kind: "table", tableId: "e2e_rows", format: "json" },
       snaps: { kind: "raster", layerId: "e2e_layer", select: { latest: 2 } },
@@ -378,7 +406,7 @@ test("table file: rows travel through /out and land atomically", { skip: !AVAILA
     id: "e2e_file",
     name: { _base: "en", en: "File channel" },
     trigger: {},
-    runtime: "python3.12",
+    runtime: "python",
     destinations: [
       {
         kind: "table",
@@ -446,7 +474,7 @@ test("workDiskMb: over-quota /work warns, then refuses the next run", { skip: !A
     id: "e2e_quota",
     name: { _base: "en", en: "Quota" },
     trigger: {},
-    runtime: "python3.12",
+    runtime: "python",
     limits: { workDiskMb: 1 },
     destinations: [
       { kind: "table", tableId: "e2e_quota_rows", action: "append", columns: [{ id: "n", type: "integer" }] }
@@ -541,7 +569,7 @@ test("disk monitor kills a job that overruns its /work quota", { skip: !AVAILABL
     id: "e2e_hog",
     name: { _base: "en", en: "Disk hog" },
     trigger: {},
-    runtime: "python3.12",
+    runtime: "python",
     limits: { workDiskMb: 5, timeoutMs: 120_000 },
     destinations: [{ kind: "table", tableId: "hog_rows", action: "replace", columns: [{ id: "n", type: "integer" }] }],
     code: `import time

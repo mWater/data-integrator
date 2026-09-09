@@ -23,7 +23,7 @@ const LOADER: IntegrationDefinition = {
   id: "home_loader",
   name: { _base: "en", en: "Home loader" },
   trigger: {},
-  runtime: "python3.12",
+  runtime: "python",
   destinations: [
     { kind: "table", tableId: "home_rows", action: "append", columns: [{ id: "site", type: "text" }] }
   ],
@@ -36,7 +36,7 @@ const BROKEN: IntegrationDefinition = {
   id: "home_broken",
   name: { _base: "en", en: "Home broken" },
   trigger: {},
-  runtime: "python3.12",
+  runtime: "python",
   destinations: [
     { kind: "table", tableId: "home_empty", action: "append", columns: [{ id: "site", type: "text" }] }
   ],

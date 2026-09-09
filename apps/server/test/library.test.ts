@@ -23,7 +23,7 @@ const DEFINITION = {
   description: { _base: "en", en: "A demo entry" },
   source: { name: { _base: "en", en: "Demo source" }, provider: "Demo Org", license: "CC-BY-4.0" },
   trigger: { cron: "0 6 1 * *" },
-  runtime: "node22",
+  runtime: "node",
   destinations: [
     { kind: "table", tableId: "lib_rows", action: "replace", columns: [{ id: "name", type: "text" }] }
   ],

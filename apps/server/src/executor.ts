@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { Runner, parseJobOutput } from "@pathfinder/runner"
+import { CatalogLayerState, JobHandle, JobPayload, Runner, parseJobOutput } from "@mwater/integration-runner"
 import { IntegrationDefinition, RunResult } from "@pathfinder/definitions"
 import {
   applyRows,
@@ -75,12 +75,17 @@ export function effectiveWorkQuotaMb(
 }
 
 /** One row of app.runs the executor cares about. */
-interface RunRow {
+export interface RunRow {
   id: string
   /** Owning integration; null for session scratch runs */
   integration_id: string | null
   params: unknown
+  /** Lease token of this claim; null for scratch runs the designer executes directly */
+  attempt: string | null
 }
+
+/** Container label carrying the run id, so orphaned job containers can be found. */
+export const RUN_LABEL = "pathfinder.run"
 
 /**
  * Claims the next queued run: flips it to running under this worker's lease.
@@ -99,9 +104,9 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
       try {
         const claimed = await client.query(
           `UPDATE app.runs
-           SET status = 'running', claimed_by = $2, heartbeat_at = now(), started_at = now()
+           SET status = 'running', claimed_by = $2, attempt = gen_random_uuid(), heartbeat_at = now(), started_at = now()
            WHERE id = $1 AND status = 'queued'
-           RETURNING id, integration_id, params`,
+           RETURNING id, integration_id, params, attempt`,
           [candidate.id, workerId]
         )
         if (claimed.rows.length > 0) return claimed.rows[0] as RunRow
@@ -174,8 +179,21 @@ export interface RunOptions {
  * snapshot registration, webhook consumption, state, and the status flip.
  */
 export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOptions): Promise<void> {
+  // The heartbeat renews this attempt's lease. When the row no longer carries
+  // it (the reaper expired the lease and a replacement claimed the run), the
+  // job is killed rather than allowed to race the replacement to the commit.
+  let jobHandle: JobHandle | null = null
   const heartbeat = setInterval(() => {
-    deps.pool.query("UPDATE app.runs SET heartbeat_at = now() WHERE id = $1", [run.id]).catch(() => {})
+    deps.pool
+      .query(
+        `UPDATE app.runs SET heartbeat_at = now()
+         WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $2`,
+        [run.id, run.attempt]
+      )
+      .then(result => {
+        if (result.rowCount === 0) jobHandle?.abort("lease lost: the run was reclaimed by another worker")
+      })
+      .catch(() => {})
   }, HEARTBEAT_MS)
 
   const scratch = opts?.scratch ?? null
@@ -236,6 +254,8 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           [run.integration_id]
         )
 
+    const catalog = await catalogState(deps.pool, definition, scratch ? scratch.sessionId : null)
+
     const workDir = scratch
       ? scratchWorkDir(deps.workRoot, scratch.sessionId)
       : path.join(deps.workRoot, run.integration_id!)
@@ -265,24 +285,30 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
 
     const logParts: string[] = []
     const started = Date.now()
-    // Disk guard: polls while the job runs and kills it when /work crosses its
-    // quota or the free-space floor is breached, so a runaway download cannot
-    // exhaust the disk between the pre-run check and the next one
+    // The runner polls /work against workDiskMb and kills the job itself. The
+    // free-space floor is a deployment concern (the store shares the disk), so
+    // that guard stays here, on the same cadence
     let diskTimer: ReturnType<typeof setInterval> | null = null
+    const payload: JobPayload = {
+      definition,
+      secrets,
+      previousState,
+      webhookData: webhookEvents.rows.length ? webhookEvents.rows.map(r => r.payload) : undefined,
+      params: (run.params ?? {}) as Record<string, unknown>,
+      catalog
+    }
     const jobResult = await deps.runner.run(
       {
         image,
-        payload: {
-          definition,
-          secrets,
-          previousState,
-          webhookData: webhookEvents.rows.length ? webhookEvents.rows.map(r => r.payload) : undefined,
-          params: run.params ?? {}
-        },
+        payload,
         mounts: { workDir, outDir, inDir: inDir ?? undefined },
-        limits: definition.limits
-          ? { cpus: definition.limits.cpus, memoryMb: definition.limits.memoryMb, timeoutMs: definition.limits.timeoutMs }
-          : undefined
+        limits: {
+          cpus: definition.limits?.cpus,
+          memoryMb: definition.limits?.memoryMb,
+          timeoutMs: definition.limits?.timeoutMs,
+          workDiskMb: workQuotaMb ?? undefined
+        },
+        labels: { [RUN_LABEL]: run.id }
       },
       {
         onStderrLine: line => {
@@ -290,27 +316,19 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           opts?.onLogLine?.(line)
         },
         onStart: handle => {
+          jobHandle = handle
           const floorMb = deps.minFreeDiskMb || null
-          if (workQuotaMb === null && floorMb === null) return
+          if (floorMb === null) return
           let checking = false
           diskTimer = setInterval(async () => {
             if (checking) return
             checking = true
             try {
-              if (workQuotaMb !== null) {
-                const usedMb = await dirUsageMb(workDir)
-                if (usedMb !== null && usedMb > workQuotaMb) {
-                  handle.abort(`/work reached ${usedMb} MB, over the ${workQuotaMb} MB quota`)
+              for (const target of [deps.workRoot, deps.store.root]) {
+                const freeMb = await freeDiskMb(target)
+                if (freeMb !== null && freeMb < floorMb) {
+                  handle.abort(`Only ${freeMb} MB free under ${target}, below the ${floorMb} MB floor`)
                   return
-                }
-              }
-              if (floorMb !== null) {
-                for (const target of [deps.workRoot, deps.store.root]) {
-                  const freeMb = await freeDiskMb(target)
-                  if (freeMb !== null && freeMb < floorMb) {
-                    handle.abort(`Only ${freeMb} MB free under ${target}, below the ${floorMb} MB floor`)
-                    return
-                  }
                 }
               }
             } finally {
@@ -321,6 +339,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       }
     )
     if (diskTimer !== null) clearInterval(diskTimer)
+    jobHandle = null
     let workUsedMb: number | null = null
     if (workQuotaMb !== null) {
       workUsedMb = await dirUsageMb(workDir)
@@ -333,7 +352,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     const log = logParts.join("\n").slice(-256 * 1024)
 
     if (jobResult.status !== "succeeded") {
-      await finishRun(deps.pool, run.id, jobResult.status === "timeout" ? "timeout" : "failed", {
+      await finishRun(deps.pool, run, jobResult.status === "timeout" ? "timeout" : "failed", {
         error: jobResult.abortedReason ?? (jobResult.stderrTail.slice(-2000) || `exit code ${jobResult.exitCode}`),
         log
       })
@@ -448,10 +467,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           webhookEvents.rows.map(r => r.id)
         ])
       }
-      await client.query(
+      // The lease check rides in the commit transaction: zero rows means the
+      // reaper expired this attempt and another worker owns the run now, so
+      // everything above rolls back instead of landing twice
+      const committed = await client.query(
         `UPDATE app.runs SET status = 'succeeded', finished_at = now(), state_out = $2,
            definition_version = $3, stats = $4, log = $5, inputs = $6
-         WHERE id = $1`,
+         WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $7`,
         [
           run.id,
           output.state !== undefined ? JSON.stringify(output.state) : null,
@@ -466,9 +488,11 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           // Lineage records the AOI the run actually executed with: the
           // deployment default resolves at run time, so the definition alone
           // cannot answer "what area did run X ingest"
-          JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null })
+          JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null }),
+          run.attempt
         ]
       )
+      if (committed.rowCount === 0) throw new Error("lease lost: the run was reclaimed by another worker")
       await client.query("COMMIT")
     } catch (err) {
       await client.query("ROLLBACK")
@@ -483,7 +507,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       await pruneRasterSql(deps.pool).catch(() => {})
     }
   } catch (err) {
-    await finishRun(deps.pool, run.id, "failed", {
+    await finishRun(deps.pool, run, "failed", {
       error: err instanceof Error ? err.message : String(err),
       log: null
     })
@@ -506,18 +530,50 @@ async function dirUsageMb(dir: string): Promise<number | null> {
   }
 }
 
-/** Writes a terminal non-success state for a run. */
+/** Writes a terminal non-success state for a run; a lost lease leaves the replacement's row alone. */
 async function finishRun(
   pool: pg.Pool,
-  runId: string,
+  run: RunRow,
   status: "failed" | "timeout",
   fields: { error: string; log: string | null }
 ): Promise<void> {
   await pool.query(
     `UPDATE app.runs SET status = $2, finished_at = now(), error = $3, log = COALESCE($4, log)
-     WHERE id = $1 AND status = 'running'`,
-    [runId, status, fields.error, fields.log]
+     WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $5`,
+    [run.id, status, fields.error, fields.log, run.attempt]
   )
+}
+
+/**
+ * What the job may already have published, per declared raster destination:
+ * promoted snapshots of the layer (the session's scratch layer during
+ * design). Code uses it to skip work it has done and to honour params.force.
+ */
+async function catalogState(
+  pool: pg.Pool,
+  definition: IntegrationDefinition,
+  sessionId: string | null
+): Promise<Record<string, CatalogLayerState>> {
+  const catalog: Record<string, CatalogLayerState> = {}
+  for (const dest of definition.destinations) {
+    if (dest.kind !== "raster") continue
+    const layerRowId = sessionId ? scratchLayerId(sessionId, dest.layerId) : dest.layerId
+    const result = await pool.query(
+      `SELECT s.observed_at, s.observed_end,
+              (SELECT count(*)::int FROM app.raster_sources WHERE snapshot_id = s.id) AS sources
+       FROM app.raster_snapshots s WHERE s.layer_id = $1 AND s.status = 'promoted'
+       ORDER BY s.observed_at`,
+      [layerRowId]
+    )
+    catalog[dest.layerId] = {
+      snapshots: result.rows.map(row => ({
+        timestamp: row.observed_at.toISOString(),
+        ...(row.observed_end ? { timestampEnd: row.observed_end.toISOString() } : {}),
+        sources: row.sources
+      }))
+    }
+  }
+  return catalog
 }
 
 /** Secret key or a clear error when definitions need secrets and none is configured. */

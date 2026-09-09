@@ -37,7 +37,7 @@ const DEFINITION: IntegrationDefinition = {
   id: "tiles_demo",
   name: { _base: "en", en: "Tiles demo" },
   trigger: {},
-  runtime: "node22",
+  runtime: "node",
   destinations: [GEO_TABLE, PLAIN_TABLE],
   code: "export default async function run() { return {} }",
   contract: 2

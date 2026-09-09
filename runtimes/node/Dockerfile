@@ -1,6 +1,7 @@
-# node22 runtime image: standard Node + curated libraries + harness.
+# node runtime image: standard Node + curated libraries + harness.
 # Curated libraries only; integrations never install packages at run time.
-FROM docker.io/library/node:22-slim
+# Pinned release, bumped deliberately with the runtime version.
+FROM docker.io/library/node:22.23.2-slim
 
 RUN mkdir /runtime && cd /runtime \
  && npm init -y >/dev/null \

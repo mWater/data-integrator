@@ -39,7 +39,7 @@
     },
     "documentation": "https://www.hydrosheds.org/products/hydrobasins"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {},
   "contract": 2,
   "description": {

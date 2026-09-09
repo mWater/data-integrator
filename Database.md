@@ -60,6 +60,7 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | params | jsonb | manual/backfill parameters, passed to the job |
 | scheduled_at, started_at, finished_at | timestamptz | |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
+| attempt | uuid null | token of the current claim; the heartbeat and the success commit both require it, so a stale attempt cannot land after a reclaim. Null for scratch runs |
 | definition_version | int fk | which definition version ran (composite FK with integration_id); null until success and for scratch runs |
 | inputs | jsonb | lineage: `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
@@ -79,6 +80,12 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 - Workers heartbeat while running; a reaper marks runs with stale heartbeats
   failed, releasing the one-running constraint. The next scheduler tick
   re-enqueues naturally.
+- A reclaim cannot double-apply: the heartbeat update carries the attempt
+  token, and when it matches no row the worker kills its container; the
+  success commit's run-row update also carries the token and rolls the whole
+  transaction back on zero rows. Job containers are labelled with their run
+  id, and the scheduler removes every labelled container at startup, since a
+  container whose process is gone has no one left to commit it.
 - Backfill/reprocess is a manual run with params (e.g. a date range) and an
   optional force-cold flag: wiped /work, null previousState.
 

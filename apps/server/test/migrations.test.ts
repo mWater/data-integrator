@@ -168,7 +168,7 @@ test("install versioning: bump on change, no-op on re-install, created_by record
     id: "ver_int",
     name: { _base: "en", en: "Versioning" },
     trigger: {},
-    runtime: "node22",
+    runtime: "node",
     destinations: [
       { kind: "table", tableId: "ver_rows", action: "replace", columns: [{ id: "name", type: "text" }] }
     ],

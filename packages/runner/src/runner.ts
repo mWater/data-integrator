@@ -5,7 +5,7 @@ import { access, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { buildRuleset } from "./egress.js"
-import { JobResult, JobSpec, RunHooks, RunnerOptions } from "./types.js"
+import { JobLimits, JobResult, JobSpec, RunHooks, RunnerOptions } from "./types.js"
 
 const execFileP = promisify(execFile)
 
@@ -17,7 +17,9 @@ const DEFAULTS = {
   egress: "public-only" as const,
   stdoutLimitBytes: 10 * 1024 * 1024,
   stderrLimitBytes: 256 * 1024,
-  dns: ["1.1.1.1", "9.9.9.9"]
+  dns: ["1.1.1.1", "9.9.9.9"],
+  blockedAddresses: [] as string[],
+  diskMonitorMs: 30_000
 }
 
 /** Per-job limit defaults, used when JobSpec.limits omits a value. */
@@ -90,7 +92,7 @@ export class Runner {
    * result channel; stderr streams to hooks and is kept as a capped tail.
    */
   async run(spec: JobSpec, hooks?: RunHooks): Promise<JobResult> {
-    const limits = {
+    const limits: Required<Omit<JobLimits, "workDiskMb">> & Pick<JobLimits, "workDiskMb"> = {
       ...LIMIT_DEFAULTS,
       ...Object.fromEntries(Object.entries(spec.limits ?? {}).filter(([, v]) => v !== undefined))
     }
@@ -119,9 +121,15 @@ export class Runner {
     if (spec.mounts?.inDir) args.push("-v", `${spec.mounts.inDir}:/in:ro`)
     if (spec.mounts?.workDir) args.push("-v", `${spec.mounts.workDir}:/work`)
     if (spec.mounts?.outDir) args.push("-v", `${spec.mounts.outDir}:/out`)
+    for (const mount of spec.mounts?.readOnly ?? []) {
+      args.push("-v", `${mount.hostPath}:${mount.containerPath}:ro`)
+    }
 
     for (const [key, value] of Object.entries(spec.env ?? {})) {
       args.push("-e", `${key}=${value}`)
+    }
+    for (const [key, value] of Object.entries(spec.labels ?? {})) {
+      args.push("--label", `${key}=${value}`)
     }
 
     args.push(spec.image, ...(spec.command ?? []))
@@ -168,19 +176,42 @@ export class Runner {
     }, limits.timeoutMs)
 
     let abortedReason: string | null = null
-    hooks?.onStart?.({
-      abort: reason => {
+    const handle = {
+      abort: (reason: string) => {
         if (abortedReason !== null || timedOut) return
         abortedReason = reason
         execFile(this.opts.podmanPath, ["rm", "-f", name], () => {})
       }
-    })
+    }
+    hooks?.onStart?.(handle)
+
+    // Disk guard: /work is a bind mount, so no kernel limit applies; poll its
+    // usage and kill the job when it crosses the quota
+    let diskTimer: ReturnType<typeof setInterval> | null = null
+    const workDir = spec.mounts?.workDir
+    if (workDir && limits.workDiskMb !== undefined) {
+      const quotaMb = limits.workDiskMb
+      let checking = false
+      diskTimer = setInterval(async () => {
+        if (checking) return
+        checking = true
+        try {
+          const usedMb = await dirUsageMb(workDir)
+          if (usedMb !== null && usedMb > quotaMb) {
+            handle.abort(`/work reached ${usedMb} MB, over the ${quotaMb} MB quota`)
+          }
+        } finally {
+          checking = false
+        }
+      }, this.opts.diskMonitorMs)
+    }
 
     const exitCode = await new Promise<number | null>(resolve => {
       child.on("close", code => resolve(code))
       child.on("error", () => resolve(null))
     })
     clearTimeout(timer)
+    if (diskTimer !== null) clearInterval(diskTimer)
     if (lineBuffer && hooks?.onStderrLine) hooks.onStderrLine(lineBuffer)
 
     return {
@@ -195,12 +226,26 @@ export class Runner {
     }
   }
 
+  /**
+   * Kills every job container carrying the label, or the label with the given
+   * value. Called at startup to remove containers a previous process left
+   * running, since a job whose owner is gone can only ever commit twice.
+   * Returns the number of containers removed.
+   */
+  async killLabelled(key: string, value?: string): Promise<number> {
+    const filter = value === undefined ? `label=${key}` : `label=${key}=${value}`
+    const listed = await this.podman(["ps", "-a", "-q", "--filter", filter])
+    const ids = listed.split("\n").filter(id => id.length > 0)
+    for (const id of ids) await this.podmanOk(["rm", "-f", id])
+    return ids.length
+  }
+
   /** Applies the egress ruleset inside the rootless infra netns. Idempotent. */
   private async applyEgressRules(): Promise<void> {
     const dir = await mkdtemp(path.join(tmpdir(), "integrator-egress-"))
     const file = path.join(dir, "egress.nft")
     try {
-      await writeFile(file, buildRuleset())
+      await writeFile(file, buildRuleset(this.opts.blockedAddresses))
       await this.podman(["unshare", "--rootless-netns", "nft", "-f", file])
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -221,6 +266,17 @@ export class Runner {
     } catch {
       return false
     }
+  }
+}
+
+/** Disk usage of a directory in MB; null when it cannot be measured. */
+async function dirUsageMb(dir: string): Promise<number | null> {
+  try {
+    const { stdout } = await execFileP("du", ["-sk", dir])
+    const kb = Number(stdout.trim().split(/\s+/)[0])
+    return Number.isFinite(kb) ? Math.round(kb / 1024) : null
+  } catch {
+    return null
   }
 }
 

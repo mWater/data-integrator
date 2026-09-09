@@ -39,7 +39,7 @@
     },
     "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_spi.pdf"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "cron": "0 6 10 * *"
   },

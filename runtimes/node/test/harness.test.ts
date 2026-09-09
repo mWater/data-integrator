@@ -5,10 +5,11 @@ import { promisify } from "node:util"
 import { mkdtemp, readFile, access } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { Runner, parseJobOutput } from "@pathfinder/runner"
+import { Runner, parseJobOutput } from "@mwater/integration-runner"
 
 const execFileP = promisify(execFile)
-const IMAGE = "localhost/pathfinder-runtime-node:dev"
+/** Image under test; the release script points this at the versioned build. */
+const IMAGE = process.env.RUNTIME_IMAGE_NODE ?? "localhost/pathfinder-runtime-node:dev"
 
 async function ok(cmd: string, args: string[]): Promise<boolean> {
   try {
@@ -49,10 +50,13 @@ export default async function run(ctx) {
   await writeFile(\`\${ctx.outDir}/report.txt\`, \`rows=\${rows.length}\`)
   return {
     data: { sites: rows },
-    state: { cursor: (ctx.previousState?.cursor ?? 0) + 1 }
+    state: { cursor: (ctx.previousState?.cursor ?? 0) + 1, catalog: ctx.catalog }
   }
 }
 `
+
+/** What the server tells the job it has already published, per raster destination. */
+const CATALOG = { rain: { snapshots: [{ timestamp: "2026-01-01T00:00:00Z", sources: 1 }] } }
 
 test("run mode: entrypoint, curated lib import, mounts, print-redirect", { skip: !AVAILABLE }, async () => {
   const outDir = await mkdtemp(path.join(tmpdir(), "nodejob-out-"))
@@ -62,14 +66,16 @@ test("run mode: entrypoint, curated lib import, mounts, print-redirect", { skip:
     payload: {
       definition: { code: RUN_CODE },
       previousState: { cursor: 7 },
-      params: { csv: "name,type\nWell A,borehole\nWell B,spring" }
+      params: { csv: "name,type\nWell A,borehole\nWell B,spring" },
+      catalog: CATALOG
     },
     mounts: { outDir }
   })
   assert.equal(result.status, "succeeded", result.stderrTail)
-  const output = parseJobOutput<{ data: { sites: unknown[] }; state: { cursor: number } }>(result)
+  const output = parseJobOutput<{ data: { sites: unknown[] }; state: { cursor: number; catalog: unknown } }>(result)
   assert.equal(output.data.sites.length, 2)
   assert.equal(output.state.cursor, 8)
+  assert.deepEqual(output.state.catalog, CATALOG)
   assert.equal(await readFile(path.join(outDir, "report.txt"), "utf8"), "rows=2")
   assert.match(result.stderrTail, /log line from integration/)
   assert.doesNotMatch(result.stdout, /log line/)

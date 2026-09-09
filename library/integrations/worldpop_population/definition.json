@@ -39,7 +39,7 @@
     },
     "documentation": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "cron": "0 6 1 * *"
   },

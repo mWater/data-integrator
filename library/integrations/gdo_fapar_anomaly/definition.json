@@ -43,7 +43,7 @@
     "provider": "European Commission Joint Research Centre",
     "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "cron": "0 6 3,13,23 * *"
   },

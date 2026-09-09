@@ -25,6 +25,9 @@
  * translations. Structurally identical to ez-localize's LocalizedString, so
  * either type flows into the other.
  */
+import type { RuntimeId } from "@mwater/integration-runner"
+export type { RuntimeId }
+
 export interface LocalizedString {
   /** Locale code the string was authored in; that locale is always a key below */
   _base: string
@@ -104,8 +107,6 @@ export interface IntegrationDefinition {
   contract: 2
 }
 
-/** Identifier of a runtime image the job runner can execute. */
-export type RuntimeId = "node22" | "python3.12"
 
 /** Provenance of the external data source, for documentation and lineage. */
 export interface SourceInfo {
@@ -184,7 +185,7 @@ export interface TableInputRef {
   /** Row filter applied before extraction */
   where?: FilterSpec
   /**
-   * Extract file format. Default by runtime: gpkg for python3.12, json for node22.
+   * Extract file format. Default by runtime: gpkg for python, json for node.
    * json is an array of row objects: dates as ISO strings, geometry columns as
    * GeoJSON geometry objects.
    */
@@ -370,71 +371,13 @@ export interface RangeRule {
 }
 
 // ============================================================================
-// Run result (what run(ctx) returns; harness serializes this to stdout)
+// Run result: the job contract lives with the runner, re-exported here
 // ============================================================================
 
-/** Return value of run(ctx); the harness serializes it to stdout. */
-export interface RunResult {
-  /** Rows per destination table id, inline. Bounded by the stdout cap; larger tables go in `tables`. */
-  data?: Record<string, Record<string, unknown>[]>
-  /** Table files written to /out, loaded into their destination tables */
-  tables?: TableArtifact[]
-  /** Raster artifacts written to /out, to be registered in the catalog */
-  rasters?: RasterArtifact[]
-  /** Next incremental state, persisted and passed as previousState */
-  state?: Record<string, unknown>
-}
-
-/**
- * One table file produced by a run, loaded into a destination table. The file
- * channel carries the same rows `data` would, without serializing them through
- * stdout, so it is the way to deliver large or geometry-heavy tables. A tableId
- * may appear in `data` or `tables`, never both.
- */
-export interface TableArtifact {
-  /** Destination table the file feeds */
-  tableId: string
-  /** Path relative to /out */
-  path: string
-  /** File format; server derives it from the extension when absent */
-  format?: TableArtifactFormat
-}
-
-/** Formats accepted for a table file; all are read with OGR. */
-export type TableArtifactFormat = "geojson" | "fgb" | "gpkg" | "csv"
-
-/**
- * One raster snapshot produced by a run. A snapshot is one file (`path`) or a
- * set of files (`sources`) that together cover the observation: tiled
- * products at high resolution over large extents (10-degree flood tiles,
- * per-country population grids) stay as tiles and are mosaicked at read
- * time. Exactly one of `path` or `sources` is given. An empty `sources`
- * array publishes an empty snapshot: nothing was observed, and it supersedes
- * the previous snapshot like any other. Omitting the artifact means no update.
- */
-export interface RasterArtifact {
-  /** Destination layer the snapshot belongs to */
-  layerId: string
-  /** Path relative to /out, for a single-file snapshot */
-  path?: string
-  /** Files making up the snapshot, mosaicked at read time; [] publishes an empty snapshot */
-  sources?: RasterSource[]
-  /** Observation time (or period start) of this snapshot */
-  timestamp: string
-  /** Period end when the snapshot covers a range */
-  timestampEnd?: string
-  /** [west, south, east, north], EPSG:4326, of a single-file snapshot; server derives from the file when absent */
-  footprint?: [number, number, number, number]
-  /** CRS shared by every file, e.g. "EPSG:4326"; server derives from the files when absent */
-  crs?: string
-  /** Free-form metadata stored on the snapshot */
-  metadata?: Record<string, unknown>
-}
-
-/** One file of a multi-file raster snapshot. */
-export interface RasterSource {
-  /** Path relative to /out */
-  path: string
-  /** [west, south, east, north], EPSG:4326; server derives from the file when absent */
-  footprint?: [number, number, number, number]
-}
+export type {
+  RasterArtifact,
+  RasterSource,
+  RunResult,
+  TableArtifact,
+  TableArtifactFormat
+} from "@mwater/integration-runner"

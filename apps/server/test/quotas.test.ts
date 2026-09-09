@@ -14,7 +14,7 @@ function definitionWith(workDiskMb?: number): IntegrationDefinition {
     id: "quota_demo",
     name: "Quota demo",
     trigger: {},
-    runtime: "node22",
+    runtime: "node",
     destinations: [],
     code: "",
     contract: 2,

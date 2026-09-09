@@ -21,7 +21,7 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { LanguageModel } from "ai"
-import { Runner } from "@pathfinder/runner"
+import { Runner } from "@mwater/integration-runner"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { createPool } from "./db.js"
 import { migrate } from "./migrations.js"
@@ -80,8 +80,8 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
     workRoot: config.workRoot,
     secretKey: config.secretKey,
     images: {
-      "python3.12": config.runtimeImages.python,
-      node22: config.runtimeImages.node
+      python: config.runtimeImages.python,
+      node: config.runtimeImages.node
     },
     workQuotaMb: config.workQuotaMb,
     minFreeDiskMb: config.minFreeDiskMb

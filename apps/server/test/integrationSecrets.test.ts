@@ -24,7 +24,7 @@ function definitionWith(id: string, secrets: string[]): IntegrationDefinition {
     id,
     name: { _base: "en", en: id },
     trigger: {},
-    runtime: "node22",
+    runtime: "node",
     destinations: [],
     secrets,
     code: "export default async function run() { return {} }",

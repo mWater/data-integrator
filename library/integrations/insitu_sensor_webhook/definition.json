@@ -36,7 +36,7 @@
       "sw": "Vipimo hupakiwa kama vilivyopokelewa kutoka kwenye mfumo unaotuma, huku nakala rudufu zikiondolewa lakini bila uthibitishaji au urekebishaji huru; ueneaji na usahihi ni ule wa sensa za uwandani zenyewe."
     }
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "trigger": {
     "webhook": true,
     "webhookDelaySeconds": 900

@@ -39,7 +39,7 @@
     },
     "documentation": "https://land.copernicus.eu/en/technical-library/product-user-manual-fraction-of-absorbed-photosynthetically-active-radiation-300m-version-2/@@download/file"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "secrets": [
     "cdse_s3_credentials"
   ],

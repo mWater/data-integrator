@@ -21,7 +21,7 @@ const HOOKED: IntegrationDefinition = {
   id: "hooked",
   name: { _base: "en", en: "Webhook demo" },
   trigger: { webhook: true },
-  runtime: "node22",
+  runtime: "node",
   destinations: [{ kind: "table", tableId: "hooked_rows", action: "replace", columns: [{ id: "name", type: "text" }] }],
   code: "export default async function run() { return {} }",
   contract: 2

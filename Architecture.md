@@ -55,7 +55,7 @@ isolated-vm model is retired).
   link-local, cloud metadata endpoints), enforced by firewall rules in the job's netns.
   Replaces in-process safeFetch. A hostname allowlist would require an egress proxy;
   not designed, revisit if a deployment demands it.
-- Runtime images: `node22` and `python3.12`, standard unrestricted runtimes. Python
+- Runtime images: `node` and `python`, standard unrestricted runtimes. Python
   includes the geospatial stack (GDAL, rasterio, xarray, netCDF4/h5netcdf/h5py, cfgrib,
   numpy, pyproj, geopandas); Node has real fetch, fs, crypto, and streams. Libraries are
   a curated set baked into each image, pinned by digest; no package installs at run time.
@@ -68,8 +68,12 @@ isolated-vm model is retired).
 
 One contract, language-agnostic:
 
-- stdin: JSON `{ definition, secrets, previousState, webhookData?, params }`;
-  webhookData is all pending events, batched oldest first
+- stdin: JSON `{ definition, secrets, previousState, webhookData?, params, catalog? }`;
+  webhookData is all pending events, batched oldest first; catalog lists, per declared
+  raster destination, the snapshots already promoted (timestamp, period end, source
+  count), so code decides for itself what still needs producing and honours
+  `params.force` for a rerun. Completion policy lives in the integration, never in the
+  scheduler
 - stdout: JSON `{ data?: { [tableId]: rows[] }, tables?: TableArtifact[],
   rasters?: RasterArtifact[], state? }`. stdout is capped (10 MB), so `data` is for
   result sets that comfortably fit; larger tables travel as files in `tables[]`
@@ -90,8 +94,12 @@ One contract, language-agnostic:
 The harness in each image maps the payload onto a single entrypoint, so integration code
 is a plain module with no magic globals:
 
-- Node: `export default async function run({ secrets, previousState, webhookData, params })`
+- Node: `export default async function run({ secrets, previousState, webhookData, params, catalog })`
 - Python: `def run(ctx)` with the same fields
+
+The contract types (`JobPayload`, `RunResult`, `RasterArtifact`, `TableArtifact`,
+`CatalogSnapshot`) ship in the runner package, since the harness is what implements them;
+the definitions package re-exports them.
 
 The return value becomes stdout. The sandbox is the container, not the language.
 

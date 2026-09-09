@@ -18,7 +18,7 @@
 
 import { hostname } from "node:os"
 import { dropOrphanStagedTables } from "./destinations.js"
-import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns } from "./executor.js"
+import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns, RUN_LABEL } from "./executor.js"
 import { TileRenderer } from "./tiles.js"
 import { cronMatches, parseCron } from "./cron.js"
 
@@ -77,6 +77,15 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
   const reapMs = options.reapMs ?? 60_000
   const workers = options.workers ?? 2
 
+  // Job containers left by a previous process have no owner to commit them
+  // and would only ever race a replacement, so they go before any claim
+  const swept = deps.runner
+    .killLabelled(RUN_LABEL)
+    .then(n => {
+      if (n > 0) console.log(`scheduler: removed ${n} orphaned job container(s)`)
+    })
+    .catch(err => console.error("scheduler orphan sweep failed:", err))
+
   let stopped = false
   const sleepers = new Set<() => void>()
   const sleep = (ms: number) =>
@@ -109,6 +118,7 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
   const workerLoops = Array.from({ length: workers }, (_, i) =>
     (async () => {
       const workerId = `scheduler-${hostname()}-${i}`
+      await swept
       while (!stopped) {
         let run = null
         try {

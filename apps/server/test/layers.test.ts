@@ -28,7 +28,7 @@ const LAYERED: IntegrationDefinition = {
   id: "layer_src",
   name: { _base: "en", en: "Layer source" },
   trigger: {},
-  runtime: "python3.12",
+  runtime: "python",
   destinations: [
     {
       kind: "raster",

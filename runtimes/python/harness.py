@@ -2,7 +2,7 @@
 """
 Runtime harness: maps the job payload onto the integration entrypoint.
 
-stdin:  JSON { mode?, definition?, code?, secrets?, previousState?, webhookData?, params? }
+stdin:  JSON { mode?, definition?, code?, secrets?, previousState?, webhookData?, params?, catalog? }
 stdout: run mode: the JSON-serialized return value of run(ctx). Reserved for the result;
         prints and subprocess output are redirected to stderr (fd-level).
         snippet mode: whatever the code prints (returned raw to the agent).
@@ -26,6 +26,7 @@ def build_ctx(payload):
         previous_state=payload.get("previousState"),
         webhook_data=payload.get("webhookData"),
         params=payload.get("params") or {},
+        catalog=payload.get("catalog") or {},
         in_dir="/in",
         work_dir="/work",
         out_dir="/out",

@@ -37,7 +37,7 @@ function lanIp(): string | null {
   return null
 }
 
-const runner = new Runner({ network: "integrator-jobs-test" })
+const runner = new Runner({ network: "integrator-jobs-test", diskMonitorMs: 500 })
 
 before(async () => {
   if (!AVAILABLE) return
@@ -130,6 +130,50 @@ test("mounts: /in readable+readonly, /out writable and collected", { skip: !AVAI
   assert.equal(result.status, "succeeded")
   assert.match(result.stdout, /READONLY/)
   assert.equal(await readFile(path.join(outDir, "copied.txt"), "utf8"), "hello-input")
+})
+
+test("mounts: extra read-only host paths", { skip: !AVAILABLE }, async () => {
+  const shared = await mkdtemp(path.join(tmpdir(), "job-shared-"))
+  await writeFile(path.join(shared, "static.txt"), "static-data")
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    mounts: { readOnly: [{ hostPath: shared, containerPath: "/mnt/static" }] },
+    command: ["sh", "-c", "cat /mnt/static/static.txt; touch /mnt/static/nope 2>/dev/null && echo WRITABLE || echo READONLY"]
+  })
+  assert.equal(result.status, "succeeded")
+  assert.match(result.stdout, /static-data/)
+  assert.match(result.stdout, /READONLY/)
+})
+
+test("workDiskMb: a job filling /work past its quota is killed", { skip: !AVAILABLE }, async () => {
+  const workDir = await mkdtemp(path.join(tmpdir(), "job-work-"))
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    mounts: { workDir },
+    limits: { workDiskMb: 5, timeoutMs: 60_000 },
+    command: ["sh", "-c", "dd if=/dev/zero of=/work/blob bs=1M count=20 2>/dev/null; sleep 30"]
+  })
+  assert.equal(result.status, "failed")
+  assert.match(result.abortedReason ?? "", /\/work reached \d+ MB, over the 5 MB quota/)
+  assert.ok(result.durationMs < 30_000)
+})
+
+test("labels: orphaned job containers are found and killed by label", { skip: !AVAILABLE }, async () => {
+  const running = runner.run({
+    image: ALPINE,
+    payload: null,
+    labels: { "test.owner": "orphan-sweep" },
+    command: ["sleep", "30"],
+    limits: { timeoutMs: 60_000 }
+  })
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  assert.equal(await runner.killLabelled("test.owner", "orphan-sweep"), 1)
+  const result = await running
+  assert.notEqual(result.status, "succeeded")
+  assert.ok(result.durationMs < 30_000)
+  assert.equal(await runner.killLabelled("test.owner", "orphan-sweep"), 0)
 })
 
 test("stderr streams to hook lines", { skip: !AVAILABLE }, async () => {

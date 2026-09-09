@@ -1,6 +1,8 @@
-# python3.12 runtime image: GDAL CLI + geospatial Python stack + harness.
+# python runtime image: GDAL CLI + geospatial Python stack + harness.
 # Curated libraries only; integrations never install packages at run time.
-FROM ghcr.io/osgeo/gdal:ubuntu-small-latest
+# Pinned release: the floating -latest tag serves dev builds, and two builds of
+# one runtime version must not differ. Bump deliberately with the version.
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.13.3
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3-pip libeccodes0 \

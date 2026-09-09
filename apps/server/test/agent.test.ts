@@ -6,7 +6,7 @@ import { tool } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 import pg from "pg"
 import { z } from "zod"
-import { Runner } from "@pathfinder/runner"
+import { Runner } from "@mwater/integration-runner"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
@@ -396,7 +396,7 @@ test("designer: write_definition preserves id and code, reports validation", asy
         id: "sneaky_rename",
         name: "Demo",
         trigger: { cron: "0 0 * * *" },
-        runtime: "python3.12",
+        runtime: "python",
         destinations: [
           { kind: "table", tableId: "demo_rows", action: "replace", columns: [{ id: "v", type: "number" }] }
         ],
@@ -425,7 +425,7 @@ test("designer: write_definition preserves id and code, reports validation", asy
         id: "demo",
         name: "Demo",
         trigger: {},
-        runtime: "node22",
+        runtime: "node",
         destinations: [
           { kind: "table", tableId: "demo_rows", mode: "merge", mergeColumns: ["t"], columns: [{ id: "t", type: "timestamp" }] }
         ],
@@ -530,7 +530,7 @@ test("designer: an unbound draft is named by the first write_definition", async 
   assert.match(run.result, /no integration id/)
 
   const defJson = (id: string) =>
-    JSON.stringify({ id, name: { _base: "en", en: id }, trigger: {}, runtime: "python3.12", destinations: [], code: "", contract: 2 })
+    JSON.stringify({ id, name: { _base: "en", en: id }, trigger: {}, runtime: "python", destinations: [], code: "", contract: 2 })
 
   const badId = await designer.execute("write_definition", { definitionJson: defJson("Bad-Id") }, state, noEvents, SID)
   assert.match(badId.result, /Invalid integration id/)
@@ -568,7 +568,7 @@ test("integrations API: list and detail reflect an installed definition", async 
     id: "api_demo",
     name: { _base: "en", en: "API Demo" },
     trigger: { cron: "0 0 * * *" },
-    runtime: "node22",
+    runtime: "node",
     destinations: [
       { kind: "table", tableId: "api_demo_rows", action: "replace", columns: [{ id: "v", type: "number" }] }
     ],
@@ -611,7 +611,7 @@ test("integrations: design-session installs stay draft until promoted", async ()
     id: "draft_demo",
     name: { _base: "en", en: "Draft Demo" },
     trigger: {},
-    runtime: "node22",
+    runtime: "node",
     destinations: [],
     code: "export default async function run() { return {} }",
     contract: 2

@@ -39,7 +39,7 @@
     },
     "documentation": "https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=overview"
   },
-  "runtime": "python3.12",
+  "runtime": "python",
   "secrets": [
     "cds_api_token"
   ],

@@ -29,7 +29,7 @@ const SOURCE: IntegrationDefinition = {
   id: "del_source",
   name: { _base: "en", en: "Delete source" },
   trigger: {},
-  runtime: "python3.12",
+  runtime: "python",
   destinations: [
     {
       kind: "table",
@@ -48,7 +48,7 @@ const DERIVED: IntegrationDefinition = {
   id: "del_derived",
   name: { _base: "en", en: "Delete derived" },
   trigger: {},
-  runtime: "python3.12",
+  runtime: "python",
   inputs: { src: { kind: "table", tableId: "del_rows" } },
   destinations: [
     {
