@@ -13,9 +13,14 @@ import { getLayer, LayerBand, LayerDetail, sampleLayer, styleToken } from "./api
 import { useAppTheme } from "./theme.js"
 import { formatDateTime, localizeData } from "./localization.js"
 
-/** Tile URL for one layer, snapshot and band; ?s busts caches on restyle. */
-const tileUrl = (layerId: string, snapshotId: string, band: LayerBand) =>
-  `/tiles/${layerId}/${snapshotId}/${band.id}/{z}/{x}/{y}.png?s=${styleToken(band.rendering)}`
+/**
+ * Tile URL for one layer, snapshot and band. Tiles cache as immutable, so
+ * everything that changes the pixels is in the URL: ?s for the style, m for
+ * the mask shape, and mask=0 when drawing beyond the area.
+ */
+const tileUrl = (layer: LayerDetail, snapshotId: string, band: LayerBand, clip: boolean) =>
+  `/tiles/${layer.id}/${snapshotId}/${band.id}/{z}/{x}/{y}.png?s=${styleToken(band.rendering)}` +
+  (clip ? (layer.maskKey ? `&m=${layer.maskKey}` : "") : "&mask=0")
 
 /** Id of the single maplibre layer this page draws into. */
 const RASTER_LAYER = "raster"
@@ -111,6 +116,10 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
   const controlsToggle = useRef<HTMLButtonElement>(null)
   const [opacity, setOpacity] = useState(0.65)
   const opacityRef = useRef(opacity)
+  // Clip the drawing to the layer's area of interest; off shows the
+  // surroundings the integration fetched beyond it
+  const [clip, setClip] = useState(true)
+  const clipRef = useRef(clip)
   const inspectRef = useRef({
     layerId,
     snapshotId: "",
@@ -158,7 +167,7 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
       map.on("load", () => {
         map.addSource(RASTER_LAYER, {
           type: "raster",
-          tiles: [tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])],
+          tiles: [tileUrl(layer, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0], clipRef.current)],
           tileSize: 256
         })
         map.addLayer({ id: RASTER_LAYER, type: "raster", source: RASTER_LAYER, paint: { "raster-opacity": opacityRef.current } })
@@ -229,10 +238,11 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
       const map = mapRef.current
       if (!map || !layer || !bandId || !map.getSource(RASTER_LAYER)) return
       const source = map.getSource(RASTER_LAYER) as RasterTileSource
-      source.setTiles([tileUrl(layer.id, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0])])
+      clipRef.current = clip
+      source.setTiles([tileUrl(layer, layer.snapshots[index].id, layer.bands.find(b => b.id === bandId) ?? layer.bands[0], clip)])
     }, 200)
     return () => clearTimeout(timer)
-  }, [layer, bandId, index])
+  }, [layer, bandId, index, clip])
 
   useEffect(() => {
     opacityRef.current = opacity
@@ -352,6 +362,12 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
                 onChange={e => setOpacity(Number(e.target.value) / 100)}
               />
               <div className="dim">{Math.round(opacity * 100)}%</div>
+              {layer.masked && (
+                <label className="layer-clip">
+                  <input type="checkbox" checked={clip} onChange={e => setClip(e.target.checked)} />{" "}
+                  {T`Clip to area of interest`}
+                </label>
+              )}
             </section>
           </>
         )}

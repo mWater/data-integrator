@@ -73,40 +73,59 @@ function boxWkt([west, south, east, north]: [number, number, number, number]): s
 }
 
 /**
+ * SQL producing a country-shaped area: the countries' outlines minus lakes,
+ * cut to the box, as a MultiPolygon. Null when the codes match no boundary.
+ * The expression references $1 (box WKT), $2 (countries GeoJSON), $3 (lakes
+ * GeoJSON), which the returned params carry in that order.
+ */
+async function countryShape(
+  codes: string[],
+  box: [number, number, number, number]
+): Promise<{ sql: string; params: string[] } | null> {
+  const { countries, lakes } = await loadBoundaries()
+  const found = countryFeatures(countries, codes)
+  if (found.length === 0) return null
+  const nearbyLakes = lakes.filter(l => touchesBox(l.geometry, box))
+  return {
+    // ST_CollectionExtract keeps the polygons should the difference leave
+    // slivers of lower dimension
+    sql: `ST_Multi(ST_CollectionExtract(ST_Intersection(
+            ST_Difference(
+              ST_UnaryUnion(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($2), 4326))),
+              ST_UnaryUnion(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($3), 4326)))
+            ),
+            ST_GeomFromText($1, 4326)), 3))`,
+    params: [
+      boxWkt(box),
+      JSON.stringify({ type: "GeometryCollection", geometries: found.map(f => f.geometry) }),
+      JSON.stringify({ type: "GeometryCollection", geometries: nearbyLakes.map(l => l.geometry) })
+    ]
+  }
+}
+
+/**
  * Rebuilds data.aoi from the deployment's default area of interest. With
  * countries, the shape is their Natural Earth outlines minus lakes, cut to
- * the box; a bare box is a rectangle; null clears the row. Idempotent.
+ * the box; a bare box is a rectangle; null clears the row. Idempotent. Layer
+ * masks follow, since inheriting layers take this shape.
  */
 export async function refreshAoi(pool: pg.Pool, aoi: DefaultAoi | null): Promise<void> {
   if (!aoi) {
     await pool.query("DELETE FROM data.aoi")
+    await refreshLayerMasks(pool)
     return
   }
   const codes = aoi.countries ?? []
   const box = aoi.bbox
-  let geomSql: string
-  const params: unknown[] = [boxWkt(box)]
+  let geomSql = "ST_Multi(ST_GeomFromText($1, 4326))"
+  let params: unknown[] = [boxWkt(box)]
   let source = "Bounding box"
   if (codes.length > 0) {
-    const { countries, lakes } = await loadBoundaries()
-    const found = countryFeatures(countries, codes)
-    if (found.length === 0) throw new Error(`No boundary for country codes ${codes.join(", ")}`)
-    const nearbyLakes = lakes.filter(l => touchesBox(l.geometry, box))
-    params.push(
-      JSON.stringify({ type: "GeometryCollection", geometries: found.map(f => f.geometry) }),
-      JSON.stringify({ type: "GeometryCollection", geometries: nearbyLakes.map(l => l.geometry) })
-    )
-    // Countries, minus lakes, cut to the box; ST_CollectionExtract keeps the
-    // polygons should the difference leave slivers of lower dimension
-    geomSql = `ST_Multi(ST_CollectionExtract(ST_Intersection(
-                 ST_Difference(
-                   ST_UnaryUnion(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($2), 4326))),
-                   ST_UnaryUnion(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($3), 4326)))
-                 ),
-                 ST_GeomFromText($1, 4326)), 3))`
+    const shape = await countryShape(codes, box)
+    if (!shape) throw new Error(`No boundary for country codes ${codes.join(", ")}`)
+    geomSql = shape.sql
+    params = shape.params
     source = BOUNDARY_SOURCE
-  } else {
-    geomSql = "ST_Multi(ST_GeomFromText($1, 4326))"
   }
   params.push(aoi.name ?? null, codes, box, source, codes.length > 0 ? BOUNDARY_VERSION : "n/a")
   const n = params.length
@@ -120,6 +139,47 @@ export async function refreshAoi(pool: pg.Pool, aoi: DefaultAoi | null): Promise
        boundary_version = EXCLUDED.boundary_version, updated_at = now()`,
     params
   )
+  await refreshLayerMasks(pool)
+}
+
+/**
+ * Rebuilds the map mask of every installed raster layer (or one integration's)
+ * from its integration's effective area of interest: an inherited default
+ * takes the deployment shape; explicit countries take their own outline; an
+ * explicit box or the source's full extent means no mask. Rendering only.
+ */
+export async function refreshLayerMasks(pool: pg.Pool, integrationId?: string): Promise<void> {
+  const rows = await pool.query(
+    `SELECT id, definition -> 'aoi' AS aoi, definition ? 'aoi' AS has_aoi FROM app.integrations
+     WHERE EXISTS (SELECT 1 FROM app.raster_layers l WHERE l.integration_id = app.integrations.id AND l.session_id IS NULL)
+       ${integrationId ? "AND id = $1" : ""}`,
+    integrationId ? [integrationId] : []
+  )
+  for (const row of rows.rows) {
+    const aoi = row.aoi as (DefaultAoi | null) | undefined
+    if (!row.has_aoi) {
+      // Inherits the deployment default: share its shape (or none)
+      await pool.query(
+        `UPDATE app.raster_layers SET mask_geom = (SELECT geom FROM data.aoi)
+         WHERE integration_id = $1 AND session_id IS NULL`,
+        [row.id]
+      )
+      continue
+    }
+    const codes = aoi?.countries ?? []
+    const shape = aoi && codes.length > 0 ? await countryShape(codes, aoi.bbox) : null
+    if (!shape) {
+      await pool.query("UPDATE app.raster_layers SET mask_geom = NULL WHERE integration_id = $1 AND session_id IS NULL", [
+        row.id
+      ])
+      continue
+    }
+    await pool.query(
+      `UPDATE app.raster_layers SET mask_geom = (SELECT ${shape.sql})
+       WHERE integration_id = $4 AND session_id IS NULL`,
+      [...shape.params, row.id]
+    )
+  }
 }
 
 /** One-line description of the configured area, for agent prompts; null when none. */

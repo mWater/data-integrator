@@ -36,7 +36,7 @@ function overlaps(a: [number, number, number, number], b: [number, number, numbe
 
 /** A fully transparent PNG, served for tiles no source covers. */
 const EMPTY_TILE = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
   "base64"
 )
 
@@ -79,6 +79,8 @@ export class TileRenderer {
    * @param rendering - Band rendering config (color map, resampling)
    * @param alive - Rendering stops between steps once this returns false
    *   (the requester hung up); the tile resolves to null instead
+   * @param mask - Shape to clip the drawing to (GeoJSON, WGS84) with a short
+   *   key naming it in the cache; null draws everything the files cover
    */
   async tile(
     layerId: string,
@@ -89,13 +91,15 @@ export class TileRenderer {
     z: number,
     x: number,
     y: number,
-    alive: () => boolean = () => true
+    alive: () => boolean = () => true,
+    mask: { geojson: string; key: string } | null = null
   ): Promise<Buffer | null> {
-    // The rendering config is part of the key: restyling a band must not
-    // serve tiles drawn under the old ramp (stale entries age out via the
-    // cache budget)
+    // The rendering config and the mask are part of the key: restyling a band
+    // or reshaping the area must not serve tiles drawn under the old ramp or
+    // cut (stale entries age out via the cache budget)
     const style = createHash("sha1").update(JSON.stringify(rendering)).digest("hex").slice(0, 8)
-    const cached = path.join(this.cacheDir, layerId, snapshotId, `${bandId}-${style}`, String(z), String(x), `${y}.png`)
+    const variant = mask ? `${bandId}-${style}-m${mask.key}` : `${bandId}-${style}`
+    const cached = path.join(this.cacheDir, layerId, snapshotId, variant, String(z), String(x), `${y}.png`)
     try {
       await access(cached)
       return await readFile(cached)
@@ -132,7 +136,22 @@ export class TileRenderer {
       if (!alive()) return null
       await execFileP("gdaldem", ["color-relief", "-q", "-alpha", warped, ramp, colored])
       if (!alive()) return null
-      await execFileP("gdal_translate", ["-q", "-of", "PNG", colored, png])
+      let final = colored
+      if (mask) {
+        // Cut the colored RGBA tile, not the data: outside pixels become 0 in
+        // every band including alpha, so the cut is transparent whatever the
+        // source's nodata. ALL_TOUCHED keeps coastal cells that the boundary
+        // crosses, so a coarse grid still reads as coarse along the coast
+        const cutline = path.join(work, "mask.geojson")
+        await writeFile(cutline, mask.geojson)
+        final = path.join(work, "masked.tif")
+        await execFileP("gdalwarp", [
+          "-q", "-cutline", cutline, "-wo", "CUTLINE_ALL_TOUCHED=TRUE", "-dstnodata", "0",
+          colored, final
+        ])
+        if (!alive()) return null
+      }
+      await execFileP("gdal_translate", ["-q", "-of", "PNG", final, png])
       const buffer = await readFile(png)
       await mkdir(path.dirname(cached), { recursive: true })
       await writeFile(cached, buffer)

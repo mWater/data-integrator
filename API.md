@@ -48,10 +48,17 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Raster catalog
 
-- `GET /api/layers` - layers, band metadata, and promoted snapshots.
+- `GET /api/layers` - layers, band metadata, and promoted snapshots, with
+  `masked` (tiles are clipped to the layer's area by default) and `mask_key`
+  (a short key of that shape).
 - `GET /api/snapshots/:id/download` - the snapshot's COG.
-- `GET /tiles/:layerId/:snapshotId/:z/:x/:y.png` - rendered map tiles,
-  snapshot-pinned and immutable.
+- `GET /tiles/:layerId/:snapshotId[/:bandId]/:z/:x/:y.png` - rendered map
+  tiles, snapshot-pinned and immutable. Drawing is clipped to the layer's
+  mask: the owning integration's area of interest as a shape (the inherited
+  deployment default, or the integration's own countries); an explicit box
+  or full-extent integration has no mask. `?mask=0` draws everything the
+  files cover. Put the layer's `mask_key` in the URL (`?m=...`) so a reshaped
+  area is not served from cache. Stored rasters are never cut.
 
 ## Integrations
 

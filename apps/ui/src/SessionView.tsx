@@ -51,7 +51,8 @@ async function draftMeta(declared: string[]): Promise<DashboardMeta> {
           id: snapshot.id,
           observedAt: snapshot.observed_at,
           observedEnd: snapshot.observed_end ?? null
-        }))
+        })),
+        maskKey: layer.mask_key ?? null
       }))
   }
 }
@@ -541,8 +542,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
                 fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)
               }
               fetchMeta={() => draftMeta(dashState?.layers ?? [])}
-              fetchRasterTile={async (layerId, snapshotId, z, x, y) => {
-                const res = await fetch(`/tiles/${layerId}/${snapshotId}/${z}/${x}/${y}.png`)
+              fetchRasterTile={async (layerId, snapshotId, z, x, y, mask) => {
+                const res = await fetch(`/tiles/${layerId}/${snapshotId}/${z}/${x}/${y}.png${mask ? "" : "?mask=0"}`)
                 if (!res.ok) throw new Error(`tile ${res.status}`)
                 return res.arrayBuffer()
               }}

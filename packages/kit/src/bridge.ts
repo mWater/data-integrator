@@ -56,7 +56,7 @@ export interface FrameInit {
 export type FrameMessage =
   | { type: "di:ready" }
   | { type: "di:query"; id: number; name: string; params: Record<string, unknown> }
-  | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number; snapshotId?: string }
+  | { type: "di:tile"; id: number; layerId: string; z: number; x: number; y: number; snapshotId?: string; mask?: boolean }
   | { type: "di:vtile"; id: number; query: string; z: number; x: number; y: number; params: Record<string, unknown> }
   | { type: "di:basemap"; id: number; path: string }
   | { type: "di:error"; message: string; stack?: string }
@@ -138,14 +138,16 @@ export function bridgeQuery(name: string, params: Record<string, unknown>): Prom
 /**
  * Fetches raster tile bytes through the host (MapLibre custom protocol).
  * snapshotId pins the tiles to one observation; without it the host serves the
- * layer's current snapshot.
+ * layer's current snapshot. mask false draws beyond the layer's area of
+ * interest (the host clips to it by default).
  */
 export function bridgeTile(
   layerId: string,
   z: number,
   x: number,
   y: number,
-  snapshotId?: string
+  snapshotId?: string,
+  mask = true
 ): Promise<ArrayBuffer> {
   const id = nextId++
   return new Promise<ArrayBuffer>((resolve, reject) => {
@@ -157,7 +159,7 @@ export function bridgeTile(
       },
       reject
     })
-    post({ type: "di:tile", id, layerId, z, x, y, snapshotId })
+    post({ type: "di:tile", id, layerId, z, x, y, snapshotId, mask })
   })
 }
 

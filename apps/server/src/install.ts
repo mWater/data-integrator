@@ -3,6 +3,7 @@ import pg from "pg"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { ensureTable, ident } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
+import { refreshLayerMasks } from "./aoi.js"
 import { parseAoi } from "./settings.js"
 import { parseCron } from "./cron.js"
 import { validateDefinitionStrings } from "./localizeCatalog.js"
@@ -119,6 +120,7 @@ export async function installIntegration(
   validateDefinition(definition)
   const definitionJson = JSON.stringify(definition)
   const client = await pool.connect()
+  let version: number
   try {
     await client.query("BEGIN")
     // Lock the row so version assignment is serialized per integration
@@ -126,7 +128,6 @@ export async function installIntegration(
       "SELECT version, definition = $2::jsonb AS unchanged FROM app.integrations WHERE id = $1 FOR UPDATE",
       [definition.id, definitionJson]
     )
-    let version: number
     if (current.rows.length === 0) {
       version = 1
       await client.query(
@@ -173,13 +174,18 @@ export async function installIntegration(
       }
     }
     await client.query("COMMIT")
-    return { version }
   } catch (err) {
     await client.query("ROLLBACK")
     throw err
   } finally {
     client.release()
   }
+  // The layers' map masks follow the definition's area; a missing boundary
+  // must not fail an install
+  await refreshLayerMasks(pool, definition.id).catch(err =>
+    console.warn(`${definition.id}: layer masks not rebuilt: ${err instanceof Error ? err.message : err}`)
+  )
+  return { version }
 }
 
 /** What an integration owns, and who would break if it were deleted. */

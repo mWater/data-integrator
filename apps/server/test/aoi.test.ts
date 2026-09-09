@@ -127,4 +127,12 @@ test("aoi_stats weights coarse pixels by the part inside the boundary and report
   assert.equal(Number(half.cells), 1)
   assert.equal(Number(half.share), 1)
   assert.ok(Math.abs(Number(half.coverage) - 1) < 1e-6, `coverage ${half.coverage}`)
+
+  // The layer's map mask follows: its integration declares no aoi, so it
+  // inherits the deployment shape, and loses it when the shape is cleared
+  const masked = (await pool.query("SELECT ST_AsText(ST_Envelope(mask_geom)) AS env FROM app.raster_layers WHERE id = 'two'")).rows[0]
+  assert.equal(masked.env, "POLYGON((10 0,10 2,10.5 2,10.5 0,10 0))")
+  await refreshAoi(pool, null)
+  const cleared = (await pool.query("SELECT mask_geom FROM app.raster_layers WHERE id = 'two'")).rows[0]
+  assert.equal(cleared.mask_geom, null)
 })

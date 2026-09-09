@@ -30,7 +30,7 @@ interface Props {
   /** Draft override: freshness/layer meta instead of the saved dashboard's declared set */
   fetchMeta?: () => Promise<DashboardMeta>
   /** Draft override: raster tile bytes instead of the saved dashboard's scoped route */
-  fetchRasterTile?: (layerId: string, snapshotId: string, z: number, x: number, y: number) => Promise<ArrayBuffer>
+  fetchRasterTile?: (layerId: string, snapshotId: string, z: number, x: number, y: number, mask: boolean) => Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error */
   onError?: (message: string, stack?: string) => void
 }
@@ -88,6 +88,8 @@ export function DashboardFrame({
     let destroyed = false
     let frame: { destroy(): void; print(): void } | null = null
     const snapshotByLayer = new Map<string, string>()
+    // Tiles cache as immutable, so the mask shape's key rides in the URL
+    const maskKeyByLayer = new Map<string, string>()
 
     const mount = async () => {
       // Freshness for useMeta() and declared layers with snapshot timelines;
@@ -96,6 +98,7 @@ export function DashboardFrame({
       const meta = await metaFetch().catch((): DashboardMeta => ({ tables: {}, layers: [] }))
       for (const layer of meta.layers) {
         if (layer.currentSnapshotId) snapshotByLayer.set(layer.id, layer.currentSnapshotId)
+        if (layer.maskKey) maskKeyByLayer.set(layer.id, layer.maskKey)
       }
       const layerInfo = meta.layers.map(layer => ({
         id: layer.id,
@@ -127,12 +130,16 @@ export function DashboardFrame({
             fetchVectorTileRef.current
               ? fetchVectorTileRef.current(query, z, x, y, params)
               : fetchTileBytes(`/api/dashboards/${dashboardId}`, query, z, x, y, params),
-          fetchTile: async (layerId, z, x, y, snapshotId) => {
+          fetchTile: async (layerId, z, x, y, snapshotId, mask = true) => {
             const snapshot = snapshotId ?? snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
-            if (fetchRasterTileRef.current) return fetchRasterTileRef.current(layerId, snapshot, z, x, y)
+            if (fetchRasterTileRef.current) return fetchRasterTileRef.current(layerId, snapshot, z, x, y, mask)
             // Scoped to the dashboard: only its declared layers are served
-            const res = await fetch(`/api/dashboards/${dashboardId}/rastertiles/${layerId}/${snapshot}/${z}/${x}/${y}.png`)
+            const key = maskKeyByLayer.get(layerId)
+            const query = mask ? (key ? `?m=${key}` : "") : "?mask=0"
+            const res = await fetch(
+              `/api/dashboards/${dashboardId}/rastertiles/${layerId}/${snapshot}/${z}/${x}/${y}.png${query}`
+            )
             if (!res.ok) throw new Error(`tile ${res.status}`)
             return res.arrayBuffer()
           },

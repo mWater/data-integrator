@@ -124,8 +124,10 @@ One TypeScript React file. Default export is the root component, receiving
   fillOpacity?, popup?}] - build features from query rows (lon/lat columns or
   ST_AsGeoJSON); a feature "color" property overrides the overlay color; popup
   names the property shown on click. layers draws raster catalog layers by
-  layerId: [{layerId, snapshotId?, opacity?, label?, colorMap?}], server-rendered
-  from the COG with the layer's own color ramp. Every layerId drawn this way
+  layerId: [{layerId, snapshotId?, opacity?, label?, colorMap?, mask?}], server-rendered
+  from the COG with the layer's own color ramp and clipped to the layer's area of
+  interest (mask: false shows the surroundings the integration fetched beyond
+  it; keep the default for a country dashboard). Every layerId drawn this way
   MUST also be declared with set_layers - the dashboard's tile access is frozen
   to its declared layers, like its data access is frozen to its queries;
   undeclared layers fail to render for viewers. This is ALWAYS the right way to

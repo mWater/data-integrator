@@ -162,7 +162,10 @@ land outlines from bundled Natural Earth 1:10m with lakes removed, cut to the bo
 and `data.aoi_stats()` gives area-weighted statistics of a raster layer over it, with
 coarse pixels weighted by the part inside the boundary and coverage reported. Every
 agent is told that a share "of the country" comes from that, never from the
-envelope. Definitions are files in a versioned library
+envelope. Maps follow the same tri-state per layer: a layer whose integration inherits
+the default is drawn clipped to that shape, one with its own countries to theirs, and
+one with an explicit box or full extent unclipped (`raster_layers.mask_geom`, applied in
+the tile renderer only, `?mask=0` to see the surroundings). Definitions are files in a versioned library
 directory; the app syncs them to the DB. Secret values never appear in the library. Code is a single self-contained
 file; jobs that outgrow one file split into chained integrations via `inputs`, not
 modules.

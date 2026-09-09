@@ -394,6 +394,10 @@ export interface MapLayer {
   footprint: { coordinates: number[][][] } | null
   /** Promoted snapshots ascending by time */
   snapshots: LayerSnapshot[]
+  /** True when tiles are clipped to the layer's area by default */
+  masked?: boolean
+  /** Short key of the mask shape, for cache-busting tile URLs; null without a mask */
+  mask_key?: string | null
 }
 
 /** Lists catalog layers with their snapshots. */
@@ -461,6 +465,10 @@ export interface LayerDetail {
   snapshots: LayerSnapshot[]
   /** Total bytes across promoted snapshots */
   sizeBytes: number
+  /** True when tiles are clipped to the layer's area of interest by default */
+  masked: boolean
+  /** Short key of the mask shape, so tile URLs change when the area does; null without a mask */
+  maskKey: string | null
   /** Owning integration's prose description */
   description: LocalizedString | null
   /** Provenance of the external source, if declared */
@@ -843,6 +851,8 @@ export interface DashboardLayerMeta {
   currentSnapshotId: string | null
   /** Promoted snapshots, oldest first */
   snapshots: { id: string; observedAt: string; observedEnd: string | null }[]
+  /** Short key of the mask shape, so tile URLs change when the area does; null without a mask */
+  maskKey: string | null
 }
 
 /** Freshness and declared-layer meta the dashboard frame mounts with. */

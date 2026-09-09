@@ -740,7 +740,9 @@ async function route(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
               s.observed_at, s.observed_end, s.crs,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
-              COALESCE(sn.snapshots, '[]'::json) AS snapshots
+              COALESCE(sn.snapshots, '[]'::json) AS snapshots,
+              (l.mask_geom IS NOT NULL) AS masked,
+              left(md5(ST_AsBinary(l.mask_geom)::text), 8) AS mask_key
        FROM app.raster_layers l
        LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
        LEFT JOIN LATERAL (
@@ -771,7 +773,9 @@ async function route(
               s.observed_at, s.observed_end, s.crs,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
               COALESCE(sn.snapshots, '[]'::json) AS snapshots,
-              COALESCE(sn.size_bytes, 0) AS size_bytes
+              COALESCE(sn.size_bytes, 0) AS size_bytes,
+              (l.mask_geom IS NOT NULL) AS masked,
+              left(md5(ST_AsBinary(l.mask_geom)::text), 8) AS mask_key
        FROM app.raster_layers l
        JOIN app.integrations i ON i.id = l.integration_id
        LEFT JOIN app.raster_snapshots s ON s.id = l.current_snapshot_id
@@ -798,6 +802,8 @@ async function route(
       integrationName: row.integration_name ?? row.integration_id,
       temporality: row.temporality,
       bands: row.bands,
+      masked: row.masked,
+      maskKey: row.mask_key ?? null,
       currentSnapshotId: row.current_snapshot_id,
       observedAt: row.observed_at,
       observedEnd: row.observed_end,
@@ -1382,7 +1388,8 @@ async function routeDashboardView(
         : (
             await pool.query(
               `SELECT l.id, l.name, l.temporality, l.current_snapshot_id,
-                      COALESCE(sn.snapshots, '[]'::json) AS snapshots
+                      COALESCE(sn.snapshots, '[]'::json) AS snapshots,
+                      left(md5(ST_AsBinary(l.mask_geom)::text), 8) AS mask_key
                FROM app.raster_layers l
                LEFT JOIN LATERAL (
                  SELECT json_agg(json_build_object(
@@ -1402,7 +1409,8 @@ async function routeDashboardView(
         name: row.name,
         temporality: row.temporality,
         currentSnapshotId: row.current_snapshot_id,
-        snapshots: row.snapshots
+        snapshots: row.snapshots,
+        maskKey: row.mask_key ?? null
       }))
     })
     return true
@@ -1476,11 +1484,18 @@ async function serveRasterTile(
   x: number,
   y: number
 ): Promise<void> {
+  // The layer's mask (its integration's area as a shape) clips the drawing
+  // unless the request opts out with ?mask=0; the mask travels as GeoJSON
+  // with a short hash so cached tiles are keyed by the shape they were cut to
+  const wantMask = new URL(req.url ?? "/", "http://localhost").searchParams.get("mask") !== "0"
   const snapshot = await pool.query(
-    `SELECT l.bands FROM app.raster_snapshots s
+    `SELECT l.bands,
+            CASE WHEN $3 THEN ST_AsGeoJSON(l.mask_geom) END AS mask_geojson,
+            CASE WHEN $3 THEN left(md5(ST_AsBinary(l.mask_geom)::text), 8) END AS mask_key
+     FROM app.raster_snapshots s
      JOIN app.raster_layers l ON l.id = s.layer_id
      WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'`,
-    [snapshotId, layerId]
+    [snapshotId, layerId, wantMask]
   )
   if (snapshot.rows.length === 0) {
     json(res, 404, { error: "unknown snapshot" })
@@ -1493,6 +1508,10 @@ async function serveRasterTile(
     return
   }
   const rendering = band.rendering ?? {}
+  const mask =
+    snapshot.rows[0].mask_geojson && snapshot.rows[0].mask_key
+      ? { geojson: snapshot.rows[0].mask_geojson as string, key: snapshot.rows[0].mask_key as string }
+      : null
   // A cancelled request (slider scrubbed past this snapshot) stops the
   // GDAL pipeline between steps instead of rendering pixels nobody wants
   const png = await tiles.tile(
@@ -1504,7 +1523,8 @@ async function serveRasterTile(
     z,
     x,
     y,
-    () => !req.destroyed && !res.destroyed
+    () => !req.destroyed && !res.destroyed,
+    mask
   )
   if (png === null) {
     res.destroy()

@@ -20,12 +20,20 @@ function registerProtocols(): void {
   // The frame's opaque origin blocks module workers, so route MapLibre to the
   // classic worker bundle beside kit.js (.cjs suffix selects the classic path)
   maplibregl.setWorkerUrl(new URL("./maplibre-worker.cjs", import.meta.url).href)
-  // di-tile://<layerId>/<snapshotId|current>/<z>/<x>/<y>
+  // di-tile://<layerId>/<snapshotId|current>/<z>/<x>/<y>[?mask=0]
   maplibregl.addProtocol("di-tile", async (params: maplibregl.RequestParameters) => {
-    const [, layerId, snapshot, z, x, y] =
-      /^di-tile:\/\/([^/]+)\/([^/]+)\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url) ?? []
+    const [, layerId, snapshot, z, x, y, query] =
+      /^di-tile:\/\/([^/]+)\/([^/]+)\/(\d+)\/(\d+)\/(\d+)(?:\?(.*))?$/.exec(params.url) ?? []
     if (!layerId) throw new Error(`bad tile url: ${params.url}`)
-    const data = await bridgeTile(layerId, Number(z), Number(x), Number(y), snapshot === "current" ? undefined : snapshot)
+    const mask = !(query ?? "").split("&").includes("mask=0")
+    const data = await bridgeTile(
+      layerId,
+      Number(z),
+      Number(x),
+      Number(y),
+      snapshot === "current" ? undefined : snapshot,
+      mask
+    )
     return { data }
   })
   // di-vtile://<queryName>/<z>/<x>/<y>?params=<urlencoded json>
@@ -109,6 +117,12 @@ export interface MapLayer {
   snapshotId?: string
   /** Layer opacity, 0-1. */
   opacity?: number
+  /**
+   * Clip the drawing to the layer's area of interest (default true). Set
+   * false to show everything the layer holds, including surroundings the
+   * integration fetched beyond the area.
+   */
+  mask?: boolean
   /** Legend title; defaults to the layer id when colorMap is given. */
   label?: string
   /** Legend color stops (mirror the catalog layer's rendering colorMap); without it the layer stays out of the legend. */
@@ -613,7 +627,9 @@ export function MapView({
           const id = `di-raster-${i}`
           instance.addSource(id, {
             type: "raster",
-            tiles: [`di-tile://${layer.layerId}/${layer.snapshotId ?? "current"}/{z}/{x}/{y}`],
+            tiles: [
+              `di-tile://${layer.layerId}/${layer.snapshotId ?? "current"}/{z}/{x}/{y}${layer.mask === false ? "?mask=0" : ""}`
+            ],
             tileSize: 256
           })
           instance.addLayer({

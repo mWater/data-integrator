@@ -16,8 +16,8 @@ export type { ThemeTokens } from "./theme.js"
 export interface FrameHandlers {
   /** Executes a stored query by name with typed parameter values. */
   runQuery(name: string, params: Record<string, unknown>): Promise<Row[]>
-  /** Fetches raster tile bytes for a catalog layer; snapshotId pins one observation. */
-  fetchTile(layerId: string, z: number, x: number, y: number, snapshotId?: string): Promise<ArrayBuffer>
+  /** Fetches raster tile bytes for a catalog layer; snapshotId pins one observation, mask false draws beyond the layer's area. */
+  fetchTile(layerId: string, z: number, x: number, y: number, snapshotId?: string, mask?: boolean): Promise<ArrayBuffer>
   /** Fetches vector tile bytes of a stored tile query. */
   fetchVectorTile?(
     query: string,
@@ -138,7 +138,7 @@ export function mountDashboardFrame(opts: DashboardFrameOptions): DashboardFrame
         )
         break
       case "di:tile":
-        opts.handlers.fetchTile(msg.layerId, msg.z, msg.x, msg.y, msg.snapshotId).then(
+        opts.handlers.fetchTile(msg.layerId, msg.z, msg.x, msg.y, msg.snapshotId, msg.mask).then(
           (data) => post({ type: "di:tile-result", id: msg.id, ok: true, data }, [data]),
           (err: Error) => post({ type: "di:tile-result", id: msg.id, ok: false, error: err.message })
         )

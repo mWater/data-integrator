@@ -6352,6 +6352,15 @@
       "es": "Región predeterminada para las integraciones. Cada integración puede sustituirla. Las estadísticas «del país» usan el contorno terrestre de los países seleccionados, no el recuadro.",
       "mg": "Faritra ampiasaina ho azy ho an'ny fampidirana. Azon'ny fampidirana tsirairay ovana izany. Ny antontan'isa \"an'ny firenena\" dia mampiasa ny sisin'ny tanin'ireo firenena voafantina, fa tsy ilay efajoro.",
       "sw": "Eneo chaguomsingi la miunganisho. Kila muunganisho unaweza kutumia eneo tofauti. Takwimu za \"nchi\" hutumia mipaka ya ardhi ya nchi zilizochaguliwa, si kisanduku."
+    },
+    {
+      "_base": "en",
+      "en": "Clip to area of interest",
+      "fr": "Découper selon la zone d’intérêt",
+      "pt": "Recortar para a área de interesse",
+      "es": "Recortar al área de interés",
+      "mg": "Hetezo amin’ny faritra mahaliana",
+      "sw": "Kata kwa eneo linalolengwa"
     }
   ],
   "unused": [

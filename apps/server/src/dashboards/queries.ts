@@ -150,6 +150,9 @@ async function runAsSqlEngine(pool: pg.Pool, sql: string, bound: unknown[]): Pro
     // public is on the path for extension functions (PostGIS); table access
     // still requires grants, and sql_engine has none outside data
     await client.query("SET LOCAL search_path = data, public")
+    // Observation times are UTC instants; without this, to_char and ::date
+    // in a query shift them into the server's zone (a July 1 snapshot reads June 30)
+    await client.query("SET LOCAL timezone = 'UTC'")
     return await client.query(sql, bound)
   } finally {
     await client.query("ROLLBACK").catch(() => {})

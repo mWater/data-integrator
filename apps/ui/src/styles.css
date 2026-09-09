@@ -1169,3 +1169,6 @@ table.users tbody tr:hover { background: none }
   .dashboard-toolbar h1 { min-width: 120px }
 }
 .topbar a:focus-visible, .page-back:focus-visible, table.sessions a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+
+/* Layer page: clip-to-area toggle under the opacity slider */
+.layer-clip { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px }
