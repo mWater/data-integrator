@@ -80,12 +80,16 @@ started.
 
 The project is complete when all of these exist.
 
-- **Sandbox job runner** *(built)* - Executes integration code in rootless podman +
-  gVisor containers with resource limits, mounts, and a public-only egress policy.
-  Payload-opaque, so it ports unchanged to other hosts.
-- **Runtime images** *(built)* - `node` and `python` images whose harnesses map
-  the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in, including
-  the geospatial stack in Python.
+- **Sandbox job runner** *(built, published)* - Executes integration code in rootless
+  podman + gVisor containers with resource limits, mounts, and a public-only egress
+  policy. Payload-opaque, so it ports unchanged to other hosts. Published as
+  [`@mwater/integration-runner`](https://www.npmjs.com/package/@mwater/integration-runner)
+  together with the job contract types; see [Releasing the runner](#releasing-the-runner).
+- **Runtime images** *(built, published)* - `node` and `python` images whose harnesses
+  map the job payload onto the `run(ctx)` entrypoint. Curated libraries baked in,
+  including the geospatial stack in Python. Published as
+  `ghcr.io/mwater/integration-runtime-{node,python}:<version>`, one version with the
+  runner.
 - **Integration library** *(format, first definitions, skills, and UI browser built;
   more sources remaining)* - The machine-readable definition format and the definitions
   themselves for the target data sources (GloFAS, SPI, FPAR, DEMs, WorldPop, GHSL,
@@ -126,6 +130,26 @@ The project is complete when all of these exist.
 - **Deployment and compliance package** - Clean-room install path configured for the
   pilot countries, plus the open-source evidence: SPDX/SBOM checks in CI, security
   policy, documentation, and knowledge-transfer materials.
+
+## Releasing the runner
+
+The runner package and the two runtime images share one version, because the
+harness inside the images is the contract the runner depends on. Never publish
+one without the others.
+
+```sh
+gh auth refresh -h github.com -s write:packages,read:packages
+gh auth token | podman login ghcr.io -u <github-user> --password-stdin
+npm login                                  # an account in the @mwater npm org
+scripts/release-runner.sh 0.2.0 --dry-run  # stamps, builds, tests; pushes nothing
+scripts/release-runner.sh 0.2.0            # pushes images, publishes, commits, tags
+git push && git push origin v0.2.0
+```
+
+The first push of a new image name creates it private on GitHub; flip it to
+public under the mWater org's package settings, then check an anonymous
+`podman pull` works. Consumers pin the package version and take the image
+tags from its `RUNTIME_IMAGES` export.
 
 ## Contributing and security
 
