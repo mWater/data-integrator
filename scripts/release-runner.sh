@@ -69,6 +69,7 @@ echo "== publishing @mwater/integration-runner@$VERSION"
 
 echo "== committing and tagging v$VERSION"
 git add packages/runner/package.json packages/runner/src/images.ts pnpm-lock.yaml
-git commit -m "Release integration runner $VERSION"
+# Nothing to commit when the version was already stamped; the tag still applies
+git diff --cached --quiet || git commit -m "Release integration runner $VERSION"
 git tag "v$VERSION"
 echo "done: push the commit and tag with: git push && git push origin v$VERSION"
