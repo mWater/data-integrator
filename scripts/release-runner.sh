@@ -34,7 +34,8 @@ NODE_IMAGE="$REPOSITORY-node:$VERSION"
 PYTHON_IMAGE="$REPOSITORY-python:$VERSION"
 
 echo "== stamping $VERSION"
-(cd packages/runner && npm version "$VERSION" --no-git-tag-version >/dev/null)
+# npm version refuses a no-op, so write the field directly
+node -e 'const fs=require("fs");const p="packages/runner/package.json";const j=JSON.parse(fs.readFileSync(p));j.version=process.argv[1];fs.writeFileSync(p,JSON.stringify(j,null,2)+"\n")' "$VERSION"
 sed -i "s/^export const RUNTIME_VERSION = \".*\"/export const RUNTIME_VERSION = \"$VERSION\"/" packages/runner/src/images.ts
 grep -q "RUNTIME_VERSION = \"$VERSION\"" packages/runner/src/images.ts
 
