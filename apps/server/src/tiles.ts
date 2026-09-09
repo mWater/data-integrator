@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { promisify } from "node:util"
-import { mkdir, readFile, writeFile, rm, access, readdir, stat, unlink } from "node:fs/promises"
+import { mkdir, readFile, writeFile, rename, rm, access, readdir, stat, unlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
@@ -79,8 +79,9 @@ export class TileRenderer {
    * @param rendering - Band rendering config (color map, resampling)
    * @param alive - Rendering stops between steps once this returns false
    *   (the requester hung up); the tile resolves to null instead
-   * @param mask - Shape to clip the drawing to (GeoJSON, WGS84) with a short
-   *   key naming it in the cache; null draws everything the files cover
+   * @param mask - Shape to clip the drawing to, as a short key naming it in
+   *   the cache and a loader for its GeoJSON (WGS84), called once per key
+   *   and then read from disk; null draws everything the files cover
    */
   async tile(
     layerId: string,
@@ -92,7 +93,7 @@ export class TileRenderer {
     x: number,
     y: number,
     alive: () => boolean = () => true,
-    mask: { geojson: string; key: string } | null = null
+    mask: { key: string; geojson: () => Promise<string> } | null = null
   ): Promise<Buffer | null> {
     // The rendering config and the mask are part of the key: restyling a band
     // or reshaping the area must not serve tiles drawn under the old ramp or
@@ -142,8 +143,7 @@ export class TileRenderer {
         // every band including alpha, so the cut is transparent whatever the
         // source's nodata. ALL_TOUCHED keeps coastal cells that the boundary
         // crosses, so a coarse grid still reads as coarse along the coast
-        const cutline = path.join(work, "mask.geojson")
-        await writeFile(cutline, mask.geojson)
+        const cutline = await this.cutline(mask, work)
         final = path.join(work, "masked.tif")
         await execFileP("gdalwarp", [
           "-q", "-cutline", cutline, "-wo", "CUTLINE_ALL_TOUCHED=TRUE", "-dstnodata", "0",
@@ -159,6 +159,28 @@ export class TileRenderer {
     } finally {
       await rm(work, { recursive: true, force: true })
     }
+  }
+
+  /**
+   * Path of the mask's GeoJSON on disk, fetched and written on the first
+   * tile that needs it: a country outline runs to megabytes and must not
+   * travel from the database for every cache miss. Written under a temporary
+   * name in the work directory and moved into place so a concurrent miss
+   * never reads a half-written file.
+   */
+  private async cutline(mask: { key: string; geojson: () => Promise<string> }, work: string): Promise<string> {
+    const file = path.join(this.cacheDir, "masks", `${mask.key}.geojson`)
+    try {
+      await access(file)
+      return file
+    } catch {
+      // fetch below
+    }
+    const staging = path.join(work, "mask.geojson")
+    await writeFile(staging, await mask.geojson())
+    await mkdir(path.dirname(file), { recursive: true })
+    await rename(staging, file)
+    return file
   }
 
   /**

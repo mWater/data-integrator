@@ -136,3 +136,67 @@ test("aoi_stats weights coarse pixels by the part inside the boundary and report
   const cleared = (await pool.query("SELECT mask_geom FROM app.raster_layers WHERE id = 'two'")).rows[0]
   assert.equal(cleared.mask_geom, null)
 })
+
+test("aoi_stats clip path weights whole pixels by their area at their latitude", async () => {
+  // A box from the equator to 60N: cells near the equator are about twice
+  // the area of cells near the top, so a plain pixel mean is visibly wrong
+  await refreshAoi(pool, { bbox: [10, 0, 11, 60] })
+  // 0.02-degree raster, value 3 south of 30N and 9 north of it: far more
+  // than 25,000 cells, so the whole-pixel path runs
+  const south = path.join(storeDir, "south.tif")
+  const north = path.join(storeDir, "north.tif")
+  const vrt = path.join(storeDir, "strip.vrt")
+  const tif = path.join(storeDir, "strip.tif")
+  const half = (file: string, value: string, top: string, bottom: string) =>
+    execFileP("gdal_create", [
+      "-of", "GTiff", "-outsize", "50", "1500", "-bands", "1", "-burn", value,
+      "-a_srs", "EPSG:4326", "-a_ullr", "10", top, "11", bottom, "-a_nodata", "-9999", file
+    ])
+  await half(south, "3", "30", "0")
+  await half(north, "9", "60", "30")
+  await execFileP("gdalbuildvrt", [vrt, south, north])
+  await execFileP("gdal_translate", ["-q", vrt, tif])
+  await chmod(tif, 0o644)
+
+  await pool.query(
+    `INSERT INTO app.raster_layers (id, integration_id, name, temporality, bands)
+     VALUES ('strip', 'aoi_int', '{"_base":"en","en":"strip"}', 'current-only', '[{"id":"v","nodata":-9999}]')`
+  )
+  const run = (
+    await pool.query("INSERT INTO app.runs (integration_id, trigger, status) VALUES ('aoi_int', 'manual', 'succeeded') RETURNING id")
+  ).rows[0].id
+  const snap = (
+    await pool.query(
+      `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, crs, bands, run_id, status)
+       VALUES ('strip', '2026-01-01T00:00:00Z', ST_GeomFromText('POLYGON((10 0, 11 0, 11 60, 10 60, 10 0))', 4326),
+               'EPSG:4326', '["v"]', $1, 'promoted') RETURNING id`,
+      [run]
+    )
+  ).rows[0].id
+  await registerRasterSql(pool, {
+    snapshotId: snap,
+    layerId: "strip",
+    observedAt: "2026-01-01T00:00:00Z",
+    observedEnd: null,
+    crs: "EPSG:4326",
+    absolutePaths: [tif]
+  })
+
+  const areas = (
+    await pool.query(
+      `SELECT ST_Area(ST_MakeEnvelope(10, 0, 11, 30, 4326)::geography) AS s,
+              ST_Area(ST_MakeEnvelope(10, 30, 11, 60, 4326)::geography) AS n`
+    )
+  ).rows[0]
+  const expectedMean = (3 * areas.s + 9 * areas.n) / (areas.s + areas.n)
+  const expectedShare = areas.n / (areas.s + areas.n)
+
+  const stats = (await pool.query("SELECT * FROM data.aoi_stats('strip', NULL, 5, '>')")).rows[0]
+  assert.equal(stats.method, "clip")
+  assert.equal(Number(stats.cells), 150_000)
+  // An unweighted mean would be 6 and an unweighted share 0.5
+  assert.ok(Math.abs(Number(stats.mean) - expectedMean) < 1e-3, `mean ${stats.mean}, expected ${expectedMean}`)
+  assert.ok(Math.abs(Number(stats.share) - expectedShare) < 1e-3, `share ${stats.share}, expected ${expectedShare}`)
+  assert.ok(Math.abs(Number(stats.coverage) - 1) < 1e-3, `coverage ${stats.coverage}`)
+  await refreshAoi(pool, null)
+})

@@ -30,7 +30,15 @@ interface Props {
   /** Draft override: freshness/layer meta instead of the saved dashboard's declared set */
   fetchMeta?: () => Promise<DashboardMeta>
   /** Draft override: raster tile bytes instead of the saved dashboard's scoped route */
-  fetchRasterTile?: (layerId: string, snapshotId: string, z: number, x: number, y: number, mask: boolean) => Promise<ArrayBuffer>
+  fetchRasterTile?: (
+    layerId: string,
+    snapshotId: string,
+    z: number,
+    x: number,
+    y: number,
+    mask: boolean,
+    maskKey: string | null
+  ) => Promise<ArrayBuffer>
   /** Called when the frame reports a runtime error */
   onError?: (message: string, stack?: string) => void
 }
@@ -133,9 +141,9 @@ export function DashboardFrame({
           fetchTile: async (layerId, z, x, y, snapshotId, mask = true) => {
             const snapshot = snapshotId ?? snapshotByLayer.get(layerId)
             if (!snapshot) throw new Error(`layer ${layerId} has no current snapshot`)
-            if (fetchRasterTileRef.current) return fetchRasterTileRef.current(layerId, snapshot, z, x, y, mask)
+            const key = maskKeyByLayer.get(layerId) ?? null
+            if (fetchRasterTileRef.current) return fetchRasterTileRef.current(layerId, snapshot, z, x, y, mask, key)
             // Scoped to the dashboard: only its declared layers are served
-            const key = maskKeyByLayer.get(layerId)
             const query = mask ? (key ? `?m=${key}` : "") : "?mask=0"
             const res = await fetch(
               `/api/dashboards/${dashboardId}/rastertiles/${layerId}/${snapshot}/${z}/${x}/${y}.png${query}`

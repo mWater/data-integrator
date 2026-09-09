@@ -160,7 +160,8 @@ deployment default AOI at run time. The box is a download window, not the countr
 the deployment's default AOI also becomes a shape (`data.aoi`, the selected countries'
 land outlines from bundled Natural Earth 1:10m with lakes removed, cut to the box),
 and `data.aoi_stats()` gives area-weighted statistics of a raster layer over it, with
-coarse pixels weighted by the part inside the boundary and coverage reported. Every
+coarse pixels weighted by the part inside the boundary, fine ones by their area
+at their latitude, and coverage reported. Every
 agent is told that a share "of the country" comes from that, never from the
 envelope. Maps follow the same tri-state per layer: a layer whose integration inherits
 the default is drawn clipped to that shape, one with its own countries to theirs, and

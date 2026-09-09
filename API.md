@@ -128,8 +128,8 @@ curl -H "Authorization: Bearer $TOKEN" \
   SQL surface, and `aoi_stats(layer_id, at, threshold, op, band)` returns
   area-weighted statistics of a raster layer over it (mean, share meeting
   the condition, coverage, cell size, method, snapshot used, boundary
-  provenance). Coarse pixels are weighted by the part inside the boundary;
-  nodata is excluded. Integrations still fetch by the box: it is a download
+  provenance). Coarse pixels are weighted by the part inside the boundary,
+  fine ones by their area at their latitude; nodata is excluded. Integrations still fetch by the box: it is a download
   window, and the shape is what "of the country" statistics clip to.
 
 ## Limits

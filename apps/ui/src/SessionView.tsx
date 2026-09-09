@@ -542,8 +542,9 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
                 fetchTileBytes(`/api/sessions/${sessionId}`, query, z, x, y, params)
               }
               fetchMeta={() => draftMeta(dashState?.layers ?? [])}
-              fetchRasterTile={async (layerId, snapshotId, z, x, y, mask) => {
-                const res = await fetch(`/tiles/${layerId}/${snapshotId}/${z}/${x}/${y}.png${mask ? "" : "?mask=0"}`)
+              fetchRasterTile={async (layerId, snapshotId, z, x, y, mask, maskKey) => {
+                const query = mask ? (maskKey ? `?m=${maskKey}` : "") : "?mask=0"
+                const res = await fetch(`/tiles/${layerId}/${snapshotId}/${z}/${x}/${y}.png${query}`)
                 if (!res.ok) throw new Error(`tile ${res.status}`)
                 return res.arrayBuffer()
               }}

@@ -1485,12 +1485,11 @@ async function serveRasterTile(
   y: number
 ): Promise<void> {
   // The layer's mask (its integration's area as a shape) clips the drawing
-  // unless the request opts out with ?mask=0; the mask travels as GeoJSON
-  // with a short hash so cached tiles are keyed by the shape they were cut to
+  // unless the request opts out with ?mask=0; a short hash of the shape keys
+  // the cached tiles, and the renderer fetches the GeoJSON once per hash
   const wantMask = new URL(req.url ?? "/", "http://localhost").searchParams.get("mask") !== "0"
   const snapshot = await pool.query(
     `SELECT l.bands,
-            CASE WHEN $3 THEN ST_AsGeoJSON(l.mask_geom) END AS mask_geojson,
             CASE WHEN $3 THEN left(md5(ST_AsBinary(l.mask_geom)::text), 8) END AS mask_key
      FROM app.raster_snapshots s
      JOIN app.raster_layers l ON l.id = s.layer_id
@@ -1508,10 +1507,16 @@ async function serveRasterTile(
     return
   }
   const rendering = band.rendering ?? {}
-  const mask =
-    snapshot.rows[0].mask_geojson && snapshot.rows[0].mask_key
-      ? { geojson: snapshot.rows[0].mask_geojson as string, key: snapshot.rows[0].mask_key as string }
-      : null
+  const maskKey = snapshot.rows[0].mask_key as string | null
+  const mask = maskKey
+    ? {
+        key: maskKey,
+        geojson: async () => {
+          const shape = await pool.query("SELECT ST_AsGeoJSON(mask_geom) AS geojson FROM app.raster_layers WHERE id = $1", [layerId])
+          return shape.rows[0]?.geojson as string
+        }
+      }
+    : null
   // A cancelled request (slider scrubbed past this snapshot) stops the
   // GDAL pipeline between steps instead of rendering pixels nobody wants
   const png = await tiles.tile(
