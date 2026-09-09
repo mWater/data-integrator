@@ -6,3 +6,6 @@ dist/
 
 # Python bytecode from compiling library entries locally
 __pycache__/
+
+# Generated PDFs of docs/ (node docs/build-pdf.mjs)
+docs/pdf/

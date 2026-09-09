@@ -9,6 +9,12 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "docs:pdf": "node docs/build-pdf.mjs"
+  },
+  "devDependencies": {
+    "markdown-it": "^15.0.1",
+    "mermaid": "^11.17.2",
+    "playwright-core": "^1.63.0"
   }
 }
