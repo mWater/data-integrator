@@ -11,6 +11,7 @@
 #   ./deploy/upcloud/fleet.sh status     hosts.txt   # service state + run queue per host
 #   ./deploy/upcloud/fleet.sh secrets    hosts.txt <name>   # copy that host's integration secrets to the others
 #   ./deploy/upcloud/fleet.sh rerun      hosts.txt   # queue a run wherever the latest run failed
+#   ./deploy/upcloud/fleet.sh install    hosts.txt <id> [<id>...]   # install library entries (skips nolib hosts) and queue their first run
 #
 # hosts.txt: one host per line, "name ip aoi [nolib]"; # comments allowed.
 #   kenya     94.237.1.2   KEN
@@ -127,6 +128,17 @@ do_rerun() {
     RETURNING integration_id || '  queued'\""
 }
 
+do_install() {
+  local name=$1 ip=$2 flags=$4 id
+  case " $flags " in *" nolib "*) echo "nolib host, skipped"; return 0 ;; esac
+  for id in "${INSTALL_IDS[@]}"; do
+    remote_cli "$ip" install "library/integrations/$id"
+    $SSH "root@$ip" "sudo -u postgres psql -qAt -d pathfinder -c \"
+      INSERT INTO app.runs (integration_id, trigger, status) VALUES ('$id', 'manual', 'queued')
+      ON CONFLICT DO NOTHING RETURNING integration_id || '  queued'\""
+  done
+}
+
 do_status() {
   local name=$1 ip=$2
   $SSH "root@$ip" "systemctl is-active pathfinder; sudo -u postgres psql -qAt -d pathfinder -c \"SELECT status || ' ' || count(*) FROM app.runs GROUP BY status ORDER BY status\"; df -h /var/lib/pathfinder | tail -1"
@@ -138,6 +150,13 @@ case "$cmd" in
   users)     each_host do_users ;;
   push)      each_host do_push ;;
   rerun)     each_host do_rerun ;;
+  install)
+    [ $# -gt 0 ] || { echo "install needs one or more library entry ids" >&2; exit 1; }
+    for id in "$@"; do
+      [ -d "library/integrations/$id" ] || { echo "no library entry $id" >&2; exit 1; }
+    done
+    INSTALL_IDS=("$@")
+    each_host do_install ;;
   secrets)
     # Plaintext travels source -> this machine -> targets over ssh, never to disk
     src=${1:?secrets needs <source host name>}
