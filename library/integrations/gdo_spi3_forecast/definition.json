@@ -1,0 +1,97 @@
+{
+  "id": "gdo_spi3_forecast",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO SPI-3 drought and wet forecast"
+  },
+  "limits": {
+    "cpus": 1,
+    "memoryMb": 1024,
+    "timeoutMs": 600000
+  },
+  "source": {
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_Indicator_for_Forecasting_Unusually_Wet_and_Dry_Conditions_SPI3_multi-system/",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory Indicator for Forecasting Unusually Wet and Dry Conditions (SPI-3, multi-system)"
+    },
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": {
+      "_base": "en",
+      "en": "A 1° (~110 km) grid from the C3S multi-system seasonal forecast ensemble: a country is a handful of cells. An alarm is drawn only where at least 40% of ensemble members agree on an extreme, so most cells carry no warning most months; a blank cell means no robust signal, not a forecast of normal conditions. Seasonal precipitation forecasts have limited skill outside the tropics and in some seasons. Reference period 1993 to 2016."
+    },
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_spi_forecast.pdf"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 8 * * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Monthly early warning of unusually dry and wet conditions over the coming three months, from the Copernicus Global Drought Observatory's SPI-3 forecast built on the C3S multi-system seasonal ensemble, clipped to the deployment area of interest. Each issue carries a warning class (dry alarms in three severities, wet alarms in three severities, no warning) and the forecast SPI-3 value where the ensemble is robust. Backfills the latest 12 issues and then ingests each new monthly issue; the daily schedule catches the issue whenever the observatory publishes it."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "spi3_forecast",
+      "name": {
+        "_base": "en",
+        "en": "SPI-3 forecast: dry and wet warnings"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Three-month outlook of unusually dry or wet conditions from the C3S seasonal forecast ensemble. Dry alarms are red (severity 1 is the most severe), wet alarms blue (severity 7 the most severe); cells without a robust signal carry no warning."
+      },
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "warning",
+          "name": {
+            "_base": "en",
+            "en": "Warning class"
+          },
+          "units": "class",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              { "value": 0, "color": "#7b3294" },
+              { "value": 1, "color": "#67000d" },
+              { "value": 2, "color": "#cb181d" },
+              { "value": 3, "color": "#fb6a4a" },
+              { "value": 4, "color": "#e5e7eb80" },
+              { "value": 5, "color": "#6baed6" },
+              { "value": 6, "color": "#2171b5" },
+              { "value": 7, "color": "#08306b" }
+            ],
+            "resampling": "nearest"
+          }
+        },
+        {
+          "id": "spi3",
+          "name": {
+            "_base": "en",
+            "en": "Forecast SPI-3"
+          },
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              { "value": -3, "color": "#67000d" },
+              { "value": -2, "color": "#b2182b" },
+              { "value": -1, "color": "#ef8a62" },
+              { "value": 0, "color": "#f7f7f7" },
+              { "value": 1, "color": "#92c5de" },
+              { "value": 2, "color": "#2166ac" },
+              { "value": 3, "color": "#053061" }
+            ],
+            "resampling": "nearest",
+            "defaultRange": { "min": -3, "max": 3 }
+          }
+        }
+      ]
+    }
+  ]
+}
