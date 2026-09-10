@@ -21,7 +21,7 @@ upctl server create \
   --zone de-fra1 \
   --plan 2xCPU-4GB \
   --os "Ubuntu Server 24.04 LTS (Noble Numbat)" \
-  --ssh-keys ~/.ssh/id_ed25519.pub
+  --ssh-keys ~/.ssh/id_rsa.pub
 ```
 
 4 GB RAM is the working minimum (the pnpm build plus two image builds);
@@ -64,6 +64,53 @@ What the script sets up:
 - Caddy on 80/443 proxying to the app on 127.0.0.1:8080
 - ufw allowing only 22/80/443 (the app listens on all interfaces, so this
   keeps plain-HTTP :8080 off the internet); skip with `SETUP_FIREWALL=0`
+
+## Configure a demo instance
+
+`configure-demo.sh` does the post-provisioning setup that would otherwise be
+clicked through the UI: users with chosen passwords, the default area of
+interest, an optional site title, and the whole library installed. Run it as
+root on the box after `setup.sh`; it is safe to re-run.
+
+```sh
+scp users.txt root@<ip>:/root/users.txt   # "email password [role]" per line
+ssh root@<ip> AOI=KEN SITE_TITLE="Pathfinder Kenya" USERS_FILE=/root/users.txt \
+  bash /opt/pathfinder/deploy/upcloud/configure-demo.sh
+```
+
+`AOI` is an ISO3 code from the built-in country list, or `global` to clear
+the default so integrations use their full source extent. `SKIP_LIBRARY`
+(default `mwater_admin_regions`, kept back as the live install example)
+lists entries to leave uninstalled; `INSTALL_LIBRARY=0` installs nothing.
+A first run of every installed entry is queued at the end (`RUN=0` skips
+that) and the service's two scheduler workers drain the queue in the
+background, so a full library takes a while: watch the Runs page or
+`journalctl -u pathfinder -f`.
+
+## Several servers at once
+
+`fleet.sh` runs the steps above across a hosts file ("name ip aoi [nolib]"
+per line), in parallel with a log per host under `.dev/fleet-logs/`:
+
+```sh
+./deploy/upcloud/fleet.sh setup      hosts.txt      # rsync + setup.sh everywhere
+./deploy/upcloud/fleet.sh tunnel     hosts.txt kenya <token>   # one host's Cloudflare tunnel
+./deploy/upcloud/fleet.sh configure  hosts.txt      # users, AOI, title, library, first runs
+./deploy/upcloud/fleet.sh users      hosts.txt      # users file only (add users, reset passwords)
+./deploy/upcloud/fleet.sh status     hosts.txt      # service, run counts, disk
+./deploy/upcloud/fleet.sh push       hosts.txt      # day-2 update everywhere
+./deploy/upcloud/fleet.sh secrets    hosts.txt madagascar   # copy one host's secrets to the rest
+./deploy/upcloud/fleet.sh rerun      hosts.txt      # queue a run wherever the last one failed
+```
+
+Secrets are set once on one host (integration page, or on the box
+`echo '<value>' | cli.js secret set <integration> <name>`) and copied with
+`secrets`, which runs `cli.js secret export` there and `secret import` on
+every other host; the plaintext passes through your machine over ssh and is
+never written down.
+
+`ADMIN_EMAIL`, `OPENROUTER_API_KEY`, and `USERS_FILE` come from the
+environment; the header of the script lists the defaults.
 
 ## Day-2
 

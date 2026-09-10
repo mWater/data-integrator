@@ -65,6 +65,17 @@ fi
 
 echo "==> PostgreSQL database"
 systemctl enable --now postgresql
+# A host provisioned under an earlier name keeps its database; refuse rather
+# than create an empty second one beside it and switch the env to that
+if [ -f "$ENV_FILE" ]; then
+  current_db=$(sed -n 's|^DATABASE_URL=.*/\([^/?]*\).*|\1|p' "$ENV_FILE")
+  if [ -n "$current_db" ] && [ "$current_db" != "pathfinder" ]; then
+    echo "ERROR: $ENV_FILE points at database '$current_db', not 'pathfinder'." >&2
+    echo "Rename it first (ALTER DATABASE $current_db RENAME TO pathfinder, and the role likewise)" >&2
+    echo "or remove the DATABASE_URL line to provision a fresh database." >&2
+    exit 1
+  fi
+fi
 DB_PASS=$(openssl rand -hex 16)
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='pathfinder'" | grep -q 1 ||
   sudo -u postgres psql -c "CREATE USER pathfinder PASSWORD '${DB_PASS}'"

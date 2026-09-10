@@ -7,6 +7,11 @@
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
+ *   secret list|set|export|import
+ *                           Integration secrets. `set <integration> <name>` reads
+ *                           the value from stdin; export/import move every value
+ *                           as JSON ({integration: {name: value}}) between
+ *                           deployments, plaintext on stdout/stdin.
  *   register-rasters        Backfill the out-db SQL mirror of promoted snapshots.
  *   localize-library        Wrap and translate library entry text into every
  *                           supported locale (library authoring; needs a model).
@@ -38,6 +43,7 @@ import { startScheduler } from "./scheduler.js"
 import { registerMissingRasters } from "./rasterSql.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
+import { decryptSecret, listAllSecrets, loadSecretKey, setSecret } from "./secrets.js"
 import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
@@ -47,6 +53,13 @@ import { skillsDir } from "./skills.js"
 import { SUPPORTED_LOCALES } from "@pathfinder/definitions"
 import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { readdir, writeFile } from "node:fs/promises"
+
+/** Whole of stdin as text. */
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = []
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
+  return Buffer.concat(chunks).toString("utf8")
+}
 
 /** Directory holding the numbered .sql migration files. */
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -294,6 +307,56 @@ async function main(): Promise<number> {
         console.error(
           "Usage: cli.js user add <email> [role] | passwd <email> | list | token <email> [name] | disable <email> | enable <email>"
         )
+        return 1
+      }
+      case "secret": {
+        const sub = process.argv[3]
+        if (sub === "list") {
+          for (const s of await listAllSecrets(pool)) console.log(`${s.integrationId}  ${s.name}  ${s.updatedAt}`)
+          return 0
+        }
+        if (sub === "set" && process.argv[4] && process.argv[5]) {
+          const [, , , , integrationId, name] = process.argv
+          const value = (await readStdin()).replace(/\r?\n$/, "")
+          if (!value) {
+            console.error("Secret value must be piped on stdin")
+            return 1
+          }
+          await setSecret(pool, loadSecretKey(), integrationId, name, value)
+          console.log(`Set ${name} on ${integrationId}`)
+          return 0
+        }
+        if (sub === "export") {
+          const key = loadSecretKey()
+          const rows = await pool.query(
+            "SELECT integration_id, name, value FROM app.integration_secrets ORDER BY integration_id, name"
+          )
+          const out: Record<string, Record<string, string>> = {}
+          for (const row of rows.rows) {
+            ;(out[row.integration_id] ??= {})[row.name] = decryptSecret(key, row.value)
+          }
+          console.log(JSON.stringify(out, null, 2))
+          return 0
+        }
+        if (sub === "import") {
+          const key = loadSecretKey()
+          const parsed = JSON.parse(await readStdin()) as Record<string, Record<string, string>>
+          const installed = new Set(
+            (await pool.query("SELECT id FROM app.integrations")).rows.map(r => r.id as string)
+          )
+          for (const [integrationId, secrets] of Object.entries(parsed)) {
+            if (!installed.has(integrationId)) {
+              console.error(`Skipped ${integrationId}: not installed here`)
+              continue
+            }
+            for (const [name, value] of Object.entries(secrets)) {
+              await setSecret(pool, key, integrationId, name, String(value))
+              console.log(`Set ${name} on ${integrationId}`)
+            }
+          }
+          return 0
+        }
+        console.error("Usage: cli.js secret list | set <integration> <name> (value on stdin) | export | import (JSON on stdin)")
         return 1
       }
       case "agent": {
