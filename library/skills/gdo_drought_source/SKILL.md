@@ -1,7 +1,7 @@
 ---
 name: GDO drought source
 description: Copernicus Global Drought Observatory datasets - directory layout, version discovery, GPCC vs ERA5 variants, NetCDF conventions, SPI semantics
-verified: 2026-09-05
+verified: 2026-09-10
 ---
 
 # Copernicus Global Drought Observatory (GDO/EDO)
@@ -67,7 +67,14 @@ first and last dekad in the file (dekads start on the 1st, 11th, 21st):
   degree, classes 0 none / 1 low / 2 medium / 3 high (categorical: nearest
   resampling). This is the global stand-in for the Combined Drought
   Indicator, which exists only for Europe (`EDO_Combined_Drought_Indicator/`).
-- `GDO_Soil_Moisture_Index_Anomaly/` - variable `smang`; `GDO_Ensemble_Soil_Moisture_Anomaly/`.
+- `GDO_Soil_Moisture_Index_Anomaly/` - variable `smang`, **0.05 degree**
+  (7200x3000, lat 90 to -60, descending), LISFLOOD/GloFAS 4 modelled
+  root-zone soil moisture standardized against 1995-2023; ~480 MB per year
+  of dekads, a global dekad is 86 MB in memory. Contains numerical blow-ups
+  (|z| up to 1e6 over ice sheets and hyper-arid deserts, ~0.5% of land):
+  mask |z| > 10 as nodata or zonal means are ruined. Publication lags two to
+  three weeks. `GDO_Ensemble_Soil_Moisture_Anomaly/` (`smand`, the older
+  three-source ensemble) stopped in mid-2024; do not use it.
 
 Keeping every dekad is the natural cadence for these; a snapshot's period is
 the dekad start to the next dekad start (`timestampEnd`).
