@@ -264,14 +264,37 @@ export async function registerSnapshot(
       [layerRowId, stored.snapshotId, artifact.timestamp, artifact.timestampEnd ?? null]
     )
   }
-  await client.query(
-    `UPDATE app.raster_layers SET current_snapshot_id = (
-       SELECT id FROM app.raster_snapshots
-       WHERE layer_id = $1 AND status = 'promoted'
-       ORDER BY observed_at DESC, created_at DESC LIMIT 1
-     ) WHERE id = $1`,
-    [layerRowId]
+  await advanceCurrentPointers(client, layerRowId)
+}
+
+/**
+ * Which promoted snapshot a layer means by "current": the newest one whose
+ * observation time has arrived, so a layer holding projections (annual
+ * population to 2030) reads as this year's, not the furthest one. A layer with
+ * only future snapshots takes the nearest.
+ */
+const CURRENT_SNAPSHOT_SORT = `
+  (observed_at <= now()) DESC,
+  CASE WHEN observed_at <= now() THEN observed_at END DESC,
+  observed_at ASC, created_at DESC`
+
+/**
+ * Points every layer (or one layer) at its current snapshot. Runs at
+ * promotion and on a scheduler tick, so a projection layer rolls over to the
+ * next year without a run. Layers with no promoted snapshot are left alone.
+ */
+export async function advanceCurrentPointers(client: pg.ClientBase | pg.Pool, layerRowId?: string): Promise<number> {
+  const result = await client.query(
+    `UPDATE app.raster_layers l SET current_snapshot_id = c.id
+     FROM (
+       SELECT DISTINCT ON (layer_id) layer_id, id FROM app.raster_snapshots
+       WHERE status = 'promoted' AND ($1::text IS NULL OR layer_id = $1)
+       ORDER BY layer_id, ${CURRENT_SNAPSHOT_SORT}
+     ) c
+     WHERE c.layer_id = l.id AND l.current_snapshot_id IS DISTINCT FROM c.id`,
+    [layerRowId ?? null]
   )
+  return result.rowCount ?? 0
 }
 
 /** Store-relative paths and footprint envelopes of a snapshot's files, in ordinal order. */

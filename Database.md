@@ -124,7 +124,10 @@ touched mid-design.
 ### raster_snapshots
 
 Insert as `pending`; promotion flips status and `current_snapshot_id` in one
-transaction. time-series layers keep promoted history; current-only marks the
+transaction. `current_snapshot_id` is the newest promoted snapshot whose
+`observed_at` is not in the future (nearest future one if none), re-evaluated
+on a scheduler tick so projection layers advance without a run. time-series
+layers keep promoted history; current-only marks the
 old snapshot `superseded` (files deleted asynchronously). A snapshot's pixels
 live in its `raster_sources` rows: one for a single-file snapshot, many for a
 tiled product, none for an empty snapshot (a published "nothing observed").

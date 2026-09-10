@@ -17,6 +17,7 @@
  */
 
 import { hostname } from "node:os"
+import { advanceCurrentPointers } from "./catalog.js"
 import { dropOrphanStagedTables } from "./destinations.js"
 import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns, RUN_LABEL } from "./executor.js"
 import { TileRenderer } from "./tiles.js"
@@ -138,6 +139,7 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       if (stopped) break
       await reapStaleRuns(deps.pool).catch(err => console.error("scheduler reap failed:", err))
       await dropOrphanStagedTables(deps.pool).catch(err => console.error("staging cleanup failed:", err))
+      await advanceCurrentPointers(deps.pool).catch(err => console.error("current snapshot sweep failed:", err))
       if (options.tiles && options.tileCacheMb) {
         await options.tiles
           .evictToBudget(options.tileCacheMb)

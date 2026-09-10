@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { createUser } from "../src/auth.js"
+import { advanceCurrentPointers } from "../src/catalog.js"
 import { installIntegration } from "../src/install.js"
 import { migrate } from "../src/migrations.js"
 import { RasterStore } from "../src/rasterStore.js"
@@ -103,6 +104,39 @@ test("layer detail carries bands, snapshots and provenance", async () => {
   assert.equal(layer.crs, "EPSG:4326")
   assert.equal(layer.sizeBytes, 1024)
   assert.ok(layer.footprint)
+})
+
+test("current snapshot is the newest whose time has arrived, not the furthest projection", async () => {
+  const run = await pool.query(
+    "INSERT INTO app.runs (integration_id, trigger, status) VALUES ('layer_src', 'manual', 'succeeded') RETURNING id"
+  )
+  const insert = async (observedAt: string) =>
+    (
+      await pool.query(
+        `INSERT INTO app.raster_snapshots (layer_id, observed_at, crs, bands, size_bytes, run_id, status)
+         VALUES ('drought', $1, 'EPSG:4326', '[]', 0, $2, 'promoted') RETURNING id`,
+        [observedAt, run.rows[0].id]
+      )
+    ).rows[0].id as string
+  const lastYear = await insert("2025-01-01T00:00:00Z")
+  const nextYear = await insert("2999-01-01T00:00:00Z")
+  const later = await insert("3000-01-01T00:00:00Z")
+
+  // The fixture's now() snapshot is the newest past one and stays current
+  assert.equal(await advanceCurrentPointers(pool, "drought"), 0)
+  let layer = await pool.query("SELECT current_snapshot_id FROM app.raster_layers WHERE id = 'drought'")
+  assert.equal(layer.rows[0].current_snapshot_id, snapshotId)
+
+  // With only future snapshots left, the nearest one is current
+  await pool.query("UPDATE app.raster_snapshots SET status = 'superseded' WHERE id = ANY($1)", [[snapshotId, lastYear]])
+  assert.equal(await advanceCurrentPointers(pool), 1)
+  layer = await pool.query("SELECT current_snapshot_id FROM app.raster_layers WHERE id = 'drought'")
+  assert.equal(layer.rows[0].current_snapshot_id, nextYear)
+
+  // Restore the fixture: repromote, re-point, then drop the extras
+  await pool.query("UPDATE app.raster_snapshots SET status = 'promoted' WHERE id = $1", [snapshotId])
+  assert.equal(await advanceCurrentPointers(pool, "drought"), 1)
+  await pool.query("DELETE FROM app.raster_snapshots WHERE id = ANY($1)", [[lastYear, nextYear, later]])
 })
 
 test("layer detail 404s for unknown ids and for catalog/session mismatches", async () => {

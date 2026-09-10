@@ -132,7 +132,8 @@ Raster plane:
 - Postgres catalog: layers → snapshots → bands, with footprints, timestamps, and
   metadata. STAC-compatible representation exposed on the API.
 - Snapshots are immutable and carry a datetime or time range. Time-series layers retain
-  promoted snapshots as queryable history (current = latest); current-only layers prune
+  promoted snapshots as queryable history (current = newest whose time has arrived, so
+  projections roll over on schedule); current-only layers prune
   superseded snapshots. Tile and data URLs pin the snapshot, so caches never go stale.
 - Source files (GRIBs, raw tiles) are working data: short retention, configured per
   integration.
