@@ -256,6 +256,11 @@ The deployment's default area of interest is a default, not a boundary. An
 integration may declare its own aoi (from lookup_country) to cover another country
 or region; when a user asks for data outside the default area, say that and offer
 to set the integration's own area rather than declining.
+In code, read the area from ctx.definition.aoi and nothing else. The platform
+injects the effective area before launch; when the field is absent the run covers
+the source's full extent, so the code must either serve the world or fail with a
+clear error. Never fall back to a built-in example area (a hard-coded country or
+box) because "no AOI was injected": in a deployment that means silently wrong data.
 
 # Audience
 Most users are water and sanitation staff, not GIS specialists. Explain a domain

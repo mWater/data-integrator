@@ -1,7 +1,7 @@
 ---
 name: WorldPop population source
 description: How WorldPop publishes gridded population - country-keyed files, Global 2015-2030 release layout, constrained variant, encoding pitfalls
-verified: 2026-08-28
+verified: 2026-09-11
 ---
 
 # WorldPop gridded population
@@ -36,7 +36,29 @@ Global Demographic Data series (annual 2015-2030, revised releases):
 
 Take ISO3 codes from the runtime AOI (`aoi.countries`) so the entry stays
 portable across deployments, with a `params.countries` override. Never
-guess countries from the bbox alone.
+guess countries from the bbox alone: a bare-box AOI is an error to report,
+not a puzzle to solve. Never substitute a built-in example country when no
+AOI is present - no AOI means the whole world (below).
+
+## The whole world
+
+No AOI = every country in the release (the release listing
+`rest/data/pop/{RELEASE}` gives the ISO3 set per year in one request; file
+URLs still need the per-country query). Do not mosaic: a global mosaic is
+432,000 x 216,000 pixels. Re-encode each country file to its own COG and
+return the year as one snapshot with `sources: [{path, footprint}]`
+(~240 files). Per year: ~10 GB of downloads (USA 1.5 GB, CHN 0.9, IND 0.8),
+~3.5 GB stored as COGs, so default to the current year and let
+`params.years` widen it. Cache finished COGs in /work per release+year and
+delete each source download once its COG exists, so an interrupted year
+resumes and disk stays near the stored size. Retry HTTP calls: the hub and
+data servers drop connections mid-run.
+
+Border double counting is not an issue: WorldPop assigns every cell to
+exactly one country before cutting the per-country files, so extents
+overlap but valid pixels never do (verified RWA/BDI 2025: 0 shared cells
+in a 635-row overlap band). Meta/HDX HRSL tiles, by contrast, are buffered
+and do overlap.
 
 ## Encoding pitfalls (both hit for real)
 
