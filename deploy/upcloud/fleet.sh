@@ -12,6 +12,7 @@
 #   ./deploy/upcloud/fleet.sh secrets    hosts.txt <name>   # copy that host's integration secrets to the others
 #   ./deploy/upcloud/fleet.sh rerun      hosts.txt   # queue a run wherever the latest run failed
 #   ./deploy/upcloud/fleet.sh install    hosts.txt <id> [<id>...]   # install library entries (skips nolib hosts) and queue their first run
+#   ./deploy/upcloud/fleet.sh cli        hosts.txt <args...>   # run the server CLI on every host, e.g. backfill-cell-sizes
 #
 # hosts.txt: one host per line, "name ip aoi [nolib]"; # comments allowed.
 #   kenya     94.237.1.2   KEN
@@ -29,7 +30,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 HERE=deploy/upcloud
-cmd=${1:?usage: fleet.sh setup|configure|push|tunnel|status hosts.txt [args]}
+cmd=${1:?usage: fleet.sh setup|configure|push|tunnel|status|cli hosts.txt [args]}
 hosts_file=${2:?hosts file required}
 shift 2
 ADMIN_EMAIL=${ADMIN_EMAIL:-clayton@mwater.co}
@@ -139,6 +140,11 @@ do_install() {
   done
 }
 
+do_cli() {
+  local name=$1 ip=$2
+  remote_cli "$ip" "${CLI_ARGS[@]}"
+}
+
 do_status() {
   local name=$1 ip=$2
   $SSH "root@$ip" "systemctl is-active pathfinder; sudo -u postgres psql -qAt -d pathfinder -c \"SELECT status || ' ' || count(*) FROM app.runs GROUP BY status ORDER BY status\"; df -h /var/lib/pathfinder | tail -1"
@@ -157,6 +163,10 @@ case "$cmd" in
     done
     INSTALL_IDS=("$@")
     each_host do_install ;;
+  cli)
+    [ $# -gt 0 ] || { echo "cli needs the CLI arguments to run" >&2; exit 1; }
+    CLI_ARGS=("$@")
+    each_host do_cli ;;
   secrets)
     # Plaintext travels source -> this machine -> targets over ssh, never to disk
     src=${1:?secrets needs <source host name>}
