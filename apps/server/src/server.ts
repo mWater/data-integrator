@@ -738,7 +738,7 @@ async function route(
     const session = searchParams.get("session")
     const result = await pool.query(
       `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
-              s.observed_at, s.observed_end, s.crs,
+              s.observed_at, s.observed_end, s.crs, s.cell_size_m,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
               COALESCE(sn.snapshots, '[]'::json) AS snapshots,
               (l.mask_geom IS NOT NULL) AS masked,
@@ -770,7 +770,7 @@ async function route(
               l.integration_id, i.definition->'name' AS integration_name,
               i.definition->'description' AS integration_description,
               i.definition->'source' AS source,
-              s.observed_at, s.observed_end, s.crs,
+              s.observed_at, s.observed_end, s.crs, s.cell_size_m,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
               COALESCE(sn.snapshots, '[]'::json) AS snapshots,
               COALESCE(sn.size_bytes, 0) AS size_bytes,
@@ -808,6 +808,7 @@ async function route(
       observedAt: row.observed_at,
       observedEnd: row.observed_end,
       crs: row.crs,
+      cellSizeM: row.cell_size_m,
       footprint: row.footprint,
       snapshots: row.snapshots,
       sizeBytes: Number(row.size_bytes),

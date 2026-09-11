@@ -13,6 +13,8 @@
  *                           as JSON ({integration: {name: value}}) between
  *                           deployments, plaintext on stdout/stdin.
  *   register-rasters        Backfill the out-db SQL mirror of promoted snapshots.
+ *   backfill-cell-sizes     One-off after migration 0020: record cell_size_m for
+ *                           snapshots stored before the column existed.
  *   localize-library        Wrap and translate library entry text into every
  *                           supported locale (library authoring; needs a model).
  *   serve                   HTTP API and map page.
@@ -40,6 +42,7 @@ import { createApiServer } from "./server.js"
 import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
 import { aiProvider, AppConfig, describeConfig, loadConfig } from "./config.js"
 import { startScheduler } from "./scheduler.js"
+import { backfillCellSizes } from "./catalog.js"
 import { registerMissingRasters } from "./rasterSql.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
@@ -465,6 +468,14 @@ async function main(): Promise<number> {
         for (const failure of result.failures) console.error(`  failed: ${failure}`)
         return result.failures.length > 0 ? 1 : 0
       }
+      case "backfill-cell-sizes": {
+        // One-off after migration 0020; reads each promoted snapshot's first file
+        const store = new RasterStore(config.rasterStorePath)
+        const result = await backfillCellSizes(pool, rel => store.absolute(rel))
+        console.log(`Filled ${result.filled}, ${result.failures.length} unreadable`)
+        for (const failure of result.failures) console.error(`  failed: ${failure}`)
+        return result.failures.length > 0 ? 1 : 0
+      }
       case "localize-library": {
         // Library authoring: entries ship fully localized at the release
         // ceiling, so subset deployments find their languages present and
@@ -541,7 +552,7 @@ async function main(): Promise<number> {
       }
       default:
         console.error(
-          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | register-rasters | serve"
+          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | register-rasters | backfill-cell-sizes | serve"
         )
         return 1
     }

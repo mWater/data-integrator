@@ -9,12 +9,38 @@ import { RasterStore } from "./rasterStore.js"
 
 const execFileP = promisify(execFile)
 
-/** Footprint and CRS of a raster file, derived or declared. */
+/** Footprint, CRS and cell size of a raster file, derived or declared. */
 interface RasterInfo {
   /** GeoJSON Polygon geometry in EPSG:4326 */
   footprint: object
   /** CRS identifier, e.g. "EPSG:4326" */
   crs: string
+  /** Approximate cell width in metres; null when the file has no geotransform */
+  cellSizeM: number | null
+}
+
+/** Metres per degree at the equator, for lon/lat grids. */
+const METRES_PER_DEGREE = 111320
+
+/** The shape gdalinfo -json returns, as far as registration reads it. */
+interface GdalInfo {
+  /** [originX, pixelWidth, 0, originY, 0, -pixelHeight] */
+  geoTransform?: number[]
+  /** Footprint in lon/lat, when georeferenced */
+  wgs84Extent?: object
+  /** Coordinate system as WKT */
+  coordinateSystem?: { wkt?: string }
+}
+
+/**
+ * Cell width in metres from a file's geotransform: degrees converted at the
+ * equator for a geographic CRS, the CRS units (taken as metres) otherwise.
+ */
+export function cellSizeFromInfo(info: GdalInfo): number | null {
+  const width = info.geoTransform?.[1]
+  if (width === undefined) return null
+  const geographic = /^GEOG(CRS|CS)\[/.test(info.coordinateSystem?.wkt ?? "")
+  return Math.abs(width) * (geographic ? METRES_PER_DEGREE : 1)
 }
 
 /** [west, south, east, north] in EPSG:4326. */
@@ -39,16 +65,25 @@ function polygonBbox(polygon: object): Bbox {
   return bbox
 }
 
-/** Reads footprint and CRS from the file via gdalinfo when not declared. */
-async function rasterInfo(file: string, declared: string, footprint?: Bbox, crs?: string): Promise<RasterInfo> {
-  if (footprint && crs) return { footprint: bboxPolygon(footprint), crs }
+/** Reads a file's description via gdalinfo. */
+async function gdalInfo(file: string): Promise<GdalInfo> {
   const { stdout } = await execFileP("gdalinfo", ["-json", file], { maxBuffer: 16 * 1024 * 1024 })
-  const info = JSON.parse(stdout)
+  return JSON.parse(stdout) as GdalInfo
+}
+
+/**
+ * Footprint and CRS as declared, else read from the file; cell size always
+ * from the file, since nothing declares it.
+ */
+async function rasterInfo(file: string, declared: string, footprint?: Bbox, crs?: string): Promise<RasterInfo> {
+  const info = await gdalInfo(file)
+  const cellSizeM = cellSizeFromInfo(info)
+  if (footprint && crs) return { footprint: bboxPolygon(footprint), crs, cellSizeM }
   const polygon = footprint ? bboxPolygon(footprint) : info.wgs84Extent
   if (!polygon) throw new Error(`No footprint for ${declared}: not georeferenced and none declared`)
   const wkt: string = info.coordinateSystem?.wkt ?? ""
   const epsg = wkt.match(/ID\["EPSG",(\d+)\]\]\s*$/) ?? wkt.match(/AUTHORITY\["EPSG","(\d+)"\]\]\s*$/)
-  return { footprint: polygon, crs: crs ?? (epsg ? `EPSG:${epsg[1]}` : "unknown") }
+  return { footprint: polygon, crs: crs ?? (epsg ? `EPSG:${epsg[1]}` : "unknown"), cellSizeM }
 }
 
 /** Ensures the raster_layers row for a destination exists and is owned by this integration. */
@@ -139,6 +174,8 @@ export interface StoredSnapshot {
   bandIds: string[]
   /** Total bytes across sources */
   sizeBytes: number
+  /** Approximate cell width in metres, from the first file; null when empty */
+  cellSizeM: number | null
 }
 
 /**
@@ -170,6 +207,7 @@ export async function storeArtifact(
   const snapshotId = randomUUID()
   const sources: StoredSource[] = []
   let crs: string | null = artifact.crs ?? null
+  let cellSizeM: number | null = null
   for (const [ordinal, source] of declaredSources(artifact).entries()) {
     const file = resolveArtifactPath(outDir, source.path)
     const stats = await stat(file).catch(() => null)
@@ -186,6 +224,7 @@ export async function storeArtifact(
       throw new Error(`Raster "${source.path}" is ${info.crs}; the snapshot's other files are ${crs}`)
     }
     crs = info.crs
+    cellSizeM ??= info.cellSizeM
     const relPath = `${layerRowId}/${snapshotId}/${ordinal}.tif`
     await store.put(file, relPath)
     sources.push({ ordinal, relPath, footprint: info.footprint, sizeBytes: stats.size })
@@ -206,7 +245,8 @@ export async function storeArtifact(
     footprint,
     crs: crs ?? "unknown",
     bandIds,
-    sizeBytes: sources.reduce((sum, s) => sum + s.sizeBytes, 0)
+    sizeBytes: sources.reduce((sum, s) => sum + s.sizeBytes, 0),
+    cellSizeM
   }
 }
 
@@ -227,8 +267,8 @@ export async function registerSnapshot(
 ): Promise<void> {
   await client.query(
     `INSERT INTO app.raster_snapshots
-       (id, layer_id, observed_at, observed_end, footprint, crs, bands, run_id, status, size_bytes)
-     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, 'promoted', $9)`,
+       (id, layer_id, observed_at, observed_end, footprint, crs, bands, run_id, status, size_bytes, cell_size_m)
+     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, 'promoted', $9, $10)`,
     [
       stored.snapshotId,
       layerRowId,
@@ -238,7 +278,8 @@ export async function registerSnapshot(
       stored.crs,
       JSON.stringify(stored.bandIds),
       runId,
-      stored.sizeBytes
+      stored.sizeBytes,
+      stored.cellSizeM
     ]
   )
   for (const source of stored.sources) {
@@ -295,6 +336,42 @@ export async function advanceCurrentPointers(client: pg.ClientBase | pg.Pool, la
     [layerRowId ?? null]
   )
   return result.rowCount ?? 0
+}
+
+/**
+ * One-off after migration 0020 (`cli.js backfill-cell-sizes`): fills
+ * cell_size_m for promoted snapshots stored before the column existed,
+ * reading each snapshot's first file. Reports files it could not describe.
+ */
+export async function backfillCellSizes(
+  pool: pg.Pool,
+  absolutePath: (relPath: string) => string
+): Promise<{ filled: number; failures: string[] }> {
+  const missing = await pool.query(
+    `SELECT DISTINCT ON (s.id) s.id, src.path
+     FROM app.raster_snapshots s
+     JOIN app.raster_sources src ON src.snapshot_id = s.id
+     WHERE s.status = 'promoted' AND s.cell_size_m IS NULL
+     ORDER BY s.id, src.ordinal`
+  )
+  let filled = 0
+  const failures: string[] = []
+  for (const row of missing.rows) {
+    let cellSizeM: number | null
+    try {
+      cellSizeM = cellSizeFromInfo(await gdalInfo(absolutePath(row.path)))
+    } catch (err) {
+      failures.push(`${row.id} (${row.path}): ${err instanceof Error ? err.message : err}`)
+      continue
+    }
+    if (cellSizeM === null) {
+      failures.push(`${row.id} (${row.path}): no geotransform`)
+      continue
+    }
+    await pool.query("UPDATE app.raster_snapshots SET cell_size_m = $2 WHERE id = $1", [row.id, cellSizeM])
+    filled++
+  }
+  return { filled, failures }
 }
 
 /** Store-relative paths and footprint envelopes of a snapshot's files, in ordinal order. */

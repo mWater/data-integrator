@@ -140,6 +140,7 @@ tiled product, none for an empty snapshot (a published "nothing observed").
 | observed_end | timestamptz null | RasterArtifact.timestampEnd |
 | footprint | geometry(Polygon, 4326) null | envelope of all sources; null when empty |
 | crs | text | CRS shared by the files; source grids are preserved, never warped at ingest |
+| cell_size_m | double precision null | approximate cell width in metres from the first file's grid (the STAC gsd); lon/lat grids convert at the equator; null for an empty snapshot |
 | bands | jsonb | band ids in file order |
 | size_bytes | bigint | total across sources |
 | run_id | uuid | producing run (lineage) |
