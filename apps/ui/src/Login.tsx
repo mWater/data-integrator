@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react"
+import { FormEvent, useRef, useState } from "react"
 import { login, User } from "./api.js"
 
 /** Props for the login screen. */
@@ -13,6 +13,7 @@ export function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -23,6 +24,10 @@ export function Login({ onLogin }: LoginProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
+      // A rejected password is masked, so leaving it in place makes the next
+      // attempt append to it
+      setPassword("")
+      passwordRef.current?.focus()
     }
   }
 
@@ -40,6 +45,7 @@ export function Login({ onLogin }: LoginProps) {
           autoFocus
         />
         <input
+          ref={passwordRef}
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
