@@ -57,6 +57,24 @@ test("refreshAoi builds a land-only shape for a country and clears it on null", 
   assert.equal(await describeAoi(pool), null)
 })
 
+test("refreshAoi folds Somaliland into Somalia", async () => {
+  await refreshAoi(pool, { bbox: [40.964, -1.695, 51.39, 11.984], countries: ["SOM"], name: "Somalia" })
+  const row = (
+    await pool.query(
+      `SELECT land_area_km2, ST_IsValid(geom) AS valid,
+              ST_Contains(geom, ST_SetSRID(ST_Point(44.065, 9.562), 4326)) AS hargeisa,
+              ST_Contains(geom, ST_SetSRID(ST_Point(45.318, 2.046), 4326)) AS mogadishu
+       FROM data.aoi`
+    )
+  ).rows[0]
+  assert.ok(row.valid)
+  assert.ok(row.hargeisa, "Hargeisa is inside the Somalia outline")
+  assert.ok(row.mogadishu)
+  // The whole country is about 637,000 km²; Natural Earth's Somalia alone is 472,000
+  assert.ok(row.land_area_km2 > 620_000 && row.land_area_km2 < 660_000, `land area ${row.land_area_km2}`)
+  await refreshAoi(pool, null)
+})
+
 test("aoi_stats weights coarse pixels by the part inside the boundary and reports coverage", async () => {
   // Area of interest: the left half of a 2x2-degree box, so a 2-pixel-wide
   // raster has one pixel fully inside and one straddling the edge

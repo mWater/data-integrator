@@ -211,7 +211,6 @@ export const COUNTRIES: CountryBox[] = [
   { iso3: "SVN", name: "Slovenia", bbox: [13.378, 45.428, 16.516, 46.863] },
   { iso3: "SLB", name: "Solomon Islands", bbox: [155.678, -11.832, 166.929, -6.609] },
   { iso3: "SOM", name: "Somalia", bbox: [40.964, -1.695, 51.39, 11.984] },
-  { iso3: "SOL", name: "Somaliland", bbox: [42.656, 7.997, 48.939, 11.5] },
   { iso3: "ZAF", name: "South Africa", bbox: [16.448, -46.963, 37.888, -22.146] },
   { iso3: "SGS", name: "South Georgia and the Islands", bbox: [-38.017, -58.492, -26.26, -53.984] },
   { iso3: "SSD", name: "South Sudan", bbox: [24.147, 3.491, 35.268, 12.223] },

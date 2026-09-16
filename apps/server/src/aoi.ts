@@ -47,9 +47,19 @@ async function loadBoundaries(): Promise<{ countries: Feature[]; lakes: Feature[
   return cache
 }
 
+/**
+ * Areas Natural Earth draws as their own feature (by ADM0_A3) that ISO 3166
+ * has no code for and folds into a country: selecting the country takes them
+ * too, matching the ISO view and the deployment's administrative regions.
+ */
+const FOLDED_TERRITORIES: Record<string, string[]> = {
+  SOM: ["SOL"]
+}
+
 /** Country features for ISO3 codes: Natural Earth's ISO_A3_EH first, then its own ADM0_A3. */
 function countryFeatures(countries: Feature[], codes: string[]): Feature[] {
   const wanted = new Set(codes.map(c => c.toUpperCase()))
+  for (const code of [...wanted]) for (const folded of FOLDED_TERRITORIES[code] ?? []) wanted.add(folded)
   return countries.filter(f => wanted.has(String(f.properties.ISO_A3_EH)) || wanted.has(String(f.properties.ADM0_A3)))
 }
 
