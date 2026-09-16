@@ -13,7 +13,7 @@
   "limits": {
     "cpus": 2,
     "memoryMb": 4096,
-    "timeoutMs": 1800000
+    "timeoutMs": 3600000
   },
   "source": {
     "url": "https://stac.eodc.eu/api/v1/collections/GFM",

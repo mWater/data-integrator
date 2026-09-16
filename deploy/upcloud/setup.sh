@@ -176,6 +176,7 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
+APP_USER="$APP_USER" bash "$APP_DIR/deploy/upcloud/harden.sh"
 systemctl enable --now pathfinder
 
 echo "==> HTTPS via Caddy + sslip.io"

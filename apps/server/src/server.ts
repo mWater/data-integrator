@@ -396,7 +396,9 @@ async function route(
     json(res, 200, { secrets: await listSecrets(pool, intSecretsMatch[1]) })
     return
   }
-  const intSecretMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/secrets\/([a-z][a-z0-9_]{0,63})$/)
+  // Secret names are whatever the definition declares; the designer favours
+  // environment-variable style (TATIRANO_API_KEY), the library lowercase
+  const intSecretMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/secrets\/([A-Za-z_][A-Za-z0-9_]{0,63})$/)
   if (intSecretMatch && (req.method === "PUT" || req.method === "DELETE")) {
     const [, integrationId, name] = intSecretMatch
     if (user.role !== "admin") {
@@ -1209,7 +1211,8 @@ async function route(
       json(res, 202, { runId: await runs.start(runMatch[1]) })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      json(res, message.includes("already queued") ? 409 : message.includes("Unknown") ? 404 : 500, { error: message })
+      const status = message.includes("already queued") || message.includes("is a draft") ? 409 : message.includes("Unknown") ? 404 : 500
+      json(res, status, { error: message })
     }
     return
   }

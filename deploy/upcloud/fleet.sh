@@ -9,6 +9,7 @@
 #   ./deploy/upcloud/fleet.sh push       hosts.txt   # day-2 update of every host
 #   ./deploy/upcloud/fleet.sh tunnel     hosts.txt <name> <cloudflare tunnel token>
 #   ./deploy/upcloud/fleet.sh status     hosts.txt   # service state + run queue per host
+#   ./deploy/upcloud/fleet.sh health     hosts.txt   # one health block per host; exit 1 if any needs attention
 #   ./deploy/upcloud/fleet.sh secrets    hosts.txt <name>   # copy that host's integration secrets to the others
 #   ./deploy/upcloud/fleet.sh rerun      hosts.txt   # queue a run wherever the latest run failed
 #   ./deploy/upcloud/fleet.sh install    hosts.txt <id> [<id>...]   # install library entries (skips nolib hosts) and queue their first run
@@ -150,6 +151,29 @@ do_status() {
   $SSH "root@$ip" "systemctl is-active pathfinder; sudo -u postgres psql -qAt -d pathfinder -c \"SELECT status || ' ' || count(*) FROM app.runs GROUP BY status ORDER BY status\"; df -h /var/lib/pathfinder | tail -1"
 }
 
+# Runs the read-only health report on every host in parallel and prints the
+# blocks in hosts-file order; exits 1 when any host reported a problem
+do_health() {
+  local color=0 tmp pids=() names=() ips=() rc=0 i
+  [ -t 1 ] && color=1
+  tmp=$(mktemp -d)
+  for h in "${hosts[@]}"; do
+    read -r name ip _ <<<"$h"
+    ( $SSH -o ConnectTimeout=15 "root@$ip" "HEALTH_COLOR=$color bash -s" < "$HERE/health-remote.sh" > "$tmp/$name" 2>&1
+      code=$?
+      [ $code -eq 255 ] && echo "  unreachable over ssh" >> "$tmp/$name"
+      exit $code ) &
+    pids+=($!); names+=("$name"); ips+=("$ip")
+  done
+  for i in "${!pids[@]}"; do
+    wait "${pids[$i]}" || rc=1
+    echo "== ${names[$i]} (${ips[$i]})"
+    cat "$tmp/${names[$i]}"
+  done
+  rm -rf "$tmp"
+  return $rc
+}
+
 case "$cmd" in
   setup)     each_host do_setup ;;
   configure) each_host do_configure ;;
@@ -184,6 +208,8 @@ case "$cmd" in
       read -r name ip _ <<<"$h"
       echo "== $name ($ip)"; do_status "$name" "$ip" || true
     done ;;
+  health)
+    do_health ;;
   tunnel)
     want=${1:?tunnel needs <name> <token>}; token=${2:?tunnel needs <name> <token>}
     for h in "${hosts[@]}"; do

@@ -117,7 +117,7 @@ async function listProblems(pool: pg.Pool): Promise<HomeProblem[]> {
        SELECT status, error, started_at, finished_at FROM app.runs
        WHERE integration_id = i.id ORDER BY scheduled_at DESC LIMIT 1
      ) r ON true
-     WHERE i.enabled AND r.status IN ('failed', 'timeout')
+     WHERE i.enabled AND i.status = 'ready' AND r.status IN ('failed', 'timeout')
      ORDER BY failed_at DESC NULLS LAST`
   )
   return result.rows.map(row => ({

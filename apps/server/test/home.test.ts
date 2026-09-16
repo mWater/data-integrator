@@ -6,6 +6,8 @@ import pg from "pg"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { getHomeSummary } from "../src/home.js"
 import { installIntegration } from "../src/install.js"
+import { ExecutorDeps } from "../src/executor.js"
+import { RunService } from "../src/runService.js"
 import { migrate } from "../src/migrations.js"
 import { DEFAULT_SITE_TITLE, parseSiteTitle, setSetting, SITE_TITLE_KEY } from "../src/settings.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
@@ -131,6 +133,19 @@ test("a paused integration is not reported as a problem", async () => {
   home = await getHomeSummary(pool, null, NO_AI)
   assert.deepEqual(home.problems, [])
   await pool.query("UPDATE app.integrations SET enabled = true WHERE id = 'home_broken'")
+})
+
+test("a draft integration is not reported as a problem and cannot be run", async () => {
+  await pool.query("UPDATE app.integrations SET status = 'draft' WHERE id = 'home_broken'")
+  const home = await getHomeSummary(pool, null, NO_AI)
+  assert.deepEqual(home.problems, [])
+
+  const runs = new RunService({ pool } as unknown as ExecutorDeps)
+  await assert.rejects(runs.start("home_broken"), /is a draft/)
+  await assert.rejects(runs.start("no_such_integration"), /Unknown integration/)
+  const queued = await pool.query("SELECT count(*)::int AS n FROM app.runs WHERE integration_id = 'home_broken' AND status = 'queued'")
+  assert.equal(queued.rows[0].n, 0)
+  await pool.query("UPDATE app.integrations SET status = 'ready' WHERE id = 'home_broken'")
 })
 
 test("the title comes from settings and falls back to the product name", async () => {

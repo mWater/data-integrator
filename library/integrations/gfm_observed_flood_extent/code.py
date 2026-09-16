@@ -2,6 +2,7 @@ import datetime as dt
 import math
 import os
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
@@ -459,14 +460,31 @@ def run(ctx):
     groups = _search_days(bbox, start_day, batch_end)
     print(f"Found frames on {len(groups)} of {MAX_DAYS_PER_RUN if backlog_remaining else (batch_end - start_day).days + 1} calendar day(s)")
 
+    # Heavy weeks (many frames per day over a large AOI) can outlast the run
+    # timeout. Days are committed as they complete: once the time budget is
+    # spent the batch ends early, the cursor stops at the last finished day,
+    # and the remainder is picked up next run instead of retried from scratch.
+    timeout_ms = int((ctx.definition.get("limits") or {}).get("timeoutMs", 1800000))
+    budget_seconds = timeout_ms / 1000 * 0.6
+    started_at = time.monotonic()
+
     rasters = []
     day = start_day
+    cursor_day = None
     while day <= batch_end:
         raster = _write_daily_composite(groups.get(day, []), day, bbox, ctx)
         rasters.append(raster)
+        cursor_day = day
         day += dt.timedelta(days=1)
+        elapsed = time.monotonic() - started_at
+        if day <= batch_end and elapsed > budget_seconds:
+            print(
+                f"Time budget spent after {elapsed:.0f}s; stopping at {cursor_day}, "
+                f"{(batch_end - cursor_day).days} day(s) of this batch deferred to the next run"
+            )
+            break
 
-    cursor_day = batch_end
+    backlog_remaining = cursor_day < end_day
     state.update({
         "state_version": STATE_VERSION,
         "last_day": cursor_day.isoformat(),

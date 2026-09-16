@@ -46,10 +46,17 @@ export class RunService {
     this.deps = deps
   }
 
-  /** Starts one run of an existing integration; see startProductionRun. */
+  /**
+   * Starts one run of an existing integration; see startProductionRun. A
+   * draft (a design session that has not finished) has no certified code to
+   * run and is refused.
+   */
   async start(integrationId: string): Promise<string> {
-    const exists = await this.deps.pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [integrationId])
-    if (exists.rows.length === 0) throw new Error(`Unknown integration ${integrationId}`)
+    const found = await this.deps.pool.query("SELECT status FROM app.integrations WHERE id = $1", [integrationId])
+    if (found.rows.length === 0) throw new Error(`Unknown integration ${integrationId}`)
+    if (found.rows[0].status !== "ready") {
+      throw new Error(`Integration ${integrationId} is a draft; finish its design session before running it`)
+    }
     return startProductionRun(this.deps, integrationId)
   }
 

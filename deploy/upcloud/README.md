@@ -62,6 +62,10 @@ What the script sets up:
   repo's `.env.example`), data under `/var/lib/pathfinder`
 - `pathfinder.service` systemd unit (restarts on failure and on reboot)
 - Caddy on 80/443 proxying to the app on 127.0.0.1:8080
+- Host guards from `harden.sh` (re-applied by every day-2 update): a 4 GB
+  swapfile, the app user's systemd manager exempt from the OOM killer, the
+  service pulling that manager in on restart, and needrestart told to leave
+  both alone during unattended upgrades
 - ufw allowing only 22/80/443 (the app listens on all interfaces, so this
   keeps plain-HTTP :8080 off the internet); skip with `SETUP_FIREWALL=0`
 

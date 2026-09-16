@@ -36,6 +36,7 @@ import { refreshAoi } from "./aoi.js"
 import { getDefaultAoi } from "./settings.js"
 import { installIntegration } from "./install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "./executor.js"
+import { SandboxBudget } from "./sandboxBudget.js"
 import { RasterStore } from "./rasterStore.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
@@ -100,7 +101,8 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
       node: config.runtimeImages.node
     },
     workQuotaMb: config.workQuotaMb,
-    minFreeDiskMb: config.minFreeDiskMb
+    minFreeDiskMb: config.minFreeDiskMb,
+    sandboxes: config.sandboxMemoryMb > 0 ? new SandboxBudget(config.sandboxMemoryMb) : undefined
   }
 }
 
@@ -505,7 +507,9 @@ async function main(): Promise<number> {
           console.warn(`Area of interest shape not rebuilt: ${err instanceof Error ? err.message : err}`)
         )
         const deps = buildDeps(pool, new Runner(), config)
-        const tiles = new TileRenderer(deps.store, config.tileCachePath)
+        const tiles = new TileRenderer(deps.store, config.tileCachePath, {
+          maxConcurrentRenders: config.tileRenderConcurrency
+        })
         const model = buildModel(config)
         const libraryPath = config.libraryPath
         const agent = model

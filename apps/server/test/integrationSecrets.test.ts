@@ -116,6 +116,18 @@ test("routes: admin sets and deletes, names listed without values, viewers denie
 
   const del = await call("/api/integrations/owner_a/secrets/token_two", adminBearer, { method: "DELETE" })
   assert.equal(del.status, 200)
+
+  // Designer-declared names are environment-variable style; the route must take them
+  const upper = await call("/api/integrations/owner_a/secrets/TATIRANO_API_KEY", adminBearer, {
+    method: "PUT",
+    body: JSON.stringify({ value: "k" })
+  })
+  assert.equal(upper.status, 200)
+  assert.deepEqual(await getSecrets(pool, key, "owner_a", ["TATIRANO_API_KEY"]), { TATIRANO_API_KEY: "k" })
+  assert.equal(
+    (await call("/api/integrations/owner_a/secrets/TATIRANO_API_KEY", adminBearer, { method: "DELETE" })).status,
+    200
+  )
 })
 
 test("cascade: deleting the integration removes its secrets", async () => {

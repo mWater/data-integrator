@@ -54,19 +54,76 @@ function rampText(rendering: BandRendering): string {
   return lines.join("\n") + "\n"
 }
 
+/** Concurrent cache-miss renders when the caller sets no limit. */
+export const DEFAULT_RENDER_CONCURRENCY = 3
+
+/**
+ * Environment for the GDAL tile subprocesses. A 256x256 tile needs a small
+ * block cache; GDAL's default (5% of RAM per process) multiplied by
+ * concurrent renders is enough to exhaust a small host.
+ */
+const GDAL_ENV = { ...process.env, GDAL_CACHEMAX: "64" }
+
+/** Tunables for a tile renderer. */
+export interface TileRendererOptions {
+  /** Cache-miss renders allowed at once; further requests queue (default 3) */
+  maxConcurrentRenders?: number
+}
+
 /**
  * Renders PNG map tiles from stored COGs via the GDAL CLI (warp to the tile's
  * mercator window, color-relief, translate to PNG), caching by snapshot-pinned
- * key so entries never go stale.
+ * key so entries never go stale. A map view fans out dozens of tile requests
+ * at once and each render forks GDAL processes worth hundreds of MB, so
+ * misses pass through a fixed-size gate; cache hits never wait.
  */
 export class TileRenderer {
   private store: RasterStore
   private cacheDir: string
+  private maxConcurrentRenders: number
+  private activeRenders = 0
+  private waiters: (() => void)[] = []
 
   /** Creates a renderer over a raster store with a tile cache directory. */
-  constructor(store: RasterStore, cacheDir: string) {
+  constructor(store: RasterStore, cacheDir: string, options: TileRendererOptions = {}) {
     this.store = store
     this.cacheDir = cacheDir
+    this.maxConcurrentRenders = Math.max(1, options.maxConcurrentRenders ?? DEFAULT_RENDER_CONCURRENCY)
+  }
+
+  /** Renders in progress right now (queued requests are not counted). */
+  get rendering(): number {
+    return this.activeRenders
+  }
+
+  /** Waits for a render slot; resolves once one is held. */
+  private acquire(): Promise<void> {
+    if (this.activeRenders < this.maxConcurrentRenders) {
+      this.activeRenders++
+      return Promise.resolve()
+    }
+    return new Promise(resolve => {
+      this.waiters.push(() => {
+        this.activeRenders++
+        resolve()
+      })
+    })
+  }
+
+  /** Releases a render slot to the next queued request, if any. */
+  private release(): void {
+    this.activeRenders--
+    this.waiters.shift()?.()
+  }
+
+  /** The tile's cached PNG, or null when not cached yet. */
+  private async fromCache(cached: string): Promise<Buffer | null> {
+    try {
+      await access(cached)
+      return await readFile(cached)
+    } catch {
+      return null
+    }
   }
 
   /**
@@ -101,17 +158,37 @@ export class TileRenderer {
     const style = createHash("sha1").update(JSON.stringify(rendering)).digest("hex").slice(0, 8)
     const variant = mask ? `${bandId}-${style}-m${mask.key}` : `${bandId}-${style}`
     const cached = path.join(this.cacheDir, layerId, snapshotId, variant, String(z), String(x), `${y}.png`)
-    try {
-      await access(cached)
-      return await readFile(cached)
-    } catch {
-      // render below
-    }
+    const hit = await this.fromCache(cached)
+    if (hit) return hit
 
     const bbox = tileBbox(z, x, y)
     const touching = sources.filter(source => overlaps(source.bbox, bbox))
     if (touching.length === 0) return EMPTY_TILE
 
+    await this.acquire()
+    try {
+      // Queued behind other renders: the requester may have hung up, or a
+      // twin request may have rendered this very tile meanwhile
+      if (!alive()) return null
+      const rendered = await this.fromCache(cached)
+      if (rendered) return rendered
+      return await this.render(touching, rendering, z, x, y, alive, mask, cached)
+    } finally {
+      this.release()
+    }
+  }
+
+  /** Runs the GDAL pipeline for one tile and writes it to the cache path. */
+  private async render(
+    touching: SourceRef[],
+    rendering: BandRendering,
+    z: number,
+    x: number,
+    y: number,
+    alive: () => boolean,
+    mask: { key: string; geojson: () => Promise<string> } | null,
+    cached: string
+  ): Promise<Buffer | null> {
     const [minX, minY, maxX, maxY] = tileBounds(z, x, y)
     const work = path.join(tmpdir(), `tile-${randomUUID().slice(0, 8)}`)
     await mkdir(work, { recursive: true })
@@ -126,16 +203,18 @@ export class TileRenderer {
       let input = this.store.absolute(touching[0].path)
       if (touching.length > 1) {
         input = path.join(work, "mosaic.vrt")
-        await execFileP("gdalbuildvrt", ["-q", input, ...touching.map(source => this.store.absolute(source.path))])
+        await execFileP("gdalbuildvrt", ["-q", input, ...touching.map(source => this.store.absolute(source.path))], {
+          env: GDAL_ENV
+        })
       }
       await execFileP("gdalwarp", [
         "-q", "-t_srs", "EPSG:3857",
         "-te", String(minX), String(minY), String(maxX), String(maxY),
         "-ts", "256", "256", "-r", resampling,
         input, warped
-      ])
+      ], { env: GDAL_ENV })
       if (!alive()) return null
-      await execFileP("gdaldem", ["color-relief", "-q", "-alpha", warped, ramp, colored])
+      await execFileP("gdaldem", ["color-relief", "-q", "-alpha", warped, ramp, colored], { env: GDAL_ENV })
       if (!alive()) return null
       let final = colored
       if (mask) {
@@ -148,10 +227,10 @@ export class TileRenderer {
         await execFileP("gdalwarp", [
           "-q", "-cutline", cutline, "-wo", "CUTLINE_ALL_TOUCHED=TRUE", "-dstnodata", "0",
           colored, final
-        ])
+        ], { env: GDAL_ENV })
         if (!alive()) return null
       }
-      await execFileP("gdal_translate", ["-q", "-of", "PNG", final, png])
+      await execFileP("gdal_translate", ["-q", "-of", "PNG", final, png], { env: GDAL_ENV })
       const buffer = await readFile(png)
       await mkdir(path.dirname(cached), { recursive: true })
       await writeFile(cached, buffer)

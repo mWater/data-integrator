@@ -30,11 +30,15 @@ NODATA = 65535
 def _run(command, env=None):
     print("Running:", " ".join(str(x) for x in command))
     completed = subprocess.run(
-        command, check=True, env=env, stdout=subprocess.PIPE,
+        command, env=env, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True,
     )
     if completed.stdout.strip():
         print(completed.stdout.strip())
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"{command[0]} exited with status {completed.returncode}"
+        )
 
 
 def _download(session, url, destination):
@@ -60,20 +64,22 @@ def _download(session, url, destination):
 
 
 def _densified_ring(west, south, east, north, steps=180):
+    # Corners are exact bbox values; interpolated points stop one step short
+    # so rounding never produces a near-duplicate vertex beside a corner.
     points = []
-    for i in range(steps + 1):
+    for i in range(steps):
         t = i / steps
         points.append([west + (east - west) * t, south])
-    for i in range(1, steps + 1):
+    for i in range(steps):
         t = i / steps
         points.append([east, south + (north - south) * t])
-    for i in range(1, steps + 1):
+    for i in range(steps):
         t = i / steps
         points.append([east - (east - west) * t, north])
-    for i in range(1, steps + 1):
+    for i in range(steps):
         t = i / steps
         points.append([west, north - (north - south) * t])
-    points.append(points[0])
+    points.append([west, south])
     return points
 
 

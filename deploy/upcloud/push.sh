@@ -50,6 +50,9 @@ fi
 echo "--> migrate"
 as_app "set -a; . $ENV_FILE; set +a; node apps/server/dist/cli.js migrate"
 
+echo "--> host guards"
+APP_USER="$APP_USER" bash "$APP_DIR/deploy/upcloud/harden.sh"
+
 echo "--> restart"
 systemctl restart pathfinder
 systemctl is-active pathfinder

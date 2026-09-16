@@ -21,6 +21,7 @@ import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
 import { getDefaultAoi } from "./settings.js"
+import { SandboxBudget } from "./sandboxBudget.js"
 import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx, validateRasterSqlRef } from "./rasterSql.js"
 
 const execFileP = promisify(execFile)
@@ -42,12 +43,17 @@ export interface ExecutorDeps {
   workQuotaMb?: number
   /** Free-space floor in MB on the work root and raster store; absent or 0 disables */
   minFreeDiskMb?: number
+  /** Host-wide sandbox memory budget; absent admits every job immediately */
+  sandboxes?: SandboxBudget
   /** Disk monitor poll interval; tests shorten it (default 30s) */
   diskMonitorMs?: number
 }
 
 /** How often a running worker refreshes its lease. */
 const HEARTBEAT_MS = 15_000
+
+/** Memory a job reserves from the host budget when its definition sets no limit (the runner default). */
+export const DEFAULT_JOB_MEMORY_MB = 2048
 
 /** Free megabytes on the filesystem holding the path; null when unknowable. */
 export async function freeDiskMb(target: string): Promise<number | null> {
@@ -282,6 +288,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       }
     }
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
+    const jobOutDir = outDir
 
     const logParts: string[] = []
     const started = Date.now()
@@ -297,11 +304,21 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       params: (run.params ?? {}) as Record<string, unknown>,
       catalog
     }
-    const jobResult = await deps.runner.run(
+    // The lease heartbeat is already running, so queueing here for host
+    // memory cannot get the run reaped as stale
+    const memoryMb = definition.limits?.memoryMb ?? DEFAULT_JOB_MEMORY_MB
+    const releaseMemory = deps.sandboxes
+      ? await deps.sandboxes.acquire(memoryMb, reason => {
+          logParts.push(reason)
+          opts?.onLogLine?.(reason)
+        })
+      : () => {}
+    const runJob = () =>
+      deps.runner.run(
       {
         image,
         payload,
-        mounts: { workDir, outDir, inDir: inDir ?? undefined },
+        mounts: { workDir, outDir: jobOutDir, inDir: inDir ?? undefined },
         limits: {
           cpus: definition.limits?.cpus,
           memoryMb: definition.limits?.memoryMb,
@@ -338,6 +355,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         }
       }
     )
+    let jobResult
+    try {
+      jobResult = await runJob()
+    } finally {
+      releaseMemory()
+    }
     if (diskTimer !== null) clearInterval(diskTimer)
     jobHandle = null
     let workUsedMb: number | null = null

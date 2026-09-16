@@ -168,7 +168,11 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
         </div>
         <div className="list-head-actions">
           {canDesign ? (
-            <button onClick={onRun} disabled={running}>
+            <button
+              onClick={onRun}
+              disabled={running || detail.status === "draft"}
+              title={detail.status === "draft" ? T`Finish the design session before running` : undefined}
+            >
               {running ? T`Running…` : T`Run Now`}
             </button>
           ) : null}

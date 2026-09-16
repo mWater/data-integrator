@@ -7,6 +7,8 @@
  */
 
 import { loadSecretKey } from "./secrets.js"
+import { totalmem } from "node:os"
+import { DEFAULT_RENDER_CONCURRENCY } from "./tiles.js"
 
 /** Reasoning efforts OpenRouter accepts for AGENT_EFFORT. */
 export const AGENT_EFFORTS = ["xhigh", "high", "medium", "low", "minimal", "none"] as const
@@ -40,6 +42,10 @@ export interface AppConfig {
   minFreeDiskMb: number
   /** TILE_CACHE_MB: tile + basemap cache budget, evicted oldest-first; 0 disables */
   tileCacheMb: number
+  /** TILE_RENDER_CONCURRENCY: map tile renders (GDAL subprocess pipelines) allowed at once */
+  tileRenderConcurrency: number
+  /** SANDBOX_MEMORY_MB: total job sandbox memory admitted at once; 0 disables the budget */
+  sandboxMemoryMb: number
   /** Agent model wiring; no key and no base URL means no model (core runs AI-free) */
   agent: {
     /** LLM_BASE_URL: any OpenAI-compatible endpoint (vLLM, Ollama, LiteLLM…); wins over the hosted keys */
@@ -55,6 +61,18 @@ export interface AppConfig {
   }
   /** Basemap proxy upstream; upstream null disables the proxy */
   basemap: { upstream: string | null; styleLight: string; styleDark: string }
+}
+
+/** Host RAM the operating system, database, server, and tile renders keep for themselves. */
+const HOST_RESERVE_MB = 2048
+
+/**
+ * Default sandbox budget: physical memory less the host reserve, never
+ * below one runner-default job (2048 MB) so a small box still runs jobs,
+ * one at a time.
+ */
+export function defaultSandboxMemoryMb(totalMb = Math.floor(totalmem() / (1024 * 1024))): number {
+  return Math.max(2048, totalMb - HOST_RESERVE_MB)
 }
 
 /**
@@ -98,6 +116,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const workQuotaMb = quota("WORK_QUOTA_MB", 20480)
   const minFreeDiskMb = quota("MIN_FREE_DISK_MB", 2048)
   const tileCacheMb = quota("TILE_CACHE_MB", 1024)
+  const sandboxMemoryMb = quota("SANDBOX_MEMORY_MB", defaultSandboxMemoryMb())
+
+  const concurrencyRaw = env.TILE_RENDER_CONCURRENCY ?? String(DEFAULT_RENDER_CONCURRENCY)
+  const tileRenderConcurrency = Number(concurrencyRaw)
+  if (!Number.isInteger(tileRenderConcurrency) || tileRenderConcurrency < 1) {
+    problems.push(`TILE_RENDER_CONCURRENCY must be a positive integer, got "${concurrencyRaw}"`)
+  }
 
   const effortRaw = env.AGENT_EFFORT
   if (effortRaw && !AGENT_EFFORTS.includes(effortRaw as AgentEffort)) {
@@ -137,6 +162,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     workQuotaMb,
     minFreeDiskMb,
     tileCacheMb,
+    tileRenderConcurrency,
+    sandboxMemoryMb,
     runtimeImages: {
       python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/pathfinder-runtime-python:dev",
       node: env.RUNTIME_IMAGE_NODE ?? "localhost/pathfinder-runtime-node:dev"

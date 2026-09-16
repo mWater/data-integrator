@@ -6361,6 +6361,15 @@
       "es": "Recortar al área de interés",
       "mg": "Hetezo amin’ny faritra mahaliana",
       "sw": "Kata kwa eneo linalolengwa"
+    },
+    {
+      "_base": "en",
+      "en": "Finish the design session before running",
+      "fr": "Terminez la session de conception avant de lancer l’exécution",
+      "pt": "Conclua a sessão de design antes de executar",
+      "es": "Termine la sesión de diseño antes de ejecutar",
+      "mg": "",
+      "sw": "Maliza kipindi cha usanifu kabla ya kuendesha"
     }
   ],
   "unused": [
