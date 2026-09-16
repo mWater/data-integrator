@@ -237,6 +237,11 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 - Local accounts, RBAC, hashed passwords, lockout. No default credentials.
 - Secrets encrypted at rest in Postgres, injected into jobs via stdin only, never into
   images or env of the server.
+- Credentials are requested inside the design session: the designer's `request_secrets`
+  tool declares the names and pauses, a card in the session lets an admin save (or copy
+  from another integration) each value against the draft, an optional agent-written check
+  snippet verifies it in the sandbox, and the session resumes with a names-only message.
+  `list_secrets` exposes stored names (never values) so agents reuse existing credentials.
 - Jobs: gVisor isolation + egress policy as above. No PII in scope.
 - TLS terminated by the deployer's proxy; app speaks HTTP behind it.
 

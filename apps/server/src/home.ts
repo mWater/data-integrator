@@ -65,6 +65,20 @@ export interface HomeProblem {
   failedAt: string | null
 }
 
+/** An integration waiting for credentials before it can run. */
+export interface HomeCredentialNeed {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** draft (still in a design session) or ready */
+  status: string
+  /** Declared secret names with no stored value */
+  missing: string[]
+  /** Paused design session that requested them, when there is one */
+  sessionId: string | null
+}
+
 /** Headline counts behind the home page's action cards and panel links. */
 export interface HomeCounts {
   /** Installed integrations */
@@ -103,8 +117,38 @@ export interface HomeSummary {
   integrations: HomeIntegration[]
   /** Enabled integrations whose most recent run failed */
   problems: HomeProblem[]
+  /** Integrations whose declared credentials are not all stored */
+  credentialsNeeded: HomeCredentialNeed[]
   /** Agent-backed features available on this deployment */
   ai: HomeAi
+}
+
+/**
+ * Enabled integrations (drafts included) declaring secrets that are not all
+ * stored, with the paused design session that asked for them when one exists.
+ */
+async function listCredentialsNeeded(pool: pg.Pool): Promise<HomeCredentialNeed[]> {
+  const result = await pool.query(
+    `SELECT i.id, i.definition->'name' AS name, i.status,
+            array_agg(d.name ORDER BY d.ord) AS missing,
+            (SELECT s.id FROM app.agent_sessions s
+              WHERE s.kind = 'designer' AND s.status = 'paused'
+                AND s.client_state->'definition'->>'id' = i.id
+              ORDER BY s.updated_at DESC LIMIT 1) AS session_id
+     FROM app.integrations i
+     CROSS JOIN LATERAL jsonb_array_elements_text(i.definition->'secrets') WITH ORDINALITY AS d(name, ord)
+     LEFT JOIN app.integration_secrets sec ON sec.integration_id = i.id AND sec.name = d.name
+     WHERE i.enabled AND sec.name IS NULL
+     GROUP BY i.id, i.definition, i.status, i.updated_at
+     ORDER BY i.updated_at DESC`
+  )
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name ?? { _base: "en", en: row.id },
+    status: row.status,
+    missing: row.missing,
+    sessionId: row.session_id ?? null
+  }))
 }
 
 /** Enabled integrations whose most recent run ended badly, newest first. */
@@ -138,12 +182,13 @@ export async function getHomeSummary(
   libraryPath: string | null,
   ai: HomeAi
 ): Promise<HomeSummary> {
-  const [title, sources, integrations, dashboards, problems] = await Promise.all([
+  const [title, sources, integrations, dashboards, problems, credentialsNeeded] = await Promise.all([
     getSiteTitle(pool),
     listSources(pool),
     listIntegrations(pool),
     listDashboards(pool),
-    listProblems(pool)
+    listProblems(pool),
+    listCredentialsNeeded(pool)
   ])
 
   // A source counts as data only once it holds some: a declared table with no
@@ -183,6 +228,7 @@ export async function getHomeSummary(
       lastRunAt: i.lastRunAt
     })),
     problems,
+    credentialsNeeded,
     ai
   }
 }

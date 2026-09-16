@@ -19,6 +19,7 @@ import {
 import { ensureAiAck } from "./aiAck.js"
 import { isBlockCall } from "./blocks/types.js"
 import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
+import { CredentialsCard, RequestedSecret } from "./CredentialsCard.js"
 import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
@@ -146,16 +147,49 @@ function pendingQuestion(detail: SessionDetail): PendingQuestion | null {
   return pending
 }
 
+/**
+ * The unanswered request_secrets call, if the transcript ends with one: the
+ * last such call with no user message after it. The card reads set/missing
+ * state from the secrets API, so only the request itself comes from here.
+ */
+function pendingSecretRequest(detail: SessionDetail): RequestedSecret[] | null {
+  let pending: RequestedSecret[] | null = null
+  for (const message of detail.messages) {
+    if (message.role === "user") pending = null
+    else if (message.role === "assistant" && typeof message.content !== "string") {
+      for (const part of message.content) {
+        if (part.type === "tool-call" && part.toolName === "request_secrets") {
+          const input = part.input as { secrets?: unknown[] } | undefined
+          const items = (Array.isArray(input?.secrets) ? input.secrets : [])
+            .map(raw => raw as { name?: unknown; purpose?: unknown; help?: unknown; copyFrom?: unknown; check?: unknown })
+            .filter(raw => typeof raw.name === "string" && raw.name !== "")
+            .map(raw => ({
+              name: String(raw.name),
+              purpose: typeof raw.purpose === "string" ? raw.purpose : "",
+              help: typeof raw.help === "string" && raw.help ? raw.help : undefined,
+              copyFrom: typeof raw.copyFrom === "string" && raw.copyFrom ? raw.copyFrom : null,
+              hasCheck: typeof raw.check === "string" && raw.check.trim() !== ""
+            }))
+          if (items.length > 0) pending = items
+        }
+      }
+    }
+  }
+  return pending
+}
+
 /** Props for the session view. */
 interface SessionViewProps {
   /** Session to display */
   sessionId: string
   /** False for viewers: composer is read-only */
   canDesign: boolean
+  /** True for admins: credentials requested by the agent can be saved in the session */
+  isAdmin?: boolean
 }
 
 /** One design session: transcript + live stream on the left, state panel on the right. */
-export function SessionView({ sessionId, canDesign }: SessionViewProps) {
+export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionViewProps) {
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -387,6 +421,8 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
   // Viewers may chat with the read-only assistant; design kinds stay gated
   const canSend = isAssistant || canDesign
   const question = !busy && canSend && detail.status === "paused" ? pendingQuestion(detail) : null
+  const secretRequest =
+    !busy && canSend && detail.status === "paused" && detail.integrationId ? pendingSecretRequest(detail) : null
   const dashState = isDashboard ? (detail.state as DashboardAgentState) : null
   const build = dashState?.build && dashState.build.ok ? dashState.build : null
   const assistantResults = isAssistant ? (detail.state as AssistantState)?.results : undefined
@@ -449,7 +485,7 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
         <div className="messages">
           <Transcript
             messages={frozenRef.current != null ? detail.messages.slice(0, frozenRef.current) : detail.messages}
-            hideTrailingQuestion={question != null}
+            hideTrailingQuestion={question != null || secretRequest != null}
             results={assistantResults}
           />
           {toLiveGroups(live).map((group, i) => (
@@ -463,6 +499,15 @@ export function SessionView({ sessionId, canDesign }: SessionViewProps) {
           <div ref={bottomRef} />
         </div>
         {question && <QuestionCard question={question} onAnswer={text => void send(text)} />}
+        {secretRequest && detail.integrationId && (
+          <CredentialsCard
+            sessionId={detail.id}
+            integrationId={detail.integrationId}
+            items={secretRequest}
+            isAdmin={isAdmin}
+            onResume={text => void send(text)}
+          />
+        )}
         {installed && (
           <div className="question installed-card">
             <b>{T`Integration installed.`}</b>{" "}
@@ -585,7 +630,7 @@ function LiveBlock({ items, results }: LiveBlockProps) {
   const item = items[items.length - 1]
   if (item.kind === "user") return <div className="msg msg-user">{item.text}</div>
   if (item.kind === "assistant") return <Markdown className="msg msg-assistant" text={item.text ?? ""} />
-  if (item.tool === "ask_user") return null // the question card is the rendering
+  if (item.tool === "ask_user" || item.tool === "request_secrets") return null // the card is the rendering
   if (!item.open && isBlockCall(item.tool, item.summary)) {
     // A completed assistant call renders as its block as soon as the mid-loop
     // state refetch delivers the stored result

@@ -6370,6 +6370,186 @@
       "es": "Termine la sesión de diseño antes de ejecutar",
       "mg": "",
       "sw": "Maliza kipindi cha usanifu kabla ya kuendesha"
+    },
+    {
+      "_base": "en",
+      "en": "The integration needs a credential",
+      "fr": "L’intégration a besoin d’un identifiant",
+      "pt": "A integração precisa de uma credencial",
+      "es": "La integración necesita una credencial",
+      "mg": "",
+      "sw": "Muunganisho unahitaji kitambulisho"
+    },
+    {
+      "_base": "en",
+      "en": "The integration needs credentials",
+      "fr": "L’intégration a besoin d’identifiants",
+      "pt": "A integração precisa de credenciais",
+      "es": "La integración necesita credenciales",
+      "mg": "",
+      "sw": "Muunganisho unahitaji vitambulisho"
+    },
+    {
+      "_base": "en",
+      "en": "Values are stored encrypted with this integration and never enter the conversation.",
+      "fr": "Les valeurs sont stockées chiffrées avec cette intégration et n’entrent jamais dans la conversation.",
+      "pt": "Os valores são armazenados criptografados com esta integração e nunca entram na conversa.",
+      "es": "Los valores se almacenan cifrados con esta integración y nunca entran en la conversación.",
+      "mg": "",
+      "sw": "Thamani huhifadhiwa zikiwa zimesimbwa pamoja na muunganisho huu na haziingii kamwe kwenye mazungumzo."
+    },
+    {
+      "_base": "en",
+      "en": "Only an admin can save these. Ask one to open this session, or the integration's credentials page, then continue.",
+      "fr": "Seul un administrateur peut les enregistrer. Demandez-lui d’ouvrir cette session ou la page des identifiants de l’intégration, puis continuez.",
+      "pt": "Só um administrador pode salvá-las. Peça a um que abra esta sessão ou a página de credenciais da integração e depois continue.",
+      "es": "Solo un administrador puede guardarlas. Pídale que abra esta sesión o la página de credenciales de la integración y luego continúe.",
+      "mg": "",
+      "sw": "Msimamizi pekee ndiye anayeweza kuzihifadhi. Mwombe afungue kipindi hiki au ukurasa wa vitambulisho wa muunganisho, kisha endelea."
+    },
+    {
+      "_base": "en",
+      "en": "checking…",
+      "fr": "vérification…",
+      "pt": "verificando…",
+      "es": "comprobando…",
+      "mg": "",
+      "sw": "inakagua…"
+    },
+    {
+      "_base": "en",
+      "en": "verified",
+      "fr": "vérifié",
+      "pt": "verificado",
+      "es": "verificado",
+      "mg": "",
+      "sw": "imethibitishwa"
+    },
+    {
+      "_base": "en",
+      "en": "rejected",
+      "fr": "rejeté",
+      "pt": "rejeitado",
+      "es": "rechazado",
+      "mg": "",
+      "sw": "imekataliwa"
+    },
+    {
+      "_base": "en",
+      "en": "set",
+      "fr": "défini",
+      "pt": "definido",
+      "es": "definido",
+      "mg": "",
+      "sw": "imewekwa"
+    },
+    {
+      "_base": "en",
+      "en": "Paste a new value to replace it",
+      "fr": "Collez une nouvelle valeur pour la remplacer",
+      "pt": "Cole um novo valor para substituí-lo",
+      "es": "Pegue un nuevo valor para reemplazarlo",
+      "mg": "",
+      "sw": "Bandika thamani mpya ili kuibadilisha"
+    },
+    {
+      "_base": "en",
+      "en": "Paste the value",
+      "fr": "Collez la valeur",
+      "pt": "Cole o valor",
+      "es": "Pegue el valor",
+      "mg": "",
+      "sw": "Bandika thamani"
+    },
+    {
+      "_base": "en",
+      "en": "Copy from {0}",
+      "fr": "Copier depuis {0}",
+      "pt": "Copiar de {0}",
+      "es": "Copiar de {0}",
+      "mg": "",
+      "sw": "Nakili kutoka {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Open the credentials page",
+      "fr": "Ouvrir la page des identifiants",
+      "pt": "Abrir a página de credenciais",
+      "es": "Abrir la página de credenciales",
+      "mg": "",
+      "sw": "Fungua ukurasa wa vitambulisho"
+    },
+    {
+      "_base": "en",
+      "en": "Continue",
+      "fr": "Continuer",
+      "pt": "Continuar",
+      "es": "Continuar",
+      "mg": "",
+      "sw": "Endelea"
+    },
+    {
+      "_base": "en",
+      "en": "credentials",
+      "fr": "identifiants",
+      "pt": "credenciais",
+      "es": "credenciales",
+      "mg": "",
+      "sw": "vitambulisho"
+    },
+    {
+      "_base": "en",
+      "en": "needs",
+      "fr": "a besoin de",
+      "pt": "precisa de",
+      "es": "necesita",
+      "mg": "",
+      "sw": "inahitaji"
+    },
+    {
+      "_base": "en",
+      "en": "Open the session",
+      "fr": "Ouvrir la session",
+      "pt": "Abrir a sessão",
+      "es": "Abrir la sesión",
+      "mg": "",
+      "sw": "Fungua kipindi"
+    },
+    {
+      "_base": "en",
+      "en": "Set credentials",
+      "fr": "Définir les identifiants",
+      "pt": "Definir credenciais",
+      "es": "Definir credenciales",
+      "mg": "",
+      "sw": "Weka vitambulisho"
+    },
+    {
+      "_base": "en",
+      "en": "Continue Anyway",
+      "fr": "Continuer quand même",
+      "pt": "Continuar mesmo assim",
+      "es": "Continuar de todos modos",
+      "mg": "",
+      "sw": "Endelea Hata Hivyo"
+    },
+    {
+      "_base": "en",
+      "en": "The check failed. Replace the value, or continue with it as saved.",
+      "fr": "La vérification a échoué. Remplacez la valeur ou continuez avec celle qui est enregistrée.",
+      "pt": "A verificação falhou. Substitua o valor ou continue com o que foi guardado.",
+      "es": "La comprobación falló. Reemplace el valor o continúe con el que se guardó.",
+      "mg": "",
+      "sw": "Ukaguzi umeshindwa. Badilisha thamani, au endelea na iliyohifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Every value is already set.",
+      "fr": "Toutes les valeurs sont déjà définies.",
+      "pt": "Todos os valores já estão definidos.",
+      "es": "Todos los valores ya están definidos.",
+      "mg": "",
+      "sw": "Thamani zote tayari zimewekwa."
     }
   ],
   "unused": [

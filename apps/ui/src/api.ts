@@ -585,6 +585,20 @@ export interface HomeIntegration {
 }
 
 /** An enabled integration whose most recent run failed. */
+/** An integration waiting for credentials before it can run. */
+export interface HomeCredentialNeed {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** draft (still in a design session) or ready */
+  status: string
+  /** Declared secret names with no stored value */
+  missing: string[]
+  /** Paused design session that requested them, when there is one */
+  sessionId: string | null
+}
+
 export interface HomeProblem {
   /** Integration id */
   id: string
@@ -636,6 +650,8 @@ export interface HomeSummary {
   integrations: HomeIntegration[]
   /** Enabled integrations whose most recent run failed */
   problems: HomeProblem[]
+  /** Integrations whose declared credentials are not all stored */
+  credentialsNeeded: HomeCredentialNeed[]
   /** Agent-backed features available here */
   ai: HomeAi
 }
@@ -1304,4 +1320,9 @@ export function copySecretValue(integrationId: string, name: string, fromIntegra
 /** Deletes one integration's secret (admin only). */
 export function deleteSecretValue(integrationId: string, name: string): Promise<{ deleted: string }> {
   return request(`/api/integrations/${integrationId}/secrets/${name}`, { method: "DELETE" })
+}
+
+/** Runs the agent's check snippet for one requested credential of a design session. */
+export function checkSessionSecret(sessionId: string, name: string): Promise<{ ok: boolean; output: string }> {
+  return request(`/api/sessions/${sessionId}/secrets/${name}/check`, { method: "POST" })
 }

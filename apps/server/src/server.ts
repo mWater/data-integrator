@@ -93,7 +93,7 @@ const TILE_PATH =
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
 const SESSION_PATH =
-  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
+  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
 
 /** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
 const DASHBOARD_TILE_PATH =
@@ -1654,6 +1654,18 @@ async function routeSessions(
     const detail = await agentService.getSession(sessionId)
     if (!detail) json(res, 404, { error: "unknown session" })
     else json(res, 200, detail)
+    return
+  }
+
+  // Credentials card: verify a just-saved secret with the agent's check snippet
+  const checkMatch = sub?.match(/^\/secrets\/([A-Za-z_][A-Za-z0-9_]{0,63})\/check$/)
+  if (checkMatch && req.method === "POST") {
+    try {
+      json(res, 200, await agentService.checkSecret(sessionId, checkMatch[1]))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      json(res, message.includes("busy") ? 409 : 400, { error: message })
+    }
     return
   }
 

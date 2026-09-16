@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { IntegrationDefinition } from "@pathfinder/definitions"
 import { getHomeSummary } from "../src/home.js"
-import { installIntegration } from "../src/install.js"
+import { installIntegration, validateDefinition } from "../src/install.js"
 import { ExecutorDeps } from "../src/executor.js"
 import { RunService } from "../src/runService.js"
 import { migrate } from "../src/migrations.js"
@@ -163,4 +163,44 @@ test("parseSiteTitle trims, caps length, and treats blank as unset", () => {
   assert.equal(parseSiteTitle({}), null)
   assert.equal(parseSiteTitle({ title: "x".repeat(200) })?.length, 120)
   assert.throws(() => parseSiteTitle({ title: 7 }), /title must be a string/)
+})
+
+test("integrations declaring unset secrets are listed as needing credentials, with their paused session", async () => {
+  await installIntegration(pool, {
+    ...BROKEN,
+    id: "home_secret",
+    secrets: ["api_key", "TOKEN"],
+    destinations: [
+      { kind: "table", tableId: "home_secret_rows", action: "append", columns: [{ id: "site", type: "text" }] }
+    ]
+  })
+  let home = await getHomeSummary(pool, null, NO_AI)
+  const need = home.credentialsNeeded.find(n => n.id === "home_secret")
+  assert.ok(need)
+  assert.deepEqual(need.missing, ["api_key", "TOKEN"])
+  assert.equal(need.sessionId, null)
+
+  const session = await pool.query(
+    `INSERT INTO app.agent_sessions (kind, status, client_state) VALUES ('designer', 'paused', $1) RETURNING id`,
+    [JSON.stringify({ definition: { id: "home_secret" } })]
+  )
+  home = await getHomeSummary(pool, null, NO_AI)
+  assert.equal(home.credentialsNeeded.find(n => n.id === "home_secret")?.sessionId, session.rows[0].id)
+
+  await pool.query(
+    "INSERT INTO app.integration_secrets (integration_id, name, value) VALUES ('home_secret', 'api_key', '\\x00')"
+  )
+  home = await getHomeSummary(pool, null, NO_AI)
+  assert.deepEqual(home.credentialsNeeded.find(n => n.id === "home_secret")?.missing, ["TOKEN"])
+  await pool.query("UPDATE app.integrations SET enabled = false WHERE id = 'home_secret'")
+  home = await getHomeSummary(pool, null, NO_AI)
+  assert.equal(home.credentialsNeeded.find(n => n.id === "home_secret"), undefined)
+})
+
+test("validateDefinition: secret names are checked", () => {
+  const base = { ...BROKEN, id: "home_valid" }
+  validateDefinition({ ...base, secrets: ["api_key", "TOKEN_2"] })
+  assert.throws(() => validateDefinition({ ...base, secrets: ["9bad"] }), /Invalid secret name/)
+  assert.throws(() => validateDefinition({ ...base, secrets: ["a", "a"] }), /declared twice/)
+  assert.throws(() => validateDefinition({ ...base, secrets: "a" as unknown as string[] }), /array of names/)
 })

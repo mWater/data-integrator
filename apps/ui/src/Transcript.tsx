@@ -54,6 +54,13 @@ function toItems(messages: TranscriptMessage[]): ChatItem[] {
             if (question) items.push({ kind: "question", text: String(question) })
             continue
           }
+          if (part.toolName === "request_secrets") {
+            // A credentials request reads as the ask it is; the card carries the form
+            const secrets = (part.input as { secrets?: { name?: unknown }[] } | undefined)?.secrets
+            const names = Array.isArray(secrets) ? secrets.map(s => String(s?.name ?? "")).filter(Boolean) : []
+            if (names.length > 0) items.push({ kind: "question", text: names.map(n => "`" + n + "`").join(", ") })
+            continue
+          }
           const result = part.toolCallId ? results.get(part.toolCallId) : undefined
           items.push({
             // Successful assistant query/chart/map calls render as result blocks

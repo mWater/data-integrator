@@ -16,7 +16,12 @@ import { AgentSessionController } from "../src/agent/controller.js"
 import { DesignerImplementation, DesignerState, errorSignature, initialDesignerState } from "../src/agent/designer.js"
 import { AgentService, SessionEvent } from "../src/agent/service.js"
 import { AgentImplementation, ToolOutcome } from "../src/agent/types.js"
+import { randomBytes } from "node:crypto"
+import { setSecret } from "../src/secrets.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
+
+/** Secret key for credential tests. */
+const SECRET_KEY = randomBytes(32)
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
 
@@ -637,4 +642,114 @@ test("designer: query_table rejects non-SELECT and runs read-only", async () => 
   assert.match(stacked.result, /SELECT/)
   const good = await designer.execute("query_table", { sql: "SELECT 1 AS one" }, initialDesignerState("demo"), noEvents, SID)
   assert.match(good.result, /"one":1/)
+})
+
+/** Designer with a real secret key, for tools that read or write credentials. */
+function keyedDesigner(): DesignerImplementation {
+  return new DesignerImplementation({
+    pool,
+    runner: null as never,
+    store: null as never,
+    workRoot: "/nonexistent",
+    databaseUrl: db.url,
+    secretKey: SECRET_KEY,
+    images: {},
+    model: new MockLanguageModelV4({})
+  })
+}
+
+/** A valid draft bound to the given id, saved as a draft row through write_definition. */
+async function savedDraft(designer: DesignerImplementation, id: string): Promise<DesignerState> {
+  const written = await designer.execute(
+    "write_definition",
+    {
+      definitionJson: JSON.stringify({
+        id,
+        name: "Secret demo",
+        description: "Reads a protected API",
+        trigger: {},
+        runtime: "python",
+        destinations: [{ kind: "table", tableId: `${id}_rows`, action: "replace", columns: [{ id: "v", type: "number" }] }],
+        contract: 2
+      })
+    },
+    initialDesignerState(id),
+    noEvents,
+    SID
+  )
+  assert.match(written.result, /Validation: valid/)
+  return written.state as DesignerState
+}
+
+test("designer: request_secrets declares names, pauses, and reports already-set ones", async () => {
+  const designer = keyedDesigner()
+
+  const unbound = await designer.execute("request_secrets", { secrets: [{ name: "k", purpose: "p" }] }, initialDesignerState(), noEvents, SID)
+  assert.match(unbound.result, /write_definition first/)
+
+  const state = await savedDraft(designer, "secretdemo")
+  const badName = await designer.execute("request_secrets", { secrets: [{ name: "9bad", purpose: "p" }] }, state, noEvents, SID)
+  assert.match(badName.result, /invalid secret name/)
+  const noPurpose = await designer.execute("request_secrets", { secrets: [{ name: "api_key", purpose: "" }] }, state, noEvents, SID)
+  assert.match(noPurpose.result, /purpose is required/)
+  const badCopy = await designer.execute(
+    "request_secrets",
+    { secrets: [{ name: "api_key", purpose: "p", copyFrom: "nowhere" }] },
+    state,
+    noEvents,
+    SID
+  )
+  assert.match(badCopy.result, /holds no secret named api_key/)
+
+  const asked = await designer.execute(
+    "request_secrets",
+    {
+      secrets: [
+        { name: "api_key", purpose: "API key for example.org", help: "https://example.org/keys", check: "print('ok')" },
+        { name: "TENANT", purpose: "Tenant id" }
+      ]
+    },
+    state,
+    noEvents,
+    SID
+  )
+  assert.equal(asked.pause, true)
+  assert.match(asked.result, /Credentials requested: api_key, TENANT/)
+  const next = asked.state as DesignerState
+  assert.deepEqual(next.definition.secrets, ["api_key", "TENANT"])
+  assert.equal(next.secretRequest?.items.length, 2)
+  assert.equal(next.secretRequest?.items[0].check, "print('ok')")
+  const row = await pool.query("SELECT definition->'secrets' AS s, status FROM app.integrations WHERE id = 'secretdemo'")
+  assert.deepEqual(row.rows[0].s, ["api_key", "TENANT"])
+  assert.equal(row.rows[0].status, "draft")
+
+  // The names-only listing shows nothing yet; storing values changes both answers
+  const none = await designer.execute("list_secrets", {}, next, noEvents, SID)
+  assert.match(none.result, /No credentials are stored/)
+  await setSecret(pool, SECRET_KEY, "secretdemo", "api_key", "v1")
+  await setSecret(pool, SECRET_KEY, "secretdemo", "TENANT", "t")
+  const listed = await designer.execute("list_secrets", {}, next, noEvents, SID)
+  assert.match(listed.result, /api_key \(held by secretdemo\)/)
+  assert.ok(!listed.result.includes("v1"), "values never appear")
+  const again = await designer.execute(
+    "request_secrets",
+    { secrets: [{ name: "api_key", purpose: "API key" }] },
+    next,
+    noEvents,
+    SID
+  )
+  assert.equal(again.pause, undefined)
+  assert.match(again.result, /already set: api_key/)
+})
+
+test("designer: a run with a missing credential is refused before any job, pointing at request_secrets", async () => {
+  const designer = keyedDesigner()
+  const state = await savedDraft(designer, "secretdemo_missing")
+  state.definition = { ...state.definition, secrets: ["nope_key"], code: "def run(ctx): ..." }
+  // runner is null: reaching the job would throw, so the refusal must come first
+  const refused = await designer.execute("run_integration", { cold: true }, state, noEvents, SID)
+  assert.match(refused.result, /Secret nope_key is not set/)
+  assert.match(refused.result, /request_secrets/)
+  const runs = await pool.query("SELECT count(*)::int AS n FROM app.runs WHERE session_id = $1", [SID])
+  assert.equal(runs.rows[0].n, 0)
 })

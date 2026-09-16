@@ -570,6 +570,24 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 }
 .question-other button:disabled { opacity: 0.5; cursor: default }
 
+/* Credentials card in a design session: one stacked block per requested secret */
+.credentials-card > p { margin: 4px 0 10px }
+.credential { padding: 10px 0; border-top: 1px solid var(--tint-border) }
+.credential-head { display: flex; align-items: center; gap: 10px }
+.credential-head code { font-size: 13.5px; font-weight: 600 }
+.credential-about { margin-top: 2px; font-size: 13px; line-height: 1.4 }
+.credential-about p { margin: 0 }
+.credential-about a { display: block; overflow-wrap: anywhere }
+.credential-editor { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px }
+.credential-editor textarea {
+  flex: 1 1 auto; min-width: 0; font-family: monospace; font-size: 12px; padding: 8px;
+  border: 1px solid var(--control-border); border-radius: 6px; resize: vertical;
+}
+.credential-editor button, .credential-editor select { flex: 0 0 auto }
+.credential .error { margin: 8px 0 0; white-space: pre-wrap; font-size: 12px }
+.credentials-foot { display: flex; gap: 12px; align-items: center; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--tint-border) }
+.credentials-foot span { flex: 1 1 auto; font-size: 13px }
+
 /* Post-install handoff card: the link is the primary action, styled as one */
 .installed-actions { margin-top: 10px }
 .installed-actions a {

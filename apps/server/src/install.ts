@@ -7,6 +7,7 @@ import { refreshLayerMasks } from "./aoi.js"
 import { parseAoi } from "./settings.js"
 import { parseCron } from "./cron.js"
 import { validateDefinitionStrings } from "./localizeCatalog.js"
+import { SECRET_NAME_PATTERN } from "./secrets.js"
 
 /** Published-identifier rule for all definition-borne ids. */
 export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
@@ -53,6 +54,17 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   if (stringProblems.length > 0) throw new Error(`Localized text problems: ${stringProblems.join("; ")}`)
   // Tri-state AOI: explicit boxes must be well-formed (null and absent are meaningful)
   if (definition.aoi != null) parseAoi(definition.aoi)
+  if (definition.secrets !== undefined) {
+    if (!Array.isArray(definition.secrets)) throw new Error("secrets must be an array of names")
+    const seen = new Set<string>()
+    for (const name of definition.secrets) {
+      if (typeof name !== "string" || !SECRET_NAME_PATTERN.test(name)) {
+        throw new Error(`Invalid secret name "${String(name)}": letters, digits and underscores, starting with a letter`)
+      }
+      if (seen.has(name)) throw new Error(`Secret ${name} is declared twice`)
+      seen.add(name)
+    }
+  }
   // The scheduler evaluates trigger.cron every minute; reject bad expressions here
   if (definition.trigger?.cron !== undefined) parseCron(definition.trigger.cron)
   const delay = definition.trigger?.webhookDelaySeconds

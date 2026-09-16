@@ -11,6 +11,7 @@ import {
   createSession,
   getHome,
   HomeIntegration,
+  HomeCredentialNeed,
   HomeProblem,
   HomeSource,
   HomeSummary,
@@ -264,6 +265,28 @@ function Problems({ problems }: { problems: HomeProblem[] }) {
   )
 }
 
+/** Integrations waiting on credentials: one line each, linking to the session that asked or the integration. */
+function CredentialsNeeded({ needs }: { needs: HomeCredentialNeed[] }) {
+  if (needs.length === 0) return null
+  return (
+    <div className="home-alerts">
+      {needs.slice(0, PROBLEM_LIMIT).map(need => (
+        <a
+          className="home-alert"
+          key={need.id}
+          href={need.sessionId ? `#/session/${need.sessionId}` : `#/integration/${need.id}`}
+        >
+          <span className="chip chip-draft">{T`credentials`}</span>
+          <span className="grow">
+            <b>{localizeData(need.name)}</b> {T`needs`} {need.missing.map(n => <code key={n}>{n}</code>).reduce<ReactNode[]>((acc, el, i) => (i ? [...acc, ", ", el] : [el]), [])}
+          </span>
+          <span className="home-alert-action">{need.sessionId ? T`Open the session` : T`Set credentials`}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
 /** Welcome state: no data has landed yet. */
 function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) {
   const [busy, setBusy] = useState(false)
@@ -421,6 +444,7 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
       </div>
 
       <Problems problems={home.problems} />
+      <CredentialsNeeded needs={home.credentialsNeeded} />
 
       <div className="home-columns">
         <Panel title={T`Your data`} link={T`All ${sources} sources`} href="#/data">

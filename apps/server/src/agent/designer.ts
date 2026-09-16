@@ -11,7 +11,7 @@ import { COUNTRIES, lookupCountry } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
 import { startProductionRun } from "../runService.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
-import { getSecrets } from "../secrets.js"
+import { getSecrets, listAllSecrets, listSecrets, SECRET_NAME_PATTERN } from "../secrets.js"
 import { getLocales } from "../settings.js"
 import { detectBaseLocale, refreshChangedStrings, translateDefinition, wrapDefinitionStrings } from "../localizeCatalog.js"
 import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
@@ -31,6 +31,30 @@ export interface DesignerState {
   firstLoadStarted?: boolean
   /** Detected language of the draft's authored text, with the sample it was detected on */
   baseLocale?: { code: string; sample: string } | null
+  /** Latest credentials request the agent made; the session view renders it as a card */
+  secretRequest?: SecretRequest | null
+}
+
+/** One credential the agent needs the operator to provide. */
+export interface SecretRequestItem {
+  /** Secret name the code reads via ctx.secrets */
+  name: string
+  /** One line on what it is and what it unlocks */
+  purpose: string
+  /** Where to obtain it: a URL or a short hint; optional */
+  help?: string
+  /** An installed integration already holding a value under the same name, offered for copying */
+  copyFrom?: string | null
+  /** Snippet that makes one authenticated call and raises on failure; optional */
+  check?: string | null
+}
+
+/** A credentials request: the names, why, and where to get them. */
+export interface SecretRequest {
+  /** Requested credentials in the order to show them */
+  items: SecretRequestItem[]
+  /** When the request was made (ISO) */
+  requestedAt: string
 }
 
 /** Everything the designer needs: executor deps plus the model. */
@@ -233,9 +257,15 @@ this integration's own destinations.
    run so data begins loading immediately. It is rejected unless the current
    code passed a cold run unchanged.
 
-Rules: never fabricate data. Reference secrets by name only; values are stored per
-integration, so when a credential is missing tell the operator to set it under
-Credentials on this integration's page (definition tab). Prefer incremental state
+Rules: never fabricate data. Credentials: reference secrets by name only (lowercase
+snake_case, e.g. tatirano_api_key); values are stored per integration, encrypted, and
+never pass through this conversation. Before declaring a new name call list_secrets:
+when the deployment already holds a credential for the same service, request that
+name and set copyFrom so the operator can reuse it. To obtain a value call
+request_secrets - it shows the operator a form inside this session and pauses until
+they save; never ask for a value in chat and never tell them to go to another page.
+Include a check snippet whenever one cheap authenticated call can prove the value
+works. Prefer incremental state
 over re-downloading. Whenever a choice is not forced (dataset variant, resolution,
 year, aggregation), ask_user rather than guessing. Plain text with no tool calls also
 pauses the session, for open-ended questions. Your plain text renders as markdown.
@@ -381,6 +411,37 @@ ${index}`
           options: z.array(z.string()).min(2).max(5).describe("Short answer choices (2-5)")
         })
       }),
+      request_secrets: tool({
+        description:
+          "Ask the operator for credentials. Declares the names in the draft, shows a form in the session (one field per name, with your purpose and help text), and pauses until the values are saved. The values never reach you; run again once the tool result or the operator says they are set. Requires a saved draft (write_definition).",
+        inputSchema: z.object({
+          secrets: z
+            .array(
+              z.object({
+                name: z.string().describe("Secret name the code reads via ctx.secrets; lowercase snake_case"),
+                purpose: z.string().describe("One line: what it is and what it unlocks, e.g. 'API key for app.tatirano.org'"),
+                help: z.string().optional().describe("Where to obtain it: a URL or a short hint"),
+                copyFrom: z
+                  .string()
+                  .optional()
+                  .describe("Installed integration id that already stores this name (from list_secrets), offered for copying"),
+                check: z
+                  .string()
+                  .optional()
+                  .describe(
+                    "Snippet in the draft's runtime that makes one cheap authenticated call using ctx.secrets and raises on failure; run after the operator saves, so a wrong value is caught before a full run"
+                  )
+              })
+            )
+            .min(1)
+            .max(8)
+        })
+      }),
+      list_secrets: tool({
+        description:
+          "List the credential names stored on this deployment and which installed integration holds each (never values). Call before declaring a new secret name: reuse an existing name for the same service via request_secrets with copyFrom.",
+        inputSchema: z.object({})
+      }),
       finish: tool({
         description:
           "Save and end the session: installs the certified definition as the real integration and discards the scratch area. Rejected unless the current definition passed a cold run unchanged.",
@@ -421,6 +482,10 @@ ${index}`
         return { result: lookupCountry(String(args.query ?? "")) }
       case "ask_user":
         return this.askUser(args)
+      case "request_secrets":
+        return await this.requestSecrets(state, args)
+      case "list_secrets":
+        return await this.listSecretsTool()
       case "finish":
         return await this.finish(state, String(args.summary ?? ""), sessionId)
       default:
@@ -597,6 +662,9 @@ ${index}`
     } catch (err) {
       return { result: `Definition invalid: ${err instanceof Error ? err.message : String(err)}` }
     }
+    // A missing credential fails before any job is spent on it
+    const secretsCheck = await this.loadSecrets(state)
+    if (typeof secretsCheck === "string") return { result: secretsCheck }
     const hash = definitionHash(definition)
 
     let runId: string
@@ -697,6 +765,93 @@ ${index}`
     return { result: "Question shown; the session is paused for the user's answer.", pause: true }
   }
 
+  /**
+   * Declares the requested names on the draft, records the request, and
+   * pauses the session for the credentials card. Names already stored are
+   * reported without pausing. Values never pass through here.
+   */
+  private async requestSecrets(state: DesignerState, args: Record<string, unknown>): Promise<ToolOutcome<DesignerState>> {
+    if (state.definition.id === "") {
+      return { result: "Error: save the draft with write_definition first; credentials attach to the integration id" }
+    }
+    const raw = Array.isArray(args.secrets) ? (args.secrets as Record<string, unknown>[]) : []
+    if (raw.length === 0) return { result: "Error: secrets is required (at least one {name, purpose})" }
+    const items: SecretRequestItem[] = []
+    for (const entry of raw) {
+      const name = String(entry.name ?? "").trim()
+      const purpose = String(entry.purpose ?? "").trim()
+      if (!SECRET_NAME_PATTERN.test(name)) {
+        return { result: `Error: invalid secret name "${name}": letters, digits and underscores, starting with a letter` }
+      }
+      if (purpose === "") return { result: `Error: purpose is required for ${name}` }
+      if (items.some(i => i.name === name)) return { result: `Error: ${name} is listed twice` }
+      const copyFrom = typeof entry.copyFrom === "string" && entry.copyFrom.trim() !== "" ? entry.copyFrom.trim() : null
+      if (copyFrom) {
+        const holders = await listSecrets(this.deps.pool, copyFrom)
+        if (!holders.some(s => s.name === name)) {
+          return { result: `Error: ${copyFrom} holds no secret named ${name} (see list_secrets)` }
+        }
+      }
+      items.push({
+        name,
+        purpose,
+        ...(typeof entry.help === "string" && entry.help.trim() ? { help: entry.help.trim() } : {}),
+        copyFrom,
+        check: typeof entry.check === "string" && entry.check.trim() ? entry.check : null
+      })
+    }
+
+    // Declare on the draft so the stored row (what secrets reference) matches
+    const declared = new Set(state.definition.secrets ?? [])
+    for (const item of items) declared.add(item.name)
+    const definition = { ...state.definition, secrets: [...declared] }
+    const row = await this.deps.pool.query("SELECT status FROM app.integrations WHERE id = $1", [definition.id])
+    if (row.rows.length === 0) {
+      return { result: "Error: the draft is not saved yet; write_definition must report a valid draft first" }
+    }
+    if (row.rows[0].status === "draft") {
+      await this.deps.pool.query("UPDATE app.integrations SET definition = $2, updated_at = now() WHERE id = $1", [
+        definition.id,
+        JSON.stringify(definition)
+      ])
+    }
+
+    const stored = new Set((await listSecrets(this.deps.pool, definition.id)).map(s => s.name))
+    const missing = items.filter(i => !stored.has(i.name)).map(i => i.name)
+    const request: SecretRequest = { items, requestedAt: new Date().toISOString() }
+    const next: DesignerState = { ...state, definition, secretRequest: request }
+    if (missing.length === 0) {
+      return { result: `All requested credentials are already set: ${items.map(i => i.name).join(", ")}`, state: next }
+    }
+    return {
+      result: `Credentials requested: ${missing.join(", ")}. The session is paused until the operator saves them; they will tell you when done.`,
+      state: next,
+      pause: true
+    }
+  }
+
+  /** Names and owners of every stored credential on the deployment; never values. */
+  private async listSecretsTool(): Promise<ToolOutcome<DesignerState>> {
+    const all = await listAllSecrets(this.deps.pool)
+    if (all.length === 0) return { result: "No credentials are stored on this deployment yet" }
+    const lines = all.map(s => `- ${s.name} (held by ${s.integrationId})`)
+    return { result: `Stored credential names:\n${lines.join("\n")}` }
+  }
+
+  /**
+   * Runs one requested credential's check snippet against the stored value,
+   * outside the agent loop (the card calls this right after a save).
+   */
+  async checkSecret(state: DesignerState, name: string, sessionId: string): Promise<{ ok: boolean; output: string }> {
+    const item = state.secretRequest?.items.find(i => i.name === name)
+    if (!item) return { ok: false, output: `No pending request for ${name}` }
+    if (!item.check) return { ok: true, output: "No check defined for this credential" }
+    const outcome = await this.runSnippet(state, item.check, undefined, () => {}, sessionId)
+    const ok = /^Snippet succeeded/.test(outcome.result)
+    // The tail carries the exception message; the head is only the verdict
+    return { ok, output: outcome.result.slice(-4000) }
+  }
+
   /** Serves one skill's full markdown from the library. */
   private readSkill(id: string): ToolOutcome<DesignerState> {
     if (this.skills.length === 0) return { result: "No skills library on this deployment" }
@@ -769,7 +924,11 @@ ${index}`
     try {
       return await getSecrets(this.deps.pool, this.deps.secretKey, state.definition.id, names)
     } catch (err) {
-      return `Error loading secrets: ${err instanceof Error ? err.message : String(err)}`
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes("is not set")) {
+        return `${message}. Call request_secrets so the operator can provide it in this session; never ask for the value in chat.`
+      }
+      return `Error loading secrets: ${message}`
     }
   }
 }

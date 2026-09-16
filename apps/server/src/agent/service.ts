@@ -64,6 +64,8 @@ interface KindAdapter<S> {
   detailExtras(sessionId: string, state: S): Promise<Partial<SessionDetail>>
   /** One-time process preparation before the first loop */
   ensureReady(): Promise<void>
+  /** Runs a requested credential's check snippet outside the loop; absent for kinds without credentials */
+  checkSecret?(sessionId: string, state: S, name: string): Promise<{ ok: boolean; output: string }>
 }
 
 /** Per-session live bookkeeping. */
@@ -100,9 +102,10 @@ export class AgentService<S = unknown> {
 
   /** The designer service: sessions design integrations through the job runner. */
   static forDesigner(pool: pg.Pool, deps: DesignerDeps): AgentService<DesignerState> {
+    const implementation = new DesignerImplementation(deps)
     return new AgentService<DesignerState>(pool, {
       kind: "designer",
-      implementation: new DesignerImplementation(deps),
+      implementation,
       bindIdSql: "NULLIF(client_state->'definition'->>'id', '')",
       initialState: async (integrationId?: string) => {
         if (!integrationId) return initialDesignerState()
@@ -123,7 +126,8 @@ export class AgentService<S = unknown> {
           scratchLayers: scratchLayers.rows
         }
       },
-      ensureReady: () => deps.runner.ensureReady()
+      ensureReady: () => deps.runner.ensureReady(),
+      checkSecret: (sessionId, state, name) => implementation.checkSecret(state, name, sessionId)
     })
   }
 
@@ -189,6 +193,19 @@ export class AgentService<S = unknown> {
   }
 
   /** Full session detail, or null when the id is unknown. */
+  /**
+   * Runs a requested credential's check against its stored value, for the
+   * session's credentials card. Refused while the agent loop is running (the
+   * sandbox and scratch area are the loop's) and for kinds without credentials.
+   */
+  async checkSecret(sessionId: string, name: string): Promise<{ ok: boolean; output: string }> {
+    if (!this.adapter.checkSecret) throw new Error("This session kind has no credentials")
+    if (this.channel(sessionId).running) throw new Error("The session is busy; try again when it pauses")
+    await this.ensureRunner()
+    const state = await this.controller.getState(sessionId)
+    return this.adapter.checkSecret(sessionId, state, name)
+  }
+
   async getSession(sessionId: string): Promise<SessionDetail | null> {
     const result = await this.pool.query(
       `SELECT id, status, messages, client_state, usage, error, updated_at

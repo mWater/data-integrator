@@ -35,6 +35,9 @@ export function decryptSecret(key: Buffer, stored: Buffer): string {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8")
 }
 
+/** Shape of a secret name: what definitions may declare and routes accept. */
+export const SECRET_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/
+
 /** Stores (upserts) one integration's secret value under a name. */
 export async function setSecret(
   pool: pg.Pool,

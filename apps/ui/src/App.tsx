@@ -272,7 +272,7 @@ export function App() {
         <UserMenu user={user} onSignOut={() => logout().finally(() => setUser(null))} />
       </header>
       {route.sessionId ? (
-        <SessionView sessionId={route.sessionId} canDesign={canDesign} />
+        <SessionView sessionId={route.sessionId} canDesign={canDesign} isAdmin={user.role === "admin"} />
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} isAdmin={user.role === "admin"} />
       ) : route.tableId ? (
