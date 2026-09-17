@@ -1,7 +1,7 @@
 ---
 name: GHSL source
 description: How JRC publishes GHSL grids (GHS-BUILT-S, GHS-POP, GHS-SMOD) - archive layout, Mollweide tile grid, zip contents, epochs, nodata
-verified: 2026-08-26
+verified: 2026-09-17
 ---
 
 # GHSL (Global Human Settlement Layer)
@@ -47,6 +47,15 @@ published, so a missing name is normal, not an error.
 Transform the AOI's corners to Mollweide (pyproj), take the bounding box,
 enumerate candidate row/col names, and intersect with the published listing.
 
+## Tile grid (4326 products)
+
+10-degree tiles, `_R<row>_C<col>`, rows 1-18 top-down, columns 1-36
+left-right, only tiles with land published (GHS-POP: 348 per epoch). The
+grid is **not** anchored at -180/90: tile R1_C1 starts at
+`(-180.00791676306443, 89.099583459367)`, so derive row/col from that
+origin (see `library/integrations/ghs_population`), never from round
+numbers. Zips are ~90 MB for a populated tile, 12000x12000 pixels at 3ss.
+
 ## Zip contents
 
 Each tile zip holds **one GeoTIFF plus sidecar files** (.tif.ovr, .clr,
@@ -62,6 +71,15 @@ tiles (this bit the first integration built from this source).
   nodata **65535**. Declare the nodata on the band as well as in the COG.
 - Sea inside a tile is nodata; land with no buildings is 0. Both appear in
   normal AOIs.
+- GHS-POP 4326 3ss: Float64 people per cell, LZW, 256-pixel blocks, no
+  overviews, and **no nodata tag**: sea and empty land are both 0. Declare
+  the documented nodata (-200) on the output so a box reaching past the
+  published tiles is masked, and store as Float32 (counts per cell never
+  need double). The 3ss product is the JRC's own resampling of the 100 m
+  Mollweide one, on the same 3 arc-second grid as WorldPop, which is what a
+  4326-only raster store wants.
+- GHS-POP epochs: R2023A carries 1975-2030 in 5-year steps; 2020 is the
+  last observed epoch, 2025 and 2030 are projections.
 
 ## Ingestion pattern
 
@@ -71,3 +89,7 @@ source, manual trigger, current-only layer. Cache tile zips in /work
 one `gdalwarp` with the AOI as a cutline staying in Mollweide
 (`-t_srs ESRI:54009 -tr 100 100 -tap`), then `gdal_translate -of COG`.
 Keep GDAL subprocess output out of the job's stdout.
+
+For a global 4326 product (`library/integrations/ghs_population`), do not
+mosaic: one COG per published tile per epoch, cached under /work so an
+interrupted epoch resumes, and an epoch is one snapshot of ~350 sources.
