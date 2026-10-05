@@ -58,7 +58,7 @@ isolated-vm model is retired).
 - Runtime images: `node` and `python`, standard unrestricted runtimes. Python
   includes the geospatial stack (GDAL, rasterio, xarray, netCDF4/h5netcdf/h5py, cfgrib,
   numpy, pyproj, geopandas); Node has real fetch, fs, crypto, and streams. Libraries are
-  a curated set baked into each image, pinned by digest; no package installs at run time.
+  a curated set baked into each image, referenced by version tag; no package installs at run time.
   The GDAL base is the small build with no netCDF/HDF driver, so those formats are read
   through xarray/h5py rather than GDAL.
 - Both languages are first-class. Agent guidance: gridded/geospatial/large-file work is
@@ -255,12 +255,16 @@ Port of the mWater integrator agent loop (AI SDK tool calling):
 
 Two pieces move wholesale, consumed by mWater as dependencies rather than copies:
 
-1. Job runner: submit/status/logs/artifacts API over podman + gVisor, exporting its own
-   client types, treating job payloads as opaque. mWater deploys it as a worker fleet
-   beside mwater-server; gVisor already covers multi-tenant hardening.
-2. Runtime images: the harnesses define the code-facing contract, so both systems get
-   identical semantics by pulling the same images. Harness contract tests live in this
-   repo's CI.
+1. Job runner: the `@mwater/integration-runner` npm package, an in-process library over
+   podman + gVisor that exports the job contract types and the image tags it was released
+   with (`RUNTIME_IMAGES`). mWater calls it from a claim loop in its cron process, on the
+   main server first. mWater is multi-tenant, so it adds what this single-tenant design
+   leaves out: `blockedAddresses`, explicit per-account limits and concurrency caps, and a
+   total sandbox memory cap.
+2. Runtime images: `ghcr.io/mwater/integration-runtime-{node,python}`, released together
+   with the runner by `scripts/release-runner.sh`. The harnesses define the code-facing
+   contract, so both systems get identical semantics by pulling the same images. Harness
+   contract tests live in this repo's CI.
 
 Repo is a workspace to keep the seams real: `packages/runner`, `runtimes/node`,
 `runtimes/python`, `apps/server`, `apps/web`.
@@ -269,4 +273,5 @@ Everything else is app-local: integration definition formats, destination adapte
 scheduling, and the agent chassis (mWater keeps AgentSessionController; tool set and
 prompts port with adaptation).
 
-Cutover of existing mWater integrations: see mWater Migration.md.
+Cutover of existing mWater integrations: see mWater Migration.md. The mWater side of the
+plan is `docs/proposals/integrations-unification.md` in the monorepo.

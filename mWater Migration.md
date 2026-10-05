@@ -16,23 +16,26 @@ open-source design.
 ## v1 on the v2 harness
 
 No compat wrapper ships in the image. mWater wraps a v1 body into a v2 module before
-submitting it: the csvParser source inlined, then `export default async function
-run(ctx)` binding `secrets`, `previousState` and `webhookData` from `ctx` around the
-original code. Top-level `return` works inside the function; `fetch`, `btoa`, `atob`,
-`setTimeout` and `console` are native in Node 22; the harness exits as soon as `run()`
-resolves, so un-awaited timers never fire; the v1 result `{ data, state }` is a subset
-of `RunResult`. The wrapper is one function in mWater and the runner, image and
-harness are used exactly as released.
+submitting it: a compiled v1 shim, then `export default async function run(ctx)` that
+installs the v1 globals (`secrets`, `previousState`, `webhookData`, `global`, `parseCSV`,
+`btoa`/`atob`, v1-shaped `fetch`, `console`, `setTimeout`) on `globalThis` and compiles
+the original code with the `AsyncFunction` constructor. Function-constructor bodies are
+sloppy mode even inside a module, so undeclared assignments, top-level `return`,
+reassigning `previousState` and shadowing a global with `let` all behave as in
+isolated-vm. The v1 `fetch` returns a plain object with a cached body (`text()` and
+`json()` repeatable). The harness exits as soon as `run()` resolves, so un-awaited timers
+never fire. The runner, image and harness are used exactly as released. Details and the
+known behaviour differences (redirects, JSON vs structured clone, no 2 MB cap, wall-clock
+timeout) are in the monorepo's `docs/proposals/integrations-unification.md`.
 
 ## Process
 
 1. `import_integrations` design gains a contract version field; all existing rows are
    v1.
 2. Verify, not assume: run the production integration corpus through the wrapper and
-   diff outputs against isolated-vm before cutover; scan for top-level declarations
-   that would collide with the wrapper's bindings.
-3. mwater-server swaps `executeScript()` for the runner client; destination adapter
-   for custom tablesets written in the monorepo.
+   diff outputs and wall times against isolated-vm before cutover.
+3. mwater-server's cron claim loop swaps `executeScript()` for the runner; destination
+   adapter for custom tablesets written in the monorepo.
 4. v1 is frozen: runs indefinitely through the wrapper, never authored anew. The agent
    upgrades v1 to v2 opportunistically when an integration is opened for editing. No
    flag day.
