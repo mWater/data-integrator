@@ -37,7 +37,9 @@ as_app() {
 }
 
 echo "--> install + build"
-as_app "pnpm install"
+# No TTY here, so pnpm must not stop to confirm rebuilding node_modules (it
+# does whenever the store path changed, e.g. after the app user's home moved)
+as_app "pnpm install --config.confirmModulesPurge=false"
 as_app "pnpm -r build"
 
 if [ "$IMAGES" = "1" ]; then
