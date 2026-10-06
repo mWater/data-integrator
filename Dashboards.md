@@ -166,18 +166,27 @@ export default function Dashboard(props: DashboardProps): JSX.Element
 One more AgentImplementation on the harness (`agent_sessions.kind = 'dashboard'`):
 
 - Tools: `get_dashboard`, `write_source`, `edit_source` (exact-string replace),
-  `set_queries`, `sample_query`, `ask_user`, `finish`. Table schemas are injected into
+  `set_queries`, `set_layers`, `search_library`, `sample_query`, `ask_user`,
+  `ready_to_save`. Table schemas are injected into
   the system prompt. There is no separate build tool: every source or query mutation
   rebuilds automatically and returns compile/typecheck errors in the tool result,
   halving the round trips per iteration.
 - The design session shows the draft dashboard live beside the chat. Draft state lives
-  in session client_state (scratch pattern: finish is the save); the preview reloads
-  when a tool result changes the build.
+  in session client_state; the preview reloads when a tool result changes the build.
+- Saving is the user's action, never the agent's, because a saved dashboard is visible
+  to everyone signed in. The agent calls `ready_to_save` to propose a slug and name and
+  ends its turn; a save bar above the composer (Save Dashboard, Discard Changes) shows
+  while the draft has unsaved work (`client_state.dirty`, set by every source, query
+  or layer change). `POST /api/sessions/:id/save` saves a version; the first save
+  takes the slug from the user's dialog and refuses one another dashboard already has.
+  Discard deletes the session (`DELETE /api/sessions/:id`, creator or admin); saved
+  versions are untouched. Leaving the page with unsaved work asks first, and the
+  draft stays listed under Drafts on the dashboard list.
 - Runtime errors in the preview cross the bridge: steered into a running loop, or
   attached to the next user message when the loop is paused (never auto-resuming it,
   so a broken build cannot burn tokens unattended).
-- `finish` gate: the bundle compiles, typechecks against the kit, and the preview has
-  reported no runtime error since the last build. A headless render test is deferred
+- Save gate (`ready_to_save` and the save endpoint): the latest build compiled and
+  typechecked against the kit. A headless render test is deferred
   to the library-install path, where no human watches a preview.
 
 ## Access control
