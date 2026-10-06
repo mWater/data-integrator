@@ -24,7 +24,7 @@ const MERMAID_PATH = path.join(DOCS_DIR, "..", "node_modules", "mermaid", "dist"
 /** Front-matter shown on every title page. */
 const PROGRAMME = "Open Source Data Integrator Platform"
 const PREPARED_BY = "Prepared by mWater for the UNICEF WASH Innovation Hub"
-const IMPLEMENTATION = "Reference implementation: mWater Pathfinder"
+const IMPLEMENTATION = "Reference implementation: mWater Data Integrator"
 
 /** Markdown renderer: HTML passthrough for the few inline tags, no smart quotes. */
 const md = new MarkdownIt({ html: true, linkify: true, typographer: false })

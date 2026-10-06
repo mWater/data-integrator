@@ -7,10 +7,9 @@ const TAG_LENGTH = 16
 
 /**
  * Parses the 32-byte encryption key from INTEGRATOR_SECRET_KEY (base64 or hex).
- * PATHFINDER_SECRET_KEY is honored too, so hosts provisioned under that name keep decrypting.
  */
 export function loadSecretKey(env: NodeJS.ProcessEnv = process.env): Buffer {
-  const raw = env.INTEGRATOR_SECRET_KEY ?? env.PATHFINDER_SECRET_KEY
+  const raw = env.INTEGRATOR_SECRET_KEY
   if (!raw) throw new Error("INTEGRATOR_SECRET_KEY is required")
   const key = raw.length === 64 ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64")
   if (key.length !== 32) throw new Error("INTEGRATOR_SECRET_KEY must be 32 bytes (base64 or hex)")

@@ -11,8 +11,6 @@ import localizations from "./localizations.json"
 
 /** localStorage key holding the operator's chosen locale. */
 const LOCALE_KEY = "dataIntegrator.locale"
-/** Key used by hosts deployed under the Pathfinder name; read so a saved choice survives */
-const PATHFINDER_LOCALE_KEY = "pathfinder.locale"
 
 const data = localizations as LocalizerData
 
@@ -77,7 +75,7 @@ export function localizeData(value: LocalizedString | string | null | undefined)
  */
 export function getSavedLocale(): string {
   try {
-    const saved = localStorage.getItem(LOCALE_KEY) ?? localStorage.getItem(PATHFINDER_LOCALE_KEY)
+    const saved = localStorage.getItem(LOCALE_KEY)
     if (saved && data.locales.some(l => l.code === saved)) return saved
   } catch {
     // Storage blocked (private mode, embedded webview) — fall through.

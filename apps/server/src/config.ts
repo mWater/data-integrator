@@ -96,7 +96,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   let secretKey: Buffer | null = null
-  if (env.INTEGRATOR_SECRET_KEY ?? env.PATHFINDER_SECRET_KEY) {
+  if (env.INTEGRATOR_SECRET_KEY) {
     try {
       secretKey = loadSecretKey(env)
     } catch (err) {

@@ -10,7 +10,7 @@ ingestion pipelines themselves.
 The architecture is modular, standards-based, and technology-agnostic. It
 specifies components by their responsibilities and contracts so that any
 vendor can implement it with their own technology choices. Section 7 maps
-the architecture onto the reference implementation (mWater Pathfinder, the
+the architecture onto the reference implementation (mWater Data Integrator, the
 proof of concept developed under the same terms of reference and published
 under the same open-source license); nothing elsewhere in the document
 depends on those choices, and no part of the architecture requires that
@@ -474,7 +474,7 @@ Low-connectivity operation is a design constraint, not an afterthought:
 Every component above is specified by contract: the definition format, the
 job payload and mount layout, the queue semantics, the storage split, the
 API surface, and the security boundaries. The reference implementation,
-mWater Pathfinder, realizes them as follows. This table is descriptive, not
+mWater Data Integrator, realizes them as follows. This table is descriptive, not
 normative: it records one set of choices that satisfies the contracts.
 
 | Architecture component | Reference implementation |

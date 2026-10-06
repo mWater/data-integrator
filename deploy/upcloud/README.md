@@ -208,22 +208,3 @@ upctl server delete --delete-storages integrator-test
 - For a real (sub)domain, prefer the Cloudflare Tunnel section above. A plain
   A record also works (swap the hostname in `/etc/caddy/Caddyfile` and reload)
   but leaves the origin IP public.
-
-## Hosts provisioned as Pathfinder
-
-The project was briefly named Pathfinder, and hosts set up then use
-`/opt/pathfinder`, `/etc/pathfinder/env`, `/var/lib/pathfinder`, the
-`pathfinder` unit, unix user, database and role, and `PATHFINDER_SECRET_KEY`
-(still honored by the server). The scripts here target the Data Integrator
-names, so move such a host once before pushing to it:
-
-```sh
-ssh root@<ip> bash -s < deploy/upcloud/migrate-from-pathfinder.sh
-IMAGES=1 ./deploy/upcloud/push.sh root@<ip>
-ssh root@<ip> "sudo -H -u integrator env XDG_RUNTIME_DIR=/run/user/\$(id -u integrator) bash -c 'set -a; . /etc/data-integrator/env; set +a; cd /opt/data-integrator && node apps/server/dist/cli.js register-rasters --all'"
-```
-
-The script stops the service, renames the user (same uid), database, role,
-directories and unit, rewrites the env file, and resets the app user's podman
-storage, which is why the push rebuilds the images. `register-rasters --all`
-re-points the out-db raster rows at the moved store.

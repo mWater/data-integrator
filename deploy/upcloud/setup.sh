@@ -71,7 +71,7 @@ if [ -f "$ENV_FILE" ]; then
   current_db=$(sed -n 's|^DATABASE_URL=.*/\([^/?]*\).*|\1|p' "$ENV_FILE")
   if [ -n "$current_db" ] && [ "$current_db" != "integrator" ]; then
     echo "ERROR: $ENV_FILE points at database '$current_db', not 'integrator'." >&2
-    echo "Rename it first (migrate-from-pathfinder.sh does this for hosts provisioned as Pathfinder)" >&2
+    echo "Rename it first (ALTER DATABASE $current_db RENAME TO integrator, and the role likewise)" >&2
     echo "or remove the DATABASE_URL line to provision a fresh database." >&2
     exit 1
   fi
