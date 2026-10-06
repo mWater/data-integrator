@@ -2,7 +2,11 @@
 /**
  * Server CLI. Commands (DATABASE_URL required for all):
  *   migrate                 Apply pending migrations.
- *   install <file>          Install/update an integration from a definition JSON file.
+ *   install <file>          Install/update an integration from a definition JSON file,
+ *                           replacing the installed definition outright.
+ *   library-install <id>... Install or update library entries the way the Library
+ *                           page does: an update keeps the deployment's AOI,
+ *                           schedule and limits.
  *   run <integrationId>     Enqueue a manual run and execute it to completion.
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
@@ -47,6 +51,7 @@ import { aiProvider, AppConfig, describeConfig, loadConfig } from "./config.js"
 import { startScheduler } from "./scheduler.js"
 import { backfillCellSizes } from "./catalog.js"
 import { registerMissingRasters } from "./rasterSql.js"
+import { installLibraryEntry } from "./library.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { decryptSecret, listAllSecrets, loadSecretKey, setSecret } from "./secrets.js"
@@ -222,6 +227,24 @@ async function main(): Promise<number> {
         const { version } = await installIntegration(pool, definition)
         console.log(`Installed ${definition.id} (v${version})`)
         return 0
+      }
+      case "library-install": {
+        const ids = process.argv.slice(3)
+        if (ids.length === 0) {
+          console.error("Usage: cli.js library-install <entryId> [<entryId>...]")
+          return 1
+        }
+        let failed = false
+        for (const id of ids) {
+          const result = await installLibraryEntry(pool, config.libraryPath, id, null)
+          if (result) {
+            console.log(`Installed ${id} (v${result.version})`)
+          } else {
+            console.error(`No library entry ${id}`)
+            failed = true
+          }
+        }
+        return failed ? 1 : 0
       }
       case "run": {
         const integrationId = process.argv[3]

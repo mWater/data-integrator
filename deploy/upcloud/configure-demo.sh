@@ -105,7 +105,7 @@ if [ "$INSTALL_LIBRARY" = "1" ]; then
     case " $SKIP_LIBRARY " in
       *" $id "*) echo "skip    $id"; continue ;;
     esac
-    run_cli install "library/integrations/$id"
+    run_cli library-install "$id"
   done
 fi
 

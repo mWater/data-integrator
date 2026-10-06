@@ -12,7 +12,7 @@
 #   ./deploy/upcloud/fleet.sh health     hosts.txt   # one health block per host; exit 1 if any needs attention
 #   ./deploy/upcloud/fleet.sh secrets    hosts.txt <name>   # copy that host's integration secrets to the others
 #   ./deploy/upcloud/fleet.sh rerun      hosts.txt   # queue a run wherever the latest run failed
-#   ./deploy/upcloud/fleet.sh install    hosts.txt <id> [<id>...]   # install library entries (skips nolib hosts) and queue their first run
+#   ./deploy/upcloud/fleet.sh install    hosts.txt <id> [<id>...]   # install or update library entries (skips nolib hosts; updates keep the host's AOI, schedule, limits) and queue a first run of new ones
 #   ./deploy/upcloud/fleet.sh cli        hosts.txt <args...>   # run the server CLI on every host, e.g. backfill-cell-sizes
 #
 # hosts.txt: one host per line, "name ip aoi [nolib]"; # comments allowed.
@@ -134,7 +134,10 @@ do_install() {
   local name=$1 ip=$2 flags=$4 id
   case " $flags " in *" nolib "*) echo "nolib host, skipped"; return 0 ;; esac
   for id in "${INSTALL_IDS[@]}"; do
-    remote_cli "$ip" install "library/integrations/$id"
+    existed=$($SSH "root@$ip" "sudo -u postgres psql -qAt -d integrator -c \"SELECT 1 FROM app.integrations WHERE id = '$id'\"")
+    remote_cli "$ip" library-install "$id"
+    # An update keeps its schedule; only a new install gets a first run now
+    [ -n "$existed" ] && continue
     $SSH "root@$ip" "sudo -u postgres psql -qAt -d integrator -c \"
       INSERT INTO app.runs (integration_id, trigger, status) VALUES ('$id', 'manual', 'queued')
       ON CONFLICT DO NOTHING RETURNING integration_id || '  queued'\""

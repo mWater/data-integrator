@@ -128,7 +128,7 @@ default AOI and its suggested schedule, and can start its first ingest
 immediately. From a terminal instead:
 
 ```sh
-node apps/server/dist/cli.js install library/integrations/worldpop_population
+node apps/server/dist/cli.js library-install worldpop_population
 node apps/server/dist/cli.js run worldpop_population
 ```
 

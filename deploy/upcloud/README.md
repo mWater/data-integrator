@@ -105,7 +105,7 @@ per line), in parallel with a log per host under `.dev/fleet-logs/`:
 ./deploy/upcloud/fleet.sh push       hosts.txt      # day-2 update everywhere
 ./deploy/upcloud/fleet.sh secrets    hosts.txt madagascar   # copy one host's secrets to the rest
 ./deploy/upcloud/fleet.sh rerun      hosts.txt      # queue a run wherever the last one failed
-./deploy/upcloud/fleet.sh install    hosts.txt <id>  # a new library entry: push first, then this
+./deploy/upcloud/fleet.sh install    hosts.txt <id>  # install or update library entries: push first, then this
 ./deploy/upcloud/fleet.sh cli        hosts.txt backfill-cell-sizes   # any server CLI command on every host
 ```
 
