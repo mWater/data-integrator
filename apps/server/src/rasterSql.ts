@@ -21,8 +21,13 @@ import pg from "pg"
 
 const execFileP = promisify(execFile)
 
-/** Tile size of registered rasters; matches typical COG internal tiling. */
-const TILE_SIZE = 256
+/**
+ * Tile size of registered rasters. Every tile of a snapshot's full grid gets a
+ * row whether or not it holds data, so row count scales with grid area: a
+ * daily 20 m country-wide layer is ~2,400 rows per snapshot at 1024 versus
+ * ~39,000 at 256. A clip loads whole tiles, 1 MB per byte band at this size.
+ */
+const TILE_SIZE = 1024
 
 /** What registration needs to know about a snapshot. */
 export interface SnapshotRef {
@@ -175,22 +180,26 @@ export async function pruneRasterSql(pool: pg.Pool): Promise<number> {
 
 /**
  * Registers every promoted snapshot missing from data.rasters and prunes
- * stale rows. Returns counts; failures are collected, not thrown, so one
- * unreadable file cannot block the rest.
+ * stale rows. With `all`, re-registers every promoted snapshot instead, one
+ * transaction each, so existing rows pick up a changed tile size. Returns
+ * counts; failures are collected, not thrown, so one unreadable file cannot
+ * block the rest.
  */
 export async function registerMissingRasters(
   pool: pg.Pool,
-  storeAbsolute: (relPath: string) => string
+  storeAbsolute: (relPath: string) => string,
+  options: { all?: boolean } = {}
 ): Promise<{ registered: number; pruned: number; failures: string[] }> {
   // Empty snapshots have nothing to register and never count as missing
   const missing = await pool.query(
     `SELECT s.id, s.layer_id, s.observed_at, s.observed_end, s.crs,
             (SELECT array_agg(path ORDER BY ordinal) FROM app.raster_sources WHERE snapshot_id = s.id) AS paths
      FROM app.raster_snapshots s
-     LEFT JOIN data.rasters r ON r.snapshot_id = s.id
-     WHERE s.status = 'promoted' AND r.snapshot_id IS NULL
+     WHERE s.status = 'promoted'
+       AND ($1 OR NOT EXISTS (SELECT 1 FROM data.rasters r WHERE r.snapshot_id = s.id))
        AND EXISTS (SELECT 1 FROM app.raster_sources WHERE snapshot_id = s.id)
-       AND s.layer_id IN (SELECT id FROM app.raster_layers WHERE integration_id IS NOT NULL)`
+       AND s.layer_id IN (SELECT id FROM app.raster_layers WHERE integration_id IS NOT NULL)`,
+    [options.all === true]
   )
   let registered = 0
   const failures: string[] = []

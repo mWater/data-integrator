@@ -97,7 +97,7 @@ test("out-db registration makes raster values queryable in SQL", async () => {
   })
 
   const tiles = await pool.query("SELECT count(*)::int AS n FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
-  assert.equal(tiles.rows[0].n, 1, "20x20 raster fits one 256px tile")
+  assert.equal(tiles.rows[0].n, 1, "20x20 raster fits one tile")
 
   // Point sampling straight from the COG through the database
   const value = await pool.query(
@@ -149,6 +149,11 @@ test("registerMissingRasters backfills and prune drops non-promoted", async () =
   const result = await registerMissingRasters(pool, () => tifPath)
   assert.equal(result.registered, 1)
   assert.deepEqual(result.failures, [])
+  assert.equal((await registerMissingRasters(pool, () => tifPath)).registered, 0, "nothing missing")
+  const all = await registerMissingRasters(pool, () => tifPath, { all: true })
+  assert.equal(all.registered, 1, "--all re-registers present snapshots")
+  const tiles = await pool.query("SELECT count(*)::int AS n FROM data.rasters WHERE snapshot_id = $1", [SNAPSHOT])
+  assert.equal(tiles.rows[0].n, 1, "re-registration replaces rows")
 
   await pool.query("UPDATE app.raster_snapshots SET status = 'superseded' WHERE id = $1", [SNAPSHOT])
   assert.equal(await pruneRasterSql(pool), 1)

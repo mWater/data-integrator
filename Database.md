@@ -322,7 +322,7 @@ tiles, and downloads are unaffected.
 | layer_id | text | |
 | snapshot_id | uuid fk | cascades on snapshot delete |
 | observed_at, observed_end | timestamptz | snapshot validity, for time filtering in SQL |
-| rast | raster | 256px out-db tiles referencing one source file; a tiled snapshot has rows for each file |
+| rast | raster | 1024px out-db tiles referencing one source file, covering the full grid including nodata areas; a tiled snapshot has rows for each file. `cli.js register-rasters --all` re-tiles existing snapshots after a tile size change |
 
 ## Migrations
 

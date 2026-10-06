@@ -12,7 +12,9 @@
  *                           the value from stdin; export/import move every value
  *                           as JSON ({integration: {name: value}}) between
  *                           deployments, plaintext on stdout/stdin.
- *   register-rasters        Backfill the out-db SQL mirror of promoted snapshots.
+ *   register-rasters [--all]
+ *                           Backfill the out-db SQL mirror of promoted snapshots;
+ *                           --all re-registers every snapshot (after a tile size change).
  *   backfill-cell-sizes     One-off after migration 0020: record cell_size_m for
  *                           snapshots stored before the column existed.
  *   localize-library        Wrap and translate library entry text into every
@@ -463,9 +465,10 @@ async function main(): Promise<number> {
         }
       }
       case "register-rasters": {
-        // Backfill/repair the out-db SQL mirror of promoted snapshots
+        // Backfill/repair the out-db SQL mirror of promoted snapshots; --all re-registers every one
         const store = new RasterStore(config.rasterStorePath)
-        const result = await registerMissingRasters(pool, rel => store.absolute(rel))
+        const all = process.argv.includes("--all")
+        const result = await registerMissingRasters(pool, rel => store.absolute(rel), { all })
         console.log(`Registered ${result.registered}, pruned ${result.pruned}`)
         for (const failure of result.failures) console.error(`  failed: ${failure}`)
         return result.failures.length > 0 ? 1 : 0
