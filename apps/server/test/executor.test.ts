@@ -488,11 +488,15 @@ def run(ctx):
     contract: 2
   }
   await installIntegration(pool, quotaDef)
+  // This is the path for a job that finishes over quota between two disk
+  // polls; with the suite's 1 s poll a slow sandbox gets killed mid-job
+  // instead, so this runner never polls within the test
+  const unpolled = new Runner({ network: "integrator-jobs-exec", egress: "open", diskMonitorMs: 600_000 })
   const queue = async (): Promise<string> => {
     await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_quota', 'manual', 'queued')`)
     const run = await claimNextRun(pool, "test-worker")
     assert.ok(run)
-    await executeRun(deps, run!)
+    await executeRun({ ...deps, runner: unpolled }, run!)
     return run!.id
   }
 
