@@ -19,6 +19,7 @@ import { Library } from "./Library.js"
 import { HowItWorks } from "./HowItWorks.js"
 import { DesignStart } from "./DesignStart.js"
 import { UserMenu } from "./UserMenu.js"
+import { allowHashChange } from "./navGuard.js"
 
 // The layer page owns the maplibre chunk; keep it out of the first paint
 const LayerPage = lazy(() => import("./LayerPage.js").then(m => ({ default: m.LayerPage })))
@@ -205,7 +206,9 @@ export function App() {
       setAiInfo(me?.ai ?? null)
       if (me) getSettings().then(r => setOfferedLocales(r.settings.locales), () => {})
     })
-    const onChange = () => setRoute(parseHash())
+    const onChange = () => {
+      if (allowHashChange()) setRoute(parseHash())
+    }
     const onAuthRequired = () => setUser(null)
     const onLocalesChanged = () => setOfferTick(n => n + 1)
     window.addEventListener("hashchange", onChange)
@@ -272,7 +275,7 @@ export function App() {
         <UserMenu user={user} onSignOut={() => logout().finally(() => setUser(null))} />
       </header>
       {route.sessionId ? (
-        <SessionView sessionId={route.sessionId} canDesign={canDesign} isAdmin={user.role === "admin"} />
+        <SessionView sessionId={route.sessionId} canDesign={canDesign} isAdmin={user.role === "admin"} userId={user.id} />
       ) : route.integrationId ? (
         <IntegrationView integrationId={route.integrationId} canDesign={canDesign} isAdmin={user.role === "admin"} />
       ) : route.tableId ? (

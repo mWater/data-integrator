@@ -37,14 +37,17 @@ export function DashboardList({ canDesign, isAdmin }: Props) {
   useEffect(() => {
     setError(null)
     listDashboards().then((r) => setDashboards(r.dashboards), (e: Error) => setError(e.message))
-    // A dashboard only gets a row once the agent saves it; until then the draft
-    // lives in its design session, listed here so it is not mistaken for lost
+    // A dashboard only gets a row once its creator saves it; until then the
+    // draft lives in its design session, listed here so it is not mistaken for
+    // lost. Edits to a saved dashboard list here too until they are saved
     listSessions().then(
-      // Sessions opened and never used are not drafts worth listing
       (r) =>
         setDrafts(
           r.sessions.filter(
-            (s) => s.kind === "dashboard" && s.status !== "finished" && (s.steps > 0 || s.firstMessage)
+            (s) =>
+              s.kind === "dashboard" &&
+              // Sessions opened and never used are not drafts worth listing
+              (s.unsaved || (!s.integrationId && s.status !== "finished" && (s.steps > 0 || s.firstMessage)))
           )
         ),
       () => {}
@@ -107,71 +110,88 @@ export function DashboardList({ canDesign, isAdmin }: Props) {
           {canDesign ? T`No dashboards yet. Create one with the designer agent.` : T`No dashboards yet.`}
         </p>
       ) : (
-        <table className="sessions">
-          <thead>
-            <tr>
-              <th>{T`Name`}</th>
-              <th>{T`Updated`}</th>
-              {canDesign ? <th /> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {drafts.map((s) => (
-              <tr key={`draft-${s.id}`} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
-                <td>
-                  <a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{s.firstMessage ?? T`(new)`}</a>
-                  <span className="chip chip-draft">{T`draft`}</span>
-                  <div className="dim">
-                    {s.status === "paused" ? T`Design session paused, waiting for you` : T`Design session in progress`}
-                  </div>
-                </td>
-                <td>{formatDateTime(s.updatedAt)}</td>
-                {canDesign ? <td /> : null}
-              </tr>
-            ))}
-            {dashboards.map((d) => (
-              <tr key={d.id} onClick={() => openDashboard(d.id)}>
-                <td>
-                  <a href={`#/dashboard/${d.id}`} onClick={e => e.stopPropagation()}>{d.name}</a>
-                  {d.public ? (
-                    <span
-                      className="chip chip-public"
-                      title={
-                        d.publishedBy
-                          ? T`Anyone with the link can view this dashboard without signing in. Made public by ${d.publishedBy} on ${formatDateTime(d.publishedAt)}.`
-                          : T`Anyone with the link can view this dashboard without signing in`
-                      }
-                    >
-                      {T`public`}
-                    </span>
-                  ) : null}
-                  <div className="dim">{d.id}</div>
-                </td>
-                <td>{formatDateTime(d.updatedAt)}</td>
-                {canDesign ? (
-                  <td className="row-delete-cell">
-                    <RowMenu label={T`Actions for ${d.name}`}>
-                      <button role="menuitem" onClick={() => void newDashboard(d.id)}>
-                        {T`Edit with Agent`}
-                      </button>
-                      {isAdmin && (
-                        <button role="menuitem" onClick={() => void togglePublic(d)}>
-                          {d.public ? T`Make Private` : T`Make Public`}
-                        </button>
-                      )}
-                      <button role="menuitem" onClick={() => setRenaming(d)}>
-                        {T`Rename`}
-                      </button>
-                      <button role="menuitem" className="row-menu-danger" onClick={() => setDoomed(d)}>
-                        {T`Delete`}
-                      </button>
-                    </RowMenu>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          {drafts.length > 0 && (
+            <section className="draft-section" aria-label={T`Drafts`}>
+              <h2 className="section-label">{T`Drafts`}</h2>
+              <ul className="draft-list">
+                {drafts.map((s) => (
+                  <li key={s.id}>
+                    <a className="draft-item" href={`#/session/${s.id}`}>
+                      <span className="draft-main">
+                        <span className="draft-title">{s.label || s.firstMessage || T`New dashboard`}</span>
+                        <span className="draft-meta">
+                          {s.unsaved
+                            ? s.integrationId
+                              ? T`Unsaved changes to a saved dashboard`
+                              : T`Not saved yet`
+                            : T`Being designed`}
+                          {s.userEmail ? ` · ${s.userEmail}` : ""} · {formatDateTime(s.updatedAt)}
+                        </span>
+                      </span>
+                      <span className="draft-open">{T`Continue`} →</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {drafts.length > 0 && dashboards.length > 0 && <h2 className="section-label">{T`Saved`}</h2>}
+          {dashboards.length > 0 && (
+            <table className="sessions dashboard-table">
+              <thead>
+                <tr>
+                  <th>{T`Name`}</th>
+                  <th>{T`Updated`}</th>
+                  {canDesign ? <th /> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {dashboards.map((d) => (
+                  <tr key={d.id} onClick={() => openDashboard(d.id)}>
+                    <td>
+                      <a className="dashboard-name" href={`#/dashboard/${d.id}`} onClick={e => e.stopPropagation()}>{d.name}</a>
+                      {d.public ? (
+                        <span
+                          className="chip chip-public"
+                          title={
+                            d.publishedBy
+                              ? T`Anyone with the link can view this dashboard without signing in. Made public by ${d.publishedBy} on ${formatDateTime(d.publishedAt)}.`
+                              : T`Anyone with the link can view this dashboard without signing in`
+                          }
+                        >
+                          {T`public`}
+                        </span>
+                      ) : null}
+                      <div className="dim slug">#/dashboard/{d.id}</div>
+                    </td>
+                    <td className="dim">{formatDateTime(d.updatedAt)}</td>
+                    {canDesign ? (
+                      <td className="row-delete-cell">
+                        <RowMenu label={T`Actions for ${d.name}`}>
+                          <button role="menuitem" onClick={() => void newDashboard(d.id)}>
+                            {T`Edit with Agent`}
+                          </button>
+                          {isAdmin && (
+                            <button role="menuitem" onClick={() => void togglePublic(d)}>
+                              {d.public ? T`Make Private` : T`Make Public`}
+                            </button>
+                          )}
+                          <button role="menuitem" onClick={() => setRenaming(d)}>
+                            {T`Rename`}
+                          </button>
+                          <button role="menuitem" className="row-menu-danger" onClick={() => setDoomed(d)}>
+                            {T`Delete`}
+                          </button>
+                        </RowMenu>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
       {renaming ? (
         <RenameDialog

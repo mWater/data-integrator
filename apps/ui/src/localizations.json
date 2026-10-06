@@ -6568,6 +6568,240 @@
       "es": "Últimos {0} días",
       "mg": "{0} andro farany",
       "sw": "Siku {0} zilizopita"
+    },
+    {
+      "_base": "en",
+      "en": "Not saved yet",
+      "fr": "Pas encore enregistré",
+      "pt": "Ainda não salvo",
+      "es": "Aún no se ha guardado",
+      "mg": "Mbola tsy voatahiry",
+      "sw": "Bado haijahifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Discard Changes",
+      "fr": "Ignorer les modifications",
+      "pt": "Descartar alterações",
+      "es": "Descartar cambios",
+      "mg": "Ario ny fanovana",
+      "sw": "Tupa mabadiliko"
+    },
+    {
+      "_base": "en",
+      "en": "Wait for the agent to finish its turn",
+      "fr": "Attendez que l’agent ait terminé",
+      "pt": "Aguarde o agente terminar sua resposta",
+      "es": "Espere a que el agente termine su turno",
+      "mg": "Andraso hamita ny anjarany ny mpanampy",
+      "sw": "Subiri ajenti amalize zamu yake"
+    },
+    {
+      "_base": "en",
+      "en": "The latest build has errors",
+      "fr": "La dernière version contient des erreurs",
+      "pt": "A versão mais recente contém erros",
+      "es": "La compilación más reciente tiene errores",
+      "mg": "Misy lesoka ny fanamboarana farany",
+      "sw": "Toleo la hivi karibuni lina hitilafu"
+    },
+    {
+      "_base": "en",
+      "en": "Save Dashboard",
+      "fr": "Enregistrer le tableau de bord",
+      "pt": "Salvar painel",
+      "es": "Guardar panel",
+      "mg": "Tehirizo ny tabilao fanaraha-maso",
+      "sw": "Hifadhi dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Discard changes?",
+      "fr": "Ignorer les modifications ?",
+      "pt": "Descartar alterações?",
+      "es": "¿Descartar los cambios?",
+      "mg": "Hariana ny fanovana?",
+      "sw": "Utupilie mbali mabadiliko?"
+    },
+    {
+      "_base": "en",
+      "en": "This deletes this design session and its unsaved changes. The saved version (v{0}) stays as it is.",
+      "fr": "Cette action supprime cette session de conception et ses modifications non enregistrées. La version enregistrée (v{0}) reste inchangée.",
+      "pt": "Isso exclui esta sessão de design e as alterações não salvas. A versão salva (v{0}) permanece como está.",
+      "es": "Esto elimina esta sesión de diseño y sus cambios sin guardar. La versión guardada (v{0}) permanece sin cambios.",
+      "mg": "Hamafa ity fotoam-pandrafetana ity sy ireo fanovana tsy voatahiry izany. Tsy miova ny kinova voatahiry (v{0}).",
+      "sw": "Hii itafuta kipindi hiki cha usanifu na mabadiliko yake ambayo hayajahifadhiwa. Toleo lililohifadhiwa (v{0}) halitabadilika."
+    },
+    {
+      "_base": "en",
+      "en": "This deletes the draft dashboard and its conversation. Nobody else has seen it, and it cannot be recovered.",
+      "fr": "Cette action supprime le brouillon du tableau de bord et sa conversation. Personne d’autre ne l’a vu et il ne peut pas être récupéré.",
+      "pt": "Isso exclui o rascunho do painel e sua conversa. Ninguém mais o viu, e ele não pode ser recuperado.",
+      "es": "Esto elimina el borrador del panel y su conversación. Nadie más lo ha visto y no se puede recuperar.",
+      "mg": "Hamafa ny drafitry ny tabilao fanaraha-maso sy ny resaka momba azy izany. Tsy mbola nisy olon-kafa nahita azy, ary tsy azo averina intsony.",
+      "sw": "Hii itafuta rasimu ya dashibodi na mazungumzo yake. Hakuna mtu mwingine aliyeiona, na haiwezi kurejeshwa."
+    },
+    {
+      "_base": "en",
+      "en": "Leave without saving?",
+      "fr": "Quitter sans enregistrer ?",
+      "pt": "Sair sem salvar?",
+      "es": "¿Salir sin guardar?",
+      "mg": "Hiala nefa tsy hitahiry?",
+      "sw": "Uondoke bila kuhifadhi?"
+    },
+    {
+      "_base": "en",
+      "en": "Your latest changes are not saved; everyone else still sees version {0}.",
+      "fr": "Vos dernières modifications ne sont pas enregistrées ; les autres voient toujours la version {0}.",
+      "pt": "Suas alterações mais recentes não estão salvas; todos os outros ainda veem a versão {0}.",
+      "es": "Sus últimos cambios no se han guardado; los demás siguen viendo la versión {0}.",
+      "mg": "Tsy voatahiry ny fanovanao farany; mbola ny kinova {0} no hitan’ny hafa rehetra.",
+      "sw": "Mabadiliko yako ya hivi karibuni hayajahifadhiwa; wengine bado wanaona toleo la {0}."
+    },
+    {
+      "_base": "en",
+      "en": "This dashboard is not saved, so nobody else can see it.",
+      "fr": "Ce tableau de bord n’est pas enregistré, donc personne d’autre ne peut le voir.",
+      "pt": "Este painel não está salvo, portanto ninguém mais pode vê-lo.",
+      "es": "Este panel no está guardado, por lo que nadie más puede verlo.",
+      "mg": "Tsy voatahiry ity tabilao fanaraha-maso ity, ka tsy misy olon-kafa afaka mahita azy.",
+      "sw": "Dashibodi hii haijahifadhiwa, kwa hivyo hakuna mtu mwingine anayeweza kuiona."
+    },
+    {
+      "_base": "en",
+      "en": "If you leave, the draft stays in the Dashboards list so you can come back to it.",
+      "fr": "Si vous quittez, le brouillon reste dans la liste des tableaux de bord pour que vous puissiez y revenir.",
+      "pt": "Se você sair, o rascunho permanecerá na lista de painéis para que você possa voltar a ele.",
+      "es": "Si sale, el borrador permanecerá en la lista de paneles para que pueda retomarlo.",
+      "mg": "Raha miala ianao, dia hijanona ao amin’ny lisitry ny tabilao fanaraha-maso ilay drafitra mba hahafahanao miverina aminy.",
+      "sw": "Ukiondoka, rasimu itabaki kwenye orodha ya Dashibodi ili uweze kuirudia."
+    },
+    {
+      "_base": "en",
+      "en": "Stay",
+      "fr": "Rester",
+      "pt": "Ficar",
+      "es": "Quedarse",
+      "mg": "Mijanòna",
+      "sw": "Baki"
+    },
+    {
+      "_base": "en",
+      "en": "Leave",
+      "fr": "Quitter",
+      "pt": "Sair",
+      "es": "Salir",
+      "mg": "Mialà",
+      "sw": "Ondoka"
+    },
+    {
+      "_base": "en",
+      "en": "Save dashboard",
+      "fr": "Enregistrer le tableau de bord",
+      "pt": "Salvar painel",
+      "es": "Guardar panel",
+      "mg": "Tehirizo ny tabilao fanaraha-maso",
+      "sw": "Hifadhi dashibodi"
+    },
+    {
+      "_base": "en",
+      "en": "Once saved, everyone signed in to this server can see it in the Dashboards list.",
+      "fr": "Une fois enregistré, il sera visible dans la liste des tableaux de bord par tous les utilisateurs connectés à ce serveur.",
+      "pt": "Depois de salvo, todos que iniciarem sessão neste servidor poderão vê-lo na lista de painéis.",
+      "es": "Una vez guardado, todos los usuarios con sesión iniciada en este servidor podrán verlo en la lista de paneles.",
+      "mg": "Rehefa voatahiry, dia ho hitan’izay rehetra tafiditra amin’ity lohamilina ity ao amin’ny lisitry ny tabilao fanaraha-maso izy.",
+      "sw": "Ikishahifadhiwa, kila mtu aliyeingia kwenye seva hii anaweza kuiona kwenye orodha ya Dashibodi."
+    },
+    {
+      "_base": "en",
+      "en": "The dashboard's address will be #/dashboard/{0}.",
+      "fr": "L’adresse du tableau de bord sera #/dashboard/{0}.",
+      "pt": "O endereço do painel será #/dashboard/{0}.",
+      "es": "La dirección del panel será #/dashboard/{0}.",
+      "mg": "Ho #/dashboard/{0} ny adiresin’ilay tabilao fanaraha-maso.",
+      "sw": "Anwani ya dashibodi itakuwa #/dashboard/{0}."
+    },
+    {
+      "_base": "en",
+      "en": "Use lowercase letters, digits, - and _, starting with a letter.",
+      "fr": "Utilisez des lettres minuscules, des chiffres, - et _, en commençant par une lettre.",
+      "pt": "Use letras minúsculas, dígitos, - e _, começando com uma letra.",
+      "es": "Use letras minúsculas, dígitos, - y _, comenzando por una letra.",
+      "mg": "Mampiasà litera madinika, tarehimarika, - ary _, ary litera no hanombohana.",
+      "sw": "Tumia herufi ndogo, tarakimu, - na _, ukianza kwa herufi."
+    },
+    {
+      "_base": "en",
+      "en": "Drafts",
+      "fr": "Brouillons",
+      "pt": "Rascunhos",
+      "es": "Borradores",
+      "mg": "Volavola",
+      "sw": "Rasimu"
+    },
+    {
+      "_base": "en",
+      "en": "Unsaved changes to a saved dashboard",
+      "fr": "Modifications non enregistrées d’un tableau de bord enregistré",
+      "pt": "Alterações não salvas em um painel salvo",
+      "es": "Cambios sin guardar en un panel guardado",
+      "mg": "Fanovana tsy voatahiry amin'ny tabilao fanaraha-maso efa voatahiry",
+      "sw": "Mabadiliko yasiyohifadhiwa kwenye dashibodi iliyohifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Being designed",
+      "fr": "En cours de conception",
+      "pt": "Em criação",
+      "es": "En diseño",
+      "mg": "Eo am-pamolavolana",
+      "sw": "Inaundwa"
+    },
+    {
+      "_base": "en",
+      "en": "Saved and visible to everyone signed in",
+      "fr": "Enregistré et visible par tous les utilisateurs connectés",
+      "pt": "Salvo e visível para todos que iniciaram sessão",
+      "es": "Guardado y visible para todos los usuarios que hayan iniciado sesión",
+      "mg": "Voatahiry ary hitan'ny olona rehetra tafiditra",
+      "sw": "Imehifadhiwa na inaonekana kwa kila aliyeingia kwenye akaunti"
+    },
+    {
+      "_base": "en",
+      "en": "Unsaved changes.",
+      "fr": "Modifications non enregistrées.",
+      "pt": "Alterações não salvas.",
+      "es": "Cambios sin guardar.",
+      "mg": "Fanovana tsy voatahiry.",
+      "sw": "Mabadiliko hayajahifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Everyone else still sees version {0}.",
+      "fr": "Les autres utilisateurs voient toujours la version {0}.",
+      "pt": "Todos os outros ainda veem a versão {0}.",
+      "es": "Los demás siguen viendo la versión {0}.",
+      "mg": "Mbola ny kinova {0} no hitan'ny hafa rehetra.",
+      "sw": "Wengine wote bado wanaona toleo la {0}."
+    },
+    {
+      "_base": "en",
+      "en": "Not saved yet.",
+      "fr": "Pas encore enregistré.",
+      "pt": "Ainda não salvo.",
+      "es": "Aún no se ha guardado.",
+      "mg": "Tsy mbola voatahiry.",
+      "sw": "Bado haijahifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Only you can see this dashboard.",
+      "fr": "Vous seul pouvez voir ce tableau de bord.",
+      "pt": "Somente você pode ver este painel.",
+      "es": "Solo usted puede ver este panel.",
+      "mg": "Ianao ihany no afaka mahita ity tabilao fanaraha-maso ity.",
+      "sw": "Ni wewe pekee unayeweza kuona dashibodi hii."
     }
   ],
   "unused": [

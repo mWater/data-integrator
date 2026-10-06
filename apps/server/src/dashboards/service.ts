@@ -66,7 +66,8 @@ export interface RenameDashboardResult {
 /**
  * Renames a dashboard's slug and/or display name. The id is the natural key;
  * migration 0013 makes its references ON UPDATE CASCADE, so one UPDATE moves
- * versions and session bindings with it. Existing links (public ones included)
+ * versions and session bindings with it; the slug inside dashboard sessions'
+ * state is rewritten alongside. Existing links (public ones included)
  * point at the old slug and break - the caller warns the user.
  */
 export async function renameDashboard(
@@ -83,6 +84,14 @@ export async function renameDashboard(
       [id, newId, newName]
     )
     if ((result.rowCount ?? 0) === 0) return { ok: false, error: "unknown dashboard" }
+    // Design sessions also carry the slug in their state, which saves target
+    if (newId !== id) {
+      await pool.query(
+        `UPDATE app.agent_sessions SET client_state = jsonb_set(client_state, '{dashboardId}', to_jsonb($2::text))
+         WHERE kind = 'dashboard' AND client_state->>'dashboardId' = $1`,
+        [id, newId]
+      )
+    }
     return { ok: true }
   } catch (err) {
     if ((err as { code?: string }).code === "23505") return { ok: false, error: `a dashboard named "${newId}" already exists` }

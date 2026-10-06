@@ -10,6 +10,7 @@ import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { snapshotSources } from "./catalog.js"
 import { AgentService } from "./agent/service.js"
+import { saveDashboardSession } from "./agent/dashboard.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
 import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
@@ -93,7 +94,7 @@ const TILE_PATH =
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
 const SESSION_PATH =
-  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
+  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/save|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
 
 /** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
 const DASHBOARD_TILE_PATH =
@@ -322,7 +323,7 @@ async function route(
     // a custom (self-hosted) endpoint keeps data on the admin's infrastructure
     const hosted = aiProvider === "openrouter" || aiProvider === "anthropic"
     json(res, 200, {
-      user: { email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, role: user.role },
       ai: {
         provider: aiProvider,
         ackRequired: hosted && !(await getAiAcknowledged(pool, user.id))
@@ -1628,11 +1629,41 @@ async function routeSessions(
   }
   // Ahead of the service lookup: what may be deleted is a permission question,
   // and it is answerable whether or not that kind's model is configured
+  if (!sub && req.method === "DELETE" && ownerKind === "dashboard") {
+    // Discard Changes: a dashboard draft is its creator's (or an admin's) to
+    // throw away; saved versions live in app.dashboards and are untouched
+    if (!dashboardAgent) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      return
+    }
+    const deleted = await dashboardAgent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
+    if (!deleted) json(res, 403, { error: "Only the person who started this dashboard session can discard it" })
+    else json(res, 200, { ok: true })
+    return
+  }
+  if (sub === "/save" && req.method === "POST") {
+    if (ownerKind !== "dashboard") {
+      json(res, 400, { error: "Only dashboard sessions are saved this way" })
+      return
+    }
+    if (dashboardAgent?.isRunning(sessionId)) {
+      json(res, 409, { error: "The agent is still working; save once it has finished its turn" })
+      return
+    }
+    const body = await readJsonBody(req)
+    const result = await saveDashboardSession(pool, sessionId, {
+      id: typeof body.id === "string" ? body.id : undefined,
+      name: typeof body.name === "string" ? body.name : undefined
+    })
+    if (result.ok) json(res, 200, { dashboardId: result.dashboardId, version: result.version })
+    else json(res, 400, { error: result.error })
+    return
+  }
   if (!sub && req.method === "DELETE") {
-    // Design sessions are team artifacts carrying runs and scratch layers;
-    // only the personal assistant chats are the user's to throw away
+    // Integration design sessions are team artifacts carrying runs and scratch
+    // layers; assistant chats are the user's to throw away
     if (ownerKind !== "assistant") {
-      json(res, 403, { error: "Only assistant chats can be deleted" })
+      json(res, 403, { error: "Only assistant chats and dashboard drafts can be deleted" })
       return
     }
     if (!assistantAgent) {

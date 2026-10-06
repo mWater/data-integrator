@@ -1190,3 +1190,46 @@ table.users tbody tr:hover { background: none }
 
 /* Layer page: clip-to-area toggle under the opacity slider */
 .layer-clip { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px }
+
+/* Dashboard save state: a bar above the composer while the draft has work
+   nobody else can see, beside where the agent says it is ready */
+.conversation > .save-bar {
+  width: 100%; max-width: min(920px, 100% - 40px); margin: 0 auto 8px;
+}
+.save-bar {
+  display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px;
+  background: var(--tint); border: 1px solid var(--tint-border); border-radius: 8px; font-size: 13px;
+}
+.save-dot { width: 8px; height: 8px; border-radius: 50%; background: #d29922; flex: none }
+.save-text { flex: 1; min-width: 0; color: var(--ink-dim) }
+.save-text b { color: var(--ink); font-weight: 600 }
+button.compact { padding: 5px 12px; font-size: 13px }
+/* A low-emphasis text action beside a primary button */
+button.quiet { background: none; color: var(--ink-muted); padding: 5px 8px; font-size: 13px }
+button.quiet:hover { color: var(--danger); background: none }
+button.quiet:disabled { background: none; color: var(--ink-faint) }
+.session-head .saved-link { font-size: 12.5px; color: var(--ink-muted); flex: none; text-decoration: none }
+.session-head .saved-link::before { content: "✓ "; color: #2e8b57 }
+.session-head .saved-link:hover { color: var(--link) }
+
+/* Dashboard list: drafts in progress sit apart from the saved dashboards */
+.section-label {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-muted); margin: 0 0 8px;
+}
+.draft-section { margin-bottom: 28px }
+.draft-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px }
+.draft-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; color: inherit; text-decoration: none;
+  background: var(--surface); border: 1px dashed var(--control-border); border-radius: 8px;
+}
+.draft-item:hover { border-color: var(--accent); background: var(--hover-tint); text-decoration: none }
+.draft-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.draft-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 }
+.draft-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.draft-meta { font-size: 12.5px; color: var(--ink-muted) }
+.draft-open { font-size: 13px; color: var(--link); flex: none }
+.dashboard-table .dashboard-name { font-weight: 600; color: var(--ink); text-decoration: none }
+.dashboard-table tr:hover .dashboard-name { color: var(--link) }
+.dashboard-table .slug { font-size: 12px; margin-top: 2px }
+.dashboard-table .chip { margin-left: 8px }

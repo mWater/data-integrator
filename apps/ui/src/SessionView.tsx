@@ -7,9 +7,11 @@ import {
   DashboardMeta,
   DesignerState,
   execSessionQuery,
+  deleteSession,
   getSession,
   listLayers,
   listSources,
+  saveDashboardSession,
   sendMessage,
   SessionDetail,
   SessionEvent,
@@ -24,6 +26,7 @@ import { Markdown } from "./Markdown.js"
 import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
 import { localizeData } from "./localization.js"
+import { leaveTo, setLeaveGuard } from "./navGuard.js"
 
 // Same lazy chunk as the stored transcript's blocks
 const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
@@ -186,10 +189,12 @@ interface SessionViewProps {
   canDesign: boolean
   /** True for admins: credentials requested by the agent can be saved in the session */
   isAdmin?: boolean
+  /** Signed-in user, so a dashboard draft's creator can discard it */
+  userId?: string
 }
 
 /** One design session: transcript + live stream on the left, state panel on the right. */
-export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionViewProps) {
+export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: SessionViewProps) {
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [live, setLive] = useState<LiveItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -409,6 +414,63 @@ export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionVi
     }
   }
 
+  // A dashboard draft is visible only here until the user saves it; leaving
+  // with unsaved work asks first (the draft itself survives in the list)
+  const draftState = detail?.kind === "dashboard" ? (detail.state as DashboardAgentState) : null
+  const unsaved = draftState != null && isUnsaved(draftState)
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [leaveTarget, setLeaveTarget] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    if (!unsaved) return
+    setLeaveGuard(next => {
+      setLeaveTarget(next)
+      return true
+    })
+    const onUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", onUnload)
+    return () => {
+      setLeaveGuard(null)
+      window.removeEventListener("beforeunload", onUnload)
+    }
+  }, [unsaved])
+
+  /** Saves the draft (first saves go through the name dialog); then follows a pending leave. */
+  async function save(body: { id?: string; name?: string } = {}) {
+    setSaving(true)
+    setError(null)
+    try {
+      await saveDashboardSession(sessionId, body)
+      setSaveOpen(false)
+      if (leaveTarget !== null) leaveTo(leaveTarget)
+      else refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function startSave() {
+    if (draftState?.dashboardId) void save().catch(() => {})
+    else setSaveOpen(true)
+  }
+
+  async function discard() {
+    try {
+      await deleteSession(sessionId)
+      leaveTo("#/dashboards")
+    } catch (err) {
+      setDiscardOpen(false)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   if (!detail)
     return (
       <main className="session-page" ref={pageRef}>
@@ -452,8 +514,14 @@ export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionVi
               until the agent names what it is building. Beside a preview it
               stays small; the dashboard carries its own heading */}
           <h1>{localizeData(title)}</h1>
-          {isDashboard && dashState?.saved && (
-            <a href={`#/dashboard/${detail.integrationId}`}>{T`Saved v${dashState.saved.version}`}</a>
+          {isDashboard && dashState?.saved && !unsaved && (
+            <a
+              className="saved-link"
+              href={`#/dashboard/${detail.integrationId}`}
+              title={T`Saved and visible to everyone signed in`}
+            >
+              {T`Saved v${dashState.saved.version}`}
+            </a>
           )}
           {/* Layers get their own pages, so this opens the first one; the
               details panel lists the rest */}
@@ -527,6 +595,35 @@ export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionVi
         {error && <div className="error">{error}</div>}
         {!error && !busy && detail.error && (
           <div className="error">{T`The agent hit an error and stopped: ${detail.error} — send a message to retry.`}</div>
+        )}
+        {isDashboard && dashState && unsaved && canDesign && (
+          <div className="save-bar" role="status">
+            <span className="save-dot" aria-hidden="true" />
+            <span className="save-text">
+              {dashState.saved ? (
+                <>
+                  <b>{T`Unsaved changes.`}</b> {T`Everyone else still sees version ${dashState.saved.version}.`}
+                </>
+              ) : (
+                <>
+                  <b>{T`Not saved yet.`}</b> {T`Only you can see this dashboard.`}
+                </>
+              )}
+            </span>
+            {(isAdmin || detail.userId === userId) && (
+              <button className="quiet" onClick={() => setDiscardOpen(true)} disabled={saving}>
+                {T`Discard Changes`}
+              </button>
+            )}
+            <button
+              className="compact"
+              onClick={startSave}
+              disabled={busy || saving || !build}
+              title={busy ? T`Wait for the agent to finish its turn` : !build ? T`The latest build has errors` : undefined}
+            >
+              {saving ? T`Saving…` : T`Save Dashboard`}
+            </button>
+          </div>
         )}
         <form className="composer" onSubmit={onSend}>
           <textarea
@@ -613,6 +710,66 @@ export function SessionView({ sessionId, canDesign, isAdmin = false }: SessionVi
           </div>
         </>
       )}
+      {saveOpen && dashState && (
+        <SaveDashboardDialog
+          state={dashState}
+          busy={saving}
+          error={error}
+          onCancel={() => {
+            setSaveOpen(false)
+            setLeaveTarget(null)
+          }}
+          onSave={body => void save(body).catch(() => {})}
+        />
+      )}
+      {discardOpen && dashState && (
+        <>
+          <div className="modal-backdrop" onClick={() => setDiscardOpen(false)} />
+          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Discard changes?`}>
+            <h2>{T`Discard changes?`}</h2>
+            <p>
+              {dashState.saved
+                ? T`This deletes this design session and its unsaved changes. The saved version (v${dashState.saved.version}) stays as it is.`
+                : T`This deletes the draft dashboard and its conversation. Nobody else has seen it, and it cannot be recovered.`}
+            </p>
+            <div className="confirm-actions">
+              <button className="secondary" onClick={() => setDiscardOpen(false)}>
+                {T`Cancel`}
+              </button>
+              <button className="danger" onClick={() => void discard()}>
+                {T`Discard Changes`}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      {leaveTarget !== null && !saveOpen && dashState && (
+        <>
+          <div className="modal-backdrop" onClick={() => setLeaveTarget(null)} />
+          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Leave without saving?`}>
+            <h2>{T`Leave without saving?`}</h2>
+            <p>
+              {dashState.saved
+                ? T`Your latest changes are not saved; everyone else still sees version ${dashState.saved.version}.`
+                : T`This dashboard is not saved, so nobody else can see it.`}{" "}
+              {T`If you leave, the draft stays in the Dashboards list so you can come back to it.`}
+            </p>
+            <div className="confirm-actions">
+              <button className="secondary" onClick={() => setLeaveTarget(null)}>
+                {T`Stay`}
+              </button>
+              <button className="secondary" onClick={() => leaveTo(leaveTarget)}>
+                {T`Leave`}
+              </button>
+              {canDesign && (
+                <button onClick={startSave} disabled={busy || saving || !build}>
+                  {T`Save Dashboard`}
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </main>
   )
 }
@@ -687,5 +844,79 @@ function QuestionCard({ question, onAnswer }: QuestionCardProps) {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * True when a dashboard draft has work nobody else can see: edits since the
+ * last save, or a built draft never saved (sessions from before the dirty
+ * flag). Mirrors the server's unsaved flag on session summaries.
+ */
+function isUnsaved(state: DashboardAgentState): boolean {
+  return state.dirty ?? (state.saved == null && state.build != null)
+}
+
+/** Lowercase URL slug from a display name: letters, digits and dashes, starting with a letter. */
+function slugify(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^[^a-z]+|-+$/g, "")
+}
+
+/** First save: display name and URL slug, starting from the agent's proposal. */
+function SaveDashboardDialog({
+  state,
+  busy,
+  error,
+  onCancel,
+  onSave
+}: {
+  /** The draft being saved */
+  state: DashboardAgentState
+  /** True while the save request is in flight */
+  busy: boolean
+  /** Error from the last attempt, shown in the dialog */
+  error: string | null
+  /** Closes without saving */
+  onCancel: () => void
+  /** Saves with the chosen slug and name */
+  onSave: (body: { id: string; name: string }) => void
+}) {
+  const [name, setName] = useState(state.proposed?.name || state.name)
+  const [slug, setSlug] = useState(state.proposed?.id || slugify(state.proposed?.name || state.name))
+  const validSlug = /^[a-z][a-z0-9_-]*$/.test(slug.trim())
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onCancel} />
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Save dashboard`}>
+        <h2>{T`Save dashboard`}</h2>
+        <p>{T`Once saved, everyone signed in to this server can see it in the Dashboards list.`}</p>
+        <label>
+          <span>{T`Name`}</span>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} />
+        </label>
+        <label>
+          <span>{T`URL slug`}</span>
+          <input value={slug} onChange={e => setSlug(e.target.value)} />
+        </label>
+        <p className="dim">
+          {validSlug
+            ? T`The dashboard's address will be #/dashboard/${slug.trim()}.`
+            : T`Use lowercase letters, digits, - and _, starting with a letter.`}
+        </p>
+        {error ? <div className="error">{error}</div> : null}
+        <div className="confirm-actions">
+          <button className="secondary" onClick={onCancel} disabled={busy}>
+            {T`Cancel`}
+          </button>
+          <button onClick={() => onSave({ id: slug.trim(), name: name.trim() })} disabled={busy || !name.trim() || !validSlug}>
+            {T`Save Dashboard`}
+          </button>
+        </div>
+      </div>
+    </>
   )
 }

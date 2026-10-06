@@ -18,6 +18,14 @@ export interface SessionSummary {
   steps: number
   /** Last update time (ISO) */
   updatedAt: string
+  /** User who started the session; null for sessions created outside a sign-in */
+  userId: string | null
+  /** True when the session holds work nobody else can see yet (dashboard drafts) */
+  unsaved: boolean
+  /** What the session is building, once named (a dashboard draft's name) */
+  label: string | null
+  /** Email of the user who started the session */
+  userEmail: string | null
 }
 
 /** Draft definition fields the UI cares about (passed through as JSON). */
@@ -62,7 +70,7 @@ export interface DashboardBuild {
 
 /** Dashboard-session client state mirrored from the server. */
 export interface DashboardAgentState {
-  /** Bound dashboard id; empty until finish names it */
+  /** Bound dashboard id; empty until the first save names it */
   dashboardId: string
   /** Draft display name */
   name: string
@@ -74,8 +82,12 @@ export interface DashboardAgentState {
   layers: string[]
   /** Latest build outcome; null before the first write_source */
   build: DashboardBuild | null
-  /** Saved version once finish succeeded */
+  /** Saved version once the user saved */
   saved: { version: number } | null
+  /** True when the draft has edits the saved version lacks; absent in sessions from before saving was the user's */
+  dirty?: boolean
+  /** Slug and name the agent proposed for the first save; null until it is ready */
+  proposed?: { id: string; name: string } | null
 }
 
 /** One stored query result of an assistant session; blocks bind to it by id. */
@@ -234,6 +246,8 @@ export interface IntegrationDetail {
 
 /** The signed-in user. */
 export interface User {
+  /** User id */
+  id: string
   /** Login email */
   email: string
   /** Role: admin, editor, or viewer */
@@ -740,7 +754,18 @@ export function getSession(sessionId: string): Promise<SessionDetail> {
   return request(`/api/sessions/${sessionId}`)
 }
 
-/** Permanently deletes an assistant chat with its transcript and results. */
+/**
+ * Saves a dashboard design session's draft as a new version, visible to
+ * everyone signed in. id and name apply to the first save only.
+ */
+export function saveDashboardSession(
+  sessionId: string,
+  body: { id?: string; name?: string }
+): Promise<{ dashboardId: string; version: number }> {
+  return request(`/api/sessions/${sessionId}/save`, jsonBody("POST", body))
+}
+
+/** Permanently deletes a session: an assistant chat, or a dashboard draft (Discard Changes). */
 export function deleteSession(sessionId: string): Promise<{ ok: boolean }> {
   return request(`/api/sessions/${sessionId}`, { method: "DELETE" })
 }

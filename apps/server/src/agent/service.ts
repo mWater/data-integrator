@@ -28,6 +28,14 @@ export interface SessionSummary {
   steps: number
   /** Last update time (ISO) */
   updatedAt: string
+  /** User who started the session; null for sessions created outside a sign-in (CLI) */
+  userId: string | null
+  /** True when the session holds work not yet saved anywhere others can see (dashboard drafts) */
+  unsaved: boolean
+  /** What the session is building, once named (a dashboard draft's name); null otherwise */
+  label: string | null
+  /** Email of the user who started the session; null when unknown */
+  userEmail: string | null
 }
 
 /** Full session detail for the session view. */
@@ -56,6 +64,10 @@ interface KindAdapter<S> {
   implementation: AgentImplementation<S>
   /** SQL expression over agent_sessions yielding the bound artifact id */
   bindIdSql: string
+  /** SQL over client_state answering "has unsaved work"; absent means never */
+  unsavedSql?: string
+  /** SQL over client_state naming what the session builds; absent means no label */
+  labelSql?: string
   /** Initial client state; bindId is an integration or dashboard id to start from */
   initialState(bindId?: string, locale?: string): Promise<S>
   /** Bound artifact id from client state */
@@ -137,6 +149,11 @@ export class AgentService<S = unknown> {
       kind: "dashboard",
       implementation: new DashboardImplementation(deps),
       bindIdSql: "NULLIF(client_state->>'dashboardId', '')",
+      // Sessions from before saving was the user's have no dirty flag: a built,
+      // never-saved draft is unsaved
+      unsavedSql:
+        "COALESCE((client_state->>'dirty')::boolean, client_state->'saved' = 'null'::jsonb AND client_state->'build' <> 'null'::jsonb)",
+      labelSql: "NULLIF(client_state->>'name', '')",
       initialState: (dashboardId?: string, locale?: string) => initialDashboardState(pool, dashboardId ?? "", locale),
       bindId: state => state.dashboardId || null,
       detailExtras: async () => ({}),
@@ -173,7 +190,9 @@ export class AgentService<S = unknown> {
   /** Lists this kind's sessions, newest first; forUserId narrows to one creator's. */
   async listSessions(forUserId?: string): Promise<SessionSummary[]> {
     const result = await this.pool.query(
-      `SELECT id, status, ${this.adapter.bindIdSql} AS bind_id,
+      `SELECT id, status, user_id, ${this.adapter.bindIdSql} AS bind_id, ${this.adapter.unsavedSql ?? "false"} AS unsaved,
+              ${this.adapter.labelSql ?? "NULL"} AS label,
+              (SELECT email FROM app.users u WHERE u.id = user_id) AS user_email,
               (SELECT left(msg->>'content', 120) FROM jsonb_array_elements(messages) msg
                WHERE msg->>'role' = 'user' LIMIT 1) AS first_message,
               COALESCE((usage->>'steps')::int, 0) AS steps, updated_at
@@ -188,7 +207,11 @@ export class AgentService<S = unknown> {
       integrationId: r.bind_id,
       firstMessage: r.first_message,
       steps: r.steps,
-      updatedAt: r.updated_at.toISOString()
+      updatedAt: r.updated_at.toISOString(),
+      userId: r.user_id ?? null,
+      unsaved: r.unsaved === true,
+      label: r.label ?? null,
+      userEmail: r.user_email ?? null
     }))
   }
 
@@ -208,7 +231,9 @@ export class AgentService<S = unknown> {
 
   async getSession(sessionId: string): Promise<SessionDetail | null> {
     const result = await this.pool.query(
-      `SELECT id, status, messages, client_state, usage, error, updated_at
+      `SELECT id, status, user_id, messages, client_state, usage, error, updated_at,
+              ${this.adapter.unsavedSql ?? "false"} AS unsaved, ${this.adapter.labelSql ?? "NULL"} AS label,
+              (SELECT email FROM app.users u WHERE u.id = user_id) AS user_email
        FROM app.agent_sessions WHERE id = $1 AND kind = $2`,
       [sessionId, this.adapter.kind]
     )
@@ -225,6 +250,10 @@ export class AgentService<S = unknown> {
       firstMessage: typeof firstUser?.content === "string" ? firstUser.content.slice(0, 120) : null,
       steps: (row.usage?.steps as number) ?? 0,
       updatedAt: row.updated_at.toISOString(),
+      userId: row.user_id ?? null,
+      unsaved: row.unsaved === true,
+      label: row.label ?? null,
+      userEmail: row.user_email ?? null,
       messages: row.messages,
       state,
       usage: row.usage,

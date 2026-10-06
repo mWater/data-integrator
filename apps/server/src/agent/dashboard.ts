@@ -24,7 +24,7 @@ export interface DashboardBuild {
 
 /** Client state of a dashboard design session. */
 export interface DashboardAgentState {
-  /** Bound dashboard id; empty until finish names it */
+  /** Bound dashboard id; empty until the first save names it */
   dashboardId: string
   /** Draft display name */
   name: string
@@ -36,8 +36,12 @@ export interface DashboardAgentState {
   layers: string[]
   /** Latest build outcome; null before the first write_source */
   build: DashboardBuild | null
-  /** Saved version, once finish succeeded */
+  /** Saved version, once the user saved */
   saved: { version: number } | null
+  /** True when the draft has changes the saved version (if any) lacks; absent in sessions from before saving was the user's */
+  dirty?: boolean
+  /** Id and name the agent proposed for the first save; null until it calls ready_to_save */
+  proposed?: { id: string; name: string } | null
   /** Data-table schema block injected into the system prompt */
   schemas: string
 }
@@ -63,6 +67,8 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = "", loc
     layers: [],
     build: null,
     saved: null,
+    dirty: false,
+    proposed: null,
     schemas
   }
   if (dashboardId !== "") {
@@ -215,8 +221,12 @@ none at all.
    edit_source rebuilds automatically and returns compile/typecheck errors - fix them
    before moving on. The user sees a live preview beside the chat after each
    successful build; they may report runtime errors from it.
-4. finish({id, name}) saves the dashboard (id is the URL slug, snake_case/kebab-case;
-   editors can rename it later, but pick a good one - renaming breaks existing links).
+4. You never save. Saving shares the dashboard with everyone signed in, so it is the
+   user's decision, made with the Save Dashboard button above the chat. When the build
+   is clean and the dashboard does what was asked, call ready_to_save({id, name}) with
+   a proposed URL slug (snake_case/kebab-case; renaming later breaks links, so pick a
+   good one) and display name, then tell the user in one sentence to review the
+   preview and click Save Dashboard. After later changes, call ready_to_save again.
    It is rejected while the latest build has errors.
 
 Chart guidance: pick the form by the data's job (trend = line/area, comparison = bar,
@@ -252,7 +262,8 @@ renders as markdown.`
 
 /**
  * The dashboard designer agent: explore data, freeze queries, write kit-based
- * React source with automatic builds, finish behind the clean-build gate.
+ * React source with automatic builds; the user saves (saveDashboardSession),
+ * the agent only proposes, behind the clean-build gate.
  */
 export class DashboardImplementation implements AgentImplementation<DashboardAgentState> {
   /** Session kind for storage */
@@ -356,13 +367,12 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
           options: z.array(z.string()).min(2).max(5).describe("Short answer choices (2-5)")
         })
       }),
-      finish: tool({
+      ready_to_save: tool({
         description:
-          "Save the dashboard and end the session. Rejected while the latest build has errors. The id becomes the URL slug (editors can rename it later); re-finishing an existing dashboard saves a new version.",
+          "Tell the user the dashboard is ready for them to review and save; you cannot save. Proposes the URL slug and display name their Save dialog starts from (an already saved dashboard keeps its slug). Rejected while the latest build has errors. Ends your turn.",
         inputSchema: z.object({
-          id: z.string().describe("Dashboard id: lowercase letters/digits/_/-, starting with a letter"),
-          name: z.string().describe("Display name"),
-          summary: z.string().describe("One-paragraph summary of the dashboard")
+          id: z.string().describe("Proposed dashboard id: lowercase letters/digits/_/-, starting with a letter"),
+          name: z.string().describe("Proposed display name")
         })
       })
     }
@@ -388,13 +398,13 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
           )
         }
       case "write_source":
-        return await this.setSource(state, String(args.source ?? ""))
+        return markDirty(await this.setSource(state, String(args.source ?? "")))
       case "edit_source":
-        return await this.editSource(state, String(args.oldString ?? ""), String(args.newString ?? ""))
+        return markDirty(await this.editSource(state, String(args.oldString ?? ""), String(args.newString ?? "")))
       case "set_queries":
-        return this.setQueries(state, args.queries as DashboardQuery[])
+        return markDirty(this.setQueries(state, args.queries as DashboardQuery[]))
       case "set_layers":
-        return await this.setLayers(state, args.layers as string[])
+        return markDirty(await this.setLayers(state, args.layers as string[]))
       case "search_library": {
         const locale =
           (await this.deps.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]?.locale ?? "en"
@@ -404,8 +414,10 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
         return await this.sampleQuery(String(args.sql ?? ""))
       case "ask_user":
         return this.askUser(args)
+      case "ready_to_save":
+      // Sessions from before saving was the user's still carry finish calls
       case "finish":
-        return await this.finish(state, args, sessionId)
+        return this.readyToSave(state, args)
       default:
         return { result: `Unknown tool ${name}` }
     }
@@ -497,30 +509,63 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
     return { result: "Waiting for the user's answer.", pause: true }
   }
 
-  /** Clean-build gate, then saves a version and binds the session. */
-  private async finish(
-    state: DashboardAgentState,
-    args: Record<string, unknown>,
-    sessionId: string
-  ): Promise<ToolOutcome<DashboardAgentState>> {
+  /** Clean-build gate, then records the proposed slug and name and ends the turn. */
+  private readyToSave(state: DashboardAgentState, args: Record<string, unknown>): ToolOutcome<DashboardAgentState> {
     if (!state.build?.ok) {
-      return { result: "finish rejected: the latest build has errors (or nothing was built yet)" }
+      return { result: "ready_to_save rejected: the latest build has errors (or nothing was built yet)" }
     }
-    const id = state.dashboardId || String(args.id ?? "")
+    const id = state.dashboardId || String(args.id ?? "").trim()
     const name = String(args.name ?? "").trim() || state.name || id
-    const saved = await saveDashboard(this.deps.pool, {
-      id,
-      name,
-      source: state.source,
-      queries: state.queries,
-      layers: state.layers
-    })
-    if (!saved.ok) return { result: `Save failed:\n${saved.errors.join("\n")}` }
-    await this.deps.pool.query("UPDATE app.agent_sessions SET dashboard_id = $2 WHERE id = $1", [sessionId, id])
     return {
-      result: `Saved dashboard "${id}" version ${saved.version}.`,
-      state: { ...state, dashboardId: id, name, saved: { version: saved.version! } },
-      finished: true
+      result: "The user now sees the Save Dashboard button; tell them to review the preview and save.",
+      state: { ...state, name, proposed: { id, name } },
+      pause: true
     }
   }
+}
+
+/** Marks a tool outcome that changed the draft as unsaved. */
+function markDirty(outcome: ToolOutcome<DashboardAgentState>): ToolOutcome<DashboardAgentState> {
+  return outcome.state ? { ...outcome, state: { ...outcome.state, dirty: true } } : outcome
+}
+
+/** Outcome of a user saving a dashboard design session. */
+export type SaveSessionResult =
+  | { ok: true; dashboardId: string; version: number; state: DashboardAgentState }
+  | { ok: false; error: string }
+
+/**
+ * Saves a dashboard design session's draft as a new dashboard version: the
+ * user's action, never the agent's, since saving shows the dashboard to
+ * everyone signed in. The first save takes the slug and name from the
+ * request (else the agent's proposal) and refuses a slug another dashboard
+ * already has; later saves keep the bound slug. Refuses while the latest
+ * build has errors. The caller must not run this while the session's agent
+ * loop is running.
+ */
+export async function saveDashboardSession(
+  pool: pg.Pool,
+  sessionId: string,
+  request: { id?: string; name?: string }
+): Promise<SaveSessionResult> {
+  const row = await pool.query("SELECT client_state FROM app.agent_sessions WHERE id = $1 AND kind = 'dashboard'", [sessionId])
+  if (row.rows.length === 0) return { ok: false, error: "Unknown dashboard session" }
+  const state = row.rows[0].client_state as DashboardAgentState
+  if (!state.build?.ok) {
+    return { ok: false, error: "The latest build has errors; ask the agent to fix them before saving" }
+  }
+  const bound = state.dashboardId !== ""
+  const id = bound ? state.dashboardId : (request.id ?? state.proposed?.id ?? "").trim()
+  const name = (request.name ?? "").trim() || state.name || state.proposed?.name || id
+  if (!bound && (await pool.query("SELECT 1 FROM app.dashboards WHERE id = $1", [id])).rows.length > 0) {
+    return { ok: false, error: `Another dashboard already uses the address #/dashboard/${id}; choose a different one` }
+  }
+  const saved = await saveDashboard(pool, { id, name, source: state.source, queries: state.queries, layers: state.layers })
+  if (!saved.ok) return { ok: false, error: saved.errors.join("\n") }
+  const next: DashboardAgentState = { ...state, dashboardId: id, name, saved: { version: saved.version! }, dirty: false }
+  await pool.query(
+    "UPDATE app.agent_sessions SET client_state = $2, dashboard_id = $3, updated_at = now() WHERE id = $1",
+    [sessionId, JSON.stringify(next), id]
+  )
+  return { ok: true, dashboardId: id, version: saved.version!, state: next }
 }
