@@ -18,7 +18,7 @@ import { formatDateTime, setOfferedLocales } from "./localization.js"
 import { UsersSection } from "./UsersSection.js"
 
 /** Shown as the home page title when the deployment has not set one. */
-const DEFAULT_SITE_TITLE = "mWater Pathfinder"
+const DEFAULT_SITE_TITLE = "mWater Data Integrator"
 
 /** Shared layout keeps descriptions and controls aligned across settings. */
 function SettingsRow({ id, title, description, children }: {

@@ -10,7 +10,7 @@
 #      HTTP://127.0.0.1:8080 (this also creates the DNS record)
 #
 # Then run as root on the server:
-#   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/pathfinder/deploy/upcloud/cloudflare-tunnel.sh
+#   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/data-integrator/deploy/upcloud/cloudflare-tunnel.sh
 #
 # Safe to re-run; a new token replaces the old one. To go back to Caddy:
 # cloudflared service uninstall, systemctl enable --now caddy, and reopen

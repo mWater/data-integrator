@@ -1,5 +1,5 @@
 {
-  "name": "@pathfinder/definitions",
+  "name": "@data-integrator/definitions",
   "version": "0.1.0",
   "description": "Integration definition types: the machine-readable library format",
   "license": "Apache-2.0",

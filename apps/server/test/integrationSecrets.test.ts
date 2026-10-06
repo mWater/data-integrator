@@ -13,7 +13,7 @@ import { installIntegration } from "../src/install.js"
 import { copySecret, deleteSecret, getSecrets, listAllSecrets, setSecret } from "../src/secrets.js"
 import { TileRenderer } from "../src/tiles.js"
 import { RasterStore } from "../src/rasterStore.js"
-import { IntegrationDefinition } from "@pathfinder/definitions"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
@@ -44,7 +44,7 @@ before(async () => {
   db = await startTestDb()
   pool = new pg.Pool({ connectionString: db.url })
   await migrate(pool, MIGRATIONS_DIR)
-  process.env.PATHFINDER_SECRET_KEY = key.toString("hex")
+  process.env.INTEGRATOR_SECRET_KEY = key.toString("hex")
 
   const admin = await createUser(pool, "admin@example.org", "hunter2hunter2", "admin")
   adminBearer = await createApiToken(pool, admin.id, "admin-token")
@@ -60,7 +60,7 @@ before(async () => {
 })
 
 after(async () => {
-  delete process.env.PATHFINDER_SECRET_KEY
+  delete process.env.INTEGRATOR_SECRET_KEY
   server?.close()
   await pool?.end()
   await db?.stop()

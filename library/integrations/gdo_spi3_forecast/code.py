@@ -27,7 +27,7 @@ SOURCE_CLASS_NODATA = 255
 BACKFILL_ISSUES = 12
 SOURCE_VARIANT = "gdo-spi3-forecast-multi-system"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Pathfinder-GDO-SPI3-Forecast/1.0"})
+SESSION.headers.update({"User-Agent": "DataIntegrator-GDO-SPI3-Forecast/1.0"})
 
 
 def get_text(url):

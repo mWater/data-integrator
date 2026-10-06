@@ -1,5 +1,5 @@
 /**
- * Localization tool for the mWater Pathfinder UI.
+ * Localization tool for the mWater Data Integrator UI.
  *
  * Extracts every T`...` string from src/ into src/localizations.json, and can
  * fill in missing translations with a language model or hand them to a human
@@ -137,7 +137,7 @@ async function translateBatch(
         .describe("Translations, one per input phrase, in the same order")
     }),
     system:
-      `You translate user interface strings for mWater Pathfinder, an open-source platform ` +
+      `You translate user interface strings for mWater Data Integrator, an open-source platform ` +
       `for ingesting and harmonizing water and climate data. Translate from English into ` +
       `${localeName}.\n\n` +
       `Rules:\n` +
@@ -147,7 +147,7 @@ async function translateBatch(
       `- Preserve leading and trailing whitespace, ellipses (…), and surrounding punctuation.\n` +
       `- Keep the register terse and functional: these are buttons, headings and status ` +
       `messages, not prose.\n` +
-      `- Leave proper nouns, format names and identifiers untranslated (mWater Pathfinder, ` +
+      `- Leave proper nouns, format names and identifiers untranslated (mWater Data Integrator, ` +
       `PostgreSQL, PostGIS, GeoTIFF, CSV, WorldPop, CHIRPS).\n` +
       (context ? `\n${context}` : ""),
     prompt: JSON.stringify(phrases, null, 2)

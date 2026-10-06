@@ -226,7 +226,7 @@ export function App() {
       return (
         <div className="app">
           <header className="topbar">
-            <a href="#/" className="brand">mWater Pathfinder</a>
+            <a href="#/" className="brand">mWater Data Integrator</a>
             <span style={{ flex: 1 }} />
             <a className="topbar-signin" href="#/dashboards">{T`Sign In`}</a>
           </header>
@@ -257,7 +257,7 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <a href="#/" className="brand">mWater Pathfinder</a>
+        <a href="#/" className="brand">mWater Data Integrator</a>
         <nav>
           <a href="#/" aria-current={activeSection === "home" ? "page" : undefined}>{T`Home`}</a>
           <a href="#/data" aria-current={activeSection === "data" ? "page" : undefined}>{T`Data`}</a>

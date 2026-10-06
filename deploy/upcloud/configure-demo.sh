@@ -4,7 +4,7 @@
 # root on a server already provisioned by setup.sh; safe to re-run (users are
 # created once, passwords and the AOI are re-applied, installs are upserts).
 #
-#   AOI=KEN USERS_FILE=/root/users.txt bash /opt/pathfinder/deploy/upcloud/configure-demo.sh
+#   AOI=KEN USERS_FILE=/root/users.txt bash /opt/data-integrator/deploy/upcloud/configure-demo.sh
 #
 # Configuration (environment variables):
 #   AOI            ISO3 country code for the default area of interest (bbox +
@@ -15,13 +15,13 @@
 #                  role admin (default) | editor | viewer; blank lines and #
 #                  comments ignored. Passwords may contain spaces: everything
 #                  after the email up to a trailing role word is the password
-#   SITE_TITLE     (optional) home page title, e.g. "Pathfinder Kenya"
+#   SITE_TITLE     (optional) home page title, e.g. "Data Integrator Kenya"
 #   SKIP_LIBRARY   default "mwater_admin_regions"; space-separated entry ids to
 #                  leave uninstalled (empty string installs everything)
 #   INSTALL_LIBRARY default 1; set 0 to skip library installs entirely
 #   RUN            default 1; queue a first run of every installed entry, which
 #                  the service's scheduler workers drain in the background
-#                  (watch progress on the Runs page or in journalctl -u pathfinder)
+#                  (watch progress on the Runs page or in journalctl -u data-integrator)
 set -euo pipefail
 
 AOI=${AOI:-}
@@ -30,9 +30,9 @@ SITE_TITLE=${SITE_TITLE:-}
 SKIP_LIBRARY=${SKIP_LIBRARY-mwater_admin_regions}
 INSTALL_LIBRARY=${INSTALL_LIBRARY:-1}
 RUN=${RUN:-1}
-APP_DIR=/opt/pathfinder
-APP_USER=pathfinder
-ENV_FILE=/etc/pathfinder/env
+APP_DIR=/opt/data-integrator
+APP_USER=integrator
+ENV_FILE=/etc/data-integrator/env
 APP_UID=$(id -u "$APP_USER")
 
 run_cli() {
@@ -43,7 +43,7 @@ run_cli() {
 # Settings are plain jsonb rows; the CLI has no settings command, so write
 # them directly and let `migrate` rebuild the AOI shape (it always does).
 psql_app() {
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -qAt -d pathfinder "$@"
+  sudo -u postgres psql -v ON_ERROR_STOP=1 -qAt -d integrator "$@"
 }
 
 echo "==> Users"
@@ -111,7 +111,7 @@ fi
 
 # Settings are read per request, so no restart is needed; the service just
 # has to be up for the changes to show (and to drain the run queue)
-systemctl is-active --quiet pathfinder || systemctl restart pathfinder
+systemctl is-active --quiet data-integrator || systemctl restart data-integrator
 
 if [ "$INSTALL_LIBRARY" = "1" ] && [ "$RUN" = "1" ]; then
   echo "==> Queue first runs"

@@ -40,8 +40,8 @@ jobs:
       # No layer caching yet; the python image build dominates (~5 min).
       - name: Build runtime images
         run: |
-          podman build -q -t localhost/pathfinder-runtime-python:dev runtimes/python
-          podman build -q -t localhost/pathfinder-runtime-node:dev runtimes/node
+          podman build -q -t localhost/integrator-runtime-python:dev runtimes/python
+          podman build -q -t localhost/integrator-runtime-node:dev runtimes/node
 
       - name: Pull test images
         run: |

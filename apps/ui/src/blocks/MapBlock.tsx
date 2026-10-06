@@ -10,7 +10,7 @@ import { GeoJSONSourceSpecification, LngLatBounds, Map as MapLibreMap, Popup } f
 import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "../maplibre.js"
 import { useAppTheme } from "../theme.js"
-import { useTheme, type GeoJsonFeature, type GeoJsonFeatureCollection, type GeoJsonGeometry } from "@pathfinder/kit"
+import { useTheme, type GeoJsonFeature, type GeoJsonFeatureCollection, type GeoJsonGeometry } from "@data-integrator/kit"
 import { AssistantResult, listLayers, MapLayer, styleToken } from "../api.js"
 import { BlockShell } from "./BlockShell.js"
 import { ShowMapInput, ShowMapOverlay } from "./types.js"

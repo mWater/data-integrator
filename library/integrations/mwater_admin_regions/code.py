@@ -105,7 +105,7 @@ def _make_valid(frame, label):
 def run(ctx):
     params = ctx.params or {}
     session = requests.Session()
-    session.headers["User-Agent"] = "Pathfinder-mWater-Admin-Regions/1.0"
+    session.headers["User-Agent"] = "DataIntegrator-mWater-Admin-Regions/1.0"
 
     manifest = _resolve_release(session, params)
     release = manifest["version"]

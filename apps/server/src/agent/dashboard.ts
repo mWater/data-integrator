@@ -89,7 +89,7 @@ export async function initialDashboardState(pool: pg.Pool, dashboardId = "", loc
 }
 
 /** System prompt: kit surface, source and query contracts, and the workflow. */
-const SYSTEM = `You are the dashboard designer for the mWater Pathfinder platform. You design one
+const SYSTEM = `You are the dashboard designer for the mWater Data Integrator platform. You design one
 analytical dashboard per session: a single React source file over a fixed component kit,
 plus named parameterized SQL queries frozen with the dashboard. Viewers never send SQL;
 they execute your stored queries with typed parameter values.

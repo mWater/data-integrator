@@ -8,7 +8,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { Runner } from "@mwater/integration-runner"
-import { IntegrationDefinition } from "@pathfinder/definitions"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "../src/executor.js"
@@ -18,7 +18,7 @@ import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations")
-const PY_IMAGE = "localhost/pathfinder-runtime-python:dev"
+const PY_IMAGE = "localhost/integrator-runtime-python:dev"
 
 async function ok(cmd: string, args: string[]): Promise<boolean> {
   try {

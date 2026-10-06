@@ -1,5 +1,5 @@
 {
-  "name": "@pathfinder/ui",
+  "name": "@data-integrator/ui",
   "version": "0.0.1",
   "private": true,
   "license": "Apache-2.0",
@@ -10,8 +10,8 @@
     "localize": "tsx scripts/localize.ts"
   },
   "dependencies": {
-    "@pathfinder/definitions": "workspace:*",
-    "@pathfinder/kit": "workspace:*",
+    "@data-integrator/definitions": "workspace:*",
+    "@data-integrator/kit": "workspace:*",
     "cronstrue": "^3.24.0",
     "dompurify": "^3.4.13",
     "ez-localize": "^2.15.2",

@@ -1,4 +1,4 @@
-# mWater Pathfinder
+# mWater Data Integrator
 
 Open-source, self-hosted platform that ingests multi-source water and climate data
 (satellite rasters, gridded forecasts, sensor feeds, national databases), harmonizes it,
@@ -8,7 +8,7 @@ agentic AI designs and tests the ingestion pipelines; pipeline code runs in sand
 containers (podman + gVisor).
 
 Developed by [mWater](https://www.mwater.co) for the UNICEF WASH Innovation Hub, with
-initial deployments in Angola and Madagascar. Pathfinder is the reference implementation
+initial deployments in Angola and Madagascar. mWater Data Integrator is the reference implementation
 of the Open Source Data Integrator Platform architecture in [docs/](docs/); the
 architecture is vendor-neutral and does not depend on this implementation.
 

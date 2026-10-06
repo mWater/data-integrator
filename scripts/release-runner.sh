@@ -41,7 +41,7 @@ grep -q "RUNTIME_VERSION = \"$VERSION\"" packages/runner/src/images.ts
 
 echo "== building packages"
 pnpm --filter @mwater/integration-runner build
-pnpm --filter @pathfinder/definitions build
+pnpm --filter @data-integrator/definitions build
 
 echo "== building images"
 podman build -t "$NODE_IMAGE" runtimes/node

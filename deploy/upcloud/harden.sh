@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host guards for a Pathfinder box. Idempotent; run as root by setup.sh on
+# Host guards for a Data Integrator box. Idempotent; run as root by setup.sh on
 # first provisioning and by push.sh on every update.
 #
 # Why each guard exists: job sandboxes and map tile renders are memory-hungry
@@ -9,11 +9,11 @@
 # scheduler disabled until someone notices.
 #
 # Configuration (environment variables):
-#   APP_USER   default pathfinder
+#   APP_USER   default integrator
 #   SWAP_GB    default 4; 0 skips the swapfile
 set -euo pipefail
 
-APP_USER=${APP_USER:-pathfinder}
+APP_USER=${APP_USER:-integrator}
 SWAP_GB=${SWAP_GB:-4}
 APP_UID=$(id -u "$APP_USER")
 
@@ -37,8 +37,8 @@ EOF
 
 echo "--> service pulls the user manager"
 # A service restart (crash, OOM stop, deploy) brings the manager back with it
-mkdir -p /etc/systemd/system/pathfinder.service.d
-cat > /etc/systemd/system/pathfinder.service.d/user-manager.conf <<EOF
+mkdir -p /etc/systemd/system/data-integrator.service.d
+cat > /etc/systemd/system/data-integrator.service.d/user-manager.conf <<EOF
 [Unit]
 Wants=user@${APP_UID}.service
 After=user@${APP_UID}.service
@@ -48,8 +48,8 @@ echo "--> unattended-upgrades leaves the service alone"
 # needrestart would bounce the service mid-run whenever libc or openssl
 # updates; the next deploy restarts it anyway
 mkdir -p /etc/needrestart/conf.d
-cat > /etc/needrestart/conf.d/pathfinder.conf <<'EOF'
-$nrconf{override_rc}{qr(^pathfinder\.service$)} = 0;
+cat > /etc/needrestart/conf.d/data-integrator.conf <<'EOF'
+$nrconf{override_rc}{qr(^data-integrator\.service$)} = 0;
 $nrconf{override_rc}{qr(^user@\d+\.service$)} = 0;
 EOF
 

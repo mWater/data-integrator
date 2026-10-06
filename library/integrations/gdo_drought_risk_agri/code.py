@@ -23,7 +23,7 @@ NODATA = -9999.0
 BACKFILL_MONTHS = 24
 SOURCE_VARIANT = "gdo-rdri-agri-dekadal"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Pathfinder-GDO-RDrI-Agri/1.0"})
+SESSION.headers.update({"User-Agent": "DataIntegrator-GDO-RDrI-Agri/1.0"})
 
 
 def get_text(url):

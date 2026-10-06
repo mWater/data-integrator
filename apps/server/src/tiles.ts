@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile, rename, rm, access, readdir, stat, unlink }
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
-import { BandRendering } from "@pathfinder/definitions"
+import { BandRendering } from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
 import { SourceRef } from "./catalog.js"
 

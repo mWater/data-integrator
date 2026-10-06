@@ -1,12 +1,12 @@
 {
-  "name": "@pathfinder/runtime-node",
+  "name": "@data-integrator/runtime-node",
   "version": "0.1.0",
   "description": "node runtime image: standard Node + curated libraries + job harness",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build:image": "podman build -t localhost/pathfinder-runtime-node:dev .",
+    "build:image": "podman build -t localhost/integrator-runtime-node:dev .",
     "test": "node --import tsx --test test/harness.test.ts"
   },
   "devDependencies": {

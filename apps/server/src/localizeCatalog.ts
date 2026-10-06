@@ -14,7 +14,7 @@ import {
   LocalizedString,
   SUPPORTED_LOCALES,
   toLocalizedString
-} from "@pathfinder/definitions"
+} from "@data-integrator/definitions"
 
 /** A definition draft whose localizable fields may still be plain strings. */
 type DraftDefinition = IntegrationDefinition & Record<string, unknown>

@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
-import { IntegrationDefinition } from "@pathfinder/definitions"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 import { getHomeSummary } from "../src/home.js"
 import { installIntegration, validateDefinition } from "../src/install.js"
 import { ExecutorDeps } from "../src/executor.js"
@@ -150,15 +150,15 @@ test("a draft integration is not reported as a problem and cannot be run", async
 
 test("the title comes from settings and falls back to the product name", async () => {
   assert.equal((await getHomeSummary(pool, null, NO_AI)).title, DEFAULT_SITE_TITLE)
-  await setSetting(pool, SITE_TITLE_KEY, "Pathfinder Madagascar")
-  assert.equal((await getHomeSummary(pool, null, NO_AI)).title, "Pathfinder Madagascar")
+  await setSetting(pool, SITE_TITLE_KEY, "Data Integrator Madagascar")
+  assert.equal((await getHomeSummary(pool, null, NO_AI)).title, "Data Integrator Madagascar")
   // Clearing the setting restores the default rather than blanking the heading
   await setSetting(pool, SITE_TITLE_KEY, null)
   assert.equal((await getHomeSummary(pool, null, NO_AI)).title, DEFAULT_SITE_TITLE)
 })
 
 test("parseSiteTitle trims, caps length, and treats blank as unset", () => {
-  assert.equal(parseSiteTitle({ title: "  Pathfinder Madagascar  " }), "Pathfinder Madagascar")
+  assert.equal(parseSiteTitle({ title: "  Data Integrator Madagascar  " }), "Data Integrator Madagascar")
   assert.equal(parseSiteTitle({ title: "   " }), null)
   assert.equal(parseSiteTitle({}), null)
   assert.equal(parseSiteTitle({ title: "x".repeat(200) })?.length, 120)

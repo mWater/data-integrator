@@ -5,7 +5,7 @@ import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
 import { CatalogLayerState, JobHandle, JobPayload, Runner, parseJobOutput } from "@mwater/integration-runner"
-import { IntegrationDefinition, RunResult } from "@pathfinder/definitions"
+import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
 import {
   applyRows,
   applyStagedTable,
@@ -91,7 +91,7 @@ export interface RunRow {
 }
 
 /** Container label carrying the run id, so orphaned job containers can be found. */
-export const RUN_LABEL = "pathfinder.run"
+export const RUN_LABEL = "data-integrator.run"
 
 /**
  * Claims the next queued run: flips it to running under this worker's lease.
@@ -601,6 +601,6 @@ async function catalogState(
 
 /** Secret key or a clear error when definitions need secrets and none is configured. */
 function requireKey(deps: ExecutorDeps): Buffer {
-  if (!deps.secretKey) throw new Error("PATHFINDER_SECRET_KEY is not configured")
+  if (!deps.secretKey) throw new Error("INTEGRATOR_SECRET_KEY is not configured")
   return deps.secretKey
 }

@@ -296,7 +296,7 @@ def run(ctx):
     params = ctx.params or {}
     requested_years = _parse_years(params.get("years"))
     session = requests.Session()
-    session.headers.update({"User-Agent": "Pathfinder-GHSL/1.0"})
+    session.headers.update({"User-Agent": "DataIntegrator-GHSL/1.0"})
     available = _available_epochs(session)
     current_year = datetime.now(timezone.utc).year
 

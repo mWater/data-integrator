@@ -6,7 +6,7 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
-import { BandSpec, IntegrationDefinition } from "@pathfinder/definitions"
+import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { snapshotSources } from "./catalog.js"
 import { AgentService } from "./agent/service.js"
@@ -63,16 +63,16 @@ import {
 } from "./auth.js"
 import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
-import { SUPPORTED_LOCALES } from "@pathfinder/definitions"
+import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
 
 /** Static assets directory (demo map page). */
 const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "static")
 
-/** Kit runtime assets directory (@pathfinder/kit/assets). */
+/** Kit runtime assets directory (@data-integrator/kit/assets). */
 const KIT_ASSETS = path.join(
-  path.dirname(createRequire(import.meta.url).resolve("@pathfinder/kit")),
+  path.dirname(createRequire(import.meta.url).resolve("@data-integrator/kit")),
   "..",
   "assets"
 )
@@ -418,7 +418,7 @@ async function route(
     try {
       secretKey = loadSecretKey()
     } catch {
-      json(res, 503, { error: "PATHFINDER_SECRET_KEY is not configured on this deployment" })
+      json(res, 503, { error: "INTEGRATOR_SECRET_KEY is not configured on this deployment" })
       return
     }
     const body = await readJsonBody(req)

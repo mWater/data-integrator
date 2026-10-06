@@ -1,6 +1,6 @@
 /** Chart block: a declarative kit Chart bound to a stored query result. */
 
-import { Chart } from "@pathfinder/kit"
+import { Chart } from "@data-integrator/kit"
 import { AssistantResult } from "../api.js"
 import { BlockShell } from "./BlockShell.js"
 import { ShowChartInput } from "./types.js"

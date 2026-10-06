@@ -1,7 +1,7 @@
 {
-  "name": "@pathfinder/server",
+  "name": "@data-integrator/server",
   "version": "0.1.0",
-  "description": "mWater Pathfinder server: API, scheduler, pipeline engine, agent service",
+  "description": "mWater Data Integrator server: API, scheduler, pipeline engine, agent service",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
@@ -18,8 +18,8 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.33",
     "@ai-sdk/openai-compatible": "^3.0.39",
-    "@pathfinder/definitions": "workspace:*",
-    "@pathfinder/kit": "workspace:*",
+    "@data-integrator/definitions": "workspace:*",
+    "@data-integrator/kit": "workspace:*",
     "@mwater/integration-runner": "workspace:*",
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "@tailwindcss/cli": "^4.3.3",

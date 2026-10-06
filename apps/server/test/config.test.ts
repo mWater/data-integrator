@@ -38,7 +38,7 @@ test("loadConfig: rejects non-postgres DATABASE_URL", () => {
 })
 
 test("loadConfig: rejects a malformed secret key", () => {
-  assert.throws(() => loadConfig({ DATABASE_URL: DB, PATHFINDER_SECRET_KEY: "tooshort" }), /32 bytes/)
+  assert.throws(() => loadConfig({ DATABASE_URL: DB, INTEGRATOR_SECRET_KEY: "tooshort" }), /32 bytes/)
 })
 
 test("loadConfig: basemap off disables the proxy", () => {
@@ -75,7 +75,7 @@ test("parseDefaultAoi: rejects malformed values", () => {
 
 // resolveAoi: the executor's tri-state resolution
 import { resolveAoi } from "../src/executor.js"
-import { IntegrationDefinition } from "@pathfinder/definitions"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 
 const BASE = { id: "t", name: "T", trigger: {}, runtime: "node", destinations: [], code: "", contract: 2 } as unknown as IntegrationDefinition
 const DEFAULT = { bbox: [11.7, -18.1, 24.1, -4.4] as [number, number, number, number], countries: ["AGO"] }

@@ -9,7 +9,7 @@ import { Runner, parseJobOutput } from "@mwater/integration-runner"
 
 const execFileP = promisify(execFile)
 /** Image under test; the release script points this at the versioned build. */
-const IMAGE = process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/pathfinder-runtime-python:dev"
+const IMAGE = process.env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev"
 
 async function ok(cmd: string, args: string[]): Promise<boolean> {
   try {

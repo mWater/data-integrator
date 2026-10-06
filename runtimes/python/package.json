@@ -1,12 +1,12 @@
 {
-  "name": "@pathfinder/runtime-python",
+  "name": "@data-integrator/runtime-python",
   "version": "0.1.0",
   "description": "python runtime image: geospatial stack + job harness",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build:image": "podman build -t localhost/pathfinder-runtime-python:dev .",
+    "build:image": "podman build -t localhost/integrator-runtime-python:dev .",
     "test": "node --import tsx --test test/harness.test.ts"
   },
   "devDependencies": {

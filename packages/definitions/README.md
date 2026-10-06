@@ -1,4 +1,4 @@
-# @pathfinder/definitions
+# @data-integrator/definitions
 
 TypeScript types for integration definitions: the machine-readable library format
 described in Architecture.md. A definition declares source, trigger, AOI, inputs,

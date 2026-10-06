@@ -28,7 +28,7 @@ MAX_ABS_ANOMALY = 10.0
 BACKFILL_MONTHS = 24
 SOURCE_VARIANT = "gdo-smi-anomaly-dekadal"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Pathfinder-GDO-Soil-Moisture-Anomaly/1.0"})
+SESSION.headers.update({"User-Agent": "DataIntegrator-GDO-Soil-Moisture-Anomaly/1.0"})
 
 
 def get_text(url):

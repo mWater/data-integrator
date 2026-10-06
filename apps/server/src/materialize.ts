@@ -11,7 +11,7 @@ import {
   IntegrationDefinition,
   RasterInputRef,
   TableInputRef
-} from "@pathfinder/definitions"
+} from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
 import { snapshotSources } from "./catalog.js"
 

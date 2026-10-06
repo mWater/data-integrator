@@ -22,7 +22,7 @@ export function HowItWorks() {
     <main className="list-page how-page">
       <h1>{T`How it works`}</h1>
       <p className="dim">
-        {T`mWater Pathfinder pulls public and partner data into one local database, keeps it current, and lets you question, map and chart it. Here is what the pieces are called and how they fit.`}
+        {T`mWater Data Integrator pulls public and partner data into one local database, keeps it current, and lets you question, map and chart it. Here is what the pieces are called and how they fit.`}
       </p>
 
       <FlowDiagram />

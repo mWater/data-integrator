@@ -1,5 +1,5 @@
 {
-  "name": "pathfinder",
+  "name": "data-integrator",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.4.0",

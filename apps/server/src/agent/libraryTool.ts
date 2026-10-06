@@ -7,7 +7,7 @@
  */
 
 import pg from "pg"
-import { IntegrationDefinition, LocalizedString, localizeString } from "@pathfinder/definitions"
+import { IntegrationDefinition, LocalizedString, localizeString } from "@data-integrator/definitions"
 import { listLibrary, loadLibraryEntry } from "../library.js"
 
 /** Words too short or too common to discriminate between entries. */

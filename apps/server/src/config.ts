@@ -32,7 +32,7 @@ export interface AppConfig {
   uiDistPath: string | null
   /** VITE_DEV_URL: live Vite origin for `pnpm dev`; null serves the built SPA */
   viteDevUrl: string | null
-  /** PATHFINDER_SECRET_KEY parsed to 32 bytes; null when unset */
+  /** INTEGRATOR_SECRET_KEY parsed to 32 bytes; null when unset */
   secretKey: Buffer | null
   /** RUNTIME_IMAGE_PYTHON / RUNTIME_IMAGE_NODE job images */
   runtimeImages: { python: string; node: string }
@@ -96,7 +96,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   let secretKey: Buffer | null = null
-  if (env.PATHFINDER_SECRET_KEY ?? env.INTEGRATOR_SECRET_KEY) {
+  if (env.INTEGRATOR_SECRET_KEY ?? env.PATHFINDER_SECRET_KEY) {
     try {
       secretKey = loadSecretKey(env)
     } catch (err) {
@@ -165,8 +165,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tileRenderConcurrency,
     sandboxMemoryMb,
     runtimeImages: {
-      python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/pathfinder-runtime-python:dev",
-      node: env.RUNTIME_IMAGE_NODE ?? "localhost/pathfinder-runtime-node:dev"
+      python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
+      node: env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"
     },
     agent: {
       baseUrl: llmBaseUrl,

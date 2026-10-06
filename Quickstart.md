@@ -35,8 +35,8 @@ podman run -d --name integrator-pg \
 ```sh
 pnpm install
 pnpm -r build                       # packages, server, UI
-podman build -t localhost/pathfinder-runtime-python:dev runtimes/python/
-podman build -t localhost/pathfinder-runtime-node:dev runtimes/node/
+podman build -t localhost/integrator-runtime-python:dev runtimes/python/
+podman build -t localhost/integrator-runtime-node:dev runtimes/node/
 ```
 
 ## Configure
@@ -62,7 +62,7 @@ interest — lives in the Settings page, not the environment.
 | `AGENT_MODEL` | `openai/gpt-5.6-sol` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |
 | `AGENT_EFFORT` | `medium` for the default model, else model default | reasoning effort for OpenRouter models: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets; `openssl rand -base64 32`. Only needed once definitions declare secrets |
-| `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/pathfinder-runtime-{python,node}:dev` | runtime image overrides |
+| `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/integrator-runtime-{python,node}:dev` | runtime image overrides |
 
 ```sh
 export DATABASE_URL=postgres://postgres:changeme@127.0.0.1:15432/postgres

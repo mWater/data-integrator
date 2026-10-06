@@ -12,7 +12,7 @@ import { listIntegrations } from "./integrations.js"
 import { listLibrary } from "./library.js"
 import { DEFAULT_SITE_TITLE, getSiteTitle } from "./settings.js"
 import { listSources } from "./sources.js"
-import { LocalizedString } from "@pathfinder/definitions"
+import { LocalizedString } from "@data-integrator/definitions"
 
 /** Rows each home panel shows before deferring to its section page. */
 const PANEL_LIMIT = 4

@@ -18,7 +18,7 @@
 # hosts.txt: one host per line, "name ip aoi [nolib]"; # comments allowed.
 #   kenya     94.237.1.2   KEN
 #   internal  94.237.1.5   global  nolib
-# name becomes the site title ("Pathfinder Kenya"), aoi is an ISO3 code or
+# name becomes the site title ("Data Integrator Kenya"), aoi is an ISO3 code or
 # "global", nolib installs nothing from the library.
 #
 # Environment:
@@ -49,7 +49,7 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$hosts_file"
 [ ${#hosts[@]} -gt 0 ] || { echo "no hosts in $hosts_file" >&2; exit 1; }
 
-title_for() { local n=$1; echo "Pathfinder ${n^}"; }
+title_for() { local n=$1; echo "Data Integrator ${n^}"; }
 
 # Runs one host's step in the background, logging to $LOG_DIR/<name>.<cmd>.log
 each_host() {
@@ -82,21 +82,21 @@ wait_for_ssh() {
 do_setup() {
   local name=$1 ip=$2
   wait_for_ssh "$ip"
-  rsync -a -e "$SSH" --exclude node_modules --exclude .git/hooks ./ "root@$ip:/opt/pathfinder/"
-  $SSH "root@$ip" "ADMIN_EMAIL=$ADMIN_EMAIL OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-} bash /opt/pathfinder/$HERE/setup.sh"
+  rsync -a -e "$SSH" --exclude node_modules --exclude .git/hooks ./ "root@$ip:/opt/data-integrator/"
+  $SSH "root@$ip" "ADMIN_EMAIL=$ADMIN_EMAIL OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-} bash /opt/data-integrator/$HERE/setup.sh"
 }
 
 do_configure() {
   local name=$1 ip=$2 aoi=$3 flags=$4 lib=1
   case " $flags " in *" nolib "*) lib=0 ;; esac
   scp -q -o StrictHostKeyChecking=accept-new -o BatchMode=yes "$USERS_FILE" "root@$ip:/root/users.txt"
-  $SSH "root@$ip" "AOI=$aoi SITE_TITLE='$(title_for "$name")' USERS_FILE=/root/users.txt INSTALL_LIBRARY=$lib bash /opt/pathfinder/$HERE/configure-demo.sh"
+  $SSH "root@$ip" "AOI=$aoi SITE_TITLE='$(title_for "$name")' USERS_FILE=/root/users.txt INSTALL_LIBRARY=$lib bash /opt/data-integrator/$HERE/configure-demo.sh"
 }
 
 do_users() {
   local name=$1 ip=$2
   scp -q -o StrictHostKeyChecking=accept-new -o BatchMode=yes "$USERS_FILE" "root@$ip:/root/users.txt"
-  $SSH "root@$ip" "USERS_FILE=/root/users.txt INSTALL_LIBRARY=0 bash /opt/pathfinder/$HERE/configure-demo.sh"
+  $SSH "root@$ip" "USERS_FILE=/root/users.txt INSTALL_LIBRARY=0 bash /opt/data-integrator/$HERE/configure-demo.sh"
 }
 
 do_push() {
@@ -107,7 +107,7 @@ do_push() {
 # The server CLI on a host, as the app user with its env; stdin passes through
 remote_cli() {
   local ip=$1; shift
-  $SSH "root@$ip" "sudo -H -u pathfinder env XDG_RUNTIME_DIR=/run/user/\$(id -u pathfinder) bash -c 'set -a; . /etc/pathfinder/env; set +a; cd /opt/pathfinder && node apps/server/dist/cli.js $*'"
+  $SSH "root@$ip" "sudo -H -u integrator env XDG_RUNTIME_DIR=/run/user/\$(id -u integrator) bash -c 'set -a; . /etc/data-integrator/env; set +a; cd /opt/data-integrator && node apps/server/dist/cli.js $*'"
 }
 
 ip_of() {
@@ -122,7 +122,7 @@ ip_of() {
 
 do_rerun() {
   local name=$1 ip=$2
-  $SSH "root@$ip" "sudo -u postgres psql -qAt -d pathfinder -c \"
+  $SSH "root@$ip" "sudo -u postgres psql -qAt -d integrator -c \"
     INSERT INTO app.runs (integration_id, trigger, status)
     SELECT i.id, 'manual', 'queued' FROM app.integrations i
     WHERE i.enabled AND i.status = 'ready'
@@ -135,7 +135,7 @@ do_install() {
   case " $flags " in *" nolib "*) echo "nolib host, skipped"; return 0 ;; esac
   for id in "${INSTALL_IDS[@]}"; do
     remote_cli "$ip" install "library/integrations/$id"
-    $SSH "root@$ip" "sudo -u postgres psql -qAt -d pathfinder -c \"
+    $SSH "root@$ip" "sudo -u postgres psql -qAt -d integrator -c \"
       INSERT INTO app.runs (integration_id, trigger, status) VALUES ('$id', 'manual', 'queued')
       ON CONFLICT DO NOTHING RETURNING integration_id || '  queued'\""
   done
@@ -148,7 +148,7 @@ do_cli() {
 
 do_status() {
   local name=$1 ip=$2
-  $SSH "root@$ip" "systemctl is-active pathfinder; sudo -u postgres psql -qAt -d pathfinder -c \"SELECT status || ' ' || count(*) FROM app.runs GROUP BY status ORDER BY status\"; df -h /var/lib/pathfinder | tail -1"
+  $SSH "root@$ip" "systemctl is-active data-integrator; sudo -u postgres psql -qAt -d integrator -c \"SELECT status || ' ' || count(*) FROM app.runs GROUP BY status ORDER BY status\"; df -h /var/lib/data-integrator | tail -1"
 }
 
 # Runs the read-only health report on every host in parallel and prints the
@@ -215,7 +215,7 @@ case "$cmd" in
     for h in "${hosts[@]}"; do
       read -r name ip _ <<<"$h"
       [ "$name" = "$want" ] || continue
-      $SSH "root@$ip" "CLOUDFLARE_TUNNEL_TOKEN=$token bash /opt/pathfinder/$HERE/cloudflare-tunnel.sh"
+      $SSH "root@$ip" "CLOUDFLARE_TUNNEL_TOKEN=$token bash /opt/data-integrator/$HERE/cloudflare-tunnel.sh"
       exit
     done
     echo "no host named $want in $hosts_file" >&2; exit 1 ;;

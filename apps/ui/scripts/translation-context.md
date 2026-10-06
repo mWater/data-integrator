@@ -39,7 +39,7 @@ government statistics or GIS work, prefer it over a coinage.
   it, but never reorder what each one means.
 - Preserve leading and trailing spaces, ellipses (…), middots (·) and
   surrounding punctuation exactly.
-- Do not translate: mWater Pathfinder, PostgreSQL, PostGIS, GeoTIFF, COG, CSV,
+- Do not translate: mWater Data Integrator, PostgreSQL, PostGIS, GeoTIFF, COG, CSV,
   SQL, WorldPop, CHIRPS, OpenStreetMap, or any other product, format or dataset
   name.
 - Where English uses sentence case for headings and title case for buttons,

@@ -32,10 +32,10 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^3.0.0
         version: 3.0.0(ai@7.0.55(zod@4.4.3))(zod@4.4.3)
-      '@pathfinder/definitions':
+      '@data-integrator/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@pathfinder/kit':
+      '@data-integrator/kit':
         specifier: workspace:*
         version: link:../../packages/kit
       '@tailwindcss/cli':
@@ -78,10 +78,10 @@ importers:
 
   apps/ui:
     dependencies:
-      '@pathfinder/definitions':
+      '@data-integrator/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@pathfinder/kit':
+      '@data-integrator/kit':
         specifier: workspace:*
         version: link:../../packages/kit
       cronstrue:

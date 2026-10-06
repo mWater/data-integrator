@@ -12,9 +12,9 @@ set -euo pipefail
 
 TARGET=${1:?usage: push.sh root@<ip>}
 IMAGES=${IMAGES:-0}
-APP_DIR=/opt/pathfinder
-APP_USER=pathfinder
-ENV_FILE=/etc/pathfinder/env
+APP_DIR=/opt/data-integrator
+APP_USER=integrator
+ENV_FILE=/etc/data-integrator/env
 
 # Push the whole checkout regardless of where this was invoked from
 cd "$(dirname "$0")/../.."
@@ -42,8 +42,8 @@ as_app "pnpm -r build"
 
 if [ "$IMAGES" = "1" ]; then
   echo "--> runtime images"
-  as_app "podman build -t localhost/pathfinder-runtime-python:dev runtimes/python/"
-  as_app "podman build -t localhost/pathfinder-runtime-node:dev runtimes/node/"
+  as_app "podman build -t localhost/integrator-runtime-python:dev runtimes/python/"
+  as_app "podman build -t localhost/integrator-runtime-node:dev runtimes/node/"
 fi
 
 # serve does not migrate at boot, so a schema change lands here or not at all
@@ -54,9 +54,9 @@ echo "--> host guards"
 APP_USER="$APP_USER" bash "$APP_DIR/deploy/upcloud/harden.sh"
 
 echo "--> restart"
-systemctl restart pathfinder
-systemctl is-active pathfinder
+systemctl restart data-integrator
+systemctl is-active data-integrator
 REMOTE
 
 echo
-echo "Done. Logs: ssh $TARGET journalctl -u pathfinder -f"
+echo "Done. Logs: ssh $TARGET journalctl -u data-integrator -f"

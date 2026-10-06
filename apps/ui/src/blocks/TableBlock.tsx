@@ -1,6 +1,6 @@
 /** Table block: a query result rendered like the data browser, with CSV download. */
 
-import { DataTable } from "@pathfinder/kit"
+import { DataTable } from "@data-integrator/kit"
 import { AssistantResult } from "../api.js"
 import { BlockShell } from "./BlockShell.js"
 import { downloadCsv } from "./csv.js"

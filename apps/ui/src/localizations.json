@@ -1927,12 +1927,12 @@
     },
     {
       "_base": "en",
-      "en": "The heading on the home page. Name it after the deployment, for example \"Pathfinder Madagascar\".",
-      "fr": "Le titre de la page d’accueil. Utilisez le nom du déploiement, par exemple « Pathfinder Madagascar ».",
-      "pt": "O título da página inicial. Use o nome da implantação, por exemplo, \"Pathfinder Madagascar\".",
-      "es": "El encabezado de la página de inicio. Usa el nombre de la implementación, por ejemplo, \"Pathfinder Madagascar\".",
-      "mg": "Ny lohateny eo amin'ny pejy fandraisana. Omeo ny anaran'ny fametrahana, ohatra \"Pathfinder Madagascar\".",
-      "sw": "Kichwa kwenye ukurasa wa mwanzo. Kipe jina la utekelezaji, kwa mfano \"Pathfinder Madagascar\"."
+      "en": "The heading on the home page. Name it after the deployment, for example \"Data Integrator Madagascar\".",
+      "fr": "Le titre de la page d’accueil. Utilisez le nom du déploiement, par exemple « Data Integrator Madagascar ».",
+      "pt": "O título da página inicial. Use o nome da implantação, por exemplo, \"Data Integrator Madagascar\".",
+      "es": "El encabezado de la página de inicio. Usa el nombre de la implementación, por ejemplo, \"Data Integrator Madagascar\".",
+      "mg": "Ny lohateny eo amin'ny pejy fandraisana. Omeo ny anaran'ny fametrahana, ohatra \"Data Integrator Madagascar\".",
+      "sw": "Kichwa kwenye ukurasa wa mwanzo. Kipe jina la utekelezaji, kwa mfano \"Data Integrator Madagascar\"."
     },
     {
       "_base": "en",
@@ -4870,12 +4870,12 @@
     },
     {
       "_base": "en",
-      "en": "mWater Pathfinder pulls public and partner data into one local database, keeps it current, and lets you question, map and chart it. Here is what the pieces are called and how they fit.",
-      "fr": "mWater Pathfinder rassemble les données publiques et celles des partenaires dans une base de données locale, les tient à jour et vous permet de les interroger, de les cartographier et de créer des graphiques. Voici les différents éléments et leur articulation.",
-      "pt": "O mWater Pathfinder reúne dados públicos e de parceiros numa única base de dados local, mantém-nos atualizados e permite consultá-los, mapeá-los e criar gráficos. Veja como se chamam os componentes e como se relacionam.",
-      "es": "mWater Pathfinder reúne datos públicos y de socios en una base de datos local, los mantiene actualizados y permite consultarlos, cartografiarlos y representarlos en gráficos. Estos son los nombres de los componentes y cómo encajan.",
-      "mg": "Ny mWater Pathfinder dia mampiditra angona ho an'ny daholobe sy avy amin'ny mpiara-miombon'antoka ao anaty banky angona iray eo an-toerana, mitazona azy ho vaovao, ary ahafahanao manontany, manao sarintany sy kisary amin'izany. Ireto ny anaran'ireo singa sy ny fomba ifandraisany.",
-      "sw": "mWater Pathfinder hukusanya data za umma na za washirika katika hifadhidata moja ya ndani, huzisasisha, na hukuwezesha kuziuliza maswali, kuzichora kwenye ramani na kuzionyesha kwa chati. Haya ndiyo majina ya sehemu hizo na jinsi zinavyoungana."
+      "en": "mWater Data Integrator pulls public and partner data into one local database, keeps it current, and lets you question, map and chart it. Here is what the pieces are called and how they fit.",
+      "fr": "mWater Data Integrator rassemble les données publiques et celles des partenaires dans une base de données locale, les tient à jour et vous permet de les interroger, de les cartographier et de créer des graphiques. Voici les différents éléments et leur articulation.",
+      "pt": "O mWater Data Integrator reúne dados públicos e de parceiros numa única base de dados local, mantém-nos atualizados e permite consultá-los, mapeá-los e criar gráficos. Veja como se chamam os componentes e como se relacionam.",
+      "es": "mWater Data Integrator reúne datos públicos y de socios en una base de datos local, los mantiene actualizados y permite consultarlos, cartografiarlos y representarlos en gráficos. Estos son los nombres de los componentes y cómo encajan.",
+      "mg": "Ny mWater Data Integrator dia mampiditra angona ho an'ny daholobe sy avy amin'ny mpiara-miombon'antoka ao anaty banky angona iray eo an-toerana, mitazona azy ho vaovao, ary ahafahanao manontany, manao sarintany sy kisary amin'izany. Ireto ny anaran'ireo singa sy ny fomba ifandraisany.",
+      "sw": "mWater Data Integrator hukusanya data za umma na za washirika katika hifadhidata moja ya ndani, huzisasisha, na hukuwezesha kuziuliza maswali, kuzichora kwenye ramani na kuzionyesha kwa chati. Haya ndiyo majina ya sehemu hizo na jinsi zinavyoungana."
     },
     {
       "_base": "en",
@@ -6568,7 +6568,7 @@
     "Saving archives a new definition version. Existing data is unaffected; widening the area needs a backfill.",
     "New chat",
     "Show Details",
-    "The heading on the home page. Name it after the deployment, for example \"Pathfinder Madagascar\".",
+    "The heading on the home page. Name it after the deployment, for example \"Data Integrator Madagascar\".",
     "(default)",
     "Only administrators can change settings.",
     "Integrations installed without an area of interest are clipped to this at run time. Set it once to point every library integration at your country.",

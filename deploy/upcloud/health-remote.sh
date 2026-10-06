@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Health report for one Pathfinder box, printed as a few indented lines.
+# Health report for one Data Integrator box, printed as a few indented lines.
 # Runs as root on the box (fleet.sh health streams it over ssh). Read-only.
 # Exit status 1 when anything needs attention, so a cron wrapper can alert.
 #
-# Environment: APP_USER (default pathfinder), APP_DIR (default /opt/pathfinder)
+# Environment: APP_USER (default integrator), APP_DIR (default /opt/data-integrator)
 set -uo pipefail
 
-APP_USER=${APP_USER:-pathfinder}
-APP_DIR=${APP_DIR:-/opt/pathfinder}
+APP_USER=${APP_USER:-integrator}
+APP_DIR=${APP_DIR:-/opt/data-integrator}
 APP_UID=$(id -u "$APP_USER" 2>/dev/null || echo 1000)
 problems=()
 
@@ -21,17 +21,17 @@ state() { # label unit → coloured "label state"
 }
 
 build=$(git -c safe.directory='*' -C "$APP_DIR" log -1 --format=%h 2>/dev/null || echo "?")
-since=$(systemctl show -p ActiveEnterTimestamp --value pathfinder 2>/dev/null)
+since=$(systemctl show -p ActiveEnterTimestamp --value data-integrator 2>/dev/null)
 printf '  %sbuild %s, service since %s%s\n' "$DIM" "$build" "${since:-never}" "$OFF"
 
 # Services
 printf '  '
-state service pathfinder
+state service data-integrator
 state "user manager" "user@${APP_UID}.service"
 systemctl list-unit-files cloudflared.service >/dev/null 2>&1 && state tunnel cloudflared
-if sudo -u postgres psql -qAt -d pathfinder -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else printf 'db %s ' "$(bad down)"; fi
+if sudo -u postgres psql -qAt -d integrator -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else printf 'db %s ' "$(bad down)"; fi
 if [ -n "$since" ]; then
-  sched=$(journalctl -u pathfinder --since "$since" --no-pager 2>/dev/null | grep -o 'Scheduler running\|No job runner available' | head -1)
+  sched=$(journalctl -u data-integrator --since "$since" --no-pager 2>/dev/null | grep -o 'Scheduler running\|No job runner available' | head -1)
   case "$sched" in
     "Scheduler running") printf 'scheduler %s' "$(good running)" ;;
     "No job runner"*) printf 'scheduler %s' "$(bad disabled)" ;;
@@ -43,7 +43,7 @@ printf '\n'
 # Host
 read -r mem_total mem_avail <<<"$(free -m | awk 'NR==2{print $2, $7}')"
 swap=$(swapon --show --noheadings 2>/dev/null | awk '{print $3}' | head -1)
-disk=$(df -h /var/lib/pathfinder 2>/dev/null | awk 'NR==2{print $5}')
+disk=$(df -h /var/lib/data-integrator 2>/dev/null | awk 'NR==2{print $5}')
 disk_pct=${disk%\%}
 newest=$(ls /boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 | sed 's#.*vmlinuz-##')
 printf '  ram %s MB (%s free) | swap %s | disk %s | up %s | kernel %s\n' \
@@ -55,7 +55,7 @@ printf '  ram %s MB (%s free) | swap %s | disk %s | up %s | kernel %s\n' \
 [ "${mem_avail:-0}" -lt 1024 ] && bad "only ${mem_avail} MB free" >/dev/null
 
 # Runs
-q() { sudo -u postgres psql -qAt -d pathfinder -c "$1" 2>/dev/null; }
+q() { sudo -u postgres psql -qAt -d integrator -c "$1" 2>/dev/null; }
 read -r queued running ok24 failed24 <<<"$(q "SELECT count(*) FILTER (WHERE status='queued'), count(*) FILTER (WHERE status='running'),
   count(*) FILTER (WHERE status='succeeded' AND scheduled_at > now() - interval '24 hours'),
   count(*) FILTER (WHERE status IN ('failed','timeout') AND scheduled_at > now() - interval '24 hours') FROM app.runs" | tr '|' ' ')"

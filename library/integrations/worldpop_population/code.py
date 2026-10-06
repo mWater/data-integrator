@@ -286,7 +286,7 @@ def run(ctx):
     params = ctx.params or {}
     requested_years = _parse_years(params.get("years"))
     session = requests.Session()
-    session.headers.update({"User-Agent": "Pathfinder-WorldPop/1.0"})
+    session.headers.update({"User-Agent": "DataIntegrator-WorldPop/1.0"})
     release = _latest_release(session)
     listing = _release_listing(session, release)
     current_year = datetime.now(timezone.utc).year
