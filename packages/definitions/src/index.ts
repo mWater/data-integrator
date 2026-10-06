@@ -318,8 +318,16 @@ export interface RasterLayerDestination {
   description?: string
   /** time-series retains promoted snapshots as history; current-only prunes superseded */
   temporality: "time-series" | "current-only"
+  /** How much history a time-series layer keeps; absent keeps every snapshot */
+  retention?: RasterRetention
   /** Bands of the layer */
   bands: BandSpec[]
+}
+
+/** History window of a time-series raster layer. */
+export interface RasterRetention {
+  /** Snapshots whose observation ended more than this many days ago are deleted (the current snapshot is always kept) */
+  days: number
 }
 
 /** One band of a raster layer. */

@@ -145,7 +145,9 @@ Destinations:
   "number"|"integer"|"boolean"|"date"|"datetime"|"geometry"|"enum"|"json",
   enumValues? [{id, name}] when type is "enum", units?}]}
 - {kind: "raster", layerId, name?, description? [one sentence on what the layer
-  shows, shown in the data catalog], temporality: "time-series"|"current-only", bands:
+  shows, shown in the data catalog], temporality: "time-series"|"current-only",
+  retention? {days} [time-series only: snapshots observed more than days ago are
+  deleted; set it for daily or finer layers whose history grows without bound], bands:
   [{id, name?, units?, nodata?, rendering? {resampling: "nearest"|"average", defaultRange?
   {min, max}, colorMap? [{value, color: "#rrggbb" or "#rrggbbaa"}]}}]}
 Every raster band MUST declare nodata (matching the value written into the

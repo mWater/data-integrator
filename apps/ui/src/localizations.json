@@ -6368,7 +6368,7 @@
       "fr": "Terminez la session de conception avant de lancer l’exécution",
       "pt": "Conclua a sessão de design antes de executar",
       "es": "Termine la sesión de diseño antes de ejecutar",
-      "mg": "",
+      "mg": "Farano ny fotoam-pandrafetana alohan'ny hampandehanana azy",
       "sw": "Maliza kipindi cha usanifu kabla ya kuendesha"
     },
     {
@@ -6377,7 +6377,7 @@
       "fr": "L’intégration a besoin d’un identifiant",
       "pt": "A integração precisa de uma credencial",
       "es": "La integración necesita una credencial",
-      "mg": "",
+      "mg": "Mila angona fanamarinana iray ilay fampifandraisana",
       "sw": "Muunganisho unahitaji kitambulisho"
     },
     {
@@ -6386,7 +6386,7 @@
       "fr": "L’intégration a besoin d’identifiants",
       "pt": "A integração precisa de credenciais",
       "es": "La integración necesita credenciales",
-      "mg": "",
+      "mg": "Mila angona fanamarinana ilay fampifandraisana",
       "sw": "Muunganisho unahitaji vitambulisho"
     },
     {
@@ -6395,7 +6395,7 @@
       "fr": "Les valeurs sont stockées chiffrées avec cette intégration et n’entrent jamais dans la conversation.",
       "pt": "Os valores são armazenados criptografados com esta integração e nunca entram na conversa.",
       "es": "Los valores se almacenan cifrados con esta integración y nunca entran en la conversación.",
-      "mg": "",
+      "mg": "Tehirizina amin’ny endrika voafina ao amin’ity fampifandraisana ity ireo sanda ary tsy tafiditra amin’ny resaka mihitsy.",
       "sw": "Thamani huhifadhiwa zikiwa zimesimbwa pamoja na muunganisho huu na haziingii kamwe kwenye mazungumzo."
     },
     {
@@ -6404,7 +6404,7 @@
       "fr": "Seul un administrateur peut les enregistrer. Demandez-lui d’ouvrir cette session ou la page des identifiants de l’intégration, puis continuez.",
       "pt": "Só um administrador pode salvá-las. Peça a um que abra esta sessão ou a página de credenciais da integração e depois continue.",
       "es": "Solo un administrador puede guardarlas. Pídale que abra esta sesión o la página de credenciales de la integración y luego continúe.",
-      "mg": "",
+      "mg": "Mpitantana ihany no afaka mitahiry ireo. Angataho ny mpitantana iray hanokatra ity fotoam-pandrafetana ity, na ny pejin’ny angona fanamarinana an’ilay fampifandraisana, dia tohizo.",
       "sw": "Msimamizi pekee ndiye anayeweza kuzihifadhi. Mwombe afungue kipindi hiki au ukurasa wa vitambulisho wa muunganisho, kisha endelea."
     },
     {
@@ -6413,7 +6413,7 @@
       "fr": "vérification…",
       "pt": "verificando…",
       "es": "comprobando…",
-      "mg": "",
+      "mg": "manamarina…",
       "sw": "inakagua…"
     },
     {
@@ -6422,7 +6422,7 @@
       "fr": "vérifié",
       "pt": "verificado",
       "es": "verificado",
-      "mg": "",
+      "mg": "voamarina",
       "sw": "imethibitishwa"
     },
     {
@@ -6431,7 +6431,7 @@
       "fr": "rejeté",
       "pt": "rejeitado",
       "es": "rechazado",
-      "mg": "",
+      "mg": "nolavina",
       "sw": "imekataliwa"
     },
     {
@@ -6440,7 +6440,7 @@
       "fr": "défini",
       "pt": "definido",
       "es": "definido",
-      "mg": "",
+      "mg": "voapetraka",
       "sw": "imewekwa"
     },
     {
@@ -6449,7 +6449,7 @@
       "fr": "Collez une nouvelle valeur pour la remplacer",
       "pt": "Cole um novo valor para substituí-lo",
       "es": "Pegue un nuevo valor para reemplazarlo",
-      "mg": "",
+      "mg": "Apetaho ny sanda vaovao hanoloana azy",
       "sw": "Bandika thamani mpya ili kuibadilisha"
     },
     {
@@ -6458,7 +6458,7 @@
       "fr": "Collez la valeur",
       "pt": "Cole o valor",
       "es": "Pegue el valor",
-      "mg": "",
+      "mg": "Apetaho ny sanda",
       "sw": "Bandika thamani"
     },
     {
@@ -6467,7 +6467,7 @@
       "fr": "Copier depuis {0}",
       "pt": "Copiar de {0}",
       "es": "Copiar de {0}",
-      "mg": "",
+      "mg": "Adika avy amin’ny {0}",
       "sw": "Nakili kutoka {0}"
     },
     {
@@ -6476,7 +6476,7 @@
       "fr": "Ouvrir la page des identifiants",
       "pt": "Abrir a página de credenciais",
       "es": "Abrir la página de credenciales",
-      "mg": "",
+      "mg": "Sokafy ny pejin’ny angona fanamarinana",
       "sw": "Fungua ukurasa wa vitambulisho"
     },
     {
@@ -6485,7 +6485,7 @@
       "fr": "Continuer",
       "pt": "Continuar",
       "es": "Continuar",
-      "mg": "",
+      "mg": "Tohizo",
       "sw": "Endelea"
     },
     {
@@ -6494,7 +6494,7 @@
       "fr": "identifiants",
       "pt": "credenciais",
       "es": "credenciales",
-      "mg": "",
+      "mg": "angona fanamarinana",
       "sw": "vitambulisho"
     },
     {
@@ -6503,7 +6503,7 @@
       "fr": "a besoin de",
       "pt": "precisa de",
       "es": "necesita",
-      "mg": "",
+      "mg": "mila",
       "sw": "inahitaji"
     },
     {
@@ -6512,7 +6512,7 @@
       "fr": "Ouvrir la session",
       "pt": "Abrir a sessão",
       "es": "Abrir la sesión",
-      "mg": "",
+      "mg": "Sokafy ny fotoam-pandrafetana",
       "sw": "Fungua kipindi"
     },
     {
@@ -6521,7 +6521,7 @@
       "fr": "Définir les identifiants",
       "pt": "Definir credenciais",
       "es": "Definir credenciales",
-      "mg": "",
+      "mg": "Apetraho ny angona fanamarinana",
       "sw": "Weka vitambulisho"
     },
     {
@@ -6530,7 +6530,7 @@
       "fr": "Continuer quand même",
       "pt": "Continuar mesmo assim",
       "es": "Continuar de todos modos",
-      "mg": "",
+      "mg": "Tohizo ihany",
       "sw": "Endelea Hata Hivyo"
     },
     {
@@ -6539,7 +6539,7 @@
       "fr": "La vérification a échoué. Remplacez la valeur ou continuez avec celle qui est enregistrée.",
       "pt": "A verificação falhou. Substitua o valor ou continue com o que foi guardado.",
       "es": "La comprobación falló. Reemplace el valor o continúe con el que se guardó.",
-      "mg": "",
+      "mg": "Tsy nahomby ny fanamarinana. Soloy ilay sanda, na tohizo amin’ilay sanda araka ny nitahirizana azy.",
       "sw": "Ukaguzi umeshindwa. Badilisha thamani, au endelea na iliyohifadhiwa."
     },
     {
@@ -6548,8 +6548,26 @@
       "fr": "Toutes les valeurs sont déjà définies.",
       "pt": "Todos os valores já estão definidos.",
       "es": "Todos los valores ya están definidos.",
-      "mg": "",
+      "mg": "Efa voapetraka ny sanda rehetra.",
       "sw": "Thamani zote tayari zimewekwa."
+    },
+    {
+      "_base": "en",
+      "en": "History",
+      "fr": "Historique",
+      "pt": "Histórico",
+      "es": "Historial",
+      "mg": "Tantara",
+      "sw": "Historia"
+    },
+    {
+      "_base": "en",
+      "en": "Last {0} days",
+      "fr": "{0} derniers jours",
+      "pt": "Últimos {0} dias",
+      "es": "Últimos {0} días",
+      "mg": "{0} andro farany",
+      "sw": "Siku {0} zilizopita"
     }
   ],
   "unused": [

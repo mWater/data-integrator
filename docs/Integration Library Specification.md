@@ -264,6 +264,7 @@ that produced it, which is the lineage link.
 | `name` | localized string | no | Display name |
 | `description` | string | no | One-sentence summary shown in the data catalog |
 | `temporality` | `"time-series"` or `"current-only"` | yes | Whether promoted snapshots are retained as history or superseded |
+| `retention` | `{ days }` | no | Time-series only: snapshots whose observation ended more than `days` ago are deleted; the current snapshot is always kept. Absent keeps all history |
 | `bands` | band[] | yes | Bands in file band order |
 
 A band is `{ id, name?, units?, nodata?, rendering? }`. `nodata` is the

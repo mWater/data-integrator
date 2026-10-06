@@ -14,14 +14,22 @@
  * - Reaper: periodically fails runs with stale heartbeats, releasing the
  *   one-running constraint so the next tick can re-enqueue, and drops staging
  *   tables those runs left behind.
+ *
+ * Snapshot retention (superseded and expired raster snapshots) sweeps after
+ * every run a worker finishes and hourly from the reaper, so paused
+ * integrations still age out.
  */
 
 import { hostname } from "node:os"
 import { advanceCurrentPointers } from "./catalog.js"
 import { dropOrphanStagedTables } from "./destinations.js"
 import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns, RUN_LABEL } from "./executor.js"
+import { pruneSnapshots } from "./retention.js"
 import { TileRenderer } from "./tiles.js"
 import { cronMatches, parseCron } from "./cron.js"
+
+/** How often the reaper runs the retention sweep when no run has triggered one. */
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000
 
 /** Scheduler tuning; defaults suit a single-server deployment. */
 export interface SchedulerOptions {
@@ -102,6 +110,24 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       sleepers.add(wake)
     })
 
+  // One retention sweep at a time; workers finishing together share it
+  let pruning: Promise<void> | null = null
+  let lastPrune = 0
+  const prune = () => {
+    pruning ??= pruneSnapshots(deps.pool, deps.store, options.tiles)
+      .then(r => {
+        if (r.snapshots > 0) {
+          console.log(`retention: deleted ${r.snapshots} raster snapshot(s), ${r.superseded} of them superseded`)
+        }
+      })
+      .catch(err => console.error("retention sweep failed:", err))
+      .finally(() => {
+        lastPrune = Date.now()
+        pruning = null
+      })
+    return pruning
+  }
+
   // Enqueue once per distinct UTC minute, regardless of tick alignment
   let lastMinute = ""
   const enqueueLoop = (async () => {
@@ -127,8 +153,10 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
         } catch (err) {
           console.error("scheduler claim failed:", err)
         }
-        if (run) await executeRun(deps, run)
-        else await sleep(tickMs)
+        if (run) {
+          await executeRun(deps, run)
+          await prune()
+        } else await sleep(tickMs)
       }
     })()
   )
@@ -140,6 +168,7 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       await reapStaleRuns(deps.pool).catch(err => console.error("scheduler reap failed:", err))
       await dropOrphanStagedTables(deps.pool).catch(err => console.error("staging cleanup failed:", err))
       await advanceCurrentPointers(deps.pool).catch(err => console.error("current snapshot sweep failed:", err))
+      if (Date.now() - lastPrune >= PRUNE_INTERVAL_MS) await prune()
       if (options.tiles && options.tileCacheMb) {
         await options.tiles
           .evictToBudget(options.tileCacheMb)

@@ -449,6 +449,8 @@ export interface LayerDetail {
   integrationName: LocalizedString
   /** current-only or time-series */
   temporality: string
+  /** Days of history a time-series layer keeps; null keeps everything */
+  retentionDays: number | null
   /** Measured bands, in declaration order */
   bands: LayerBand[]
   /** Current snapshot id, null before first data */

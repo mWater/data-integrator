@@ -113,6 +113,7 @@ commit, so a failed run leaves them pending for the retry.
 | name | text | |
 | temporality | text | time-series, current-only |
 | bands | jsonb | BandSpec[] |
+| retention_days | integer null | destination's retention.days; null keeps all history |
 | current_snapshot_id | uuid null | |
 
 Design sessions test-run into a scratch area: destination tables in a
@@ -127,8 +128,12 @@ Insert as `pending`; promotion flips status and `current_snapshot_id` in one
 transaction. `current_snapshot_id` is the newest promoted snapshot whose
 `observed_at` is not in the future (nearest future one if none), re-evaluated
 on a scheduler tick so projection layers advance without a run. time-series
-layers keep promoted history; current-only marks the
-old snapshot `superseded` (files deleted asynchronously). A snapshot's pixels
+layers keep promoted history, trimmed to `retention_days` when the layer has
+one; current-only marks the old snapshot `superseded`, as does re-ingesting a
+time-series date. The retention sweep (after every scheduler run, hourly, and
+`cli.js prune-snapshots`) deletes superseded snapshots and those whose
+`coalesce(observed_end, observed_at)` falls before the window, with their
+store files and cached tiles; a layer's current snapshot is never deleted. A snapshot's pixels
 live in its `raster_sources` rows: one for a single-file snapshot, many for a
 tiled product, none for an empty snapshot (a published "nothing observed").
 

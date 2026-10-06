@@ -768,7 +768,7 @@ async function route(
   if (layerMatch && req.method === "GET") {
     const session = searchParams.get("session")
     const result = await pool.query(
-      `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id,
+      `SELECT l.id, l.name, l.temporality, l.bands, l.current_snapshot_id, l.retention_days,
               l.integration_id, i.definition->'name' AS integration_name,
               i.definition->'description' AS integration_description,
               i.definition->'source' AS source,
@@ -803,6 +803,7 @@ async function route(
       integrationId: row.integration_id,
       integrationName: row.integration_name ?? row.integration_id,
       temporality: row.temporality,
+      retentionDays: row.retention_days,
       bands: row.bands,
       masked: row.masked,
       maskKey: row.mask_key ?? null,

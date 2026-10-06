@@ -99,6 +99,15 @@ export function validateDefinition(definition: IntegrationDefinition): void {
       for (const b of dest.bands) {
         if (badId(b.id)) throw new Error(`Invalid band id: ${b.id} in ${dest.layerId}`)
       }
+      if (dest.retention != null) {
+        if (dest.temporality !== "time-series") {
+          throw new Error(`retention on ${dest.layerId} needs temporality "time-series" (current-only keeps one snapshot)`)
+        }
+        const days = dest.retention.days
+        if (!Number.isInteger(days) || days < 1) {
+          throw new Error(`retention.days on ${dest.layerId} must be a whole number of days, at least 1`)
+        }
+      }
     }
     // A definition reading its own destination would re-trigger itself forever
     const destId = dest.kind === "table" ? dest.tableId : dest.layerId

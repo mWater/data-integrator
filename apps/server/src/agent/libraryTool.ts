@@ -51,7 +51,7 @@ function describeDestinations(definition: IntegrationDefinition): string {
     .map(d =>
       d.kind === "table"
         ? `table ${d.tableId} (${d.columns.map(c => c.id).join(", ")})`
-        : `raster layer ${d.layerId}, ${d.temporality} (bands ${d.bands.map(b => b.id).join(", ")})`
+        : `raster layer ${d.layerId}, ${d.temporality}${d.retention ? `, keeps ${d.retention.days} days` : ""} (bands ${d.bands.map(b => b.id).join(", ")})`
     )
     .join("; ")
 }

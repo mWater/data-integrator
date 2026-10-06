@@ -108,7 +108,10 @@
         "mg": "Sary mitambatra UTC isan’andro avy amin’ny fandinihana tondra-drano Sentinel-1, ka omena laharam-pahamehana amin’ireo sary ny tondra-drano ary mitahiry ireo pikselin’ny tondra-drano vitsy miparitaka amin’ny maridrefy madinika ny topimaso COG natao max pooling.",
         "sw": "Kompositi za kila siku za UTC za uchunguzi wa mafuriko wa Sentinel-1, huku mafuriko yakipewa kipaumbele katika fremu zote na mionekano ya jumla ya COG iliyofanyiwa max pooling ikihifadhi pikseli za mafuriko zilizotawanyika katika skeli ndogo."
       },
-      "temporality": "time-series"
+      "temporality": "time-series",
+      "retention": {
+        "days": 365
+      }
     }
   ]
 }

@@ -19,6 +19,8 @@
  *   register-rasters [--all]
  *                           Backfill the out-db SQL mirror of promoted snapshots;
  *                           --all re-registers every snapshot (after a tile size change).
+ *   prune-snapshots         Delete superseded raster snapshots and those older than
+ *                           their layer's retention, with files and cached tiles.
  *   backfill-cell-sizes     One-off after migration 0020: record cell_size_m for
  *                           snapshots stored before the column existed.
  *   localize-library        Wrap and translate library entry text into every
@@ -52,6 +54,7 @@ import { startScheduler } from "./scheduler.js"
 import { backfillCellSizes } from "./catalog.js"
 import { registerMissingRasters } from "./rasterSql.js"
 import { installLibraryEntry } from "./library.js"
+import { pruneSnapshots } from "./retention.js"
 import { randomBytes } from "node:crypto"
 import { createApiToken, createUser, setPassword } from "./auth.js"
 import { decryptSecret, listAllSecrets, loadSecretKey, setSecret } from "./secrets.js"
@@ -495,6 +498,14 @@ async function main(): Promise<number> {
         console.log(`Registered ${result.registered}, pruned ${result.pruned}`)
         for (const failure of result.failures) console.error(`  failed: ${failure}`)
         return result.failures.length > 0 ? 1 : 0
+      }
+      case "prune-snapshots": {
+        // The scheduler sweeps after runs and hourly; this applies a new retention now
+        const store = new RasterStore(config.rasterStorePath)
+        const tiles = new TileRenderer(store, config.tileCachePath)
+        const result = await pruneSnapshots(pool, store, tiles)
+        console.log(`Deleted ${result.snapshots} snapshot(s), ${result.superseded} of them superseded`)
+        return 0
       }
       case "backfill-cell-sizes": {
         // One-off after migration 0020; reads each promoted snapshot's first file

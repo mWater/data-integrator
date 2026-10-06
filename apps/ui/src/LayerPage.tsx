@@ -427,6 +427,12 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
             </dd>
             <dt>{T`Kind`}</dt>
             <dd>{layer.temporality === "time-series" ? T`Time series` : T`Current only`}</dd>
+            {layer.retentionDays != null && (
+              <>
+                <dt>{T`History`}</dt>
+                <dd>{T`Last ${layer.retentionDays} days`}</dd>
+              </>
+            )}
             <dt>{T`Bands`}</dt>
             <dd>{layer.bands.map(bandLabel).join(", ") || T`none declared`}</dd>
             {/* A declared NaN cannot survive jsonb, so it arrives as null;
