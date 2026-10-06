@@ -32,6 +32,27 @@ NEW_DATA=/var/lib/data-integrator
 ENV_FILE=$NEW_ETC/env
 
 [ "$(id -u)" = 0 ] || { echo "run as root" >&2; exit 1; }
+cd /
+
+echo "==> Preflight"
+# A host first provisioned as Data Integrator can still hold that era's
+# integrator database and role beside the live pathfinder ones. Refuse before
+# changing anything; park the stale pair under another name first.
+old_env=/etc/$OLD/env
+[ -f "$old_env" ] || old_env=$ENV_FILE
+live_db=$(sed -n 's|^DATABASE_URL=.*/\([^/?]*\).*|\1|p' "$old_env" 2>/dev/null || true)
+live_role=$(sed -n 's|^DATABASE_URL=postgres://\([^:@]*\).*|\1|p' "$old_env" 2>/dev/null || true)
+q1() { sudo -u postgres psql -qAt -c "$1"; }
+if [ -n "$live_db" ] && [ "$live_db" != "$NEW_DB" ] && [ -n "$(q1 "SELECT 1 FROM pg_database WHERE datname = '$NEW_DB'")" ]; then
+  echo "database $NEW_DB already exists beside the live $live_db; park it first, e.g." >&2
+  echo "  sudo -u postgres psql -c 'ALTER DATABASE $NEW_DB RENAME TO ${NEW_DB}_pre_pathfinder'" >&2
+  exit 1
+fi
+if [ -n "$live_role" ] && [ "$live_role" != "$NEW_USER" ] && [ -n "$(q1 "SELECT 1 FROM pg_roles WHERE rolname = '$NEW_USER'")" ]; then
+  echo "role $NEW_USER already exists beside the live $live_role; park it first, e.g." >&2
+  echo "  sudo -u postgres psql -c 'ALTER ROLE $NEW_USER RENAME TO ${NEW_USER}_pre_pathfinder'" >&2
+  exit 1
+fi
 
 echo "==> Stop the old service"
 if [ -f /etc/systemd/system/$OLD.service ]; then
