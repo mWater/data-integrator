@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto"
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { buildRuleset } from "./egress.js"
+import { buildMeterAttach, buildMeterDetach, buildMeterTable, buildRuleset, METER_TABLE } from "./egress.js"
 import { JobLimits, JobResult, JobSpec, RunHooks, RunnerOptions } from "./types.js"
 
 const execFileP = promisify(execFile)
@@ -38,8 +38,18 @@ const KEEPER_IMAGE = "docker.io/library/alpine:3.20"
 /** Threads and processes allowed in a job's scope beyond JobLimits.pidsMax, for podman, conmon and gVisor */
 const SCOPE_TASKS_OVERHEAD = 256
 
-/** How long to wait for podman to move into its own systemd scope */
+/** How long to wait for podman to move into its own systemd scope, or for a job container to get its address */
 const SCOPE_WAIT_MS = 10_000
+
+/** A job's attached network meter. */
+interface Meter {
+  /** Suffix of the meter's nft objects */
+  id: string
+  /** Job container address the meter routes */
+  address: string
+  /** Quota in MB, when one applies */
+  quotaMb?: number
+}
 
 /**
  * Payload-opaque job executor over rootless podman + gVisor.
@@ -62,8 +72,17 @@ export class Runner {
     } as Required<RunnerOptions>
   }
 
-  /** Verifies the stack and prepares network, keeper, and egress rules. Idempotent. */
+  /**
+   * Verifies the stack and prepares network, keeper, and egress rules. Also
+   * removes meters whose job container is gone (left by a crashed process).
+   * Idempotent, and safe while other processes run jobs on the same network.
+   */
   async ensureReady(): Promise<void> {
+    await this.withNetworkLock(() => this.prepareStack(true))
+  }
+
+  /** Brings up network, keeper and rules; sweepMeters also removes meters of vanished jobs. */
+  private async prepareStack(sweepMeters: boolean): Promise<void> {
     await this.podman(["--version"])
     if (this.opts.runscPath) {
       await access(this.opts.runscPath)
@@ -77,14 +96,14 @@ export class Runner {
     // A keeper can survive host changes that invalidate it (its recorded OCI
     // runtime uninstalled, its image pruned); recreate rather than wedge
     if (await this.podmanOk(["container", "exists", keeper])) {
-      if (await this.podmanOk(["start", keeper])) return this.ensureEgress()
+      if (await this.podmanOk(["start", keeper])) return this.ensureEgress(sweepMeters)
       await this.podmanOk(["rm", "-f", keeper])
     }
     await this.podman([
       "run", "-d", "--name", keeper, "--network", this.opts.network,
       KEEPER_IMAGE, "sleep", "infinity"
     ])
-    await this.ensureEgress()
+    await this.ensureEgress(sweepMeters)
   }
 
   /**
@@ -94,20 +113,121 @@ export class Runner {
    * otherwise get a fresh netns with open egress.
    */
   private prepareNetwork(): Promise<void> {
-    const next = this.networkLock.then(async () => {
+    return this.withNetworkLock(async () => {
       const keeper = `${this.opts.network}-keeper`
-      if (await this.podmanOk(["start", keeper])) await this.ensureEgress()
-      else await this.ensureReady()
+      if (await this.podmanOk(["start", keeper])) await this.ensureEgress(false)
+      else await this.prepareStack(false)
     })
-    this.networkLock = next.catch(() => {})
+  }
+
+  /** Runs network changes one at a time across this runner's concurrent jobs. */
+  private withNetworkLock<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.networkLock.then(fn)
+    this.networkLock = next.then(() => {}, () => {})
     return next
   }
 
-  /** Applies the egress policy when configured. */
-  private async ensureEgress(): Promise<void> {
+  /**
+   * Applies the egress policy and the traffic meter table when configured. The
+   * meter table is created once per netns, since re-creating it would drop
+   * running jobs' meters.
+   */
+  private async ensureEgress(sweepMeters: boolean): Promise<void> {
     if (this.opts.egress === "public-only") {
       await this.applyEgressRules()
+      if (!(await this.podmanOk(["unshare", "--rootless-netns", "nft", "list", "table", "inet", METER_TABLE]))) {
+        await this.nftScript(buildMeterTable())
+      } else if (sweepMeters) {
+        await this.sweepMeters()
+      }
     }
+  }
+
+  /** Removes meters whose job container no longer exists. Failures leave them for the next sweep. */
+  private async sweepMeters(): Promise<void> {
+    const listed = JSON.parse(
+      await this.podman(["unshare", "--rootless-netns", "nft", "-j", "list", "table", "inet", METER_TABLE])
+    ) as { nftables: { chain?: { name: string }; quota?: { name: string } }[] }
+    const quotas = new Set(listed.nftables.flatMap(entry => (entry.quota ? [entry.quota.name] : [])))
+    const elems = await this.meterElements()
+    for (const entry of listed.nftables) {
+      const chain = entry.chain?.name
+      if (!chain?.startsWith("j_")) continue
+      const id = chain.slice(2)
+      const container = id.replace(/^job_/, "job-")
+      if (await this.podmanOk(["container", "exists", container])) continue
+      const address = Object.keys(elems).find(key => elems[key] === chain) ?? null
+      try {
+        await this.nftScript(buildMeterDetach(id, address ?? "", address !== null, quotas.has(`q_${id}`)))
+      } catch {
+        // Retried on the next sweep
+      }
+    }
+  }
+
+  /**
+   * Meters a starting job's traffic, with an optional quota. Waits for the
+   * container's address on the job network, then routes it to a fresh counter.
+   */
+  private async attachMeter(name: string, quotaMb: number | undefined, exited: () => boolean): Promise<Meter> {
+    const deadline = Date.now() + SCOPE_WAIT_MS
+    let address = ""
+    for (;;) {
+      try {
+        const networks = JSON.parse(
+          await this.podman(["inspect", "--format", "{{json .NetworkSettings.Networks}}", name])
+        ) as Record<string, { IPAddress?: string }>
+        address = networks[this.opts.network]?.IPAddress ?? ""
+      } catch {
+        // Not created yet
+      }
+      if (address) break
+      if (exited()) throw new Error("job exited before it could be metered")
+      if (Date.now() > deadline) throw new Error(`job container ${name} has no address on ${this.opts.network}`)
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    const meter: Meter = { id: name.replace(/[^a-z0-9]/g, "_"), address, quotaMb }
+    await this.withNetworkLock(async () => {
+      const replace = (await this.meterElementTarget(address)) !== null
+      await this.nftScript(buildMeterAttach(meter.id, address, quotaMb, replace))
+    })
+    return meter
+  }
+
+  /** Bytes counted so far by a job's meter. */
+  private async meterBytes(meter: Meter): Promise<number> {
+    const listed = JSON.parse(
+      await this.podman(["unshare", "--rootless-netns", "nft", "-j", "list", "counter", "inet", METER_TABLE, `c_${meter.id}`])
+    ) as { nftables: { counter?: { bytes: number } }[] }
+    const counter = listed.nftables.find(entry => entry.counter)?.counter
+    if (!counter) throw new Error(`meter c_${meter.id} not found`)
+    return counter.bytes
+  }
+
+  /** Removes a finished job's meter, returning its byte count. */
+  private async detachMeter(meter: Meter): Promise<number> {
+    return this.withNetworkLock(async () => {
+      const bytes = await this.meterBytes(meter)
+      // The address may already belong to a newer job, whose element stays
+      const ownsElement = (await this.meterElementTarget(meter.address)) === `j_${meter.id}`
+      await this.nftScript(buildMeterDetach(meter.id, meter.address, ownsElement, meter.quotaMb !== undefined))
+      return bytes
+    })
+  }
+
+  /** Chain the meter map currently routes an address to, or null when it has no element. */
+  private async meterElementTarget(address: string): Promise<string | null> {
+    const elems = await this.meterElements()
+    return address in elems ? elems[address] : null
+  }
+
+  /** Meter map elements: job container address to the chain it routes to. */
+  private async meterElements(): Promise<Record<string, string>> {
+    const listed = JSON.parse(
+      await this.podman(["unshare", "--rootless-netns", "nft", "-j", "list", "map", "inet", METER_TABLE, "jobs4"])
+    ) as { nftables: { map?: { elem?: [string, { jump?: { target: string } }][] } }[] }
+    const elems = listed.nftables.find(entry => entry.map)?.map?.elem ?? []
+    return Object.fromEntries(elems.map(([key, value]) => [key, value.jump?.target ?? ""]))
   }
 
   /** Removes the keeper container and job network. */
@@ -122,7 +242,7 @@ export class Runner {
    * result channel; stderr streams to hooks and is kept as a capped tail.
    */
   async run(spec: JobSpec, hooks?: RunHooks): Promise<JobResult> {
-    const limits: Required<Omit<JobLimits, "workDiskMb">> & Pick<JobLimits, "workDiskMb"> = {
+    const limits: Required<Omit<JobLimits, "workDiskMb" | "egressMb">> & Pick<JobLimits, "workDiskMb" | "egressMb"> = {
       ...LIMIT_DEFAULTS,
       ...Object.fromEntries(Object.entries(spec.limits ?? {}).filter(([, v]) => v !== undefined))
     }
@@ -171,6 +291,19 @@ export class Runner {
     const child = spawn(this.opts.podmanPath, args, { stdio: ["pipe", "pipe", "pipe"] })
 
     child.stdin.on("error", () => {}) // job may exit without reading stdin
+    // Listening from spawn: the steps before the payload is written are async,
+    // and a job that exits during them must still be observed
+    let exited = false
+    const exitCode = new Promise<number | null>(resolve => {
+      child.on("close", code => {
+        exited = true
+        resolve(code)
+      })
+      child.on("error", () => {
+        exited = true
+        resolve(null)
+      })
+    })
 
     let stdout = ""
     let stdoutTruncated = false
@@ -226,12 +359,47 @@ export class Runner {
           tasksMax: limits.pidsMax + SCOPE_TASKS_OVERHEAD
         })
       } catch (err) {
-        handle.abort(`resource limits could not be applied: ${(err as Error).message}`)
-        child.kill("SIGKILL")
+        if (!exited) {
+          handle.abort(`resource limits could not be applied: ${(err as Error).message}`)
+          child.kill("SIGKILL")
+        }
+      }
+    }
+    // Metered from before the payload is written, so no traffic escapes the count
+    let meter: Meter | null = null
+    if (abortedReason === null && spec.network !== false && this.opts.egress === "public-only") {
+      try {
+        meter = await this.attachMeter(name, limits.egressMb, () => exited)
+      } catch (err) {
+        if (!exited) {
+          handle.abort(`network meter could not be attached: ${(err as Error).message}`)
+          child.kill("SIGKILL")
+        }
       }
     }
     if (abortedReason === null) child.stdin.write(JSON.stringify(spec.payload ?? null))
     child.stdin.end()
+
+    // Traffic guard: packets past the quota are already dropped; poll the
+    // meter so the job fails promptly instead of hanging on stalled transfers
+    let egressTimer: ReturnType<typeof setInterval> | null = null
+    const quotaMb = limits.egressMb
+    if (meter && quotaMb !== undefined) {
+      const activeMeter = meter
+      let checking = false
+      egressTimer = setInterval(async () => {
+        if (checking) return
+        checking = true
+        try {
+          const usedMb = Math.round((await this.meterBytes(activeMeter)) / (1024 * 1024))
+          if (usedMb > quotaMb) handle.abort(`network traffic reached ${usedMb} MB, over the ${quotaMb} MB quota`)
+        } catch {
+          // Read again on the next poll; the drop rule still holds
+        } finally {
+          checking = false
+        }
+      }, this.opts.diskMonitorMs)
+    }
 
     // Disk guard: /work is a bind mount, so no kernel limit applies; poll its
     // usage and kill the job when it crosses the quota
@@ -254,23 +422,35 @@ export class Runner {
       }, this.opts.diskMonitorMs)
     }
 
-    const exitCode = await new Promise<number | null>(resolve => {
-      child.on("close", code => resolve(code))
-      child.on("error", () => resolve(null))
-    })
+    const code = await exitCode
     clearTimeout(timer)
     if (diskTimer !== null) clearInterval(diskTimer)
+    if (egressTimer !== null) clearInterval(egressTimer)
     if (lineBuffer && hooks?.onStderrLine) hooks.onStderrLine(lineBuffer)
 
+    let egressBytes: number | undefined
+    if (meter) {
+      try {
+        egressBytes = await this.detachMeter(meter)
+      } catch {
+        // Leaves the meter's objects behind; ensureReady in a new netns starts clean
+      }
+      // A job whose transfers were cut off may still exit 0 with partial data
+      if (egressBytes !== undefined && quotaMb !== undefined && egressBytes > quotaMb * 1024 * 1024 && abortedReason === null) {
+        abortedReason = `network traffic reached ${Math.round(egressBytes / (1024 * 1024))} MB, over the ${quotaMb} MB quota`
+      }
+    }
+
     return {
-      status: timedOut ? "timeout" : abortedReason !== null ? "failed" : exitCode === 0 ? "succeeded" : "failed",
-      exitCode,
+      status: timedOut ? "timeout" : abortedReason !== null ? "failed" : code === 0 ? "succeeded" : "failed",
+      exitCode: code,
       stdout,
       stdoutTruncated,
       stdoutLimitBytes: this.opts.stdoutLimitBytes,
       stderrTail,
       durationMs: Date.now() - started,
-      ...(abortedReason !== null ? { abortedReason } : {})
+      ...(abortedReason !== null ? { abortedReason } : {}),
+      ...(egressBytes !== undefined ? { egressBytes } : {})
     }
   }
 
@@ -290,10 +470,15 @@ export class Runner {
 
   /** Applies the egress ruleset inside the rootless infra netns. Idempotent. */
   private async applyEgressRules(): Promise<void> {
-    const dir = await mkdtemp(path.join(tmpdir(), "integrator-egress-"))
-    const file = path.join(dir, "egress.nft")
+    await this.nftScript(buildRuleset(this.opts.blockedAddresses))
+  }
+
+  /** Applies an nft script inside the rootless infra netns, atomically. */
+  private async nftScript(script: string): Promise<void> {
+    const dir = await mkdtemp(path.join(tmpdir(), "integrator-nft-"))
+    const file = path.join(dir, "rules.nft")
     try {
-      await writeFile(file, buildRuleset(this.opts.blockedAddresses))
+      await writeFile(file, script)
       await this.podman(["unshare", "--rootless-netns", "nft", "-f", file])
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -341,7 +526,8 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
     try {
       cgroup = (await readFile(`/proc/${pid}/cgroup`, "utf8")).trim().split("\n").pop() ?? ""
     } catch {
-      throw new Error("podman exited before its scope could be capped")
+      // podman already exited: nothing left to cap
+      return
     }
     if (cgroup.endsWith(`/${unit}`)) break
     if (Date.now() > deadline) throw new Error(`podman did not move into ${unit} (cgroup ${cgroup})`)

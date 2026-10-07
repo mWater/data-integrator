@@ -242,6 +242,57 @@ test("egress: rules are re-applied when the keeper dies between jobs", { skip: !
   }
 }, { timeout: 90_000 })
 
+test("egress meter: traffic is counted per job, including concurrent jobs", { skip: !NET_TESTS }, async () => {
+  const results = await Promise.all(
+    [1, 2, 3].map(() =>
+      runner.run({
+        image: ALPINE,
+        payload: null,
+        // Reads stdin first, as the harness does, so it starts only once metered
+        command: ["sh", "-c", "cat > /dev/null; wget -q -T 15 -O /dev/null https://example.com"]
+      })
+    )
+  )
+  for (const result of results) {
+    assert.equal(result.status, "succeeded", result.stderrTail)
+    assert.ok((result.egressBytes ?? 0) > 500, `metered ${result.egressBytes} bytes`)
+  }
+}, { timeout: 90_000 })
+
+test("egress quota: a job transferring past egressMb fails with the reason", { skip: !NET_TESTS }, async () => {
+  const quick = new Runner({ network: "integrator-jobs-test", diskMonitorMs: 500 })
+  const result = await quick.run({
+    image: ALPINE,
+    payload: null,
+    limits: { egressMb: 2, timeoutMs: 60_000 },
+    command: ["sh", "-c", "cat > /dev/null; wget -q -T 10 -O /dev/null 'https://speed.cloudflare.com/__down?bytes=20000000'; echo DONE"]
+  })
+  assert.equal(result.status, "failed")
+  assert.match(result.abortedReason ?? "", /network traffic reached \d+ MB, over the 2 MB quota/)
+}, { timeout: 90_000 })
+
+test("egress meter: ensureReady sweeps meters of vanished jobs only", { skip: !NET_TESTS }, async () => {
+  const nft = (...args: string[]) => execFileP("podman", ["unshare", "--rootless-netns", "nft", ...args])
+  await nft("add", "counter", "inet", "integrator_meter", "c_job_deadbeef")
+  await nft("add", "chain", "inet", "integrator_meter", "j_job_deadbeef")
+  await nft("add", "rule", "inet", "integrator_meter", "j_job_deadbeef", "counter", "name", "c_job_deadbeef")
+  await nft("add", "element", "inet", "integrator_meter", "jobs4", "{ 10.89.250.250 : jump j_job_deadbeef }")
+
+  // A live job's meter must survive a sweep run while it is transferring
+  const live = runner.run({
+    image: ALPINE,
+    payload: null,
+    command: ["sh", "-c", "cat > /dev/null; sleep 4; wget -q -T 15 -O /dev/null https://example.com"]
+  })
+  await new Promise(resolve => setTimeout(resolve, 2500))
+  await runner.ensureReady()
+  const { stdout } = await nft("list", "table", "inet", "integrator_meter")
+  assert.doesNotMatch(stdout, /job_deadbeef/)
+  const result = await live
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.ok((result.egressBytes ?? 0) > 500, `metered ${result.egressBytes} bytes`)
+}, { timeout: 90_000 })
+
 test("network:false gives no network at all", { skip: !NET_TESTS }, async () => {
   const result = await runner.run({
     image: ALPINE,

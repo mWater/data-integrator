@@ -46,6 +46,16 @@ Before every networked job the runner restarts the keeper container (or rebuilds
 re-applies the egress rules, so a keeper that died while idle cannot leave the next job
 on a fresh netns without drop rules.
 
+Under the "public-only" policy every networked job is metered: an nftables verdict map in
+the rootless netns routes the job container's address to a per-job counter, reported as
+`JobResult.egressBytes` (both directions). With `limits.egressMb`, packets past the quota
+are dropped and the job fails with the reason. `ensureReady()` removes meters whose job
+container is gone.
+
+Limits and metering are in place before the payload reaches the job's stdin. The runtime
+harness reads stdin before running any job code; a custom `command` must do the same
+(`cat > /dev/null; ...`) or it may start before it is capped and metered.
+
 Multi-file jobs send `files` (paths relative to the code directory) and an `entry`
 instead of `code`, so packages and relative imports work. Snippets can import the files.
 

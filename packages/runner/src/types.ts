@@ -12,6 +12,12 @@ export interface JobLimits {
   tmpfsMb?: number
   /** Ceiling on /work usage in MB; the job is aborted when a poll finds it exceeded */
   workDiskMb?: number
+  /**
+   * Ceiling on network traffic in MB, both directions combined. Packets past it
+   * are dropped, and the job is aborted when a poll finds it exceeded. Only
+   * under the "public-only" egress policy.
+   */
+  egressMb?: number
 }
 
 /** Host directories bind-mounted into the job container. */
@@ -75,6 +81,8 @@ export interface JobResult {
   durationMs: number
   /** Reason the job was aborted through its handle, when it was */
   abortedReason?: string
+  /** Network bytes in and out of the job, measured under the "public-only" egress policy */
+  egressBytes?: number
 }
 
 /** Configuration of a Runner instance. */
