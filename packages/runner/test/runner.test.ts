@@ -248,8 +248,9 @@ test("egress meter: traffic is counted per job, including concurrent jobs", { sk
       runner.run({
         image: ALPINE,
         payload: null,
-        // Reads stdin first, as the harness does, so it starts only once metered
-        command: ["sh", "-c", "cat > /dev/null; wget -q -T 15 -O /dev/null https://example.com"]
+        // Reads stdin first, as the harness does, so it starts only once metered. Retries
+        // because the public internet occasionally drops a lookup or stalls a download.
+        command: ["sh", "-c", "cat > /dev/null; for i in 1 2 3; do wget -q -T 15 -O /dev/null https://example.com && exit 0; sleep 2; done; exit 1"]
       })
     )
   )
