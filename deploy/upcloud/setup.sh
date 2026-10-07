@@ -14,6 +14,7 @@
 #   REPO_URL             (optional) git URL to clone if /opt/data-integrator doesn't exist
 #                        yet; for a private repo, rsync your checkout there instead
 #   REPO_REF             (optional) branch/tag to clone, default main
+#   GVISOR_RELEASE       default 20260803.0; gVisor release whose runsc is installed
 #   SETUP_FIREWALL       default 1; ufw allowing only 22/80/443 (the app itself
 #                        listens on all interfaces, so this keeps :8080 private)
 set -euo pipefail
@@ -25,6 +26,7 @@ APP_DIR=/opt/data-integrator
 APP_USER=integrator
 DATA_DIR=/var/lib/data-integrator
 ENV_FILE=/etc/data-integrator/env
+GVISOR_RELEASE=${GVISOR_RELEASE:-20260803.0}
 export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Base packages"
@@ -44,7 +46,9 @@ corepack enable pnpm
 echo "==> gVisor (runsc)"
 if [ ! -x /usr/local/bin/runsc ]; then
   arch=$(uname -m)
-  url=https://storage.googleapis.com/gvisor/releases/release/latest/${arch}
+  # A pinned release keeps every host on the same sandbox runtime; releases
+  # after this one publish a tarball instead of the bare runsc binary
+  url=https://storage.googleapis.com/gvisor/releases/release/${GVISOR_RELEASE}/${arch}
   tmp=$(mktemp -d)
   curl -fsSL -o "$tmp/runsc" "$url/runsc"
   curl -fsSL -o "$tmp/runsc.sha512" "$url/runsc.sha512"
