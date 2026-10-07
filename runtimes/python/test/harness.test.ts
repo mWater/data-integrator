@@ -149,3 +149,79 @@ test("gdal CLI is present for subprocess use", { skip: !AVAILABLE }, async () =>
   assert.equal(result.status, "succeeded", result.stderrTail)
   assert.match(result.stdout, /GDAL \d/)
 }, { timeout: 120_000 })
+
+test("multi-file job: packages and relative imports", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      files: {
+        "flood/__init__.py": "",
+        "flood/grids.py": "def double(n):\n    return n * 2\n",
+        "flood/daily.py": "from .grids import double\n\ndef run(ctx):\n    return {'state': {'value': double(ctx.params['n'])}}\n"
+      },
+      entry: "flood/daily.py",
+      params: { n: 21 }
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.deepEqual(parseJobOutput<{ state: unknown }>(result).state, { value: 42 })
+}, { timeout: 120_000 })
+
+test("multi-file job: snippets can import the files", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      mode: "snippet",
+      files: { "flood/grids.py": "def double(n):\n    return n * 2\n" },
+      code: "from flood.grids import double\nprint('doubled', double(4))"
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.match(result.stdout, /doubled 8/)
+}, { timeout: 120_000 })
+
+test("multi-file job: paths escaping the code directory are rejected", { skip: !AVAILABLE }, async () => {
+  for (const bad of ["../escape.py", "/tmp/abs.py", "a/./b.py"]) {
+    const result = await runner.run({
+      image: IMAGE,
+      network: false,
+      payload: { files: { [bad]: "def run(ctx):\n    return {}\n" }, entry: bad }
+    })
+    assert.equal(result.status, "failed", bad)
+    assert.match(result.stderrTail, /invalid file path/, bad)
+  }
+}, { timeout: 120_000 })
+
+test("GRIB stack: eccodes writes and cfgrib reads a GRIB2 message", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      mode: "snippet",
+      code: `import eccodes, xarray
+gid = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+with open("/tmp/sample.grib2", "wb") as f:
+    eccodes.codes_write(gid, f)
+eccodes.codes_release(gid)
+ds = xarray.open_dataset("/tmp/sample.grib2", engine="cfgrib", backend_kwargs={"indexpath": ""})
+print("grib vars", sorted(ds.data_vars), dict(ds.sizes))`
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.match(result.stdout, /grib vars/)
+}, { timeout: 120_000 })
+
+test("Horizon libraries import", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      mode: "snippet",
+      code: `import cdsapi, scipy.ndimage, ecmwf.opendata\nprint("horizon libs ok")`
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.match(result.stdout, /horizon libs ok/)
+}, { timeout: 120_000 })

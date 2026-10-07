@@ -5,7 +5,12 @@ podman 4.9.3, gVisor release-20260727.0, nftables 1.0.9. All four risks cleared.
 
 ## Findings
 
-1. gVisor runs under rootless podman with `--runtime-flag=ignore-cgroups`.
+1. gVisor runs under rootless podman with `--runtime-flag=ignore-cgroups`. That flag
+   means the container cgroup is never used, so podman's `-m`, `--cpus` and
+   `--pids-limit` are not enforced (found 2026-10-07: a 128 MB job allocated 768 MB).
+   runsc's own cgroup setup needs the system bus or root, and podman moves itself into
+   a `podman-<pid>.scope` whatever the caller's cgroup, so the runner caps that scope
+   with `systemctl --user set-property` before writing the payload.
    Verified actually sandboxed via `dmesg` / `/proc/version` (guard against silent
    fallback to crun).
 2. GDAL works under gVisor: create -> COG translate (DEFLATE) -> warp to 3857, using

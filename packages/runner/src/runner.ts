@@ -1,7 +1,7 @@
 import { spawn, execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { randomUUID } from "node:crypto"
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { buildRuleset } from "./egress.js"
@@ -19,7 +19,8 @@ const DEFAULTS = {
   stderrLimitBytes: 256 * 1024,
   dns: ["1.1.1.1", "9.9.9.9"],
   blockedAddresses: [] as string[],
-  diskMonitorMs: 30_000
+  diskMonitorMs: 30_000,
+  scopeOverheadMb: 256
 }
 
 /** Per-job limit defaults, used when JobSpec.limits omits a value. */
@@ -34,6 +35,12 @@ const LIMIT_DEFAULTS = {
 /** Keeps the rootless infra netns alive between jobs so egress rules persist. */
 const KEEPER_IMAGE = "docker.io/library/alpine:3.20"
 
+/** Threads and processes allowed in a job's scope beyond JobLimits.pidsMax, for podman, conmon and gVisor */
+const SCOPE_TASKS_OVERHEAD = 256
+
+/** How long to wait for podman to move into its own systemd scope */
+const SCOPE_WAIT_MS = 10_000
+
 /**
  * Payload-opaque job executor over rootless podman + gVisor.
  * Owns sandboxing, limits, mounts, and the egress policy. Knows nothing about
@@ -43,9 +50,16 @@ export class Runner {
   /** Resolved options with defaults applied */
   private opts: Required<RunnerOptions>
 
+  /** Serializes network preparation, so concurrent jobs never race to recreate the keeper */
+  private networkLock: Promise<void> = Promise.resolve()
+
   /** Creates a runner; unspecified options fall back to DEFAULTS. */
   constructor(options?: RunnerOptions) {
-    this.opts = { ...DEFAULTS, ...options } as Required<RunnerOptions>
+    const merged = { ...DEFAULTS, ...options }
+    this.opts = {
+      ...merged,
+      resourceControl: options?.resourceControl ?? (merged.runscPath ? "systemd-scope" : "podman")
+    } as Required<RunnerOptions>
   }
 
   /** Verifies the stack and prepares network, keeper, and egress rules. Idempotent. */
@@ -73,6 +87,22 @@ export class Runner {
     await this.ensureEgress()
   }
 
+  /**
+   * Re-verifies the job network before a launch: restarts the keeper (or
+   * rebuilds it) and re-applies the egress rules. A keeper that died while
+   * idle takes the netns and its drop rules with it, and the next job would
+   * otherwise get a fresh netns with open egress.
+   */
+  private prepareNetwork(): Promise<void> {
+    const next = this.networkLock.then(async () => {
+      const keeper = `${this.opts.network}-keeper`
+      if (await this.podmanOk(["start", keeper])) await this.ensureEgress()
+      else await this.ensureReady()
+    })
+    this.networkLock = next.catch(() => {})
+    return next
+  }
+
   /** Applies the egress policy when configured. */
   private async ensureEgress(): Promise<void> {
     if (this.opts.egress === "public-only") {
@@ -98,6 +128,9 @@ export class Runner {
     }
     const name = `job-${randomUUID().slice(0, 8)}`
     const args = ["run", "--rm", "-i", "--name", name]
+
+    // Fails closed: a job is never launched onto a network whose rules are unverified
+    if (spec.network !== false) await this.prepareNetwork()
 
     if (this.opts.runscPath) {
       args.push("--runtime", this.opts.runscPath, "--runtime-flag=ignore-cgroups")
@@ -138,8 +171,6 @@ export class Runner {
     const child = spawn(this.opts.podmanPath, args, { stdio: ["pipe", "pipe", "pipe"] })
 
     child.stdin.on("error", () => {}) // job may exit without reading stdin
-    child.stdin.write(JSON.stringify(spec.payload ?? null))
-    child.stdin.end()
 
     let stdout = ""
     let stdoutTruncated = false
@@ -184,6 +215,23 @@ export class Runner {
       }
     }
     hooks?.onStart?.(handle)
+
+    // The harness blocks on stdin, so job code cannot run before the payload
+    // is written: cap the scope first, and never write it if that fails
+    if (this.opts.resourceControl === "systemd-scope" && child.pid !== undefined) {
+      try {
+        await capPodmanScope(child.pid, {
+          memoryMb: limits.memoryMb + this.opts.scopeOverheadMb,
+          cpus: limits.cpus,
+          tasksMax: limits.pidsMax + SCOPE_TASKS_OVERHEAD
+        })
+      } catch (err) {
+        handle.abort(`resource limits could not be applied: ${(err as Error).message}`)
+        child.kill("SIGKILL")
+      }
+    }
+    if (abortedReason === null) child.stdin.write(JSON.stringify(spec.payload ?? null))
+    child.stdin.end()
 
     // Disk guard: /work is a bind mount, so no kernel limit applies; poll its
     // usage and kill the job when it crosses the quota
@@ -267,6 +315,45 @@ export class Runner {
       return false
     }
   }
+}
+
+/** Ceilings applied to a job's systemd scope. */
+interface ScopeLimits {
+  /** MemoryMax in MB; swap is disabled */
+  memoryMb: number
+  /** CPU cores, as CPUQuota */
+  cpus: number
+  /** TasksMax */
+  tasksMax: number
+}
+
+/**
+ * Caps the transient scope rootless podman moves itself into
+ * (`podman-<pid>.scope`), which also holds conmon and the gVisor sandbox.
+ * Waits for podman to make the move; refuses any other cgroup, since capping
+ * the caller's own unit would limit the caller instead of the job.
+ */
+async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
+  const unit = `podman-${pid}.scope`
+  const deadline = Date.now() + SCOPE_WAIT_MS
+  let cgroup = ""
+  for (;;) {
+    try {
+      cgroup = (await readFile(`/proc/${pid}/cgroup`, "utf8")).trim().split("\n").pop() ?? ""
+    } catch {
+      throw new Error("podman exited before its scope could be capped")
+    }
+    if (cgroup.endsWith(`/${unit}`)) break
+    if (Date.now() > deadline) throw new Error(`podman did not move into ${unit} (cgroup ${cgroup})`)
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  await execFileP("systemctl", [
+    "--user", "set-property", "--runtime", unit,
+    `MemoryMax=${Math.round(limits.memoryMb)}M`,
+    "MemorySwapMax=0",
+    `CPUQuota=${Math.round(limits.cpus * 100)}%`,
+    `TasksMax=${limits.tasksMax}`
+  ])
 }
 
 /** Disk usage of a directory in MB; null when it cannot be measured. */

@@ -20,6 +20,15 @@ export interface JobPayload {
   definition?: unknown
   /** Source of the entrypoint module; falls back to definition.code when absent */
   code?: string
+  /**
+   * Multi-file job: source files by path relative to the code directory
+   * (e.g. "flood/daily.py"), so packages and relative imports work. Replaces
+   * `code` for the entrypoint; in snippet mode the files are importable from
+   * the snippet. Paths are relative, "/"-separated, without "." or ".." segments.
+   */
+  files?: Record<string, string>
+  /** Path in `files` of the entrypoint module; required with `files` outside snippet mode */
+  entry?: string
   /** Decrypted secrets by name, exposed as ctx.secrets. Travel here, never in env */
   secrets?: Record<string, string>
   /** State returned by the last successful run; null on the first */
@@ -34,7 +43,7 @@ export interface JobPayload {
 
 /** Published state of one raster destination, keyed by layer id in JobPayload.catalog. */
 export interface CatalogLayerState {
-  /** Promoted snapshots, ascending by timestamp */
+  /** Most recent promoted snapshots, ascending by timestamp. Applications bound the list, so older history may be absent. */
   snapshots: CatalogSnapshot[]
 }
 

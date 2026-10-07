@@ -214,6 +214,34 @@ test("egress: private blocked, public allowed", { skip: !NET_TESTS }, async t =>
   }
 }, { timeout: 90_000 })
 
+test("egress: rules are re-applied when the keeper dies between jobs", { skip: !NET_TESTS }, async t => {
+  const ip = lanIp()
+  if (!ip) return t.skip("no LAN IP")
+
+  const server: Server = createServer((_req, res) => res.end("hi"))
+  await new Promise<void>(resolve => server.listen(8098, ip, resolve))
+  try {
+    // Losing the keeper tears down the netns and its drop rules with it
+    await execFileP("podman", ["rm", "-f", "integrator-jobs-test-keeper"])
+    const afterKeeperLoss = await runner.run({
+      image: ALPINE,
+      payload: null,
+      command: ["wget", "-q", "-T", "5", "-O", "/dev/null", `http://${ip}:8098/`]
+    })
+    assert.equal(afterKeeperLoss.status, "failed", "private egress must stay blocked after keeper loss")
+
+    await execFileP("podman", ["unshare", "--rootless-netns", "nft", "delete", "table", "inet", "integrator_egress"])
+    const afterRulesLoss = await runner.run({
+      image: ALPINE,
+      payload: null,
+      command: ["wget", "-q", "-T", "5", "-O", "/dev/null", `http://${ip}:8098/`]
+    })
+    assert.equal(afterRulesLoss.status, "failed", "private egress must stay blocked after the ruleset is lost")
+  } finally {
+    server.close()
+  }
+}, { timeout: 90_000 })
+
 test("network:false gives no network at all", { skip: !NET_TESTS }, async () => {
   const result = await runner.run({
     image: ALPINE,
@@ -242,3 +270,37 @@ test("GDAL pipeline under gVisor writes a COG artifact", { skip: !HAS_GDAL_IMG }
   assert.ok(artifacts.includes("result.tif"))
   assert.deepEqual(parseJobOutput<{ rasters: { path: string }[] }>(result).rasters[0].path, "result.tif")
 }, { timeout: 120_000 })
+
+test("memory limit is enforced under gVisor", { skip: !AVAILABLE }, async () => {
+  // gVisor's tmpfs lives in sandbox memory, so filling /tmp past memoryMb must kill the job
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    limits: { memoryMb: 128, tmpfsMb: 2048, timeoutMs: 60_000 },
+    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/fill bs=1M count=1024 2>/dev/null; echo SURVIVED"]
+  })
+  assert.notEqual(result.status, "succeeded")
+  assert.doesNotMatch(result.stdout, /SURVIVED/)
+}, { timeout: 90_000 })
+
+test("memory within the limit is unaffected", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    limits: { memoryMb: 512, tmpfsMb: 1024, timeoutMs: 60_000 },
+    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/fill bs=1M count=200 2>/dev/null; echo SURVIVED"]
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.match(result.stdout, /SURVIVED/)
+}, { timeout: 90_000 })
+
+test("process limit is enforced under gVisor", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    limits: { pidsMax: 32, timeoutMs: 60_000 },
+    command: ["sh", "-c", "n=0; while [ $n -lt 600 ]; do sleep 20 & n=$((n+1)); done; wait; echo SURVIVED"]
+  })
+  assert.notEqual(result.status, "succeeded")
+  assert.doesNotMatch(result.stdout, /SURVIVED/)
+}, { timeout: 90_000 })

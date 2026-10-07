@@ -144,3 +144,50 @@ test("exception produces failed status with stack", { skip: !AVAILABLE }, async 
   assert.equal(result.status, "failed")
   assert.match(result.stderrTail, /Error: nope/)
 }, { timeout: 120_000 })
+
+test("multi-file job: entry imports sibling modules and curated libraries", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      files: {
+        "jobs/main.js": `import { double } from "../lib/math.js"
+import { format } from "date-fns"
+export default async function run(ctx) {
+  return { state: { value: double(ctx.params.n), year: format(new Date(0), "yyyy") } }
+}`,
+        "lib/math.js": `export const double = n => n * 2`
+      },
+      entry: "jobs/main.js",
+      params: { n: 21 }
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.deepEqual(parseJobOutput<{ state: unknown }>(result).state, { value: 42, year: "1970" })
+}, { timeout: 120_000 })
+
+test("multi-file job: snippets can import the files", { skip: !AVAILABLE }, async () => {
+  const result = await runner.run({
+    image: IMAGE,
+    network: false,
+    payload: {
+      mode: "snippet",
+      files: { "lib/math.js": `export const double = n => n * 2` },
+      code: `import { double } from "./lib/math.js"\nconsole.log("doubled", double(4))`
+    }
+  })
+  assert.equal(result.status, "succeeded", result.stderrTail)
+  assert.match(result.stdout, /doubled 8/)
+}, { timeout: 120_000 })
+
+test("multi-file job: paths escaping the code directory are rejected", { skip: !AVAILABLE }, async () => {
+  for (const bad of ["../escape.js", "/tmp/abs.js", "a/./b.js"]) {
+    const result = await runner.run({
+      image: IMAGE,
+      network: false,
+      payload: { files: { [bad]: "export default async function run() { return {} }" }, entry: bad }
+    })
+    assert.equal(result.status, "failed", bad)
+    assert.match(result.stderrTail, /invalid file path/, bad)
+  }
+}, { timeout: 120_000 })

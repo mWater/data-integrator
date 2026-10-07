@@ -8,12 +8,12 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends python3-pip libeccodes0 \
  && rm -rf /var/lib/apt/lists/*
 
-# netCDF4 + h5netcdf give xarray real NetCDF engines (the GDAL small base has no
-# netCDF/HDF5 driver, and xarray alone can only read GRIB via cfgrib). h5py is
-# explicit: h5netcdf does not pull it in, and its engine registers but fails
-# without it. It also reads plain HDF5 products.
-RUN python3 -m pip install --no-cache-dir --break-system-packages \
-    numpy pandas xarray rasterio pyproj geopandas cfgrib requests netCDF4 h5netcdf h5py
+# requirements.txt pins every package pip installs (generated from requirements.in
+# by `pnpm lock`); the lock build passes REQUIREMENTS=requirements.in instead.
+ARG REQUIREMENTS=requirements.txt
+COPY requirements.in requirements.txt /runtime/
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /runtime/$REQUIREMENTS \
+ && python3 -m pip check
 
 # No USER: under rootless podman, container root is already an unprivileged host
 # user (userns), gVisor sandboxes above that, and mounts stay writable.

@@ -52,6 +52,19 @@ export interface ExecutorDeps {
 /** How often a running worker refreshes its lease. */
 const HEARTBEAT_MS = 15_000
 
+/** Heartbeat age after which the reaper treats a run's lease as expired. */
+export const LEASE_STALE_MS = 5 * 60_000
+
+/**
+ * A worker that cannot reach the database kills its own job once this long has
+ * passed since its last successful heartbeat, a margin before the reaper could
+ * expire the lease and let a replacement claim the run.
+ */
+const SELF_FENCE_MS = LEASE_STALE_MS - 60_000
+
+/** Most recent promoted snapshots listed per layer in the job's catalog. */
+const CATALOG_SNAPSHOT_LIMIT = 100
+
 /** Memory a job reserves from the host budget when its definition sets no limit (the runner default). */
 export const DEFAULT_JOB_MEMORY_MB = 2048
 
@@ -128,7 +141,7 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
 }
 
 /** Marks runs whose worker lease went stale as failed, releasing the one-running constraint. */
-export async function reapStaleRuns(pool: pg.Pool, staleMs = 5 * 60_000): Promise<number> {
+export async function reapStaleRuns(pool: pg.Pool, staleMs = LEASE_STALE_MS): Promise<number> {
   const result = await pool.query(
     `UPDATE app.runs SET status = 'failed', finished_at = now(), error = 'worker lease expired'
      WHERE status = 'running' AND heartbeat_at < now() - make_interval(secs => $1)`,
@@ -188,7 +201,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   // The heartbeat renews this attempt's lease. When the row no longer carries
   // it (the reaper expired the lease and a replacement claimed the run), the
   // job is killed rather than allowed to race the replacement to the commit.
+  // A worker cut off from the database fences itself: past SELF_FENCE_MS its
+  // lease may be reaped, so the job is killed before it could commit twice.
   let jobHandle: JobHandle | null = null
+  let lastHeartbeat = Date.now()
   const heartbeat = setInterval(() => {
     deps.pool
       .query(
@@ -198,8 +214,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       )
       .then(result => {
         if (result.rowCount === 0) jobHandle?.abort("lease lost: the run was reclaimed by another worker")
+        else lastHeartbeat = Date.now()
       })
-      .catch(() => {})
+      .catch(() => {
+        if (Date.now() - lastHeartbeat > SELF_FENCE_MS) {
+          jobHandle?.abort("lease lost: the database was unreachable for too long to keep the lease")
+        }
+      })
   }, HEARTBEAT_MS)
 
   const scratch = opts?.scratch ?? null
@@ -569,8 +590,8 @@ async function finishRun(
 
 /**
  * What the job may already have published, per declared raster destination:
- * promoted snapshots of the layer (the session's scratch layer during
- * design). Code uses it to skip work it has done and to honour params.force.
+ * the most recent promoted snapshots of the layer (the session's scratch
+ * layer during design), bounded so long-lived daily layers stay small. Code uses it to skip work it has done and to honour params.force.
  */
 async function catalogState(
   pool: pg.Pool,
@@ -582,11 +603,13 @@ async function catalogState(
     if (dest.kind !== "raster") continue
     const layerRowId = sessionId ? scratchLayerId(sessionId, dest.layerId) : dest.layerId
     const result = await pool.query(
-      `SELECT s.observed_at, s.observed_end,
-              (SELECT count(*)::int FROM app.raster_sources WHERE snapshot_id = s.id) AS sources
-       FROM app.raster_snapshots s WHERE s.layer_id = $1 AND s.status = 'promoted'
-       ORDER BY s.observed_at`,
-      [layerRowId]
+      `SELECT * FROM (
+         SELECT s.observed_at, s.observed_end,
+                (SELECT count(*)::int FROM app.raster_sources WHERE snapshot_id = s.id) AS sources
+         FROM app.raster_snapshots s WHERE s.layer_id = $1 AND s.status = 'promoted'
+         ORDER BY s.observed_at DESC LIMIT $2
+       ) recent ORDER BY observed_at`,
+      [layerRowId, CATALOG_SNAPSHOT_LIMIT]
     )
     catalog[dest.layerId] = {
       snapshots: result.rows.map(row => ({

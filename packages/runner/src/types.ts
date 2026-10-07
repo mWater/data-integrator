@@ -105,6 +105,22 @@ export interface RunnerOptions {
   stdoutLimitBytes?: number
   /** Cap on retained stderr bytes */
   stderrLimitBytes?: number
+  /**
+   * How CPU, memory and process limits are enforced. Under gVisor the
+   * container cgroup is ignored (`--runtime-flag=ignore-cgroups`, required
+   * rootless), so podman's own limit flags have no effect.
+   * - "systemd-scope" (default with gVisor): caps the transient systemd user
+   *   scope podman runs the job in, before the payload is written, so job code
+   *   never runs uncapped. Needs a systemd user manager (linger, XDG_RUNTIME_DIR).
+   *   The job fails if the cap cannot be applied.
+   * - "podman": podman's flags only; enforced without gVisor (dev).
+   */
+  resourceControl?: "systemd-scope" | "podman"
+  /**
+   * Memory allowed in the job's scope beyond JobLimits.memoryMb, in MB, for
+   * the podman client, conmon, the gVisor sentry and gofer (default 256)
+   */
+  scopeOverheadMb?: number
 }
 
 /** Live handle to an executing job. */

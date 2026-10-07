@@ -32,6 +32,23 @@ const result = await runner.run(
 const output = parseJobOutput(result)
 ```
 
+`cpus`, `memoryMb` and `pidsMax` are enforced by capping the transient systemd user
+scope rootless podman runs each job in (`podman-<pid>.scope`, holding the podman client,
+conmon and the gVisor sandbox), with swap disabled and `scopeOverheadMb` (default 256)
+added to the memory ceiling for those processes. gVisor runs with
+`--runtime-flag=ignore-cgroups`, so podman's own `-m`, `--cpus` and `--pids-limit`
+flags have no effect. The cap is applied before the payload is written to the job's
+stdin, and the harness blocks on stdin, so job code never runs uncapped; when the cap
+cannot be applied the job fails instead of running. `resourceControl: "podman"` skips the
+scope and relies on podman's flags, which only works without gVisor.
+
+Before every networked job the runner restarts the keeper container (or rebuilds it) and
+re-applies the egress rules, so a keeper that died while idle cannot leave the next job
+on a fresh netns without drop rules.
+
+Multi-file jobs send `files` (paths relative to the code directory) and an `entry`
+instead of `code`, so packages and relative imports work. Snippets can import the files.
+
 `workDiskMb` is polled (every `diskMonitorMs`, default 30 s) and the job is aborted when
 `/work` exceeds it. `labels` let a restarted application find containers its previous
 process left running: `runner.killLabelled("myapp.run")` removes them all, since a job
@@ -46,8 +63,10 @@ the result travels, so the three are released together by `scripts/release-runne
 and never mixed across versions.
 
 Requirements: rootless podman with a netavark bridge network (created by
-`ensureReady()`), gVisor's `runsc` at `/usr/local/bin/runsc`, `nft` on the host, and
-`du` for the disk guard. See `Spike Notes.md` in the repo root for why the network setup
+`ensureReady()`), gVisor's `runsc` at `/usr/local/bin/runsc`, `nft` on the host, `du`
+for the disk guard, and a systemd user manager for the job's user (`loginctl
+enable-linger`, with `XDG_RUNTIME_DIR` set in the calling process's environment) for
+resource limits. See `Spike Notes.md` in the repo root for why the network setup
 is shaped this way.
 
 Tests: `pnpm test`. The integration suite skips itself if podman/runsc are absent, skips

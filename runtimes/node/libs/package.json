@@ -1,0 +1,10 @@
+{
+  "name": "integrator-runtime-node-libs",
+  "private": true,
+  "description": "Curated libraries baked into the node runtime image. Exact versions; the lock pins the rest.",
+  "dependencies": {
+    "csv-parse": "7.0.2",
+    "date-fns": "4.4.0",
+    "fast-xml-parser": "5.11.1"
+  }
+}
