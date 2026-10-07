@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # One-shot provisioning for a throwaway test server on a fresh Ubuntu 24.04 VM
 # (written for UpCloud, but nothing here is UpCloud-specific). Installs the full
-# stack from Quickstart.md, puts Caddy in front for HTTPS on <public-ip>.sslip.io,
-# and leaves the server running as a systemd service.
+# stack from Quickstart.md and leaves the server running as a systemd service.
+# The app is published only through a Cloudflare tunnel (cloudflare-tunnel.sh),
+# so no web ports are opened.
 #
 # Run as root:
 #   ADMIN_EMAIL=you@example.org ./setup.sh
@@ -15,8 +16,10 @@
 #                        yet; for a private repo, rsync your checkout there instead
 #   REPO_REF             (optional) branch/tag to clone, default main
 #   GVISOR_RELEASE       default 20260803.0; gVisor release whose runsc is installed
-#   SETUP_FIREWALL       default 1; ufw allowing only 22/80/443 (the app itself
-#                        listens on all interfaces, so this keeps :8080 private)
+#   CLOUDFLARE_TUNNEL_TOKEN (optional) installs the Cloudflare tunnel at the end;
+#                        without it, run cloudflare-tunnel.sh later
+#   SETUP_FIREWALL       default 1; ufw allowing only SSH (the app itself listens
+#                        on all interfaces, so this keeps :8080 private)
 set -euo pipefail
 
 ADMIN_EMAIL=${ADMIN_EMAIL:?set ADMIN_EMAIL=you@example.org}
@@ -55,16 +58,6 @@ if [ ! -x /usr/local/bin/runsc ]; then
   (cd "$tmp" && sha512sum -c runsc.sha512)
   install -m 0755 "$tmp/runsc" /usr/local/bin/runsc
   rm -rf "$tmp"
-fi
-
-echo "==> Caddy"
-if ! command -v caddy >/dev/null; then
-  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key |
-    gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt \
-    > /etc/apt/sources.list.d/caddy-stable.list
-  apt-get update -q
-  apt-get install -qy caddy
 fi
 
 echo "==> PostgreSQL database"
@@ -183,29 +176,26 @@ systemctl daemon-reload
 APP_USER="$APP_USER" bash "$APP_DIR/deploy/upcloud/harden.sh"
 systemctl enable --now data-integrator
 
-echo "==> HTTPS via Caddy + sslip.io"
-PUBLIC_IP=$(curl -4fsS https://ifconfig.me || curl -4fsS https://api.ipify.org)
-HOST="${PUBLIC_IP}.sslip.io"
-cat > /etc/caddy/Caddyfile <<EOF
-${HOST} {
-	reverse_proxy 127.0.0.1:8080
-}
-EOF
-systemctl reload caddy || systemctl restart caddy
-
 if [ "$SETUP_FIREWALL" = "1" ]; then
-  echo "==> Firewall (22/80/443 only)"
+  # The tunnel dials out, so nothing but SSH needs to be reachable
+  echo "==> Firewall (SSH only)"
   apt-get install -qy ufw
   ufw allow OpenSSH
-  ufw allow 80/tcp
-  ufw allow 443/tcp
   ufw --force enable
+fi
+
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+  CLOUDFLARE_TUNNEL_TOKEN="$CLOUDFLARE_TUNNEL_TOKEN" bash "$APP_DIR/deploy/upcloud/cloudflare-tunnel.sh"
+  NEXT=" Served at the Cloudflare tunnel's public hostname."
+else
+  NEXT=" Not public yet: install the Cloudflare tunnel (deploy/upcloud/README.md).
+ Until then: ssh -L 8080:127.0.0.1:8080 root@<this host>, then http://localhost:8080"
 fi
 
 echo
 echo "============================================================"
-echo " Done. URL:  https://${HOST}"
-echo " (Let's Encrypt issuance takes ~30s on first request)"
+echo " Done.${NEXT:+
+$NEXT}"
 echo
 echo " Admin account:"
 echo "   ${ADMIN_OUTPUT}"

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Swap the Caddy + sslip.io front end for a Cloudflare Tunnel on a server
-# provisioned by setup.sh, putting it on a real hostname (e.g.
-# integrator-demo.mwater.co) with no inbound web ports at all: cloudflared
-# dials out to Cloudflare and proxies to the app on 127.0.0.1:8080.
+# Publishes a server provisioned by setup.sh on its hostname (e.g.
+# integrator-angola.mwater.co) through a Cloudflare Tunnel: cloudflared dials
+# out to Cloudflare and proxies to the app on 127.0.0.1:8080, so the server
+# keeps no inbound web ports. setup.sh runs this itself when given
+# CLOUDFLARE_TUNNEL_TOKEN.
 #
 # One-time, in the Cloudflare Zero Trust dashboard (Networks -> Tunnels):
 #   1. Create a tunnel (Cloudflared connector) and copy its token
@@ -12,9 +13,7 @@
 # Then run as root on the server:
 #   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/data-integrator/deploy/upcloud/cloudflare-tunnel.sh
 #
-# Safe to re-run; a new token replaces the old one. To go back to Caddy:
-# cloudflared service uninstall, systemctl enable --now caddy, and reopen
-# 80/443 in ufw.
+# Safe to re-run; a new token replaces the old one.
 set -euo pipefail
 
 CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN=<token from the Zero Trust dashboard>}
@@ -35,15 +34,6 @@ if [ -f /etc/systemd/system/cloudflared.service ]; then
   systemctl daemon-reload
 fi
 cloudflared service install "$CLOUDFLARE_TUNNEL_TOKEN"
-
-echo "==> Retire Caddy (Cloudflare terminates TLS now)"
-if command -v caddy >/dev/null; then
-  systemctl disable --now caddy || true
-fi
-if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
-  ufw delete allow 80/tcp || true
-  ufw delete allow 443/tcp || true
-fi
 
 echo
 echo "============================================================"

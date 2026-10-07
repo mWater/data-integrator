@@ -1,13 +1,12 @@
 # Throwaway test server on UpCloud
 
-The quickest way to get a shareable HTTPS instance for testing: one Ubuntu
-24.04 VM, one provisioning script, and Caddy terminating TLS on a
-`<public-ip>.sslip.io` hostname — a real Let's Encrypt certificate with no
-domain or DNS setup. Total time is about ten minutes, most of it the build.
+One Ubuntu 24.04 VM, one provisioning script, and a Cloudflare Tunnel that
+puts the app on a hostname such as `integrator-angola.mwater.co` with no
+inbound web ports. Total time is about ten minutes, most of it the build.
 
 Nothing here is production hardening; it's the [Quickstart](../../Quickstart.md)
-stack (rootless podman + gVisor sandbox, PostGIS, GDAL) wired up behind a
-reverse proxy and a systemd unit. gVisor's default systrap platform works on
+stack (rootless podman + gVisor sandbox, PostGIS, GDAL) wired up as a systemd
+unit behind a Cloudflare Tunnel. gVisor's default systrap platform works on
 UpCloud VMs — no nested virtualization needed.
 
 ## 1. Create the server
@@ -41,17 +40,22 @@ script clones it for you.)
 
 ## 3. Provision
 
+Create the tunnel first (see [Hostname via Cloudflare Tunnel](#hostname-via-cloudflare-tunnel))
+and pass its token, so the server comes up on its hostname:
+
 ```sh
 ssh root@<ip>
 ADMIN_EMAIL=you@example.org \
 OPENROUTER_API_KEY=sk-or-... \
+CLOUDFLARE_TUNNEL_TOKEN=eyJ... \
   bash /opt/data-integrator/deploy/upcloud/setup.sh
 ```
 
-The API key is optional — without it everything except the designer agent
-works. The script finishes by printing the URL
-(`https://<ip>.sslip.io`) and the generated admin password. Give the first
-HTTPS request ~30 seconds while Caddy obtains the certificate.
+The API key is optional; without it everything except the designer agent
+works. Without the tunnel token the server is reachable only over SSH
+(`ssh -L 8080:127.0.0.1:8080 root@<ip>`, then http://localhost:8080) until
+`cloudflare-tunnel.sh` runs. The script finishes by printing the generated
+admin password.
 
 What the script sets up:
 
@@ -61,13 +65,13 @@ What the script sets up:
 - Config in `/etc/data-integrator/env` (every variable documented in the
   repo's `.env.example`), data under `/var/lib/data-integrator`
 - `data-integrator.service` systemd unit (restarts on failure and on reboot)
-- Caddy on 80/443 proxying to the app on 127.0.0.1:8080
+- `cloudflared` publishing the app on 127.0.0.1:8080, when given a tunnel token
 - Host guards from `harden.sh` (re-applied by every day-2 update): a 4 GB
   swapfile, the app user's systemd manager exempt from the OOM killer, the
   service pulling that manager in on restart, and needrestart told to leave
   both alone during unattended upgrades
-- ufw allowing only 22/80/443 (the app listens on all interfaces, so this
-  keeps plain-HTTP :8080 off the internet); skip with `SETUP_FIREWALL=0`
+- ufw allowing only SSH (the app listens on all interfaces, so this keeps
+  plain-HTTP :8080 off the internet); skip with `SETUP_FIREWALL=0`
 
 ## Configure a demo instance
 
@@ -162,29 +166,33 @@ GDAL". They are superuser-set, so migration 0008 can only warn when they
 are missing. Re-running `setup.sh` does all of this too, and is the safer
 path when in doubt.
 
-## Real hostname via Cloudflare Tunnel
+## Hostname via Cloudflare Tunnel
 
-For a named public instance (e.g. `integrator-demo.mwater.co` on the
-Cloudflare-managed zone), swap Caddy for a Cloudflare Tunnel: TLS terminates
-at Cloudflare, `cloudflared` dials out and proxies to the app on
-127.0.0.1:8080, and the server keeps no inbound ports open besides SSH.
+Every server is published on the Cloudflare-managed `mwater.co` zone as
+`integrator-<name>.mwater.co`: TLS terminates at Cloudflare, `cloudflared`
+dials out and proxies to the app on 127.0.0.1:8080, and the server keeps no
+inbound ports open besides SSH.
 
 1. In the Cloudflare Zero Trust dashboard (Networks -> Tunnels), create a
    tunnel with the Cloudflared connector and copy its token.
 2. On the tunnel's Public Hostname tab, add the hostname pointing to
    `HTTP://127.0.0.1:8080`. This also creates the DNS record.
-3. On the server:
+3. Pass the token to `setup.sh` as above, or for a server already
+   provisioned, from your checkout:
 
    ```sh
-   CLOUDFLARE_TUNNEL_TOKEN=eyJ... bash /opt/data-integrator/deploy/upcloud/cloudflare-tunnel.sh
+   ./deploy/upcloud/fleet.sh tunnel hosts.txt <name> <token>
    ```
 
-The script installs `cloudflared` as a systemd service, stops Caddy, and
-closes 80/443 in ufw. Skip any Zero Trust Access policy on the hostname if
-the site should be reachable by the world; the app's own logins are the
-gate. Session cookies stay `Secure` because Cloudflare sets
-`X-Forwarded-Proto` just as Caddy did, and the SSE heartbeat already keeps
-idle designer streams alive through the Cloudflare proxy.
+   which runs `cloudflare-tunnel.sh` on the box.
+
+The script installs `cloudflared` as a systemd service. Skip any Zero Trust
+Access policy on the hostname if the site should be reachable by the world;
+the app's own logins are the gate. Session cookies stay `Secure` because
+Cloudflare sets `X-Forwarded-Proto`, and the SSE heartbeat keeps idle
+designer streams alive through the Cloudflare proxy. A new record can take
+a minute to resolve if anything looked the name up before it existed (the
+`*.mwater.co` wildcard answer is cached briefly).
 
 ## Tear down
 
@@ -200,11 +208,3 @@ upctl server delete --delete-storages integrator-test
   curl "Could not resolve host" for hosts that resolve fine on the box. It
   clears when the box is less loaded; re-run the failed integration.
 
-- sslip.io shares Let's Encrypt rate limits across all its users. If issuance
-  fails, swap the hostname in `/etc/caddy/Caddyfile` to the `nip.io`
-  equivalent and `systemctl reload caddy`.
-- Session cookies work correctly behind the proxy — the server marks them
-  `Secure` based on `X-Forwarded-Proto`, which Caddy sets.
-- For a real (sub)domain, prefer the Cloudflare Tunnel section above. A plain
-  A record also works (swap the hostname in `/etc/caddy/Caddyfile` and reload)
-  but leaves the origin IP public.
