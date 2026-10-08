@@ -38,8 +38,11 @@ conmon and the gVisor sandbox), with swap disabled and `scopeOverheadMb` (defaul
 added to the memory ceiling for those processes. gVisor runs with
 `--runtime-flag=ignore-cgroups`, so podman's own `-m`, `--cpus` and `--pids-limit`
 flags have no effect. The cap is applied before the payload is written to the job's
-stdin, and the harness blocks on stdin, so job code never runs uncapped; when the cap
-cannot be applied the job fails instead of running. `resourceControl: "podman"` skips the
+stdin, and the harness blocks on stdin, so job code never runs uncapped. After asking
+systemd for the limits, the runner reads them back from the scope's cgroup files
+(`memory.max`, `memory.swap.max`, `pids.max`, `cpu.max`), since systemd reports success
+even where a controller is unavailable; when they are not in effect the job fails with
+the values found instead of running. `resourceControl: "podman"` skips the
 scope and relies on podman's flags, which only works without gVisor.
 
 Before every networked job the runner restarts the keeper container (or rebuilds it) and

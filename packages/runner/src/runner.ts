@@ -41,6 +41,12 @@ const SCOPE_TASKS_OVERHEAD = 256
 /** How long to wait for podman to move into its own systemd scope, or for a job container to get its address */
 const SCOPE_WAIT_MS = 10_000
 
+/** How long to wait for a scope's cgroup files to show the limits systemd was asked to set */
+const SCOPE_VERIFY_MS = 3_000
+
+/** Where cgroup v2 is mounted */
+const CGROUP_ROOT = "/sys/fs/cgroup"
+
 /** A job's attached network meter. */
 interface Meter {
   /** Suffix of the meter's nft objects */
@@ -524,7 +530,9 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
   let cgroup = ""
   for (;;) {
     try {
-      cgroup = (await readFile(`/proc/${pid}/cgroup`, "utf8")).trim().split("\n").pop() ?? ""
+      // The cgroup v2 line is "0::<path>"; v1 controller lines may precede it
+      const lines = (await readFile(`/proc/${pid}/cgroup`, "utf8")).trim().split("\n")
+      cgroup = lines.find(line => line.startsWith("0::"))?.slice(3) ?? ""
     } catch {
       // podman already exited: nothing left to cap
       return
@@ -540,6 +548,40 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
     `CPUQuota=${Math.round(limits.cpus * 100)}%`,
     `TasksMax=${limits.tasksMax}`
   ])
+  // systemd reports success even when a controller is unavailable in this cgroup tree, so
+  // the kernel's own files are the only proof the limits hold; the job never starts without it
+  const verifyDeadline = Date.now() + SCOPE_VERIFY_MS
+  for (;;) {
+    const problem = await scopeLimitsProblem(path.join(CGROUP_ROOT, cgroup), limits)
+    if (problem === null) return
+    if (Date.now() > verifyDeadline) throw new Error(`limits are not in effect on ${unit}: ${problem}`)
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+}
+
+/**
+ * Compares a scope's cgroup v2 limit files with the limits requested; returns what differs,
+ * or null when every limit is in effect. Exported for tests.
+ */
+export async function scopeLimitsProblem(cgroupDir: string, limits: ScopeLimits): Promise<string | null> {
+  const expected: Record<string, string> = {
+    "memory.max": String(Math.round(limits.memoryMb) * 1024 * 1024),
+    "memory.swap.max": "0",
+    "pids.max": String(limits.tasksMax),
+    "cpu.max": `${Math.round(limits.cpus * 100) * 1000} 100000`
+  }
+  const problems: string[] = []
+  for (const [file, want] of Object.entries(expected)) {
+    let got: string
+    try {
+      got = (await readFile(path.join(cgroupDir, file), "utf8")).trim()
+    } catch (err) {
+      problems.push(`${file} unreadable (${(err as NodeJS.ErrnoException).code ?? err})`)
+      continue
+    }
+    if (got !== want) problems.push(`${file} is "${got}", expected "${want}"`)
+  }
+  return problems.length > 0 ? problems.join("; ") : null
 }
 
 /** Disk usage of a directory in MB; null when it cannot be measured. */

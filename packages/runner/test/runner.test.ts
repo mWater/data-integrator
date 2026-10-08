@@ -2,11 +2,11 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { mkdtemp, writeFile, readFile, readdir, access } from "node:fs/promises"
+import { mkdtemp, writeFile, readFile, readdir, access, rm } from "node:fs/promises"
 import { createServer, Server } from "node:http"
 import { networkInterfaces, tmpdir } from "node:os"
 import path from "node:path"
-import { Runner, parseJobOutput } from "../src/runner.js"
+import { Runner, parseJobOutput, scopeLimitsProblem } from "../src/runner.js"
 
 const execFileP = promisify(execFile)
 const ALPINE = "docker.io/library/alpine:3.20"
@@ -323,6 +323,22 @@ test("GDAL pipeline under gVisor writes a COG artifact", { skip: !HAS_GDAL_IMG }
   assert.deepEqual(parseJobOutput<{ rasters: { path: string }[] }>(result).rasters[0].path, "result.tif")
 }, { timeout: 120_000 })
 
+test("scope limit verification reads the kernel's files", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "cgroup-"))
+  const limits = { memoryMb: 512, cpus: 1.5, tasksMax: 300 }
+  await writeFile(path.join(dir, "memory.max"), "536870912\n")
+  await writeFile(path.join(dir, "memory.swap.max"), "0\n")
+  await writeFile(path.join(dir, "pids.max"), "300\n")
+  await writeFile(path.join(dir, "cpu.max"), "150000 100000\n")
+  assert.equal(await scopeLimitsProblem(dir, limits), null)
+
+  await writeFile(path.join(dir, "memory.max"), "max\n")
+  await rm(path.join(dir, "pids.max"))
+  const problem = await scopeLimitsProblem(dir, limits)
+  assert.match(problem ?? "", /memory\.max is "max", expected "536870912"/)
+  assert.match(problem ?? "", /pids\.max unreadable/)
+})
+
 test("memory limit is enforced under gVisor", { skip: !AVAILABLE }, async () => {
   // gVisor's tmpfs lives in sandbox memory, so filling /tmp past memoryMb must kill the job
   const result = await runner.run({
@@ -331,7 +347,9 @@ test("memory limit is enforced under gVisor", { skip: !AVAILABLE }, async () => 
     limits: { memoryMb: 128, tmpfsMb: 2048, timeoutMs: 60_000 },
     command: ["sh", "-c", "dd if=/dev/zero of=/tmp/fill bs=1M count=1024 2>/dev/null; echo SURVIVED"]
   })
-  assert.notEqual(result.status, "succeeded")
+  // Killed by the kernel's OOM killer, not aborted by the runner for a cap it could not apply
+  assert.equal(result.status, "failed")
+  assert.equal(result.abortedReason, undefined)
   assert.doesNotMatch(result.stdout, /SURVIVED/)
 }, { timeout: 90_000 })
 
@@ -353,6 +371,7 @@ test("process limit is enforced under gVisor", { skip: !AVAILABLE }, async () =>
     limits: { pidsMax: 32, timeoutMs: 60_000 },
     command: ["sh", "-c", "n=0; while [ $n -lt 600 ]; do sleep 20 & n=$((n+1)); done; wait; echo SURVIVED"]
   })
-  assert.notEqual(result.status, "succeeded")
+  assert.equal(result.status, "failed")
+  assert.equal(result.abortedReason, undefined)
   assert.doesNotMatch(result.stdout, /SURVIVED/)
 }, { timeout: 90_000 })
