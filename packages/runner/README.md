@@ -33,9 +33,14 @@ const output = parseJobOutput(result)
 ```
 
 `cpus`, `memoryMb` and `pidsMax` are enforced by capping the transient systemd user
-scope rootless podman runs each job in (`podman-<pid>.scope`, holding the podman client,
-conmon and the gVisor sandbox), with swap disabled and `scopeOverheadMb` (default 256)
-added to the memory ceiling for those processes. gVisor runs with
+scope rootless podman runs each job in (`podman-<pid>.scope`), with swap disabled and
+`scopeOverheadMb` (default 256) added to the memory ceiling for the podman client, conmon
+and the gVisor sandbox. Jobs run with `--cgroups=split` so conmon and the sandbox stay
+inside that scope: without it podman moves conmon to a scope of its own whenever
+`INVOCATION_ID` is absent from the environment (any process not started by systemd), and
+the cap would then hold nothing. Before the payload is written the runner confirms that
+conmon is inside the capped scope, and a job whose limits cannot be applied is removed
+without ever receiving its payload. gVisor runs with
 `--runtime-flag=ignore-cgroups`, so podman's own `-m`, `--cpus` and `--pids-limit`
 flags have no effect. The cap is applied before the payload is written to the job's
 stdin, and the harness blocks on stdin, so job code never runs uncapped. After asking

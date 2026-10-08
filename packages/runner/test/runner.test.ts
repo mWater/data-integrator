@@ -323,6 +323,44 @@ test("GDAL pipeline under gVisor writes a COG artifact", { skip: !HAS_GDAL_IMG }
   assert.deepEqual(parseJobOutput<{ rasters: { path: string }[] }>(result).rasters[0].path, "result.tif")
 }, { timeout: 120_000 })
 
+/** gVisor sandbox processes on the host */
+async function sandboxCount(): Promise<number> {
+  try {
+    const { stdout } = await execFileP("pgrep", ["-fc", "^runsc-sandbox"])
+    return Number(stdout.trim())
+  } catch {
+    return 0
+  }
+}
+
+test("a job whose limits cannot be applied never runs and leaves nothing behind", { skip: !AVAILABLE }, async () => {
+  const before = await sandboxCount()
+  // A systemctl that always fails stands in for a host where the cap cannot be set
+  const fakeBin = await mkdtemp(path.join(tmpdir(), "fake-bin-"))
+  await writeFile(path.join(fakeBin, "systemctl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
+  const savedPath = process.env.PATH
+  process.env.PATH = `${fakeBin}:${savedPath}`
+  let result
+  try {
+    result = await runner.run({
+      image: ALPINE,
+      payload: null,
+      network: false,
+      labels: { "test.owner": "cap-fail" },
+      command: ["sleep", "30"],
+      limits: { timeoutMs: 60_000 }
+    })
+  } finally {
+    process.env.PATH = savedPath
+  }
+  assert.equal(result.status, "failed")
+  assert.match(result.abortedReason ?? "", /could not be applied/)
+  assert.ok(result.durationMs < 20_000, `took ${result.durationMs} ms`)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  assert.equal(await runner.killLabelled("test.owner", "cap-fail"), 0, "container left behind")
+  assert.equal(await sandboxCount(), before, "sandbox process left behind")
+})
+
 test("scope limit verification reads the kernel's files", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "cgroup-"))
   const limits = { memoryMb: 512, cpus: 1.5, tasksMax: 300 }

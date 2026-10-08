@@ -265,6 +265,12 @@ export class Runner {
     if (this.opts.runscPath) {
       args.push("--runtime", this.opts.runscPath, "--runtime-flag=ignore-cgroups")
     }
+    // Keeps conmon and the sandbox inside podman's own scope, the one the runner caps. Without
+    // it, podman moves conmon to a libpod-conmon-<id>.scope of its own whenever INVOCATION_ID is
+    // absent from the environment, and the capped scope then holds nothing but podman itself
+    if (this.opts.resourceControl === "systemd-scope") {
+      args.push("--cgroups=split")
+    }
     args.push(spec.network === false ? "--network=none" : `--network=${this.opts.network}`)
     if (spec.network !== false) {
       for (const server of this.opts.dns) args.push("--dns", server)
@@ -376,7 +382,7 @@ export class Runner {
       } catch (err) {
         if (!exited) {
           handle.abort(`resource limits could not be applied: ${(err as Error).message}`)
-          child.kill("SIGKILL")
+          await this.removeBeforeStart(name, () => exited)
         }
       }
       if (cgroup !== null) {
@@ -401,7 +407,7 @@ export class Runner {
       } catch (err) {
         if (!exited) {
           handle.abort(`network meter could not be attached: ${(err as Error).message}`)
-          child.kill("SIGKILL")
+          await this.removeBeforeStart(name, () => exited)
         }
       }
     }
@@ -503,6 +509,19 @@ export class Runner {
   /** Applies the egress ruleset inside the rootless infra netns. Idempotent. */
   private async applyEgressRules(): Promise<void> {
     await this.nftScript(buildRuleset(this.opts.blockedAddresses))
+  }
+
+  /**
+   * Removes a job container that must not run, once podman has created it. The job cannot
+   * have started: its payload is never written. Killing the podman client instead would
+   * leave conmon and the sandbox running with no record of them.
+   */
+  private async removeBeforeStart(name: string, exited: () => boolean): Promise<void> {
+    const deadline = Date.now() + SCOPE_WAIT_MS
+    while (!exited() && Date.now() < deadline) {
+      if (await this.podmanOk(["rm", "-f", name])) return
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
 
   /** Applies an nft script inside the rootless infra netns, atomically. */
