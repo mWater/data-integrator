@@ -253,7 +253,11 @@ export class Runner {
       ...Object.fromEntries(Object.entries(spec.limits ?? {}).filter(([, v]) => v !== undefined))
     }
     const name = `job-${randomUUID().slice(0, 8)}`
-    const args = ["run", "--rm", "-i", "--name", name]
+    // podman writes conmon's pid here as soon as it starts, which is how the placement check
+    // finds the sandbox without contending for the container lock
+    const stateDir = await mkdtemp(path.join(tmpdir(), "integrator-job-"))
+    const conmonPidFile = path.join(stateDir, "conmon.pid")
+    const args = ["run", "--rm", "-i", "--name", name, "--conmon-pidfile", conmonPidFile]
 
     // Fails closed: a job is never launched onto a network whose rules are unverified
     if (spec.network !== false) await this.prepareNetwork()
@@ -357,18 +361,36 @@ export class Runner {
 
     // The harness blocks on stdin, so job code cannot run before the payload
     // is written: cap the scope first, and never write it if that fails
+    let cgroup: string | null = null
+    let memoryPeakBytes: number | undefined
+    let peakTimer: ReturnType<typeof setInterval> | null = null
     if (this.opts.resourceControl === "systemd-scope" && child.pid !== undefined) {
       try {
-        await capPodmanScope(child.pid, {
+        cgroup = await capPodmanScope(child.pid, {
           memoryMb: limits.memoryMb + this.opts.scopeOverheadMb,
           cpus: limits.cpus,
           tasksMax: limits.pidsMax + SCOPE_TASKS_OVERHEAD
         })
+        // The cap only counts if the sandbox lives under the capped cgroup
+        if (cgroup !== null) await verifyPlacement(conmonPidFile, cgroup, () => exited)
       } catch (err) {
         if (!exited) {
           handle.abort(`resource limits could not be applied: ${(err as Error).message}`)
           child.kill("SIGKILL")
         }
+      }
+      if (cgroup !== null) {
+        const peakFile = path.join(CGROUP_ROOT, cgroup, "memory.peak")
+        const sample = () =>
+          readFile(peakFile, "utf8").then(
+            text => {
+              const bytes = Number(text.trim())
+              if (Number.isFinite(bytes)) memoryPeakBytes = Math.max(memoryPeakBytes ?? 0, bytes)
+            },
+            () => {}
+          )
+        peakTimer = setInterval(sample, 100)
+        void sample()
       }
     }
     // Metered from before the payload is written, so no traffic escapes the count
@@ -432,7 +454,9 @@ export class Runner {
     clearTimeout(timer)
     if (diskTimer !== null) clearInterval(diskTimer)
     if (egressTimer !== null) clearInterval(egressTimer)
+    if (peakTimer !== null) clearInterval(peakTimer)
     if (lineBuffer && hooks?.onStderrLine) hooks.onStderrLine(lineBuffer)
+    await rm(stateDir, { recursive: true, force: true })
 
     let egressBytes: number | undefined
     if (meter) {
@@ -456,7 +480,9 @@ export class Runner {
       stderrTail,
       durationMs: Date.now() - started,
       ...(abortedReason !== null ? { abortedReason } : {}),
-      ...(egressBytes !== undefined ? { egressBytes } : {})
+      ...(egressBytes !== undefined ? { egressBytes } : {}),
+      ...(cgroup !== null ? { cgroup } : {}),
+      ...(memoryPeakBytes !== undefined ? { memoryPeakBytes } : {})
     }
   }
 
@@ -524,7 +550,7 @@ interface ScopeLimits {
  * Waits for podman to make the move; refuses any other cgroup, since capping
  * the caller's own unit would limit the caller instead of the job.
  */
-async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
+async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<string | null> {
   const unit = `podman-${pid}.scope`
   const deadline = Date.now() + SCOPE_WAIT_MS
   let cgroup = ""
@@ -535,7 +561,7 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
       cgroup = lines.find(line => line.startsWith("0::"))?.slice(3) ?? ""
     } catch {
       // podman already exited: nothing left to cap
-      return
+      return null
     }
     if (cgroup.endsWith(`/${unit}`)) break
     if (Date.now() > deadline) throw new Error(`podman did not move into ${unit} (cgroup ${cgroup})`)
@@ -553,9 +579,30 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<void> {
   const verifyDeadline = Date.now() + SCOPE_VERIFY_MS
   for (;;) {
     const problem = await scopeLimitsProblem(path.join(CGROUP_ROOT, cgroup), limits)
-    if (problem === null) return
+    if (problem === null) return cgroup
     if (Date.now() > verifyDeadline) throw new Error(`limits are not in effect on ${unit}: ${problem}`)
     await new Promise(resolve => setTimeout(resolve, 50))
+  }
+}
+
+/**
+ * Requires the job's container monitor (conmon, whose children are the gVisor sandbox) to be
+ * inside the capped cgroup. Waits for podman to write conmon's pid; the harness is still
+ * blocked on stdin, so nothing runs meanwhile.
+ */
+async function verifyPlacement(conmonPidFile: string, cgroup: string, exited: () => boolean): Promise<void> {
+  const deadline = Date.now() + SCOPE_WAIT_MS
+  for (;;) {
+    const conmonPid = Number((await readFile(conmonPidFile, "utf8").catch(() => "")).trim())
+    if (conmonPid > 0) {
+      const lines = (await readFile(`/proc/${conmonPid}/cgroup`, "utf8")).trim().split("\n")
+      const actual = lines.find(line => line.startsWith("0::"))?.slice(3) ?? ""
+      if (actual === cgroup || actual.startsWith(cgroup + "/")) return
+      throw new Error(`the sandbox runs in ${actual}, outside the capped ${cgroup}`)
+    }
+    if (exited()) return
+    if (Date.now() > deadline) throw new Error(`container did not start within ${SCOPE_WAIT_MS / 1000} s`)
+    await new Promise(resolve => setTimeout(resolve, 20))
   }
 }
 

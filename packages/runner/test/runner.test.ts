@@ -358,10 +358,14 @@ test("memory within the limit is unaffected", { skip: !AVAILABLE }, async () => 
     image: ALPINE,
     payload: null,
     limits: { memoryMb: 512, tmpfsMb: 1024, timeoutMs: 60_000 },
-    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/fill bs=1M count=200 2>/dev/null; echo SURVIVED"]
+    // Holds the memory long enough for the peak sampler to see it
+    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/fill bs=1M count=200 2>/dev/null; sleep 0.5; echo SURVIVED"]
   })
   assert.equal(result.status, "succeeded", result.stderrTail)
   assert.match(result.stdout, /SURVIVED/)
+  assert.match(result.cgroup ?? "", /\/podman-\d+\.scope$/)
+  assert.ok((result.memoryPeakBytes ?? 0) > 100 * 1024 * 1024, `peak ${result.memoryPeakBytes}`)
+  assert.ok((result.memoryPeakBytes ?? Infinity) <= (512 + 256) * 1024 * 1024, `peak ${result.memoryPeakBytes}`)
 }, { timeout: 90_000 })
 
 test("process limit is enforced under gVisor", { skip: !AVAILABLE }, async () => {

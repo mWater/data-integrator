@@ -83,6 +83,10 @@ export interface JobResult {
   abortedReason?: string
   /** Network bytes in and out of the job, measured under the "public-only" egress policy */
   egressBytes?: number
+  /** cgroup the job's limits were applied to, under "systemd-scope" resource control */
+  cgroup?: string
+  /** Peak memory of that cgroup during the job in bytes, sampled once a second */
+  memoryPeakBytes?: number
 }
 
 /** Configuration of a Runner instance. */
