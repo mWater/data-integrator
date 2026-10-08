@@ -6,7 +6,7 @@ import { RuntimeId } from "./contract.js"
  * three artifacts share one version and the release script stamps it here
  * and in package.json together.
  */
-export const RUNTIME_VERSION = "0.2.1"
+export const RUNTIME_VERSION = "0.2.2"
 
 /** Registry path of the runtime images, without tag. */
 export const RUNTIME_IMAGE_REPOSITORY = "ghcr.io/mwater/integration-runtime"
