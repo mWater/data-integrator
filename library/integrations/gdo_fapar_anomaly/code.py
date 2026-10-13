@@ -200,6 +200,8 @@ def run(ctx):
                 break
         selected_files.reverse()
 
+    # First list the dekads to publish, reading only the time axis: each dekad is a global grid
+    # of about 60 MB, so the grids are loaded one at a time below, never all together
     observations = []
     newest_file = files[-1][0]
     for filename, _, _ in selected_files:
@@ -209,47 +211,51 @@ def run(ctx):
         with xr.open_dataset(local_path, engine="netcdf4", decode_cf=True) as dataset:
             if VARIABLE not in dataset:
                 raise RuntimeError(f"Expected variable {VARIABLE} is absent from {filename}")
-            variable = dataset[VARIABLE]
             for index, time_value in enumerate(dataset["time"].values):
                 dekad = iso_date(time_value)
                 if last_dekad and requested_backfill is None and dekad <= last_dekad:
                     continue
-                grid = variable.isel(time=index)
-                if "band" in grid.dims:
-                    grid = grid.isel(band=0)
-                observations.append((dekad, filename, grid.load()))
+                observations.append((dekad, filename, index))
 
     observations.sort(key=lambda item: item[0])
     if not last_dekad or requested_backfill is not None:
         observations = observations[-((requested_backfill or BACKFILL_MONTHS) * 3):]
 
     rasters = []
-    for dekad, filename, grid in observations:
-        values, transform, footprint = subset_grid(grid, bbox)
-        relative_path = write_cog(values, transform, dekad, ctx.work_dir, ctx.out_dir)
-        valid = values[values != NODATA]
-        start = date.fromisoformat(dekad)
-        metadata = {
-            "source_product": "GDO VIIRS fAPAR anomaly (ten-daily)",
-            "source_version": version,
-            "source_file": filename,
-            "dekad_start": dekad,
-            "units": "dimensionless",
-        }
-        if valid.size:
-            metadata["minimum"] = float(valid.min())
-            metadata["maximum"] = float(valid.max())
-        rasters.append(
-            {
-                "layerId": LAYER_ID,
-                "path": relative_path,
-                "timestamp": f"{dekad}T00:00:00Z",
-                "timestampEnd": f"{dekad_end(start).isoformat()}T00:00:00Z",
-                "footprint": footprint,
-                "crs": "EPSG:4326",
-                "metadata": metadata,
-            }
-        )
+    for filename in dict.fromkeys(item[1] for item in observations):
+        with xr.open_dataset(os.path.join(ctx.work_dir, filename), engine="netcdf4", decode_cf=True) as dataset:
+            variable = dataset[VARIABLE]
+            for dekad, _, index in (item for item in observations if item[1] == filename):
+                grid = variable.isel(time=index)
+                if "band" in grid.dims:
+                    grid = grid.isel(band=0)
+                values, transform, footprint = subset_grid(grid.load(), bbox)
+                del grid
+                relative_path = write_cog(values, transform, dekad, ctx.work_dir, ctx.out_dir)
+                valid = values[values != NODATA]
+                start = date.fromisoformat(dekad)
+                metadata = {
+                    "source_product": "GDO VIIRS fAPAR anomaly (ten-daily)",
+                    "source_version": version,
+                    "source_file": filename,
+                    "dekad_start": dekad,
+                    "units": "dimensionless",
+                }
+                if valid.size:
+                    metadata["minimum"] = float(valid.min())
+                    metadata["maximum"] = float(valid.max())
+                del values, valid
+                rasters.append(
+                    {
+                        "layerId": LAYER_ID,
+                        "path": relative_path,
+                        "timestamp": f"{dekad}T00:00:00Z",
+                        "timestampEnd": f"{dekad_end(start).isoformat()}T00:00:00Z",
+                        "footprint": footprint,
+                        "crs": "EPSG:4326",
+                        "metadata": metadata,
+                    }
+                )
 
     state["last_dekad"] = observations[-1][0] if observations else last_dekad
     print(f"Prepared {len(rasters)} fAPAR anomaly dekad raster(s); cursor={state['last_dekad']}")
