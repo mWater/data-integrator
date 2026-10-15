@@ -564,6 +564,19 @@ interface ScopeLimits {
 }
 
 /**
+ * The cgroup of podman's own scope (`podman-<pid>.scope`) when podman's current cgroup is that
+ * scope or inside it, else null. With --cgroups=split podman moves itself into the scope and,
+ * tens of milliseconds later, into a `runtime` child of it, so a poll can see either. Exported
+ * for tests.
+ */
+export function podmanScopeCgroup(cgroup: string, pid: number): string | null {
+  const unit = `podman-${pid}.scope`
+  if (cgroup.endsWith(`/${unit}`)) return cgroup
+  const at = cgroup.indexOf(`/${unit}/`)
+  return at >= 0 ? cgroup.slice(0, at + unit.length + 1) : null
+}
+
+/**
  * Caps the transient scope rootless podman moves itself into
  * (`podman-<pid>.scope`), which also holds conmon and the gVisor sandbox.
  * Waits for podman to make the move; refuses any other cgroup, since capping
@@ -574,16 +587,21 @@ async function capPodmanScope(pid: number, limits: ScopeLimits): Promise<string 
   const deadline = Date.now() + SCOPE_WAIT_MS
   let cgroup = ""
   for (;;) {
+    let current: string
     try {
       // The cgroup v2 line is "0::<path>"; v1 controller lines may precede it
       const lines = (await readFile(`/proc/${pid}/cgroup`, "utf8")).trim().split("\n")
-      cgroup = lines.find(line => line.startsWith("0::"))?.slice(3) ?? ""
+      current = lines.find(line => line.startsWith("0::"))?.slice(3) ?? ""
     } catch {
       // podman already exited: nothing left to cap
       return null
     }
-    if (cgroup.endsWith(`/${unit}`)) break
-    if (Date.now() > deadline) throw new Error(`podman did not move into ${unit} (cgroup ${cgroup})`)
+    const scope = podmanScopeCgroup(current, pid)
+    if (scope !== null) {
+      cgroup = scope
+      break
+    }
+    if (Date.now() > deadline) throw new Error(`podman did not move into ${unit} (cgroup ${current})`)
     await new Promise(resolve => setTimeout(resolve, 20))
   }
   await execFileP("systemctl", [

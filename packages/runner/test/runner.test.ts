@@ -6,7 +6,7 @@ import { mkdtemp, writeFile, readFile, readdir, access, rm } from "node:fs/promi
 import { createServer, Server } from "node:http"
 import { networkInterfaces, tmpdir } from "node:os"
 import path from "node:path"
-import { Runner, parseJobOutput, scopeLimitsProblem } from "../src/runner.js"
+import { Runner, parseJobOutput, podmanScopeCgroup, scopeLimitsProblem } from "../src/runner.js"
 
 const execFileP = promisify(execFile)
 const ALPINE = "docker.io/library/alpine:3.20"
@@ -359,6 +359,16 @@ test("a job whose limits cannot be applied never runs and leaves nothing behind"
   await new Promise(resolve => setTimeout(resolve, 1000))
   assert.equal(await runner.killLabelled("test.owner", "cap-fail"), 0, "container left behind")
   assert.equal(await sandboxCount(), before, "sandbox process left behind")
+})
+
+test("podman's scope is found whether podman is in it or already in its runtime child", () => {
+  const scope = "/user.slice/user-1000.slice/user@1000.service/user.slice/podman-42.scope"
+  assert.equal(podmanScopeCgroup(scope, 42), scope)
+  // --cgroups=split moves podman into scope/runtime tens of milliseconds after the scope
+  assert.equal(podmanScopeCgroup(scope + "/runtime", 42), scope)
+  // Before the move, and another process's scope, are not podman's
+  assert.equal(podmanScopeCgroup("/user.slice/user-1000.slice/user@1000.service/app.slice/app-x.scope", 42), null)
+  assert.equal(podmanScopeCgroup("/user.slice/user-1000.slice/user@1000.service/user.slice/podman-420.scope/runtime", 42), null)
 })
 
 test("scope limit verification reads the kernel's files", async () => {
