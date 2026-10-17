@@ -1,6 +1,6 @@
 import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { Server } from "node:http"
 import { AddressInfo } from "node:net"
 import { tmpdir } from "node:os"
@@ -198,3 +198,47 @@ test("a direct start runs the named integration, not whatever else is queued (cl
   await pool.query("DELETE FROM app.runs WHERE integration_id = 'rs_other' AND status = 'queued'")
 })
 
+test("a snapshot download whose file is missing answers 404 and the server keeps serving", async () => {
+  await installIntegration(pool, {
+    ...definition("rs_layer"),
+    destinations: [
+      {
+        kind: "raster",
+        layerId: "rs_grid",
+        temporality: "current-only",
+        bands: [{ id: "value", nodata: -9999, rendering: { colorMap: [{ value: 0, color: "#ffffff" }] } }]
+      }
+    ]
+  })
+  const run = await pool.query(
+    "INSERT INTO app.runs (integration_id, trigger, status) VALUES ('rs_layer', 'manual', 'succeeded') RETURNING id"
+  )
+  const snapshot = async (relPath: string): Promise<string> => {
+    const inserted = await pool.query(
+      `INSERT INTO app.raster_snapshots (layer_id, observed_at, crs, bands, size_bytes, run_id, status)
+       VALUES ('rs_grid', now(), 'EPSG:4326', '["value"]', 4, $1, 'promoted') RETURNING id`,
+      [run.rows[0].id]
+    )
+    await pool.query(
+      `INSERT INTO app.raster_sources (snapshot_id, ordinal, path, footprint, size_bytes)
+       VALUES ($1, 0, $2, ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))', 4326), 4)`,
+      [inserted.rows[0].id, relPath]
+    )
+    return inserted.rows[0].id
+  }
+  const download = (snapshotId: string) =>
+    fetch(`${base}/api/snapshots/${snapshotId}/download`, { headers: { authorization: `Bearer ${editorBearer}` } })
+
+  const missing = await snapshot("rs_grid/missing.tif")
+  const gone = await download(missing)
+  assert.equal(gone.status, 404)
+  assert.match((await gone.json()).error, /missing from the raster store/)
+
+  await mkdir(path.join(storeRoot, "rs_grid"), { recursive: true })
+  await writeFile(path.join(storeRoot, "rs_grid", "present.tif"), "TIFF")
+  const present = await snapshot("rs_grid/present.tif")
+  const ok = await download(present)
+  assert.equal(ok.status, 200)
+  assert.equal(ok.headers.get("content-length"), "4")
+  assert.equal(await ok.text(), "TIFF")
+})
