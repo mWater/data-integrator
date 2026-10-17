@@ -79,9 +79,10 @@ One contract, language-agnostic:
   result sets that comfortably fit; larger tables travel as files in `tables[]`
 - stderr: logs, captured and stored per run
 - `/in` mount (read-only): inputs declared in the definition (catalog snapshots as COGs,
-  tabular extracts), resolved and materialized by the server at launch and described to
-  the code by `/in/manifest.json`. Resolved snapshot ids are recorded on the run for
-  lineage and reproducibility.
+  tabular extracts) and uploaded file versions (`/in/files/<slot><ext>`, see
+  Integration Files.md), resolved and materialized by the server at launch and described
+  to the code by `/in/manifest.json`. Resolved snapshot and file version ids are recorded
+  on the run for lineage and reproducibility.
 - `/work` mount: persistent workspace, per integration (per session during design). Cache
   semantics: may be wiped at any time, correctness never depends on it, quota part of job
   limits. `previousState` remains the only authoritative incremental state. Workspaces
@@ -156,7 +157,7 @@ Raster plane:
 The durable deliverable: machine-readable definitions, independent of this application.
 
 Each integration: `{ id, name, source, trigger, secrets (names only), aoi, inputs,
-runtime, limits, destinations, validation, code, contract }`. Destinations are tabular
+files (slot names only), runtime, limits, destinations, validation, code, contract }`. Destinations are tabular
 schemas and/or raster layer declarations. Inputs reference catalog layers or tables, so
 derived analytics (drought indices, exposure) are ordinary integrations. Library definitions
 are starting values: installing copies them into the integration's definition, which

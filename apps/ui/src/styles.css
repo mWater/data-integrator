@@ -187,6 +187,23 @@ input:not([type=range]), textarea, select { background: var(--surface); color: v
 .list-head-actions { display: flex; align-items: center; gap: 8px }
 .list-head-actions .dim-link { margin-right: 8px; white-space: nowrap }
 .dest-panel { margin: 0 0 18px }
+/* Integration files: one block per slot, history and multi-slot replace folded */
+.files-panel { margin: 0 0 18px; padding: 10px 15px 12px }
+.files-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap }
+.files-head h2 { margin: 0; font-size: 14px }
+.files-slot { padding: 10px 0; border-top: 1px solid var(--border) }
+.files-head + .files-slot, .files-panel > [role="status"] + .files-slot { border-top: 0 }
+.files-slot-main { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 1.6 }
+.files-slot-main .grow { flex: 1; min-width: 0; overflow-wrap: anywhere }
+.files-slot-main .chip { margin-left: 8px }
+.files-history, .files-several { margin-top: 6px; font-size: 13px }
+.files-history summary, .files-several summary { cursor: pointer; color: var(--ink-dim) }
+.files-history table { margin-top: 6px }
+.files-history .chip { margin-right: 4px }
+.files-actions { display: flex; gap: 10px; align-items: center; white-space: nowrap }
+.files-several fieldset { border: 0; padding: 8px 0 0; margin: 0; display: grid; gap: 8px; justify-items: start }
+.files-several label { display: flex; gap: 10px; align-items: center }
+.files-several label span { min-width: 120px; font-weight: 600 }
 @media (max-width: 680px) {
   .list-head { flex-wrap: wrap }
   .list-head-actions { width: 100%; margin-left: 0; flex-wrap: wrap }
@@ -595,7 +612,16 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   border-radius: 6px; padding: 8px 16px; text-decoration: none;
 }
 
-.composer { display: flex; gap: 8px; padding-top: 10px }
+.composer { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px }
+/* Attachments and upload progress sit under the textarea and send button */
+.composer > .composer-attachments, .composer > [role="status"] { order: 2; flex-basis: 100% }
+.composer-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px }
+.composer-attachment {
+  display: inline-flex; align-items: center; gap: 8px; padding: 3px 4px 3px 10px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+.composer-attachment input { font: inherit; padding: 2px 6px; border: 1px solid var(--control-border); border-radius: 6px }
+.composer-attachment input[aria-invalid="true"] { border-color: var(--danger) }
 .composer .stop { background: var(--surface); border: 1px solid var(--danger); color: var(--danger) }
 .composer .stop:hover { background: var(--danger-bg) }
 .composer .stop:disabled { opacity: 0.6 }

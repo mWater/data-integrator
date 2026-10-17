@@ -16,8 +16,10 @@ import {
   SessionDetail,
   SessionEvent,
   stopSession,
-  subscribeEvents
+  subscribeEvents,
+  uploadSessionFile
 } from "./api.js"
+import { ComposerAttachments, PendingAttachment, SLOT_PATTERN } from "./ComposerAttachments.js"
 import { ensureAiAck } from "./aiAck.js"
 import { isBlockCall } from "./blocks/types.js"
 import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
@@ -202,6 +204,9 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
+  // Files waiting to go out with the next message (design sessions only)
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const [uploading, setUploading] = useState<string | null>(null)
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const [split, setSplit] = useState(storedSplit)
   // Full-screen preview hides the conversation so the dashboard can be judged
@@ -340,9 +345,39 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   }, [live, detail])
 
   async function send(text: string) {
-    if (!text) return
+    const pending = attachments
+    if (!text && pending.length === 0) return
     setError(null)
+    const badSlot = pending.find(a => !SLOT_PATTERN.test(a.slot))
+    if (badSlot) {
+      setError(T`Slot "${badSlot.slot}" for ${badSlot.file.name}: lowercase letters, digits and underscores, starting with a letter`)
+      return
+    }
+    // The running loop owns the session state, so the server refuses attachments until it pauses
+    if (busy && pending.length > 0) {
+      setError(T`Attach files once the agent pauses`)
+      return
+    }
     if (!(await ensureAiAck())) return
+    // Uploads go first; the message then pins them. A failed upload keeps
+    // everything in the composer to retry
+    const files: { slot: string; versionId: string }[] = []
+    try {
+      for (const attachment of pending) {
+        setUploading(T`Uploading ${attachment.file.name}…`)
+        const { version } = await uploadSessionFile(sessionId, attachment.slot, attachment.file, fraction =>
+          setUploading(T`Uploading ${attachment.file.name}… ${Math.round(fraction * 100)}%`)
+        )
+        files.push({ slot: attachment.slot, versionId: version.id })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      return
+    } finally {
+      setUploading(null)
+    }
+    if (!text) text = files.length === 1 ? T`Here is the file.` : T`Here are the files.`
+    setAttachments([])
     const wasBusy = busy
     if (!wasBusy) frozenRef.current = messagesLenRef.current
     setBusy(true)
@@ -355,8 +390,9 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
       setPreviewErrors([])
     }
     try {
-      await sendMessage(sessionId, outgoing)
+      await sendMessage(sessionId, outgoing, files)
     } catch (err) {
+      if (pending.length > 0) setAttachments(pending)
       if (!wasBusy) {
         setBusy(false)
         frozenRef.current = null
@@ -647,12 +683,21 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
             disabled={!canSend}
             rows={3}
           />
+          {detail.kind === "designer" && canSend && (
+            <ComposerAttachments
+              attachments={attachments}
+              onChange={setAttachments}
+              definition={(detail.state as DesignerState)?.definition}
+              enabled={!busy && uploading === null}
+            />
+          )}
+          {uploading && <span className="dim" role="status">{uploading}</span>}
           {busy && input.trim() === "" ? (
             <button type="button" className="stop" onClick={() => void onStop()} disabled={!canSend || stopping}>
               {stopping ? T`Stopping…` : T`Stop`}
             </button>
           ) : (
-            <button type="submit" disabled={!canSend || !input.trim()}>{T`Send`}</button>
+            <button type="submit" disabled={!canSend || uploading !== null || (!input.trim() && attachments.length === 0)}>{T`Send`}</button>
           )}
         </form>
       </div>

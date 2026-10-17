@@ -72,6 +72,7 @@ started.
 - [Agent Harness.md](Agent%20Harness.md) - agent loop design and harness decisions
 - [Database.md](Database.md) - Postgres schema, migrations, and raster store layout
 - [Dashboards.md](Dashboards.md) - agent-designed dashboards: React over frozen SQL
+- [Integration Files.md](Integration%20Files.md) - uploaded files integrations read, versioned per slot
 - [packages/runner](packages/runner/) - podman + gVisor job executor (working, tested)
 - [runtimes/](runtimes/) - node and python runtime images with job harnesses
   (working, tested)

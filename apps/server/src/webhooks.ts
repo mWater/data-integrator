@@ -9,6 +9,8 @@
  */
 
 import pg from "pg"
+import { IntegrationDefinition } from "@data-integrator/definitions"
+import { missingFileSlot } from "./files.js"
 
 /** UUID shape of webhook tokens; also the path-segment guard for /hooks/:token. */
 export const WEBHOOK_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -17,7 +19,7 @@ export const WEBHOOK_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 export interface WebhookReceipt {
   /** Stored event id */
   eventId: string
-  /** Run this receipt enqueued; null when one was already queued or the integration is paused/draft */
+  /** Run this receipt enqueued; null when one was already queued, the integration is paused/draft, or a file slot is still empty */
   runId: string | null
 }
 
@@ -30,14 +32,14 @@ export interface WebhookReceipt {
  */
 export async function receiveWebhook(pool: pg.Pool, token: string, payload: unknown): Promise<WebhookReceipt | null> {
   const integration = await pool.query(
-    `SELECT id, enabled, status,
+    `SELECT id, enabled, status, definition->'files' AS files,
             COALESCE((definition->'trigger'->>'webhookDelaySeconds')::int, 0) AS delay
      FROM app.integrations
      WHERE webhook_token = $1 AND definition->'trigger'->>'webhook' = 'true'`,
     [token]
   )
   if (integration.rows.length === 0) return null
-  const { id, enabled, status, delay } = integration.rows[0]
+  const { id, enabled, status, delay, files } = integration.rows[0]
 
   const event = await pool.query(
     "INSERT INTO app.webhook_events (integration_id, payload) VALUES ($1, $2) RETURNING id",
@@ -48,7 +50,9 @@ export async function receiveWebhook(pool: pg.Pool, token: string, payload: unkn
   // batch window (scheduled_at = now + webhookDelaySeconds) and later events
   // conflict into the same run, so constant traffic cannot starve it
   let runId: string | null = null
-  if (enabled && status === "ready") {
+  // An empty file slot would only fail the run; the event waits for the upload's run
+  const awaitingFile = files ? await missingFileSlot(pool, id, { files } as IntegrationDefinition) : null
+  if (enabled && status === "ready" && !awaitingFile) {
     const run = await pool.query(
       `INSERT INTO app.runs (integration_id, trigger, status, scheduled_at)
        VALUES ($1, 'webhook', 'queued', now() + make_interval(secs => $2))

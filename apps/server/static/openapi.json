@@ -231,9 +231,61 @@
     },
     "/api/integrations/{id}/run": {
       "post": {
-        "summary": "Start a manual run (editor or admin)",
+        "summary": "Start a manual run (editor or admin). With files, pins file versions per slot (a revert or multi-slot replace) and queues behind a run in progress, merging into an already-queued run",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": { "202": { "description": "{ runId }" }, "409": { "description": "Already queued or running" } }
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "files": { "type": "object", "additionalProperties": { "type": "string", "description": "versionId" } } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "{ runId, status: running | queued }" },
+          "400": { "description": "A slot awaits its first upload, or a pin names no live, accepted version of the slot" },
+          "409": { "description": "Without files: already queued or running, or a draft" }
+        }
+      }
+    },
+    "/api/integrations/{id}/files": {
+      "get": {
+        "summary": "File slots with their versions, current version, bytes stored, and the runs that read each version. Filenames and uploader emails are null for viewers",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "{ slots: [{ slotId, declared, description, accept, bytesStored, versions }] }" } }
+      }
+    },
+    "/api/integrations/{id}/files/{slot}": {
+      "put": {
+        "summary": "Upload a new version of a file slot as a raw body (editor or admin). Checks run before the body is read; Expect: 100-continue is answered only after them. run=true (default) requires an installed integration declaring the slot and accepting the extension, and starts or queues a run pinning the version; run=false stages it",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "slot", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "filename", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "run", "in": "query", "required": false, "schema": { "type": "boolean", "default": true } }
+        ],
+        "requestBody": { "required": true, "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } },
+        "responses": {
+          "201": { "description": "{ version, run: { id, status } | null, runError? }" },
+          "400": { "description": "Bad slot, filename, or extension; undeclared slot or unaccepted type with run=true" },
+          "403": { "description": "Viewer" },
+          "413": { "description": "Larger than FILE_UPLOAD_MAX_MB (default 100)" },
+          "507": { "description": "The file store's disk is full" }
+        }
+      }
+    },
+    "/api/integrations/{id}/files/{slot}/versions/{versionId}/download": {
+      "get": {
+        "summary": "Download one file version (editor or admin) as an inert attachment: application/octet-stream, nosniff, CSP sandbox, no-store",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "slot", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "versionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": { "200": { "description": "The file" }, "403": { "description": "Viewer" }, "410": { "description": "Purged" } }
       }
     },
     "/api/integrations/{id}/versions": {

@@ -6802,6 +6802,384 @@
       "es": "Solo usted puede ver este panel.",
       "mg": "Ianao ihany no afaka mahita ity tabilao fanaraha-maso ity.",
       "sw": "Ni wewe pekee unayeweza kuona dashibodi hii."
+    },
+    {
+      "_base": "en",
+      "en": "The upload failed: the connection was lost",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "The file is larger than a proxy in front of this server allows. Ask the administrator to raise the proxy's upload limit (Cloudflare allows 100 MB on its Free and Pro plans; nginx needs client_max_body_size).",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Attach a file for the integration to read",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Attach files once the agent pauses",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Attach File",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "slot",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Remove {0}",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "No run was started: {0}",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "A run reading it has started.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "A run reading it is queued behind the run in progress.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploading {0}…",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploading {0}… {1}%",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploaded v{0} of {1}.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "A run reading v{0} of {1} has started.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "A run reading v{0} of {1} is queued behind the run in progress.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Files",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Finish the design session before replacing files here.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Each upload is kept as a new version; uploading one runs the integration against it.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "no longer declared",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "No version has been read by a successful run yet.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Awaiting its first upload; runs wait until one arrives.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Replace…",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Upload…",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "{0} versions, {1} stored",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploaded",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Size",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "File",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Runs",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "purged",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Download",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Runs today's code against this version; success makes it current",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Run with this version",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploaded {0} files; a run reading them has started.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Uploaded {0} files; a run reading them is queued behind the run in progress.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "{0} The files uploaded so far are kept as versions but were not run.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Replace several files in one run",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Upload and Run",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Slots left empty keep their current version.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Slot \"{0}\" for {1}: lowercase letters, digits and underscores, starting with a letter",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Here is the file.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Here are the files.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "1 version, {0} stored",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
     }
   ],
   "unused": [

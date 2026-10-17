@@ -39,6 +39,9 @@ export function wrapDefinitionStrings(definition: IntegrationDefinition, base: s
     d.source.name = wrap(d.source.name, base) as LocalizedString
     if (d.source.limitations !== undefined) d.source.limitations = wrap(d.source.limitations, base) as LocalizedString
   }
+  for (const slot of Object.values(d.files ?? {})) {
+    if (slot.description !== undefined) slot.description = wrap(slot.description, base) as LocalizedString
+  }
   for (const dest of d.destinations ?? []) {
     const destAny = dest as unknown as Record<string, unknown>
     if (destAny.name !== undefined) destAny.name = wrap(destAny.name, base)
@@ -74,6 +77,7 @@ export function collectDefinitionStrings(definition: IntegrationDefinition): Loc
   push(definition.description)
   push(definition.source?.name)
   push(definition.source?.limitations)
+  for (const slot of Object.values(definition.files ?? {})) push(slot.description)
   for (const dest of definition.destinations ?? []) {
     push(dest.name)
     push(dest.description)
@@ -111,6 +115,9 @@ export function validateDefinitionStrings(definition: IntegrationDefinition): st
   if (definition.source) {
     check(definition.source.name, "source.name", true)
     check(definition.source.limitations, "source.limitations", false)
+  }
+  for (const [slotId, slot] of Object.entries(definition.files ?? {})) {
+    check(slot?.description, `files.${slotId}.description`, false)
   }
   definition.destinations?.forEach((dest, i) => {
     const at = `destinations[${i}]`

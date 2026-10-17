@@ -54,6 +54,8 @@ interest — lives in the Settings page, not the environment.
 | `RASTER_STORE_PATH` | `./raster-store` | COG store (plain directory; mount S3 via FUSE if desired) |
 | `WORK_ROOT` | `./work` | persistent per-integration /work caches |
 | `TILE_CACHE_PATH` | `./tile-cache` | rendered tile cache |
+| `FILE_STORE_PATH` | `./file-store` | uploaded integration files, every version kept (Integration Files.md) |
+| `FILE_UPLOAD_MAX_MB` | `100` | largest accepted upload; a proxy in front must allow at least this much |
 | `LIBRARY_PATH` | `./library` | integration library root; the designer agent loads `skills/` from here |
 | `PORT` | `8080` | HTTP port |
 | `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the AI agents; without a model configured the platform runs with the session API disabled |

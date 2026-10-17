@@ -25,6 +25,12 @@ Tracked at the level of what is left, not what exists; see README status and the
 - Token-budget compaction with structured summaries (design in Agent Harness.md).
 - Cost governance: per-session and per-user daily caps, global kill switch,
   configured by the deployer.
+- Integration files: rebuild the Python runtime image with openpyxl, xlrd, and
+  odfpy (`IMAGES=1 deploy/upcloud/push.sh` on hosts that build their own, and
+  the next `scripts/release-runner.sh` for the published images); the pins in
+  runtimes/python/requirements.txt were added by hand and want a `pnpm lock` on
+  a host with podman. Then live-test the designer building a spreadsheet
+  integration end to end with a real model.
 - Live-test the agent designing a derived integration (inputs vocabulary is in
   the prompt, untested end to end with a real model).
 

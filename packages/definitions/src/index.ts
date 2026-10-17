@@ -93,6 +93,8 @@ export interface IntegrationDefinition {
   aoi?: Aoi | null
   /** Platform data materialized read-only at /in, keyed by input id */
   inputs?: Record<string, InputRef>
+  /** Uploaded files the code reads at /in/files/<slotId><ext>, keyed by slot id; the deployment holds the contents */
+  files?: Record<string, FileSlotSpec>
   /** Runtime image the code runs in */
   runtime: RuntimeId
   /** Resource limits for each run. Library entries suggest limits; the installed value is carried over on library updates. */
@@ -209,17 +211,54 @@ export type FilterSpec = {
 }[]
 
 // ============================================================================
+// File slots (uploaded files; see Integration Files.md)
+// ============================================================================
+
+/**
+ * One file the integration reads, uploaded by users and versioned by the
+ * deployment. The definition names the slot; each upload is a new version,
+ * and a run reads the version it pins or the slot's current one.
+ */
+export interface FileSlotSpec {
+  /** What the file is and what it must contain, shown beside the upload control */
+  description?: LocalizedString
+  /** Accepted extensions, lowercase with the dot (e.g. [".xlsx", ".xls"]); absent accepts any */
+  accept?: string[]
+}
+
+// ============================================================================
 // Input manifest (what the server materialized at /in)
 // ============================================================================
 
 /**
  * Contents of /in/manifest.json, written by the server at job launch when the
- * definition declares inputs. Authoritative about paths; conventionally rasters
- * land as /in/<inputId>/<timestamp>.tif and table extracts as /in/<inputId>.<ext>.
+ * definition declares inputs or files. Authoritative about paths; conventionally
+ * rasters land as /in/<inputId>/<timestamp>.tif, table extracts as
+ * /in/<inputId>.<ext>, and file versions as /in/files/<slotId><ext>.
  */
 export interface InManifest {
   /** Materialized inputs keyed by input id, matching definition.inputs */
   inputs: Record<string, InManifestInput>
+  /** Materialized file versions keyed by slot id; absent when the run reads no files */
+  files?: Record<string, InManifestFile>
+}
+
+/** One file version as materialized for a run, also recorded on the run for lineage. */
+export interface InManifestFile {
+  /** Path relative to /in: files/<slotId><ext> */
+  path: string
+  /** File version id */
+  versionId: string
+  /** Version number within the slot (1, 2, ...) */
+  version: number
+  /** Name the file was uploaded under; display only */
+  filename: string
+  /** SHA-256 of the contents, hex */
+  sha256: string
+  /** Size in bytes */
+  sizeBytes: number
+  /** Upload time (ISO) */
+  uploadedAt: string
 }
 
 /** One materialized input: raster snapshots or a table extract. */

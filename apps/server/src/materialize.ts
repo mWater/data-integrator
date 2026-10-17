@@ -14,6 +14,8 @@ import {
 } from "@data-integrator/definitions"
 import { RasterStore } from "./rasterStore.js"
 import { snapshotSources } from "./catalog.js"
+import { FileStore } from "./fileStore.js"
+import { materializeFiles, ResolvedFiles } from "./files.js"
 
 const execFileP = promisify(execFile)
 
@@ -31,18 +33,26 @@ export interface MaterializeDeps {
   store: RasterStore
   /** Connection URL for ogr2ogr (gpkg extracts) */
   databaseUrl: string
+  /** Store holding uploaded file versions; needed only when files are materialized */
+  files?: FileStore
 }
 
 /**
- * Materializes a definition's inputs into inDir and writes /in/manifest.json.
- * Returns the manifest (also recorded on the run for lineage).
+ * Materializes a definition's inputs, and the resolved file versions, into
+ * inDir and writes /in/manifest.json. Returns the manifest (also recorded on
+ * the run for lineage).
  */
 export async function materializeInputs(
   deps: MaterializeDeps,
   definition: IntegrationDefinition,
-  inDir: string
+  inDir: string,
+  files: ResolvedFiles = {}
 ): Promise<InManifest> {
   const manifest: InManifest = { inputs: {} }
+  if (Object.keys(files).length > 0) {
+    if (!deps.files) throw new Error("This run reads uploaded files but no file store is configured")
+    manifest.files = await materializeFiles(deps.files, inDir, files)
+  }
   for (const [inputId, ref] of Object.entries(definition.inputs ?? {})) {
     if (!ID_PATTERN.test(inputId)) throw new Error(`Invalid input id: ${inputId}`)
     manifest.inputs[inputId] =

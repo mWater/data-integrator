@@ -108,6 +108,15 @@ export class AgentSessionController<S> {
     return (await this.load(sessionId)).state
   }
 
+  /** Replaces a session's client state; only safe while no loop runs it, since the loop saves its own copy. */
+  async setState(sessionId: string, state: S): Promise<void> {
+    await this.pool.query("UPDATE app.agent_sessions SET client_state = $2, updated_at = now() WHERE id = $1 AND kind = $3", [
+      sessionId,
+      JSON.stringify(state),
+      this.impl.kind
+    ])
+  }
+
   /**
    * Steps until the model stops, a tool finishes or pauses the session, or the
    * cap hits. A loop crash (model/provider failure) persists the session as

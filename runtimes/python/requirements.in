@@ -19,3 +19,7 @@ h5py
 cdsapi
 ecmwf-opendata
 scipy
+# Uploaded spreadsheets (Integration Files.md): xlsx, legacy xls, LibreOffice ods
+openpyxl
+xlrd
+odfpy

@@ -20,6 +20,7 @@ Two interchangeable credentials, both tied to a user and their role:
 | Read tables, layers, tiles, snapshots; view dashboards | yes | yes | yes |
 | Explore (plain-language questions) | yes | yes | yes |
 | Design, install, run, schedule, pause, rename, import integrations | | yes | yes |
+| Upload, download, and run integration files; open design sessions | | yes | yes |
 | See credential names | | yes | yes |
 | Build, save, rename, delete dashboards | | yes | yes |
 | Make a dashboard public or private (opens its data to the internet) | | | yes |
@@ -65,7 +66,12 @@ curl -H "Authorization: Bearer $TOKEN" \
 - `GET /api/integrations` - installed integrations with last-run status.
 - `GET /api/integrations/:id` - detail: current definition and version, recent
   runs, per-destination stored-data stats.
-- `POST /api/integrations/:id/run` - manual run (editor/admin).
+- `POST /api/integrations/:id/run` - manual run (editor/admin). Optional
+  body `{files: {slotId: versionId}}` pins file versions (a revert, or one run
+  over several replaced files); a pinned run starts at once when the
+  integration is idle, otherwise it queues, joining an already-queued run.
+  Returns `202 {runId, status}`. An unpinned run is refused with 400 while a
+  declared file slot awaits its first upload.
 - `GET /api/integrations/:id/versions` - definition history, newest first:
   version, when, installing user, and each version's area of interest.
 - `PUT /api/integrations/:id/aoi` - change the area of interest (editor/admin).
@@ -85,6 +91,33 @@ curl -H "Authorization: Bearer $TOKEN" \
   (editor/admin). Validates, rejects id and destination collisions, and
   installs paused so the operator can review and run manually before
   enabling the schedule.
+
+## Integration files
+
+Uploaded files an integration reads at `/in/files/<slot><ext>`; see
+Integration Files.md.
+
+- `PUT /api/integrations/:id/files/:slot?filename=<name>&run=true|false` -
+  upload a new version as the raw request body (editor/admin; not multipart).
+  Every check runs before the body is read, and `Expect: 100-continue` is
+  answered only once they pass. `run=true` (the default) needs an installed
+  integration that declares the slot and accepts the extension, and starts or
+  queues a run pinning the version; `run=false` only stores it. Bodies past
+  `FILE_UPLOAD_MAX_MB` (default 100) get 413; a full disk gets 507. Returns
+  `201 {version, run, runError?}`.
+
+  ```sh
+  curl -T inventory.xlsx -H "Authorization: Bearer $TOKEN" \
+    "$BASE/api/integrations/water_points/files/inventory?filename=inventory.xlsx"
+  ```
+- `GET /api/integrations/:id/files` - slots with versions, the current
+  version, bytes stored, and the runs that read each version. Filenames and
+  uploader emails are omitted for viewers.
+- `GET /api/integrations/:id/files/:slot/versions/:versionId/download` - one
+  version as an inert attachment (editor/admin).
+
+Every version is kept. An admin purges one uploaded by mistake with
+`cli.js files purge <versionId> --by <adminEmail>`.
 
 ## Webhooks
 

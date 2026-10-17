@@ -7,7 +7,8 @@
  *   library-install <id>... Install or update library entries the way the Library
  *                           page does: an update keeps the deployment's AOI,
  *                           schedule and limits.
- *   run <integrationId>     Enqueue a manual run and execute it to completion.
+ *   run <integrationId>     Start a manual run of that integration and execute it
+ *                           to completion.
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
@@ -16,6 +17,11 @@
  *                           the value from stdin; export/import move every value
  *                           as JSON ({integration: {name: value}}) between
  *                           deployments, plaintext on stdout/stdin.
+ *   files list <integrationId>
+ *                           Uploaded file versions per slot (Integration Files.md).
+ *   files purge <versionId> --by <adminEmail>
+ *                           Delete one version's bytes, keeping its row for lineage;
+ *                           refuses a slot's current version and versions in use.
  *   register-rasters [--all]
  *                           Backfill the out-db SQL mirror of promoted snapshots;
  *                           --all re-registers every snapshot (after a tile size change).
@@ -63,6 +69,8 @@ import { DesignerImplementation } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
 import { insertRunningRun, RunService } from "./runService.js"
+import { cleanupFileStore, FileStore } from "./fileStore.js"
+import { listFiles, purgeVersion } from "./files.js"
 import { skillsDir } from "./skills.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
@@ -105,6 +113,7 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
     databaseUrl: config.databaseUrl,
     store: new RasterStore(config.rasterStorePath),
     workRoot: config.workRoot,
+    files: new FileStore(config.fileStorePath),
     secretKey: config.secretKey,
     images: {
       python: config.runtimeImages.python,
@@ -493,6 +502,46 @@ async function main(): Promise<number> {
           rl.close()
         }
       }
+      case "files": {
+        const sub = process.argv[3]
+        if (sub === "list" && process.argv[4]) {
+          const integrationId = process.argv[4]
+          const row = await pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
+          if (row.rows.length === 0) {
+            console.error(`Unknown integration ${integrationId}`)
+            return 1
+          }
+          for (const slot of await listFiles(pool, integrationId, row.rows[0].definition, { redact: false })) {
+            console.log(`${slot.slotId}${slot.declared ? "" : " (no longer declared)"}  ${slot.bytesStored} bytes stored`)
+            for (const v of slot.versions) {
+              const flags = [v.current ? "current" : "", v.purgedAt ? `purged ${v.purgedAt}` : ""].filter(Boolean).join(", ")
+              console.log(
+                `  v${v.version}  ${v.id}  ${v.uploadedAt}  ${v.sizeBytes} bytes  ${v.filename}  ${v.uploadedBy ?? "-"}${flags ? `  [${flags}]` : ""}`
+              )
+            }
+          }
+          return 0
+        }
+        const byIndex = process.argv.indexOf("--by")
+        const by = byIndex > 0 ? process.argv[byIndex + 1] : undefined
+        if (sub === "purge" && process.argv[4] && by) {
+          const admin = await pool.query("SELECT role FROM app.users WHERE email = $1 AND NOT disabled", [by])
+          if (admin.rows[0]?.role !== "admin") {
+            console.error(`${by} is not an enabled admin account`)
+            return 1
+          }
+          try {
+            const purged = await purgeVersion(pool, buildDeps(pool, new Runner(), config).files!, process.argv[4], by)
+            console.log(`Purged v${purged.version} of ${purged.integrationId ?? "(session upload)"} slot ${purged.slotId}`)
+            return 0
+          } catch (err) {
+            console.error(err instanceof Error ? err.message : String(err))
+            return 1
+          }
+        }
+        console.error("Usage: cli.js files list <integrationId> | purge <versionId> --by <adminEmail>")
+        return 1
+      }
       case "register-rasters": {
         // Backfill/repair the out-db SQL mirror of promoted snapshots; --all re-registers every one
         const store = new RasterStore(config.rasterStorePath)
@@ -547,6 +596,13 @@ async function main(): Promise<number> {
           console.warn(`Area of interest shape not rebuilt: ${err instanceof Error ? err.message : err}`)
         )
         const deps = buildDeps(pool, new Runner(), config)
+        // Leftovers of crashed uploads and jobs; young ones may belong to
+        // another process sharing the store, so only old entries go
+        await cleanupFileStore(pool, deps.files!)
+          .then(n => {
+            if (n > 0) console.log(`file store: removed ${n} leftover file(s)`)
+          })
+          .catch(err => console.warn(`File store cleanup skipped: ${err instanceof Error ? err.message : err}`))
         const tiles = new TileRenderer(deps.store, config.tileCachePath, {
           maxConcurrentRenders: config.tileRenderConcurrency
         })
@@ -581,7 +637,8 @@ async function main(): Promise<number> {
           assistantAgent,
           aiProvider(config),
           config.viteDevUrl,
-          model
+          model,
+          { store: deps.files!, maxUploadMb: config.fileUploadMaxMb }
         ).listen(
           config.port,
           () => {
@@ -596,7 +653,7 @@ async function main(): Promise<number> {
       }
       default:
         console.error(
-          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | register-rasters | backfill-cell-sizes | serve"
+          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | files list|purge | register-rasters | backfill-cell-sizes | serve"
         )
         return 1
     }

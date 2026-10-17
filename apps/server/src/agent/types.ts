@@ -58,3 +58,14 @@ export interface SessionUsage {
   /** Total output tokens */
   outputTokens: number
 }
+
+/** A file staged through a session's upload route, attached to the message that carries it. */
+export interface SessionAttachment {
+  /** File slot it was uploaded to */
+  slot: string
+  /** The uploaded version */
+  versionId: string
+}
+
+/** A message the caller must fix (an attachment that is not this session's): 400, not 409. */
+export class MessageRejectedError extends Error {}
