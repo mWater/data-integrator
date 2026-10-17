@@ -43,7 +43,7 @@ import { migrate } from "./migrations.js"
 import { refreshAoi } from "./aoi.js"
 import { getDefaultAoi } from "./settings.js"
 import { installIntegration } from "./install.js"
-import { claimNextRun, executeRun, ExecutorDeps } from "./executor.js"
+import { executeRun, ExecutorDeps } from "./executor.js"
 import { SandboxBudget } from "./sandboxBudget.js"
 import { RasterStore } from "./rasterStore.js"
 import { TileRenderer } from "./tiles.js"
@@ -62,7 +62,7 @@ import { AgentSessionController } from "./agent/controller.js"
 import { DesignerImplementation } from "./agent/designer.js"
 import { AgentService } from "./agent/service.js"
 import { AgentEvent } from "./agent/types.js"
-import { RunService } from "./runService.js"
+import { insertRunningRun, RunService } from "./runService.js"
 import { skillsDir } from "./skills.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
@@ -255,16 +255,19 @@ async function main(): Promise<number> {
           console.error("Usage: cli.js run <integrationId>")
           return 1
         }
-        await pool.query(
-          `INSERT INTO app.runs (integration_id, trigger, status) VALUES ($1, 'manual', 'queued')
-           ON CONFLICT DO NOTHING`,
-          [integrationId]
-        )
+        const known = await pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [integrationId])
+        if (known.rows.length === 0) {
+          console.error(`Unknown integration ${integrationId}`)
+          return 1
+        }
         const runner = new Runner()
         await runner.ensureReady()
-        const run = await claimNextRun(pool, `cli-${hostname()}`)
-        if (!run) {
-          console.error("Nothing claimable (already running?)")
+        // A run of exactly this integration, never whatever else is queued
+        let run
+        try {
+          run = await insertRunningRun(pool, integrationId, `cli-${hostname()}`)
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err))
           return 1
         }
         await executeRun(buildDeps(pool, runner, config), run)

@@ -1,40 +1,48 @@
 import { rm } from "node:fs/promises"
 import path from "node:path"
-import { ExecutorDeps, executeRun } from "./executor.js"
+import pg from "pg"
+import { ExecutorDeps, executeRun, RunRow } from "./executor.js"
 
 /**
- * Enqueues and starts one production run, returning its id immediately;
- * execution continues in the background of the server process. The
- * one-queued/one-running indexes are the concurrency guard, exactly as for CLI
- * and agent runs: throws "already queued or running" when they reject the
- * enqueue. Shared by the manual-run API and a design session's finish, which
- * starts the first load of a freshly installed integration.
+ * Inserts one manual run of an integration directly as running, under a fresh
+ * lease owned by claimedBy. Never queued, so no scheduler worker can claim it
+ * first, and a refused start leaves no row behind. Refused with "already
+ * queued" when a run is waiting (it is about to start anyway) and "already
+ * running" when the one-running index rejects the insert.
  */
-export async function startProductionRun(deps: ExecutorDeps, integrationId: string): Promise<string> {
-  await deps.runner.ensureReady()
-
-  let runId: string
+export async function insertRunningRun(pool: pg.Pool, integrationId: string, claimedBy: string): Promise<RunRow> {
+  let inserted
   try {
-    const inserted = await deps.pool.query(
-      "INSERT INTO app.runs (integration_id, trigger, status) VALUES ($1, 'manual', 'queued') RETURNING id",
-      [integrationId]
+    inserted = await pool.query(
+      `INSERT INTO app.runs (integration_id, trigger, status, claimed_by, attempt, heartbeat_at, started_at)
+       SELECT $1, 'manual', 'running', $2, gen_random_uuid(), now(), now()
+       WHERE NOT EXISTS (SELECT 1 FROM app.runs WHERE integration_id = $1 AND status = 'queued')
+       RETURNING id, integration_id, params, attempt`,
+      [integrationId, claimedBy]
     )
-    runId = inserted.rows[0].id
   } catch (err) {
     if ((err as { code?: string }).code === "23505") {
-      throw new Error("A run of this integration is already queued or running")
+      throw new Error("A run of this integration is already running")
     }
     throw err
   }
-  const claimed = await deps.pool.query(
-    `UPDATE app.runs SET status = 'running', claimed_by = 'api', heartbeat_at = now(), started_at = now()
-     WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params`,
-    [runId]
-  )
-  void executeRun(deps, claimed.rows[0]).catch(() => {
+  if (inserted.rows.length === 0) throw new Error("A run of this integration is already queued")
+  return inserted.rows[0] as RunRow
+}
+
+/**
+ * Starts one production run, returning its id immediately; execution
+ * continues in the background of the server process. Shared by the
+ * manual-run API and a design session's finish, which starts the first load
+ * of a freshly installed integration. See insertRunningRun for refusals.
+ */
+export async function startProductionRun(deps: ExecutorDeps, integrationId: string): Promise<string> {
+  await deps.runner.ensureReady()
+  const run = await insertRunningRun(deps.pool, integrationId, "api")
+  void executeRun(deps, run).catch(() => {
     // executeRun records its own failures; nothing useful to add here
   })
-  return runId
+  return run.id
 }
 
 /** Starts manual runs from the HTTP API. */

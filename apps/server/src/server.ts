@@ -1213,7 +1213,7 @@ async function route(
       json(res, 202, { runId: await runs.start(runMatch[1]) })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const status = message.includes("already queued") || message.includes("is a draft") ? 409 : message.includes("Unknown") ? 404 : 500
+      const status = /already (queued|running)|is a draft/.test(message) ? 409 : message.includes("Unknown") ? 404 : 500
       json(res, status, { error: message })
     }
     return
