@@ -701,6 +701,16 @@ ${index}`
       if (taken.rows.length > 0) {
         return { result: `Integration id "${id}" is already installed; choose a different id` }
       }
+      // Another session may have named its draft this without a row yet; two
+      // sessions sharing an id would share its draft, credentials, and files
+      const claimed = await this.deps.pool.query(
+        `SELECT 1 FROM app.agent_sessions
+         WHERE kind = 'designer' AND id <> $2 AND client_state->'definition'->>'id' = $1`,
+        [id, sessionId]
+      )
+      if (claimed.rows.length > 0) {
+        return { result: `Integration id "${id}" is being designed in another session; choose a different id` }
+      }
       events({ type: "integration_bound", integrationId: id })
     }
     // Wrap plain-string names/descriptions as LocalizedStrings based in the
@@ -1066,11 +1076,25 @@ ${index}`
     const declaresFiles = Object.keys(state.definition.files ?? {}).length > 0
     let certifiedFiles: Record<string, string> = {}
     if (declaresFiles) {
+      let resolved: ResolvedFiles
       try {
-        certifiedFiles = fileIds(await this.sessionFiles(state, sessionId, "run"))
+        resolved = await this.sessionFiles(state, sessionId, "run")
       } catch (err) {
         return { result: `Rejected: ${err instanceof Error ? err.message : String(err)}` }
       }
+      // Finishing runs the certified files in production; a version older than
+      // the slot's current one (someone uploaded and ran a newer file since this
+      // session pinned its version) would silently reload the tables from it
+      const current = await currentVersions(this.deps.pool, state.definition.id)
+      for (const [slotId, version] of Object.entries(resolved)) {
+        const newer = current[slotId]
+        if (newer && version.integrationId === state.definition.id && version.version < newer.version) {
+          return {
+            result: `Rejected: slot ${slotId} now reads v${newer.version} (${newer.filename}), newer than the v${version.version} this session certified. Tell the user and ask them to attach the file they want this integration to read, then run cold again.`
+          }
+        }
+      }
+      certifiedFiles = fileIds(resolved)
       if (!sameFiles(certifiedFiles, state.coldRun.files ?? {})) {
         return {
           result:

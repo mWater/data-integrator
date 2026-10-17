@@ -746,7 +746,7 @@ export interface FileSlotListing {
 }
 
 /** Lists an integration's file slots and versions. */
-export function listIntegrationFiles(integrationId: string): Promise<{ slots: FileSlotListing[] }> {
+export function listIntegrationFiles(integrationId: string): Promise<{ slots: FileSlotListing[]; maxUploadMb: number }> {
   return request(`/api/integrations/${integrationId}/files`)
 }
 
@@ -787,7 +787,10 @@ function uploadRaw<T>(url: string, file: File, onProgress?: (fraction: number) =
     xhr.upload.onprogress = event => {
       if (event.lengthComputable) onProgress?.(event.loaded / event.total)
     }
-    xhr.onerror = () => reject(new Error(T`The upload failed: the connection was lost`))
+    // A server that refuses an upload early closes the connection mid-body,
+    // which the browser reports as a network error, not as the refusal
+    xhr.onerror = () =>
+      reject(new Error(T`The upload failed: the connection closed. The file may be too large or of a type this slot does not accept.`))
     xhr.onload = () => {
       let body: { error?: string } | null = null
       try {

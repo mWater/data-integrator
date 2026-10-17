@@ -7180,6 +7180,33 @@
       "es": "",
       "mg": "",
       "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "The upload failed: the connection closed. The file may be too large or of a type this slot does not accept.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "{0} is {1}; this server accepts files up to {2} MB.",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
+    },
+    {
+      "_base": "en",
+      "en": "Starting a run with v{0} of {1}…",
+      "fr": "",
+      "pt": "",
+      "es": "",
+      "mg": "",
+      "sw": ""
     }
   ],
   "unused": [
@@ -7257,6 +7284,7 @@
     "Ask answers one-off questions; the dashboard agent turns a description into a page you can share.",
     "Hide the chat and view the dashboard at full width (Esc to return)",
     "Settings sections",
-    "Default region for integrations. Individual integrations can override it."
+    "Default region for integrations. Individual integrations can override it.",
+    "The upload failed: the connection was lost"
   ]
 }

@@ -652,3 +652,54 @@ test("session labels skip the file notes prepended to the first message", async 
   assert.equal(listed?.firstMessage, "Why did the last run fail?")
   assert.equal((await agent.getSession(sessionId))?.firstMessage, "Why did the last run fail?")
 })
+
+test("staging a body whose client already left settles at once and leaves nothing", async () => {
+  const { PassThrough } = await import("node:stream")
+  const body = new PassThrough()
+  body.destroy()
+  await new Promise(resolve => setImmediate(resolve))
+  await assert.rejects(files.stage(body, 1024), /aborted by the client/)
+  assert.deepEqual(await readdir(path.join(fileRoot, ".tmp")), [])
+})
+
+test("a long filename is shortened without losing its extension", async () => {
+  const name = `${"a".repeat(300)}.final report.csv`
+  const { status, body } = await upload("inv", "inventory", name, "x\n", false)
+  assert.equal(status, 201)
+  assert.equal(body.version.filename.length, 255)
+  assert.ok(body.version.filename.endsWith(".csv"))
+  const row = await pool.query("SELECT ext FROM app.file_versions WHERE id = $1", [body.version.id])
+  assert.equal(row.rows[0].ext, ".csv")
+})
+
+test("finish refuses to certify a version older than the slot's current one", async () => {
+  // The session starts from the version the latest run read
+  const sessionId = await agent.createSession("sheet_rows")
+  let state = (await agent.getSession(sessionId))!.state as DesignerState
+  const seeded = state.files!.sheet
+  state = (await designer.prepareMessage(sessionId, state, "tweak it", [])).state
+
+  // Meanwhile a colleague uploads and runs a newer file on the integration page
+  const newer = await upload("sheet_rows", "sheet", "c.csv", "third,file\n", true)
+  assert.equal(await settled(newer.body.run.id), "succeeded")
+  assert.equal(await currentOf("sheet_rows", "sheet"), newer.body.version.id)
+
+  const cold = await designer.execute("run_integration", { cold: true }, state, () => {}, sessionId)
+  assert.match(cold.result, /Cold run succeeded/, cold.result)
+  assert.deepEqual((cold.state as DesignerState).coldRun?.files, { sheet: seeded })
+  const finish = await designer.execute("finish", { summary: "done" }, cold.state as DesignerState, () => {}, sessionId)
+  assert.equal(finish.finished, undefined)
+  assert.match(finish.result, /slot sheet now reads v\d+ \(c\.csv\), newer than the v\d+ this session certified/)
+  assert.equal(await currentOf("sheet_rows", "sheet"), newer.body.version.id, "nothing reverted")
+})
+
+test("a new session cannot name its draft after another session's unsaved draft", async () => {
+  const definitionJson = JSON.stringify({ id: "shared_name", name: "Shared", trigger: {}, runtime: "python", destinations: "invalid", contract: 2 })
+  const first = await designerSession(initialDesignerState())
+  const firstWrite = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, first)
+  assert.match(firstWrite.result, /INVALID/, "bound, but no draft row")
+  await pool.query("UPDATE app.agent_sessions SET client_state = $2 WHERE id = $1", [first, JSON.stringify(firstWrite.state)])
+  const second = await designerSession(initialDesignerState())
+  const secondWrite = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, second)
+  assert.match(secondWrite.result, /being designed in another session/)
+})

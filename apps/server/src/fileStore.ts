@@ -102,6 +102,11 @@ export class FileStore {
         out.on("error", (err: NodeJS.ErrnoException) => {
           fail(err.code === "ENOSPC" ? new DiskFullError("The file store's disk is full") : err)
         })
+        // A client that went away before this point fired its events already
+        if (body.destroyed && !body.readableEnded) {
+          fail(new Error("Upload aborted by the client"))
+          return
+        }
         // close, not finish: flush: true fsyncs just before the descriptor closes
         out.on("close", () => {
           if (settled) return

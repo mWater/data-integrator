@@ -350,6 +350,8 @@ export class AgentService<S = unknown> {
     channel.running = true
     channel.stopRequested = false
     try {
+      // Ready first: preparing consumes one-time state (the seeded-files note)
+      await this.ensureRunner()
       if (this.adapter.prepareMessage) {
         const prepared = await this.adapter.prepareMessage(sessionId, await this.controller.getState(sessionId), text, attachments)
         text = prepared.text
@@ -357,7 +359,6 @@ export class AgentService<S = unknown> {
       } else if (attachments.length > 0) {
         throw new MessageRejectedError("This session kind takes no file attachments")
       }
-      await this.ensureRunner()
       // Persist the message before launching the loop, so a page navigating
       // here right after this call finds it in the stored transcript instead
       // of waiting out the first (slow) model step

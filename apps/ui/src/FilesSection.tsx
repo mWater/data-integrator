@@ -61,20 +61,31 @@ export function FilesSection({ integrationId, declared, canDesign, isDraft, runs
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [maxUploadMb, setMaxUploadMb] = useState<number | null>(null)
 
   const reload = useCallback(() => {
     listIntegrationFiles(integrationId).then(
-      result => setSlots(result.slots),
+      result => {
+        setSlots(result.slots)
+        setMaxUploadMb(result.maxUploadMb)
+      },
       err => setError(err instanceof Error ? err.message : String(err))
     )
   }, [integrationId])
 
   useEffect(reload, [reload, runsKey])
 
+  /** Refusal for a file over the server's limit, before any byte is sent; null when it fits. */
+  function tooLarge(file: File): string | null {
+    if (maxUploadMb === null || file.size <= maxUploadMb * 1024 * 1024) return null
+    return T`${file.name} is ${formatBytes(file.size)}; this server accepts files up to ${maxUploadMb} MB.`
+  }
+
   /** Uploads one replacement and runs the integration against it. */
   async function replace(slotId: string, file: File) {
-    setError(null)
+    setError(tooLarge(file))
     setNotice(null)
+    if (tooLarge(file)) return
     setBusy(T`Uploading ${file.name}…`)
     try {
       const result = await uploadIntegrationFile(integrationId, slotId, file, true, fraction =>
@@ -92,8 +103,10 @@ export function FilesSection({ integrationId, declared, canDesign, isDraft, runs
 
   /** Runs today's code against an older version; success makes it current. */
   async function runVersion(slotId: string, version: FileVersionListing) {
+    if (busy !== null) return
     setError(null)
     setNotice(null)
+    setBusy(T`Starting a run with v${version.version} of ${slotId}…`)
     try {
       const started = await startRun(integrationId, { [slotId]: version.id })
       setNotice(
@@ -104,6 +117,8 @@ export function FilesSection({ integrationId, declared, canDesign, isDraft, runs
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -133,7 +148,8 @@ export function FilesSection({ integrationId, declared, canDesign, isDraft, runs
             integrationId={integrationId}
             slot={slot}
             canDesign={canDesign}
-            canChange={canChange && slot.declared && busy === null}
+            canChange={canChange && slot.declared}
+            idle={busy === null}
             onReplace={file => void replace(slot.slotId, file)}
             onRunVersion={version => void runVersion(slot.slotId, version)}
           />
@@ -145,6 +161,7 @@ export function FilesSection({ integrationId, declared, canDesign, isDraft, runs
           slotIds={declaredIds}
           declared={declared}
           disabled={busy !== null}
+          maxUploadMb={maxUploadMb}
           onBusy={setBusy}
           onDone={(message, failed) => {
             if (failed) setError(message)
@@ -168,6 +185,8 @@ interface SlotRowProps {
   canDesign: boolean
   /** Replace and run actions are available */
   canChange: boolean
+  /** No upload or run request is in flight, so actions are enabled */
+  idle: boolean
   /** Uploads a replacement */
   onReplace: (file: File) => void
   /** Runs an older version again */
@@ -175,7 +194,7 @@ interface SlotRowProps {
 }
 
 /** One slot: what it expects, its current version, and its history. */
-function SlotRow({ integrationId, slot, canDesign, canChange, onReplace, onRunVersion }: SlotRowProps) {
+function SlotRow({ integrationId, slot, canDesign, canChange, idle, onReplace, onRunVersion }: SlotRowProps) {
   const input = useRef<HTMLInputElement>(null)
   const current = slot.versions.find(v => v.current) ?? null
   const description = slot.description ? localizeData(slot.description as LocalizedString) : null
@@ -214,7 +233,9 @@ function SlotRow({ integrationId, slot, canDesign, canChange, onReplace, onRunVe
                 if (file) onReplace(file)
               }}
             />
-            <button onClick={() => input.current?.click()}>{current ? T`Replace…` : T`Upload…`}</button>
+            <button onClick={() => input.current?.click()} disabled={!idle}>
+              {current ? T`Replace…` : T`Upload…`}
+            </button>
           </>
         )}
       </div>
@@ -267,7 +288,12 @@ function SlotRow({ integrationId, slot, canDesign, canChange, onReplace, onRunVe
                       <div className="files-actions">
                         {!version.purgedAt && <a href={fileVersionUrl(integrationId, slot.slotId, version.id)}>{T`Download`}</a>}
                         {canChange && !version.purgedAt && !version.current && (
-                          <button className="secondary" onClick={() => onRunVersion(version)} title={T`Runs today's code against this version; success makes it current`}>
+                          <button
+                            className="secondary"
+                            disabled={!idle}
+                            onClick={() => onRunVersion(version)}
+                            title={T`Runs today's code against this version; success makes it current`}
+                          >
                             {T`Run with this version`}
                           </button>
                         )}
@@ -294,6 +320,8 @@ interface ReplaceSeveralProps {
   declared: Record<string, FileSlotSpec>
   /** Another upload is in flight */
   disabled: boolean
+  /** The server's upload limit, once known */
+  maxUploadMb: number | null
   /** Reports upload progress text, or null when done */
   onBusy: (message: string | null) => void
   /** Reports the outcome; failed marks an error */
@@ -305,11 +333,16 @@ interface ReplaceSeveralProps {
  * each file is staged without running, then one run reads them all, so no
  * run ever sees half of the replacement.
  */
-function ReplaceSeveral({ integrationId, slotIds, declared, disabled, onBusy, onDone }: ReplaceSeveralProps) {
+function ReplaceSeveral({ integrationId, slotIds, declared, disabled, maxUploadMb, onBusy, onDone }: ReplaceSeveralProps) {
   const [picked, setPicked] = useState<Record<string, File>>({})
   const chosen = Object.entries(picked)
 
   async function submit() {
+    const oversize = chosen.find(([, file]) => maxUploadMb !== null && file.size > maxUploadMb * 1024 * 1024)
+    if (oversize) {
+      onDone(T`${oversize[1].name} is ${formatBytes(oversize[1].size)}; this server accepts files up to ${maxUploadMb ?? 0} MB.`, true)
+      return
+    }
     const pins: Record<string, string> = {}
     try {
       for (const [slotId, file] of chosen) {

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdir, mkdtemp, rm, statfs } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, statfs, utimes } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
@@ -222,6 +222,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         if (result.rowCount === 0) jobHandle?.abort("lease lost: the run was reclaimed by another worker")
         else lastHeartbeat = Date.now()
       })
+      // A job's /in under the file store is a leftover to boot cleanup once
+      // its mtime is an hour old; a live job keeps it young
+      .then(() => (inDir ? utimes(inDir, new Date(), new Date()).catch(() => {}) : undefined))
       .catch(() => {
         if (Date.now() - lastHeartbeat > SELF_FENCE_MS) {
           jobHandle?.abort("lease lost: the database was unreachable for too long to keep the lease")

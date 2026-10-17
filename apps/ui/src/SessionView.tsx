@@ -207,6 +207,8 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   // Files waiting to go out with the next message (design sessions only)
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
+  // Enter submits through requestSubmit, which ignores a disabled Send button
+  const uploadingRef = useRef(false)
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const [split, setSplit] = useState(storedSplit)
   // Full-screen preview hides the conversation so the dashboard can be judged
@@ -358,30 +360,39 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
       setError(T`Attach files once the agent pauses`)
       return
     }
+    if (uploadingRef.current) return
     if (!(await ensureAiAck())) return
-    // Uploads go first; the message then pins them. A failed upload keeps
-    // everything in the composer to retry
+    // Uploads go first; the message then pins them. The message leaves the
+    // composer while they upload, so anything typed meanwhile is kept for the
+    // next message; a failed upload puts everything back to retry
     const files: { slot: string; versionId: string }[] = []
-    try {
-      for (const attachment of pending) {
-        setUploading(T`Uploading ${attachment.file.name}…`)
-        const { version } = await uploadSessionFile(sessionId, attachment.slot, attachment.file, fraction =>
-          setUploading(T`Uploading ${attachment.file.name}… ${Math.round(fraction * 100)}%`)
-        )
-        files.push({ slot: attachment.slot, versionId: version.id })
+    if (pending.length > 0) {
+      uploadingRef.current = true
+      setAttachments([])
+      setInput("")
+      try {
+        for (const attachment of pending) {
+          setUploading(T`Uploading ${attachment.file.name}…`)
+          const { version } = await uploadSessionFile(sessionId, attachment.slot, attachment.file, fraction =>
+            setUploading(T`Uploading ${attachment.file.name}… ${Math.round(fraction * 100)}%`)
+          )
+          files.push({ slot: attachment.slot, versionId: version.id })
+        }
+      } catch (err) {
+        setAttachments(pending)
+        setInput(typed => (typed.trim() ? typed : text))
+        setError(err instanceof Error ? err.message : String(err))
+        return
+      } finally {
+        uploadingRef.current = false
+        setUploading(null)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      return
-    } finally {
-      setUploading(null)
     }
     if (!text) text = files.length === 1 ? T`Here is the file.` : T`Here are the files.`
-    setAttachments([])
     const wasBusy = busy
     if (!wasBusy) frozenRef.current = messagesLenRef.current
     setBusy(true)
-    setInput("")
+    if (pending.length === 0) setInput("")
     // Preview runtime errors ride along with the next message so the agent
     // hears about crashes without the user pasting them
     let outgoing = text

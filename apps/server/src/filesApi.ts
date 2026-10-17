@@ -8,6 +8,7 @@
  */
 
 import { IncomingMessage, ServerResponse } from "node:http"
+import { rm } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
 import { IntegrationDefinition } from "@data-integrator/definitions"
@@ -59,7 +60,10 @@ function refuse(res: ServerResponse, status: number, error: string): void {
 function displayFilename(raw: string | null): string | null {
   const name = path.basename((raw ?? "").replace(/\\/g, "/").replace(/[\u0000-\u001f\u007f]/g, "")).trim()
   if (name === "" || name === "." || name === "..") return null
-  return name.slice(0, FILENAME_MAX)
+  if (name.length <= FILENAME_MAX) return name
+  // Shorten the stem, never the extension: it decides the stored path and the type check
+  const ext = path.extname(name)
+  return ext.length < FILENAME_MAX ? name.slice(0, FILENAME_MAX - ext.length) + ext : name.slice(0, FILENAME_MAX)
 }
 
 /** One version as upload and listing responses carry it. */
@@ -77,7 +81,9 @@ function versionJson(version: FileVersion): Record<string, unknown> {
 
 /**
  * Streams the body into the store and records it as the next version. Sends
- * the deferred 100 Continue first. Returns null when the upload failed and
+ * the deferred 100 Continue first. The owner is resolved once the bytes are
+ * in, since a large upload can outlast a change of ownership (a design
+ * session's draft row appearing). Returns null when the upload failed and
  * has been answered (413, 507) or cannot be (the client went away); the
  * partial file is gone either way.
  */
@@ -86,7 +92,7 @@ async function receive(
   options: FileApiOptions,
   req: IncomingMessage,
   res: ServerResponse,
-  owner: VersionOwner,
+  owner: VersionOwner | (() => Promise<VersionOwner>),
   upload: { slotId: string; filename: string; ext: string; uploadedBy: string }
 ): Promise<FileVersion | null> {
   if (awaitingContinue.has(req)) res.writeContinue()
@@ -102,7 +108,12 @@ async function receive(
   } finally {
     req.setTimeout(0)
   }
-  return recordVersion(pool, options.store, staged, owner, upload)
+  try {
+    return await recordVersion(pool, options.store, staged, typeof owner === "function" ? await owner() : owner, upload)
+  } catch (err) {
+    await rm(staged.tmpPath, { force: true })
+    throw err
+  }
 }
 
 /** Validated upload query: the display filename and its extension, or the refusal already sent. */
@@ -208,23 +219,20 @@ export async function handleSessionUpload(
   if (!options) return refuse(res, 503, "No file store configured on this server")
   const target = uploadTarget(res, slotId, params)
   if (!target) return
-  const session = await pool.query(
-    `SELECT s.kind, i.id AS integration_id
-     FROM app.agent_sessions s
-     LEFT JOIN app.integrations i ON i.id = NULLIF(s.client_state->'definition'->>'id', '')
-     WHERE s.id = $1`,
-    [sessionId]
-  )
-  if (session.rows.length === 0) return refuse(res, 404, "unknown session")
-  if (session.rows[0].kind !== "designer") return refuse(res, 400, "Only integration design sessions take files")
-  const version = await receive(
-    pool,
-    options,
-    req,
-    res,
-    { integrationId: session.rows[0].integration_id ?? null, sessionId },
-    { slotId, ...target, uploadedBy: user.id }
-  )
+  const owner = async (): Promise<VersionOwner> => {
+    const session = await pool.query(
+      `SELECT s.kind, i.id AS integration_id
+       FROM app.agent_sessions s
+       LEFT JOIN app.integrations i ON i.id = NULLIF(s.client_state->'definition'->>'id', '')
+       WHERE s.id = $1`,
+      [sessionId]
+    )
+    return { integrationId: session.rows[0]?.integration_id ?? null, sessionId }
+  }
+  const kind = await pool.query("SELECT kind FROM app.agent_sessions WHERE id = $1", [sessionId])
+  if (kind.rows.length === 0) return refuse(res, 404, "unknown session")
+  if (kind.rows[0].kind !== "designer") return refuse(res, 400, "Only integration design sessions take files")
+  const version = await receive(pool, options, req, res, owner, { slotId, ...target, uploadedBy: user.id })
   if (version) json(res, 201, { version: versionJson(version) })
 }
 
@@ -272,7 +280,8 @@ export async function routeIntegrationFiles(
     else {
       // Filenames and uploader emails can carry personal data
       const slots = await listFiles(pool, integrationId, row.rows[0].definition, { redact: user.role === "viewer" })
-      json(res, 200, { slots })
+      // The limit lets the page refuse an oversize file before sending it
+      json(res, 200, { slots, maxUploadMb: options.maxUploadMb })
     }
     return true
   }
