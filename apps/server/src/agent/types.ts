@@ -69,3 +69,6 @@ export interface SessionAttachment {
 
 /** A message the caller must fix (an attachment that is not this session's): 400, not 409. */
 export class MessageRejectedError extends Error {}
+
+/** A delete the session's state refuses (its integration exists, a run is in progress): 409. */
+export class SessionDeleteRefusedError extends Error {}

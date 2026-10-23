@@ -11,8 +11,10 @@ export interface PendingAttachment {
   key: string
   /** The picked file */
   file: File
-  /** File slot it will be uploaded to; editable until sent */
+  /** File slot it will be uploaded to; editable until uploaded */
   slot: string
+  /** Version it was uploaded as, when the message carrying it failed to send: a retry pins this instead of uploading again */
+  versionId?: string
 }
 
 /** Lowercase extension with the dot, or "". */
@@ -96,6 +98,7 @@ export function ComposerAttachments({ attachments, onChange, definition, enabled
             <input
               value={attachment.slot}
               aria-invalid={!SLOT_PATTERN.test(attachment.slot)}
+              disabled={attachment.versionId !== undefined}
               onChange={event =>
                 onChange(attachments.map(a => (a.key === attachment.key ? { ...a, slot: event.target.value } : a)))
               }

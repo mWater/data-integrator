@@ -256,19 +256,24 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     definition = resolveAoi(definition, defaultAoi)
 
     // Pins were fixed when the run was created; declared slots without one
-    // read their current version, and a slot with neither refuses the run
+    // read their current version, and a slot with neither refuses the run.
+    // A queued run can outlive its slot (a session renames or drops it before
+    // the run starts), so pins for slots no longer declared are ignored.
     const declaredSlots = Object.keys(definition.files ?? {})
+    const declaredPins = (pins: Record<string, string> | null | undefined) =>
+      Object.fromEntries(Object.entries(pins ?? {}).filter(([slotId]) => declaredSlots.includes(slotId)))
     let files: ResolvedFiles = {}
-    if (scratch) {
-      const pins = Object.fromEntries(Object.entries(scratch.files ?? {}).filter(([slotId]) => declaredSlots.includes(slotId)))
-      if (declaredSlots.length > 0) {
-        files = await resolveFiles(deps.pool, { integrationId: definition.id, definition, pins, sessionId: scratch.sessionId })
-      }
-    } else {
-      const pinned = await deps.pool.query("SELECT file_pins FROM app.runs WHERE id = $1", [run.id])
-      const pins = (pinned.rows[0]?.file_pins ?? null) as Record<string, string> | null
-      if (declaredSlots.length > 0 || pins) {
-        files = await resolveFiles(deps.pool, { integrationId: run.integration_id!, definition, pins })
+    if (declaredSlots.length > 0) {
+      if (scratch) {
+        files = await resolveFiles(deps.pool, {
+          integrationId: definition.id,
+          definition,
+          pins: declaredPins(scratch.files),
+          sessionId: scratch.sessionId
+        })
+      } else {
+        const pinned = await deps.pool.query("SELECT file_pins FROM app.runs WHERE id = $1", [run.id])
+        files = await resolveFiles(deps.pool, { integrationId: run.integration_id!, definition, pins: declaredPins(pinned.rows[0]?.file_pins) })
       }
     }
 

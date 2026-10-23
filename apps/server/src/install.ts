@@ -359,8 +359,15 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
     }
 
     await client.query("DELETE FROM app.webhook_events WHERE integration_id = $1", [integrationId])
+    // Sessions that designed it let go of the id too, so the name is free:
+    // a resumed session names its draft again, and its file pins went with
+    // the integration's versions
     const sessions = await client.query(
-      "UPDATE app.agent_sessions SET integration_id = NULL WHERE integration_id = $1",
+      `UPDATE app.agent_sessions SET integration_id = NULL,
+         client_state = CASE WHEN kind = 'designer' AND client_state->'definition'->>'id' = $1
+           THEN jsonb_set(client_state, '{definition,id}', '""') - 'files' - 'filesNote'
+           ELSE client_state END
+       WHERE integration_id = $1 OR (kind = 'designer' AND client_state->'definition'->>'id' = $1)`,
       [integrationId]
     )
 

@@ -1,7 +1,7 @@
 import pg from "pg"
 import { AgentSessionController } from "./controller.js"
 import { AgentImplementation, MessageRejectedError, SessionAttachment } from "./types.js"
-export { MessageRejectedError } from "./types.js"
+export { MessageRejectedError, SessionDeleteRefusedError } from "./types.js"
 export type { SessionAttachment } from "./types.js"
 import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState, pinsMatchColdRun } from "./designer.js"
 import { DashboardAgentState, DashboardDeps, DashboardImplementation, initialDashboardState } from "./dashboard.js"
@@ -56,6 +56,8 @@ export interface SessionDetail extends SessionSummary {
   error: string | null
   /** Scratch preview layers with data, for map links during design (designer only) */
   scratchLayers: { id: string; name: string }[]
+  /** True when the session may be deleted: a designer session only while no integration row carries its id */
+  deletable: boolean
 }
 
 /** A user message without the bracketed notes prepended to it (file attachments), for labels. */
@@ -92,6 +94,12 @@ interface KindAdapter<S> {
    * that take no attachments.
    */
   prepareMessage?(sessionId: string, state: S, text: string, attachments: SessionAttachment[]): Promise<{ text: string; state: S }>
+  /**
+   * Removes what the session owns besides its own row, inside the delete's
+   * transaction, and returns cleanup to run once it commits. Throws
+   * SessionDeleteRefusedError to refuse. Absent for kinds that own nothing else.
+   */
+  beforeDelete?(client: pg.PoolClient, sessionId: string): Promise<() => Promise<void>>
 }
 
 /** Per-session live bookkeeping. */
@@ -162,7 +170,11 @@ export class AgentService<S = unknown> {
           "SELECT id, name FROM app.raster_layers WHERE session_id = $1 AND current_snapshot_id IS NOT NULL ORDER BY id",
           [sessionId]
         )
+        const installed = state.definition?.id
+          ? (await pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [state.definition.id])).rows.length > 0
+          : false
         return {
+          deletable: !installed,
           certified:
             state.coldRun != null &&
             state.coldRun.definitionHash === definitionHash(state.definition) &&
@@ -173,7 +185,8 @@ export class AgentService<S = unknown> {
       ensureReady: () => deps.runner.ensureReady(),
       checkSecret: (sessionId, state, name) => implementation.checkSecret(state, name, sessionId),
       prepareMessage: (sessionId, state, text, attachments) =>
-        implementation.prepareMessage(sessionId, state, text, attachments)
+        implementation.prepareMessage(sessionId, state, text, attachments),
+      beforeDelete: (client, sessionId) => implementation.beforeDelete(client, sessionId)
     })
   }
 
@@ -296,24 +309,43 @@ export class AgentService<S = unknown> {
       running: this.channel(sessionId).running,
       error: row.error ?? null,
       scratchLayers: [],
+      deletable: true,
       ...extras
     }
   }
 
   /**
-   * Deletes one session of this kind with its transcript and stored state.
-   * forUserId restricts the delete to that creator's own sessions; a running
-   * loop is asked to stop first, and its later saves fall on the deleted row.
-   * Returns false when nothing matched.
+   * Deletes one session of this kind with its transcript and stored state,
+   * plus whatever the kind's beforeDelete removes. forUserId restricts the
+   * delete to that creator's own sessions; a running loop is asked to stop
+   * first, and its later saves fall on the deleted row. Returns false when
+   * nothing matched.
    */
   async deleteSession(sessionId: string, forUserId?: string): Promise<boolean> {
     this.stop(sessionId)
-    const result = await this.pool.query(
-      `DELETE FROM app.agent_sessions WHERE id = $1 AND kind = $2${forUserId ? " AND user_id = $3" : ""}`,
-      forUserId ? [sessionId, this.adapter.kind, forUserId] : [sessionId, this.adapter.kind]
-    )
-    if ((result.rowCount ?? 0) === 0) return false
+    const client = await this.pool.connect()
+    let cleanup: (() => Promise<void>) | null = null
+    try {
+      await client.query("BEGIN")
+      const found = await client.query(
+        `SELECT 1 FROM app.agent_sessions WHERE id = $1 AND kind = $2${forUserId ? " AND user_id = $3" : ""} FOR UPDATE`,
+        forUserId ? [sessionId, this.adapter.kind, forUserId] : [sessionId, this.adapter.kind]
+      )
+      if (found.rows.length === 0) {
+        await client.query("ROLLBACK")
+        return false
+      }
+      if (this.adapter.beforeDelete) cleanup = await this.adapter.beforeDelete(client, sessionId)
+      await client.query("DELETE FROM app.agent_sessions WHERE id = $1", [sessionId])
+      await client.query("COMMIT")
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {})
+      throw err
+    } finally {
+      client.release()
+    }
     this.channels.delete(sessionId)
+    if (cleanup) await cleanup()
     return true
   }
 

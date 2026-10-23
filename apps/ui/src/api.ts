@@ -134,6 +134,8 @@ export interface SessionDetail extends SessionSummary {
   error: string | null
   /** Scratch preview layers with data, for map links during design */
   scratchLayers: { id: string; name: LocalizedString }[]
+  /** True when the session may be deleted (a design session only while no integration carries its id) */
+  deletable: boolean
 }
 
 /** One content part of a stored model message. */

@@ -6806,407 +6806,443 @@
     {
       "_base": "en",
       "en": "The upload failed: the connection was lost",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Échec du téléversement : connexion perdue",
+      "pt": "Falha no envio: a conexão foi perdida",
+      "es": "La carga falló: se perdió la conexión",
+      "mg": "Tsy nahomby ny fampakarana: tapaka ny fifandraisana",
+      "sw": "Upakiaji umeshindwa: muunganisho umekatika"
     },
     {
       "_base": "en",
       "en": "The file is larger than a proxy in front of this server allows. Ask the administrator to raise the proxy's upload limit (Cloudflare allows 100 MB on its Free and Pro plans; nginx needs client_max_body_size).",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Le fichier dépasse la taille autorisée par un proxy en amont de ce serveur. Demandez à l’administrateur d’augmenter la limite de téléversement du proxy (Cloudflare autorise 100 Mo avec ses offres Free et Pro ; nginx nécessite client_max_body_size).",
+      "pt": "O arquivo é maior do que o permitido por um proxy à frente deste servidor. Peça ao administrador para aumentar o limite de envio do proxy (o Cloudflare permite 100 MB nos planos Free e Pro; o nginx requer client_max_body_size).",
+      "es": "El archivo supera el tamaño permitido por un proxy situado delante de este servidor. Pida al administrador que aumente el límite de carga del proxy (Cloudflare permite 100 MB en sus planes Free y Pro; nginx requiere client_max_body_size).",
+      "mg": "Lehibe noho izay eken'ny proxy eo anoloan'ity server ity ilay rakitra. Angataho ny mpitantana hampiakatra ny fetran'ny fampakarana ao amin'ny proxy (Cloudflare dia mamela 100 MB amin'ny drafitra Free sy Pro; nginx dia mila client_max_body_size).",
+      "sw": "Faili ni kubwa kuliko kiwango kinachoruhusiwa na proksi iliyo mbele ya seva hii. Mwombe msimamizi aongeze kikomo cha upakiaji cha proksi (Cloudflare inaruhusu MB 100 kwenye mipango yake ya Free na Pro; nginx inahitaji client_max_body_size)."
     },
     {
       "_base": "en",
       "en": "Attach a file for the integration to read",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Joindre un fichier à lire par l’intégration",
+      "pt": "Anexe um arquivo para a integração ler",
+      "es": "Adjunte un archivo para que lo lea la integración",
+      "mg": "Ampidiro rakitra hovakin'ny fampidirana angona",
+      "sw": "Ambatisha faili ili muunganisho uisome"
     },
     {
       "_base": "en",
       "en": "Attach files once the agent pauses",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Joindre les fichiers une fois l’agent en pause",
+      "pt": "Anexe os arquivos quando o agente pausar",
+      "es": "Adjunte los archivos cuando el agente haga una pausa",
+      "mg": "Ampidiro ireo rakitra rehefa miato ilay mpandraharaha AI",
+      "sw": "Ambatisha faili baada ya ajenti kusitisha"
     },
     {
       "_base": "en",
       "en": "Attach File",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Joindre un fichier",
+      "pt": "Anexar arquivo",
+      "es": "Adjuntar archivo",
+      "mg": "Ampidiro rakitra",
+      "sw": "Ambatisha Faili"
     },
     {
       "_base": "en",
       "en": "slot",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "emplacement",
+      "pt": "campo",
+      "es": "ranura",
+      "mg": "toerana",
+      "sw": "nafasi"
     },
     {
       "_base": "en",
       "en": "Remove {0}",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Supprimer {0}",
+      "pt": "Remover {0}",
+      "es": "Quitar {0}",
+      "mg": "Esory {0}",
+      "sw": "Ondoa {0}"
     },
     {
       "_base": "en",
       "en": "No run was started: {0}",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Aucune exécution lancée : {0}",
+      "pt": "Nenhuma execução foi iniciada: {0}",
+      "es": "No se inició ninguna ejecución: {0}",
+      "mg": "Tsy nisy fampandehanana natomboka: {0}",
+      "sw": "Hakuna utekelezaji ulioanzishwa: {0}"
     },
     {
       "_base": "en",
       "en": "A run reading it has started.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Une exécution lisant ce fichier a démarré.",
+      "pt": "Uma execução para lê-lo foi iniciada.",
+      "es": "Se ha iniciado una ejecución para leerlo.",
+      "mg": "Nanomboka ny fampandehanana mamaky azy.",
+      "sw": "Utekelezaji wa kuisoma umeanza."
     },
     {
       "_base": "en",
       "en": "A run reading it is queued behind the run in progress.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Une exécution lisant ce fichier est en attente derrière l’exécution en cours.",
+      "pt": "Uma execução para lê-lo está na fila após a execução em andamento.",
+      "es": "Hay una ejecución para leerlo en cola detrás de la ejecución en curso.",
+      "mg": "Milahatra aorian'ny fampandehanana mandeha ny fampandehanana mamaky azy.",
+      "sw": "Utekelezaji wa kuisoma umewekwa kwenye foleni nyuma ya utekelezaji unaoendelea."
     },
     {
       "_base": "en",
       "en": "Uploading {0}…",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Téléversement de {0}…",
+      "pt": "Enviando {0}…",
+      "es": "Cargando {0}…",
+      "mg": "Mampakatra {0}…",
+      "sw": "Inapakia {0}…"
     },
     {
       "_base": "en",
       "en": "Uploading {0}… {1}%",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Téléversement de {0}… {1} %",
+      "pt": "Enviando {0}… {1}%",
+      "es": "Cargando {0}… {1}%",
+      "mg": "Mampakatra {0}… {1}%",
+      "sw": "Inapakia {0}… {1}%"
     },
     {
       "_base": "en",
       "en": "Uploaded v{0} of {1}.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Version v{0} de {1} téléversée.",
+      "pt": "Versão v{0} de {1} enviada.",
+      "es": "Se cargó la v{0} de {1}.",
+      "mg": "Nampiakarina ny v{0} an'i {1}.",
+      "sw": "Toleo la v{0} la {1} limepakiwa."
     },
     {
       "_base": "en",
       "en": "A run reading v{0} of {1} has started.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Une exécution lisant la version v{0} de {1} a démarré.",
+      "pt": "Uma execução para ler a v{0} de {1} foi iniciada.",
+      "es": "Se ha iniciado una ejecución para leer la v{0} de {1}.",
+      "mg": "Nanomboka ny fampandehanana mamaky ny v{0} an'i {1}.",
+      "sw": "Utekelezaji wa kusoma toleo la v{0} la {1} umeanza."
     },
     {
       "_base": "en",
       "en": "A run reading v{0} of {1} is queued behind the run in progress.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Une exécution lisant la version v{0} de {1} est en attente derrière l’exécution en cours.",
+      "pt": "Uma execução para ler a v{0} de {1} está na fila após a execução em andamento.",
+      "es": "Hay una ejecución para leer la v{0} de {1} en cola detrás de la ejecución en curso.",
+      "mg": "Milahatra aorian'ny fampandehanana mandeha ny fampandehanana mamaky ny v{0} an'i {1}.",
+      "sw": "Utekelezaji wa kusoma toleo la v{0} la {1} umewekwa kwenye foleni nyuma ya utekelezaji unaoendelea."
     },
     {
       "_base": "en",
       "en": "Files",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Fichiers",
+      "pt": "Arquivos",
+      "es": "Archivos",
+      "mg": "Rakitra",
+      "sw": "Faili"
     },
     {
       "_base": "en",
       "en": "Finish the design session before replacing files here.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Terminez la session de conception avant de remplacer les fichiers ici.",
+      "pt": "Conclua a sessão de design antes de substituir os arquivos aqui.",
+      "es": "Finalice la sesión de diseño antes de reemplazar archivos aquí.",
+      "mg": "Farano ny fotoam-pamolavolana alohan'ny hanoloana rakitra eto.",
+      "sw": "Maliza kipindi cha usanifu kabla ya kubadilisha faili hapa."
     },
     {
       "_base": "en",
       "en": "Each upload is kept as a new version; uploading one runs the integration against it.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Chaque téléversement est conservé comme nouvelle version et déclenche l’exécution de l’intégration avec celle-ci.",
+      "pt": "Cada envio é mantido como uma nova versão; ao enviar um arquivo, a integração é executada com ele.",
+      "es": "Cada carga se conserva como una versión nueva; al cargar un archivo, la integración se ejecuta con él.",
+      "mg": "Tehirizina ho kinova vaovao ny fampakarana tsirairay; ny fampakarana iray dia mampandeha ny fampidirana angona amin'io kinova io.",
+      "sw": "Kila upakiaji huhifadhiwa kama toleo jipya; kupakia faili huendesha muunganisho kwa kutumia toleo hilo."
     },
     {
       "_base": "en",
       "en": "no longer declared",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "n’est plus déclaré",
+      "pt": "não está mais declarado",
+      "es": "ya no está declarada",
+      "mg": "tsy voafaritra intsony",
+      "sw": "haijabainishwa tena"
     },
     {
       "_base": "en",
       "en": "No version has been read by a successful run yet.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Aucune version n’a encore été lue par une exécution réussie.",
+      "pt": "Nenhuma versão foi lida por uma execução bem-sucedida ainda.",
+      "es": "Ninguna ejecución completada correctamente ha leído aún una versión.",
+      "mg": "Tsy mbola nisy kinova novakin'ny fampandehanana nahomby.",
+      "sw": "Bado hakuna toleo lililosomwa na utekelezaji uliofaulu."
     },
     {
       "_base": "en",
       "en": "Awaiting its first upload; runs wait until one arrives.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "En attente du premier téléversement ; les exécutions attendront qu’un fichier soit disponible.",
+      "pt": "Aguardando o primeiro envio; as execuções aguardam até que ele seja feito.",
+      "es": "A la espera de la primera carga; las ejecuciones esperarán hasta que llegue.",
+      "mg": "Miandry ny fampakarana voalohany; miandry ny fampandehanana mandra-pahatongan'izany.",
+      "sw": "Inasubiri upakiaji wake wa kwanza; utekelezaji husubiri hadi faili ipakiwe."
     },
     {
       "_base": "en",
       "en": "Replace…",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Remplacer…",
+      "pt": "Substituir…",
+      "es": "Reemplazar…",
+      "mg": "Soloy…",
+      "sw": "Badilisha…"
     },
     {
       "_base": "en",
       "en": "Upload…",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Téléverser…",
+      "pt": "Enviar…",
+      "es": "Cargar…",
+      "mg": "Ampakaro…",
+      "sw": "Pakia…"
     },
     {
       "_base": "en",
       "en": "{0} versions, {1} stored",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "{0} versions, {1} stockés",
+      "pt": "{0} versões, {1} em armazenamento",
+      "es": "{0} versiones, {1} almacenadas",
+      "mg": "{0} kinova, {1} voatahiry",
+      "sw": "matoleo {0}, data ya {1} imehifadhiwa"
     },
     {
       "_base": "en",
       "en": "Uploaded",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Téléversé",
+      "pt": "Enviado",
+      "es": "Cargado",
+      "mg": "Nampiakarina",
+      "sw": "Ilipakiwa"
     },
     {
       "_base": "en",
       "en": "Size",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Taille",
+      "pt": "Tamanho",
+      "es": "Tamaño",
+      "mg": "Habe",
+      "sw": "Ukubwa"
     },
     {
       "_base": "en",
       "en": "File",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Fichier",
+      "pt": "Arquivo",
+      "es": "Archivo",
+      "mg": "Rakitra",
+      "sw": "Faili"
     },
     {
       "_base": "en",
       "en": "Runs",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Exécutions",
+      "pt": "Execuções",
+      "es": "Ejecuciones",
+      "mg": "Fampandehanana",
+      "sw": "Utekelezaji"
     },
     {
       "_base": "en",
       "en": "purged",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "purgée",
+      "pt": "removido",
+      "es": "eliminado",
+      "mg": "voafafa tanteraka",
+      "sw": "imefutwa kabisa"
     },
     {
       "_base": "en",
       "en": "Download",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Télécharger",
+      "pt": "Baixar",
+      "es": "Descargar",
+      "mg": "Ampidino",
+      "sw": "Pakua"
     },
     {
       "_base": "en",
       "en": "Runs today's code against this version; success makes it current",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Exécute le code actuel avec cette version ; en cas de réussite, elle devient la version courante",
+      "pt": "Executa o código atual com esta versão; se for bem-sucedida, ela se torna a versão atual",
+      "es": "Ejecuta el código actual con esta versión; si se completa correctamente, la convierte en la versión vigente",
+      "mg": "Mampandeha ny kaody anio amin'ity kinova ity; raha mahomby dia io no atao kinova ankehitriny",
+      "sw": "Huendesha msimbo wa leo kwa kutumia toleo hili; ukifaulu hulifanya kuwa la sasa"
     },
     {
       "_base": "en",
       "en": "Run with this version",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Exécuter avec cette version",
+      "pt": "Executar com esta versão",
+      "es": "Ejecutar con esta versión",
+      "mg": "Ampandehano amin'ity kinova ity",
+      "sw": "Tekeleza kwa toleo hili"
     },
     {
       "_base": "en",
       "en": "Uploaded {0} files; a run reading them has started.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "{0} fichiers téléversés ; une exécution les lisant a démarré.",
+      "pt": "{0} arquivos enviados; uma execução para lê-los foi iniciada.",
+      "es": "Se cargaron {0} archivos; se ha iniciado una ejecución para leerlos.",
+      "mg": "Nampiakarina ny rakitra {0}; nanomboka ny fampandehanana mamaky azy ireo.",
+      "sw": "Faili {0} zimepakiwa; utekelezaji wa kuzisoma umeanza."
     },
     {
       "_base": "en",
       "en": "Uploaded {0} files; a run reading them is queued behind the run in progress.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "{0} fichiers téléversés ; une exécution les lisant est en attente derrière l’exécution en cours.",
+      "pt": "{0} arquivos enviados; uma execução para lê-los está na fila após a execução em andamento.",
+      "es": "Se cargaron {0} archivos; hay una ejecución para leerlos en cola detrás de la ejecución en curso.",
+      "mg": "Nampiakarina ny rakitra {0}; milahatra aorian'ny fampandehanana mandeha ny fampandehanana mamaky azy ireo.",
+      "sw": "Faili {0} zimepakiwa; utekelezaji wa kuzisoma umewekwa kwenye foleni nyuma ya utekelezaji unaoendelea."
     },
     {
       "_base": "en",
       "en": "{0} The files uploaded so far are kept as versions but were not run.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "{0} Les fichiers téléversés jusqu’ici sont conservés comme versions, mais n’ont pas été utilisés dans une exécution.",
+      "pt": "{0} Os arquivos enviados até agora foram mantidos como versões, mas não foram usados em uma execução.",
+      "es": "{0} Los archivos cargados hasta ahora se conservan como versiones, pero no se usaron en ninguna ejecución.",
+      "mg": "{0} Voatahiry ho kinova ireo rakitra nampakarina hatreto saingy tsy nampandehanina.",
+      "sw": "{0} Faili zilizopakiwa kufikia sasa zimehifadhiwa kama matoleo lakini hazikutekelezwa."
     },
     {
       "_base": "en",
       "en": "Replace several files in one run",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Remplacer plusieurs fichiers en une seule exécution",
+      "pt": "Substituir vários arquivos em uma execução",
+      "es": "Reemplazar varios archivos en una sola ejecución",
+      "mg": "Manolo rakitra maromaro ao anatin'ny fampandehanana iray",
+      "sw": "Badilisha faili kadhaa katika utekelezaji mmoja"
     },
     {
       "_base": "en",
       "en": "Upload and Run",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Téléverser et exécuter",
+      "pt": "Enviar e executar",
+      "es": "Cargar y ejecutar",
+      "mg": "Ampakaro ary ampandehano",
+      "sw": "Pakia na Utekeleze"
     },
     {
       "_base": "en",
       "en": "Slots left empty keep their current version.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Les emplacements laissés vides conservent leur version actuelle.",
+      "pt": "Os campos deixados vazios mantêm a versão atual.",
+      "es": "Las ranuras vacías conservan su versión actual.",
+      "mg": "Ny toerana avela banga dia mitazona ny kinovany ankehitriny.",
+      "sw": "Kila nafasi iliyoachwa tupu huhifadhi toleo lake la sasa."
     },
     {
       "_base": "en",
       "en": "Slot \"{0}\" for {1}: lowercase letters, digits and underscores, starting with a letter",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Emplacement \"{0}\" pour {1} : lettres minuscules, chiffres et traits de soulignement, en commençant par une lettre",
+      "pt": "Campo \"{0}\" para {1}: letras minúsculas, algarismos e sublinhados, começando com uma letra",
+      "es": "Ranura \"{0}\" para {1}: letras minúsculas, dígitos y guiones bajos; debe comenzar con una letra",
+      "mg": "Toerana \"{0}\" ho an'i {1}: litera madinika, tarehimarika ary tsipika ambany, ka litera no voalohany",
+      "sw": "Nafasi \"{0}\" ya {1}: herufi ndogo, tarakimu na mistari ya chini, ikianza kwa herufi"
     },
     {
       "_base": "en",
       "en": "Here is the file.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Voici le fichier.",
+      "pt": "Aqui está o arquivo.",
+      "es": "Aquí está el archivo.",
+      "mg": "Ity ny rakitra.",
+      "sw": "Hii hapa faili."
     },
     {
       "_base": "en",
       "en": "Here are the files.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Voici les fichiers.",
+      "pt": "Aqui estão os arquivos.",
+      "es": "Aquí están los archivos.",
+      "mg": "Ireto ny rakitra.",
+      "sw": "Hizi hapa faili."
     },
     {
       "_base": "en",
       "en": "1 version, {0} stored",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "1 version, {0} stocké(s)",
+      "pt": "1 versão, {0} armazenada",
+      "es": "1 versión, {0} almacenada",
+      "mg": "Kinova 1, {0} voatahiry",
+      "sw": "Toleo 1, {0} zimehifadhiwa"
     },
     {
       "_base": "en",
       "en": "The upload failed: the connection closed. The file may be too large or of a type this slot does not accept.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Échec du téléversement : la connexion a été fermée. Le fichier est peut-être trop volumineux ou d’un type non accepté ici.",
+      "pt": "Falha no envio: a conexão foi encerrada. O arquivo pode ser grande demais ou de um tipo que este campo não aceita.",
+      "es": "La carga falló: se cerró la conexión. Es posible que el archivo sea demasiado grande o de un tipo no admitido en este campo.",
+      "mg": "Tsy nahomby ny fampiakarana: tapaka ny fifandraisana. Mety ho lehibe loatra ilay rakitra na karazana tsy eken’ity toerana ity.",
+      "sw": "Upakiaji umeshindikana: muunganisho ulifungwa. Huenda faili ni kubwa mno au ni ya aina ambayo sehemu hii haikubali."
     },
     {
       "_base": "en",
       "en": "{0} is {1}; this server accepts files up to {2} MB.",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "{0} fait {1} ; ce serveur accepte les fichiers jusqu’à {2} Mo.",
+      "pt": "{0} tem {1}; este servidor aceita arquivos de até {2} MB.",
+      "es": "{0} ocupa {1}; este servidor acepta archivos de hasta {2} MB.",
+      "mg": "{0} dia {1}; rakitra hatramin’ny {2} MB no eken’ity lohamilina ity.",
+      "sw": "{0} ina ukubwa wa {1}; seva hii inakubali faili za hadi {2} MB."
     },
     {
       "_base": "en",
       "en": "Starting a run with v{0} of {1}…",
-      "fr": "",
-      "pt": "",
-      "es": "",
-      "mg": "",
-      "sw": ""
+      "fr": "Démarrage d’une exécution avec la v{0} de {1}…",
+      "pt": "Iniciando uma execução com a v{0} de {1}…",
+      "es": "Iniciando una ejecución con la v{0} de {1}…",
+      "mg": "Manomboka fampandehanana mampiasa ny v{0} an’ny {1}…",
+      "sw": "Kuanzisha uendeshaji kwa kutumia v{0} ya {1}…"
+    },
+    {
+      "_base": "en",
+      "en": "Session actions",
+      "fr": "Actions de la session",
+      "pt": "Ações da sessão",
+      "es": "Acciones de la sesión",
+      "mg": "Hetsiky ny fivoriana",
+      "sw": "Vitendo vya kipindi"
+    },
+    {
+      "_base": "en",
+      "en": "Delete Session",
+      "fr": "Supprimer la session",
+      "pt": "Excluir sessão",
+      "es": "Eliminar sesión",
+      "mg": "Fafao ny fivoriana",
+      "sw": "Futa kipindi"
+    },
+    {
+      "_base": "en",
+      "en": "Delete this session?",
+      "fr": "Supprimer cette session ?",
+      "pt": "Excluir esta sessão?",
+      "es": "¿Eliminar esta sesión?",
+      "mg": "Hofafana ity fivoriana ity?",
+      "sw": "Ufute kipindi hiki?"
+    },
+    {
+      "_base": "en",
+      "en": "This deletes the conversation, its draft, its test runs and the files attached in it. It cannot be recovered.",
+      "fr": "Cette action supprime la conversation, son brouillon, ses exécutions de test et les fichiers qui y sont joints. Ces éléments ne pourront pas être récupérés.",
+      "pt": "Isso exclui a conversa, seu rascunho, suas execuções de teste e os arquivos anexados a ela. Não será possível recuperá-los.",
+      "es": "Esto elimina la conversación, su borrador, sus ejecuciones de prueba y los archivos adjuntos. No se puede recuperar.",
+      "mg": "Izany dia mamafa ny resaka, ny volavolan-kevitra, ny fampandehanana andrana ary ireo rakitra nampiarahina taminy. Tsy azo averina izany.",
+      "sw": "Hii itafuta mazungumzo, rasimu yake, majaribio yake ya uendeshaji na faili zilizoambatishwa humo. Haviwezi kurejeshwa."
     }
   ],
   "unused": [

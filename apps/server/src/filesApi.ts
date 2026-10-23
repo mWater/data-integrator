@@ -33,6 +33,23 @@ export const UPLOAD_PATH = /^\/api\/(?:integrations\/[a-z][a-z0-9_]*|sessions\/[
 /** Whole-request deadline for the server: large uploads on slow links outlast the five minute default. */
 export const REQUEST_DEADLINE_MS = 60 * 60 * 1000
 
+/** Node's five minute whole-request default, which every request but an upload is still held to. */
+const OTHER_REQUEST_DEADLINE_MS = 5 * 60 * 1000
+
+/**
+ * Holds a request that is not an upload to the five minute default, since
+ * the server-wide deadline is the upload one: a request whose body is still
+ * arriving by then has its connection dropped.
+ */
+export function limitRequestTime(req: IncomingMessage, res: ServerResponse, deadlineMs = OTHER_REQUEST_DEADLINE_MS): void {
+  const timer = setTimeout(() => {
+    if (!req.complete) req.socket.destroy()
+  }, deadlineMs)
+  timer.unref()
+  req.once("end", () => clearTimeout(timer))
+  res.once("close", () => clearTimeout(timer))
+}
+
 /** An upload whose connection goes this long without bytes is dropped. */
 const UPLOAD_IDLE_MS = 2 * 60 * 1000
 

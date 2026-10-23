@@ -31,7 +31,7 @@ export function scratchWorkDir(workRoot: string, sessionId: string): string {
  * rows are kept as session history. Safe to call when nothing exists.
  */
 export async function cleanupScratch(
-  pool: pg.Pool,
+  pool: pg.Pool | pg.PoolClient,
   store: RasterStore,
   workRoot: string,
   sessionId: string

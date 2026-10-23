@@ -9,7 +9,7 @@ import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
 import { json, readJsonBody, sendFile } from "./http.js"
 import { snapshotSources } from "./catalog.js"
-import { AgentService, MessageRejectedError, SessionAttachment } from "./agent/service.js"
+import { AgentService, MessageRejectedError, SessionAttachment, SessionDeleteRefusedError } from "./agent/service.js"
 import { saveDashboardSession } from "./agent/dashboard.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
@@ -25,6 +25,7 @@ import {
   deferContinue,
   FileApiOptions,
   handleSessionUpload,
+  limitRequestTime,
   parseRunPins,
   REQUEST_DEADLINE_MS,
   routeIntegrationFiles,
@@ -172,6 +173,7 @@ export function createApiServer(
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
+    if (!UPLOAD_PATH.test((req.url ?? "").split("?")[0])) limitRequestTime(req, res)
     try {
       await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, model, files, req, res)
     } catch (err) {
@@ -181,7 +183,8 @@ export function createApiServer(
   }
   const server = createServer(handle)
   // Large uploads on slow links outlast the five minute default; uploads
-  // carry their own idle timeout
+  // carry their own idle timeout, and limitRequestTime holds every other
+  // request to the default
   server.requestTimeout = REQUEST_DEADLINE_MS
   // Uploads answer 100 Continue only after their checks pass, so a refused
   // upload is never sent; every other request continues at once
@@ -1693,11 +1696,32 @@ async function routeSessions(
     else json(res, 400, { error: result.error })
     return
   }
+  if (!sub && req.method === "DELETE" && ownerKind === "designer") {
+    // A design session is its creator's (or an admin's) to delete while no
+    // integration carries its id, which frees the id it claimed; once one
+    // does, deleting the integration is what removes it
+    if (!agent) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      return
+    }
+    if (agent.isRunning(sessionId)) {
+      json(res, 409, { error: "The agent is still working; stop it first" })
+      return
+    }
+    try {
+      const deleted = await agent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
+      if (!deleted) json(res, 403, { error: "Only the person who started this design session can delete it" })
+      else json(res, 200, { ok: true })
+    } catch (err) {
+      if (!(err instanceof SessionDeleteRefusedError)) throw err
+      json(res, 409, { error: err.message })
+    }
+    return
+  }
   if (!sub && req.method === "DELETE") {
-    // Integration design sessions are team artifacts carrying runs and scratch
-    // layers; assistant chats are the user's to throw away
+    // Assistant chats are the user's to throw away
     if (ownerKind !== "assistant") {
-      json(res, 403, { error: "Only assistant chats and dashboard drafts can be deleted" })
+      json(res, 403, { error: "Only assistant chats, dashboard drafts and design sessions can be deleted" })
       return
     }
     if (!assistantAgent) {

@@ -51,6 +51,13 @@ class HeldRunner {
   releaseAll(): void {
     for (const release of this.releases.splice(0)) release()
   }
+
+  /** Waits for a started run's job to reach the runner (5 s cap), then lets it finish. */
+  async releaseStarted(): Promise<void> {
+    const deadline = Date.now() + 5000
+    while (this.releases.length === 0 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    this.releaseAll()
+  }
 }
 
 /** Minimal production integration with no destinations. */
@@ -149,7 +156,7 @@ test("an idle integration starts running at once, under its own lease", async ()
   // Never queued, so there is nothing for a scheduler worker to take
   assert.equal(await claimNextRun(pool, "test-worker"), null)
 
-  runner.releaseAll()
+  await runner.releaseStarted()
   assert.equal(await settled(runId), "succeeded")
 })
 
@@ -166,7 +173,7 @@ test("a start while a run is going is refused with 409 and leaves no row behind"
   assert.equal(afterCount, before)
   assert.equal(await countRuns("rs_one", "queued"), 0)
 
-  runner.releaseAll()
+  await runner.releaseStarted()
   assert.equal(await settled(runId), "succeeded")
 })
 

@@ -2,9 +2,17 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { LanguageModel, ToolSet, tool } from "ai"
+import pg from "pg"
 import { z } from "zod"
 import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
-import { AgentEventListener, AgentImplementation, MessageRejectedError, SessionAttachment, ToolOutcome } from "./types.js"
+import {
+  AgentEventListener,
+  AgentImplementation,
+  MessageRejectedError,
+  SessionAttachment,
+  SessionDeleteRefusedError,
+  ToolOutcome
+} from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
 import {
   adoptSessionFiles,
@@ -704,12 +712,14 @@ ${index}`
       // Another session may have named its draft this without a row yet; two
       // sessions sharing an id would share its draft, credentials, and files
       const claimed = await this.deps.pool.query(
-        `SELECT 1 FROM app.agent_sessions
-         WHERE kind = 'designer' AND id <> $2 AND client_state->'definition'->>'id' = $1`,
+        `SELECT id FROM app.agent_sessions
+         WHERE kind = 'designer' AND id <> $2 AND client_state->'definition'->>'id' = $1 LIMIT 1`,
         [id, sessionId]
       )
       if (claimed.rows.length > 0) {
-        return { result: `Integration id "${id}" is being designed in another session; choose a different id` }
+        return {
+          result: `Integration id "${id}" is being designed in another session (${claimed.rows[0].id}); choose a different id, or the user can delete that session to free it`
+        }
       }
       events({ type: "integration_bound", integrationId: id })
     }
@@ -1030,6 +1040,44 @@ ${index}`
     if (all.length === 0) return { result: "No credentials are stored on this deployment yet" }
     const lines = all.map(s => `- ${s.name} (held by ${s.integrationId})`)
     return { result: `Stored credential names:\n${lines.join("\n")}` }
+  }
+
+  /**
+   * Readies a design session for deletion inside the delete's transaction:
+   * refused while an integration row carries its id (the integration's own
+   * delete owns that) or one of its runs is in progress. Removes its scratch
+   * area, scratch runs and the uploads no integration adopted, and hands
+   * adopted versions over to their integration alone. The returned cleanup
+   * deletes the removed uploads' bytes once the delete commits.
+   */
+  async beforeDelete(client: pg.PoolClient, sessionId: string): Promise<() => Promise<void>> {
+    const bound = await client.query(
+      `SELECT i.id FROM app.agent_sessions s
+       JOIN app.integrations i ON i.id = s.integration_id OR i.id = NULLIF(s.client_state->'definition'->>'id', '')
+       WHERE s.id = $1 LIMIT 1`,
+      [sessionId]
+    )
+    if (bound.rows.length > 0) {
+      throw new SessionDeleteRefusedError(
+        `This session designs integration ${bound.rows[0].id}; delete the integration to remove it`
+      )
+    }
+    const active = await client.query("SELECT 1 FROM app.runs WHERE session_id = $1 AND status IN ('queued', 'running')", [
+      sessionId
+    ])
+    if (active.rows.length > 0) throw new SessionDeleteRefusedError("A run of this session is in progress; stop it first")
+    await cleanupScratch(client, this.deps.store, this.deps.workRoot, sessionId)
+    const removed = await client.query(
+      "DELETE FROM app.file_versions WHERE session_id = $1 AND integration_id IS NULL RETURNING id, ext",
+      [sessionId]
+    )
+    await client.query("UPDATE app.file_versions SET session_id = NULL WHERE session_id = $1", [sessionId])
+    await client.query("DELETE FROM app.runs WHERE session_id = $1 AND integration_id IS NULL", [sessionId])
+    await client.query("UPDATE app.runs SET session_id = NULL WHERE session_id = $1", [sessionId])
+    return async () => {
+      // A file left behind is a version-named file with no row, which store cleanup removes
+      for (const row of removed.rows) await this.deps.files?.deleteVersion(row.id, row.ext).catch(() => {})
+    }
   }
 
   /**

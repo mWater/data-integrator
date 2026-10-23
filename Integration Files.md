@@ -136,8 +136,9 @@ Upload handling:
 - The answer is `201 { version, run }`, where `run` is `{ id, status:
   "running" | "queued" }` or null, with `runError` saying why no run could be
   created (another slot still awaiting its first upload).
-- The whole-request deadline is one hour (the default five minutes would cut
-  off large uploads on slow links), with a two minute socket idle timeout.
+- The whole-request deadline for uploads is one hour (the default five minutes
+  would cut off large uploads on slow links), with a two minute socket idle
+  timeout. Every other request keeps the five minute default.
 - Proxies must allow the body size. The reference deployment publishes through
   a Cloudflare tunnel, whose request body limit is 100 MB on the Free and Pro
   plans; that is why the default cap is 100 MB. A proxy that buffers request

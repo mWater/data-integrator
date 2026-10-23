@@ -2,7 +2,7 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises"
-import { request as httpRequest, Server } from "node:http"
+import { createServer, request as httpRequest, Server } from "node:http"
 import { AddressInfo } from "node:net"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -16,6 +16,7 @@ import { DesignerImplementation, DesignerState, initialDesignerState } from "../
 import { AgentService } from "../src/agent/service.js"
 import { MessageRejectedError } from "../src/agent/types.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "../src/executor.js"
+import { limitRequestTime } from "../src/filesApi.js"
 import { cleanupFileStore, FileStore } from "../src/fileStore.js"
 import { installIntegration, validateDefinition } from "../src/install.js"
 import { migrate } from "../src/migrations.js"
@@ -105,6 +106,7 @@ let pool: pg.Pool
 let server: Server
 let base: string
 let editor: string
+let editorId: string
 let viewer: string
 let fileRoot: string
 let workRoot: string
@@ -123,6 +125,7 @@ before(async () => {
   await migrate(pool, MIGRATIONS_DIR)
   const editorUser = await createUser(pool, "editor@example.org", "hunter2hunter2", "editor")
   editor = await createApiToken(pool, editorUser.id, "editor")
+  editorId = editorUser.id
   const viewerUser = await createUser(pool, "viewer@example.org", "hunter2hunter2", "viewer")
   viewer = await createApiToken(pool, viewerUser.id, "viewer")
   await createUser(pool, "admin@example.org", "hunter2hunter2", "admin")
@@ -329,6 +332,23 @@ test("pinned runs queue behind a running one and merge into the queued run", asy
   await executeRun(deps, claimed!)
   assert.equal(runner.last.files.inventory, "third\n")
   assert.equal(await currentOf("inv", "inventory"), third.body.version.id)
+})
+
+test("a queued run ignores pins for a slot the definition dropped before it started", async () => {
+  await installIntegration(pool, fileDefinition("dropped_slot"))
+  runner.modes.push("hold")
+  const first = await upload("dropped_slot", "inventory", "v.csv", "first\n", true)
+  const second = await upload("dropped_slot", "inventory", "v.csv", "second\n", true)
+  assert.equal(second.body.run.status, "queued")
+  await pool.query("UPDATE app.integrations SET definition = definition - 'files' WHERE id = 'dropped_slot'")
+
+  runner.release()
+  assert.equal(await settled(first.body.run.id), "succeeded")
+  const claimed = await claimNextRun(pool, "test-worker")
+  assert.equal(claimed?.id, second.body.run.id)
+  await executeRun(deps, claimed!)
+  assert.equal(await settled(second.body.run.id), "succeeded")
+  assert.deepEqual(runner.last.files, {})
 })
 
 test("revert: a run pinning an older version makes it current on success; foreign pins are refused", async () => {
@@ -702,4 +722,67 @@ test("a new session cannot name its draft after another session's unsaved draft"
   const second = await designerSession(initialDesignerState())
   const secondWrite = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, second)
   assert.match(secondWrite.result, /being designed in another session/)
+})
+
+test("deleting an abandoned design session frees its id and its uploads; only its creator may", async () => {
+  const definitionJson = JSON.stringify({ id: "abandoned_name", name: "A", trigger: {}, runtime: "python", destinations: "invalid", contract: 2 })
+  const abandoned = await designerSession(initialDesignerState())
+  const write = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, abandoned)
+  await pool.query("UPDATE app.agent_sessions SET client_state = $2, user_id = $3 WHERE id = $1", [
+    abandoned,
+    JSON.stringify(write.state),
+    editorId
+  ])
+  const staged = await attach(abandoned, "inventory", "a.csv", "abandoned\n")
+  const other = await createUser(pool, "editor2@example.org", "hunter2hunter2", "editor")
+  const otherEditor = await createApiToken(pool, other.id, "editor")
+  assert.equal((await call(`/api/sessions/${abandoned}`, otherEditor, { method: "DELETE" })).status, 403)
+
+  assert.equal((await call(`/api/sessions/${abandoned}`, editor, { method: "DELETE" })).status, 200)
+  assert.equal((await pool.query("SELECT 1 FROM app.file_versions WHERE id = $1", [staged.id])).rows.length, 0)
+  await assert.rejects(stat(files.versionPath(staged.id, ".csv")), /ENOENT/)
+  const next = await designerSession(initialDesignerState())
+  const claimed = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, next)
+  assert.doesNotMatch(claimed.result, /another session/)
+})
+
+test("a design session whose integration exists is not deleted; deleting the integration frees the id", async () => {
+  await installIntegration(pool, fileDefinition("installed_name"))
+  const session = await designerSession(initialDesignerState("installed_name"))
+  await pool.query("UPDATE app.agent_sessions SET integration_id = 'installed_name', user_id = $2 WHERE id = $1", [session, editorId])
+  const refused = await call(`/api/sessions/${session}`, editor, { method: "DELETE" })
+  assert.equal(refused.status, 409)
+  assert.match((await refused.json()).error, /delete the integration/)
+
+  assert.equal((await call("/api/integrations/installed_name", editor, { method: "DELETE" })).status, 200)
+  const state = (await pool.query("SELECT client_state FROM app.agent_sessions WHERE id = $1", [session])).rows[0].client_state
+  assert.equal(state.definition.id, "")
+  const definitionJson = JSON.stringify({ id: "installed_name", name: "B", trigger: {}, runtime: "python", destinations: "invalid", contract: 2 })
+  const next = await designerSession(initialDesignerState())
+  const claimed = await designer.execute("write_definition", { definitionJson }, initialDesignerState(), () => {}, next)
+  assert.doesNotMatch(claimed.result, /another session|already installed/)
+})
+
+test("a request that is not an upload is cut off when its body is still arriving at the deadline", async () => {
+  const slow = createServer((req, res) => {
+    limitRequestTime(req, res, 100)
+    req.resume()
+    req.on("end", () => res.end("done"))
+  })
+  await new Promise<void>(resolve => slow.listen(0, "127.0.0.1", resolve))
+  const { port } = slow.address() as AddressInfo
+  try {
+    const outcome = await new Promise<string>(resolve => {
+      const req = httpRequest({ host: "127.0.0.1", port, path: "/api/login", method: "POST", headers: { "content-length": 10 } })
+      req.on("response", () => resolve("answered"))
+      req.on("error", () => resolve("dropped"))
+      req.write("{")
+    })
+    assert.equal(outcome, "dropped")
+    // A request that finishes sending in time is answered
+    const done = await fetch(`http://127.0.0.1:${port}/api/login`, { method: "POST", body: "{}" })
+    assert.equal(await done.text(), "done")
+  } finally {
+    slow.close()
+  }
 })
