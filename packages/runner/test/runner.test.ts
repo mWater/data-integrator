@@ -304,6 +304,27 @@ test("network:false gives no network at all", { skip: !NET_TESTS }, async () => 
   assert.equal(result.status, "failed")
 }, { timeout: 30_000 })
 
+/** MAC address of the test network's bridge, inside the rootless netns. */
+async function bridgeMac(): Promise<string> {
+  const { stdout: bridge } = await execFileP("podman", ["network", "inspect", "--format", "{{.NetworkInterface}}", "integrator-jobs-test"])
+  const { stdout } = await execFileP("podman", ["unshare", "--rootless-netns", "ip", "-j", "link", "show", "dev", bridge.trim()])
+  return (JSON.parse(stdout) as { address: string }[])[0].address
+}
+
+test("the job bridge keeps its MAC while job containers join and leave", { skip: !NET_TESTS }, async () => {
+  // An unpinned bridge takes the lowest MAC among its ports, so six joining jobs move it most times
+  await runner.ensureReady()
+  const before = await bridgeMac()
+  const jobs = [1, 2, 3, 4, 5, 6].map(() =>
+    runner.run({ image: ALPINE, payload: null, command: ["sh", "-c", "cat > /dev/null; sleep 4"] })
+  )
+  await new Promise(resolve => setTimeout(resolve, 2500))
+  const during = await bridgeMac()
+  await Promise.all(jobs)
+  assert.equal(during, before, "MAC changed as jobs joined")
+  assert.equal(await bridgeMac(), before, "MAC changed as jobs left")
+}, { timeout: 60_000 })
+
 test("overlapping networked jobs all get a network, and every job container is removed", { skip: !NET_TESTS }, async () => {
   // Batches back to back, so starts overlap other jobs' starts and teardowns
   const label = `overlap-${Date.now()}`
