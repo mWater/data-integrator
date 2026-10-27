@@ -102,14 +102,14 @@ export class Runner {
     // A keeper can survive host changes that invalidate it (its recorded OCI
     // runtime uninstalled, its image pruned); recreate rather than wedge
     if (await this.podmanOk(["container", "exists", keeper])) {
-      if (await this.podmanOk(["start", keeper])) return this.ensureEgress(sweepMeters)
+      if (await this.podmanOk(["start", keeper])) return this.ensureNetworkState(sweepMeters)
       await this.podmanOk(["rm", "-f", keeper])
     }
     await this.podman([
       "run", "-d", "--name", keeper, "--network", this.opts.network,
       KEEPER_IMAGE, "sleep", "infinity"
     ])
-    await this.ensureEgress(sweepMeters)
+    await this.ensureNetworkState(sweepMeters)
   }
 
   /**
@@ -121,7 +121,7 @@ export class Runner {
   private prepareNetwork(): Promise<void> {
     return this.withNetworkLock(async () => {
       const keeper = `${this.opts.network}-keeper`
-      if (await this.podmanOk(["start", keeper])) await this.ensureEgress(false)
+      if (await this.podmanOk(["start", keeper])) await this.ensureNetworkState(false)
       else await this.prepareStack(false)
     })
   }
@@ -131,6 +131,32 @@ export class Runner {
     const next = this.networkLock.then(fn)
     this.networkLock = next.then(() => {}, () => {})
     return next
+  }
+
+  /** Brings the netns to its required state: bridge MAC pinned, egress policy and meter applied. */
+  private async ensureNetworkState(sweepMeters: boolean): Promise<void> {
+    await this.pinBridgeMac()
+    await this.ensureEgress(sweepMeters)
+  }
+
+  /**
+   * Pins the job bridge's MAC address to its current value. A Linux bridge
+   * without an assigned MAC takes the lowest MAC among its ports, so it changes
+   * as job containers join and leave, and running containers keep sending to
+   * the old gateway MAC until their neighbour entry expires: their network
+   * goes dark for seconds at a time, often for a whole job. netavark 1.4
+   * (Ubuntu 24.04) leaves the MAC unassigned; assigning it, even unchanged,
+   * stops it following the ports.
+   */
+  private async pinBridgeMac(): Promise<void> {
+    const bridge = (await this.podman(["network", "inspect", "--format", "{{.NetworkInterface}}", this.opts.network])).trim()
+    if (!/^[A-Za-z0-9_.-]{1,15}$/.test(bridge)) throw new Error(`Unexpected bridge name for ${this.opts.network}: ${bridge}`)
+    const links = JSON.parse(await this.podman(["unshare", "--rootless-netns", "ip", "-j", "link", "show", "dev", bridge])) as {
+      address?: string
+    }[]
+    const mac = links[0]?.address ?? ""
+    if (!/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/.test(mac)) throw new Error(`Bridge ${bridge} has no MAC address`)
+    await this.podman(["unshare", "--rootless-netns", "ip", "link", "set", "dev", bridge, "address", mac])
   }
 
   /**

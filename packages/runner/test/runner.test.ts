@@ -304,6 +304,50 @@ test("network:false gives no network at all", { skip: !NET_TESTS }, async () => 
   assert.equal(result.status, "failed")
 }, { timeout: 30_000 })
 
+/** MAC address of the test network's bridge, inside the rootless netns. */
+async function bridgeMac(): Promise<string> {
+  const { stdout: bridge } = await execFileP("podman", ["network", "inspect", "--format", "{{.NetworkInterface}}", "integrator-jobs-test"])
+  const { stdout } = await execFileP("podman", ["unshare", "--rootless-netns", "ip", "-j", "link", "show", "dev", bridge.trim()])
+  return (JSON.parse(stdout) as { address: string }[])[0].address
+}
+
+test("the job bridge keeps its MAC while job containers join and leave", { skip: !NET_TESTS }, async () => {
+  // An unpinned bridge takes the lowest MAC among its ports, so six joining jobs move it most times
+  await runner.ensureReady()
+  const before = await bridgeMac()
+  const jobs = [1, 2, 3, 4, 5, 6].map(() =>
+    runner.run({ image: ALPINE, payload: null, command: ["sh", "-c", "cat > /dev/null; sleep 4"] })
+  )
+  await new Promise(resolve => setTimeout(resolve, 2500))
+  const during = await bridgeMac()
+  await Promise.all(jobs)
+  assert.equal(during, before, "MAC changed as jobs joined")
+  assert.equal(await bridgeMac(), before, "MAC changed as jobs left")
+}, { timeout: 60_000 })
+
+test("overlapping networked jobs all get a network, and every job container is removed", { skip: !NET_TESTS }, async () => {
+  // Batches back to back, so starts overlap other jobs' starts and teardowns
+  const label = `overlap-${Date.now()}`
+  for (let round = 0; round < 8; round++) {
+    const results = await Promise.all(
+      [1, 2, 3].map(() =>
+        runner.run({
+          image: ALPINE,
+          payload: null,
+          labels: { "integrator-test": label },
+          // Retries ride out a flaky remote; a job left with no network fails every attempt
+          command: ["sh", "-c", "cat > /dev/null; for i in 1 2 3; do wget -q -T 10 -O /dev/null https://example.com && exit 0; sleep 2; done; exit 1"]
+        })
+      )
+    )
+    for (const result of results) assert.equal(result.status, "succeeded", `round ${round}: ${result.stderrTail}`)
+  }
+  const offline = await runner.run({ image: ALPINE, payload: null, network: false, labels: { "integrator-test": label }, command: ["true"] })
+  assert.equal(offline.status, "succeeded")
+  const { stdout } = await execFileP("podman", ["ps", "-a", "-q", "--filter", `label=integrator-test=${label}`])
+  assert.equal(stdout.trim(), "", "no job container is left behind")
+}, { timeout: 180_000 })
+
 test("GDAL pipeline under gVisor writes a COG artifact", { skip: !HAS_GDAL_IMG }, async () => {
   const outDir = await mkdtemp(path.join(tmpdir(), "job-gdal-"))
   const script =
