@@ -86,6 +86,9 @@ export function ComposerAttachments({ attachments, onChange, definition, enabled
         disabled={!enabled}
         title={enabled ? T`Attach a file for the integration to read` : T`Attach files once the agent pauses`}
       >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+        </svg>
         {T`Attach File`}
       </button>
       {attachments.map(attachment => (

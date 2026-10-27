@@ -616,6 +616,8 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
 /* Attachments and upload progress sit under the textarea and send button */
 .composer > .composer-attachments, .composer > [role="status"] { order: 2; flex-basis: 100% }
 .composer-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px }
+.composer-attachments > button { display: inline-flex; align-items: center; gap: 6px; line-height: 1 }
+.composer-attachments > button svg { display: block; flex: none }
 .composer-attachment {
   display: inline-flex; align-items: center; gap: 8px; padding: 3px 4px 3px 10px;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
