@@ -1181,7 +1181,8 @@ table.users tbody tr:hover { background: none }
 .catalog-empty { border: 1px solid var(--border); border-radius: 10px; padding: 24px; background: var(--surface) }
 .catalog-empty h2, .catalog-drafts h2 { font-size: 16px; margin: 0 0 8px }
 .catalog-empty p { color: var(--ink-muted) }
-.catalog-drafts { margin-top: 30px }
+.catalog-drafts { margin: 18px 0 28px }
+.catalog-drafts-count { margin-left: 4px; color: var(--ink-muted); font-size: 13px; font-weight: 400 }
 .catalog-page :is(a, input, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 @media (max-width: 680px) {
   .catalog-toolbar input { flex-basis: 100%; min-width: 0; width: 100% }

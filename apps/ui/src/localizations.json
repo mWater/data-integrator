@@ -7320,6 +7320,7 @@
     "Ask answers one-off questions; the dashboard agent turns a description into a page you can share.",
     "Hide the chat and view the dashboard at full width (Esc to return)",
     "Settings sections",
+    "Designs in Progress",
     "Default region for integrations. Individual integrations can override it.",
     "The upload failed: the connection was lost"
   ]
