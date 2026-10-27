@@ -8,9 +8,13 @@ import { parseAoi } from "./settings.js"
 import { parseCron } from "./cron.js"
 import { validateDefinitionStrings } from "./localizeCatalog.js"
 import { SECRET_NAME_PATTERN } from "./secrets.js"
+import { deleteIntegrationFiles } from "./files.js"
 
 /** Published-identifier rule for all definition-borne ids. */
 export const ID_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
+
+/** Extension rule for file slots' accept lists and stored file versions. */
+export const FILE_EXT_PATTERN = /^\.[a-z0-9]{1,10}$/
 
 /** Permitted ColumnSpec types; definitions arrive as untyped JSON. */
 const COLUMN_TYPES = ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
@@ -70,6 +74,25 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   const delay = definition.trigger?.webhookDelaySeconds
   if (delay !== undefined && (!Number.isInteger(delay) || delay < 0 || delay > 86400)) {
     throw new Error("webhookDelaySeconds must be an integer between 0 and 86400")
+  }
+  if (definition.files !== undefined) {
+    if (!definition.files || typeof definition.files !== "object" || Array.isArray(definition.files)) {
+      throw new Error("files must be an object keyed by slot id")
+    }
+    for (const [slotId, slot] of Object.entries(definition.files)) {
+      if (badId(slotId)) throw new Error(`Invalid file slot id: ${slotId} (lowercase snake_case)`)
+      if (!slot || typeof slot !== "object") throw new Error(`File slot ${slotId} must be an object`)
+      if (slot.accept !== undefined) {
+        if (!Array.isArray(slot.accept) || slot.accept.length === 0) {
+          throw new Error(`files.${slotId}.accept must be a non-empty list of extensions, or omitted to accept any`)
+        }
+        for (const ext of slot.accept) {
+          if (typeof ext !== "string" || !FILE_EXT_PATTERN.test(ext)) {
+            throw new Error(`Invalid extension "${String(ext)}" in files.${slotId}.accept: lowercase with the dot, e.g. ".xlsx"`)
+          }
+        }
+      }
+    }
   }
   const inputIds = new Set(Object.keys(definition.inputs ?? {}))
   for (const inputId of inputIds) {
@@ -300,16 +323,18 @@ export interface DeleteIntegrationResult {
   runs: number
   /** Design sessions kept, with their integration binding cleared. */
   sessions: number
+  /** Uploaded file versions deleted; their store files are the caller's to remove. */
+  files: { id: string; ext: string }[]
 }
 
 /**
  * Permanently deletes an integration and everything it owns: data tables and
  * their registry claims, raster layers with all snapshots (data.rasters rows
- * cascade), run history, webhook events, and the definition archive. Design
- * sessions survive with their binding cleared. Refuses while a run is queued
- * or running, and while another integration's inputs depend on it — file
- * cleanup (store COGs, tile cache, /work) is the caller's, from the returned
- * paths, after this commits.
+ * cascade), run history, webhook events, uploaded file versions, and the
+ * definition archive. Design sessions survive with their binding cleared.
+ * Refuses while a run is queued or running, and while another integration's
+ * inputs depend on it — file cleanup (store COGs, uploaded files, tile cache,
+ * /work) is the caller's, from the returned paths, after this commits.
  */
 export async function deleteIntegration(pool: pg.Pool, integrationId: string): Promise<DeleteIntegrationResult> {
   const client = await pool.connect()
@@ -318,7 +343,7 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
     const existing = await client.query("SELECT id FROM app.integrations WHERE id = $1 FOR UPDATE", [integrationId])
     if (existing.rows.length === 0) {
       await client.query("ROLLBACK")
-      return { ok: false, tables: 0, snapshots: 0, snapshotPaths: [], layerIds: [], runs: 0, sessions: 0 }
+      return { ok: false, tables: 0, snapshots: 0, snapshotPaths: [], layerIds: [], runs: 0, sessions: 0, files: [] }
     }
     const active = await client.query(
       "SELECT 1 FROM app.runs WHERE integration_id = $1 AND status IN ('queued', 'running')",
@@ -334,8 +359,15 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
     }
 
     await client.query("DELETE FROM app.webhook_events WHERE integration_id = $1", [integrationId])
+    // Sessions that designed it let go of the id too, so the name is free:
+    // a resumed session names its draft again, and its file pins went with
+    // the integration's versions
     const sessions = await client.query(
-      "UPDATE app.agent_sessions SET integration_id = NULL WHERE integration_id = $1",
+      `UPDATE app.agent_sessions SET integration_id = NULL,
+         client_state = CASE WHEN kind = 'designer' AND client_state->'definition'->>'id' = $1
+           THEN jsonb_set(client_state, '{definition,id}', '""') - 'files' - 'filesNote'
+           ELSE client_state END
+       WHERE integration_id = $1 OR (kind = 'designer' AND client_state->'definition'->>'id' = $1)`,
       [integrationId]
     )
 
@@ -366,6 +398,7 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
       integrationId
     ])
     const runs = await client.query("DELETE FROM app.runs WHERE integration_id = $1", [integrationId])
+    const files = await deleteIntegrationFiles(client, integrationId)
 
     // integrations_version_fk is INITIALLY DEFERRED, so the current pointer may
     // dangle until commit, by which point both sides are gone
@@ -379,7 +412,8 @@ export async function deleteIntegration(pool: pg.Pool, integrationId: string): P
       snapshotPaths: snapshots.rows.flatMap(r => (r.paths as string[] | null) ?? []),
       layerIds: usage.layers,
       runs: runs.rowCount ?? 0,
-      sessions: sessions.rowCount ?? 0
+      sessions: sessions.rowCount ?? 0,
+      files
     }
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})

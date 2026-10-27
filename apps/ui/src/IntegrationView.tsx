@@ -4,6 +4,7 @@ import {
   createSession,
   DefaultAoi,
   deleteIntegration,
+  FileSlotSpec,
   getIntegration,
   getIntegrationUsage,
   getIntegrationVersions,
@@ -26,6 +27,7 @@ import { ConfirmDelete } from "./ConfirmDelete.js"
 import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
 import { RowMenu } from "./RowMenu.js"
 import { SecretsSection } from "./SecretsSection.js"
+import { FilesSection } from "./FilesSection.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
 import { formatDateTime, localizeData } from "./localization.js"
@@ -259,6 +261,15 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
           })}
         </div>
       ) : null}
+
+      <FilesSection
+        integrationId={integrationId}
+        declared={(definition.files ?? {}) as Record<string, FileSlotSpec>}
+        canDesign={canDesign}
+        isDraft={detail.status === "draft"}
+        runsKey={detail.runs.slice(0, 5).map(run => `${run.id}:${run.status}`).join(",")}
+        onChanged={refresh}
+      />
 
       <div className="tabs">
         {([...(tableIds.length ? ["data" as const] : []), "runs", "definition", "code"] as Tab[]).map(t => (

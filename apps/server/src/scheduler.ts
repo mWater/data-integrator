@@ -27,6 +27,8 @@ import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns, RUN_LABEL } from
 import { pruneSnapshots } from "./retention.js"
 import { TileRenderer } from "./tiles.js"
 import { cronMatches, parseCron } from "./cron.js"
+import { missingFileSlot } from "./files.js"
+import { IntegrationDefinition } from "@data-integrator/definitions"
 
 /** How often the reaper runs the retention sweep when no run has triggered one. */
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000
@@ -54,11 +56,12 @@ export interface Scheduler {
  * Enqueues a cron run for every enabled, ready integration whose cron
  * matches the given instant. Exported for tests; the loop calls it once per
  * minute. Invalid crons are skipped (validateDefinition rejects them at
- * install, so they can only predate that check).
+ * install, so they can only predate that check), and so are integrations
+ * with a file slot that has never been filled: a run would only fail.
  */
 export async function enqueueDueRuns(deps: Pick<ExecutorDeps, "pool">, now: Date): Promise<number> {
   const result = await deps.pool.query(
-    `SELECT id, definition->'trigger'->>'cron' AS cron FROM app.integrations
+    `SELECT id, definition->'trigger'->>'cron' AS cron, definition->'files' AS files FROM app.integrations
      WHERE enabled AND status = 'ready' AND definition->'trigger'->>'cron' IS NOT NULL`
   )
   let enqueued = 0
@@ -70,6 +73,7 @@ export async function enqueueDueRuns(deps: Pick<ExecutorDeps, "pool">, now: Date
       continue
     }
     if (!due) continue
+    if (row.files && (await missingFileSlot(deps.pool, row.id, { files: row.files } as IntegrationDefinition))) continue
     const inserted = await deps.pool.query(
       `INSERT INTO app.runs (integration_id, trigger, status) VALUES ($1, 'cron', 'queued')
        ON CONFLICT DO NOTHING RETURNING id`,

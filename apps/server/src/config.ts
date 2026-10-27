@@ -24,6 +24,10 @@ export interface AppConfig {
   rasterStorePath: string
   /** WORK_ROOT: per-integration persistent /work directories */
   workRoot: string
+  /** FILE_STORE_PATH: uploaded integration file versions */
+  fileStorePath: string
+  /** FILE_UPLOAD_MAX_MB: largest accepted file upload */
+  fileUploadMaxMb: number
   /** TILE_CACHE_PATH: rendered tile + basemap cache */
   tileCachePath: string
   /** LIBRARY_PATH: integration library root (integrations/, skills/) */
@@ -118,6 +122,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const tileCacheMb = quota("TILE_CACHE_MB", 1024)
   const sandboxMemoryMb = quota("SANDBOX_MEMORY_MB", defaultSandboxMemoryMb())
 
+  const uploadRaw = env.FILE_UPLOAD_MAX_MB ?? "100"
+  const fileUploadMaxMb = Number(uploadRaw)
+  if (!Number.isInteger(fileUploadMaxMb) || fileUploadMaxMb < 1) {
+    problems.push(`FILE_UPLOAD_MAX_MB must be a positive integer of megabytes, got "${uploadRaw}"`)
+  }
+
   const concurrencyRaw = env.TILE_RENDER_CONCURRENCY ?? String(DEFAULT_RENDER_CONCURRENCY)
   const tileRenderConcurrency = Number(concurrencyRaw)
   if (!Number.isInteger(tileRenderConcurrency) || tileRenderConcurrency < 1) {
@@ -154,6 +164,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port,
     rasterStorePath: env.RASTER_STORE_PATH ?? "./raster-store",
     workRoot: env.WORK_ROOT ?? "./work",
+    fileStorePath: env.FILE_STORE_PATH ?? "./file-store",
+    fileUploadMaxMb,
     tileCachePath: env.TILE_CACHE_PATH ?? "./tile-cache",
     libraryPath: env.LIBRARY_PATH ?? "./library",
     uiDistPath: env.UI_DIST_PATH ?? null,
@@ -216,6 +228,7 @@ export function describeConfig(config: AppConfig): string {
     `port=${config.port}`,
     `rasterStore=${config.rasterStorePath}`,
     `workRoot=${config.workRoot}`,
+    `fileStore=${config.fileStorePath}`,
     `tileCache=${config.tileCachePath}`,
     `secrets=${config.secretKey ? "on" : "off"}`,
     `model=${model}`,

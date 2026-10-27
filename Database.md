@@ -62,7 +62,8 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
 | attempt | uuid null | token of the current claim; the heartbeat and the success commit both require it, so a stale attempt cannot land after a reclaim. Null for scratch runs |
 | definition_version | int fk | which definition version ran (composite FK with integration_id); null until success and for scratch runs |
-| inputs | jsonb | lineage: `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts |
+| file_pins | jsonb null | `{slotId: versionId}` fixed when the run was created (an upload, revert, or design session's finish); unpinned slots read their current version |
+| inputs | jsonb | lineage: `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts, and the file versions read (`files`, as in /in/manifest.json). Written before the job starts, so a failed run still records what it read |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows written, artifacts, bytes, duration |
 | flags | jsonb | validation violations, freshness |
@@ -72,8 +73,9 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
 ### Run commit and recovery
 
 - All Postgres effects of a run commit in one transaction: tabular apply,
-  snapshot inserts and promotions, webhook consumption, state_out, and the flip
-  to succeeded. A failed run commits nothing but its own run record.
+  snapshot inserts and promotions, webhook consumption, state_out, the file
+  slots' current versions, and the flip to succeeded. A failed run commits
+  nothing but its own run record.
 - Raster files land in the store before the commit, so failure leaves only
   orphans. GC removes never-promoted files past an age threshold and failed
   runs' /out output.
@@ -88,6 +90,38 @@ priority desc then scheduled_at; agent runs enqueue with elevated priority.
   container whose process is gone has no one left to commit it.
 - Backfill/reprocess is a manual run with params (e.g. a date range) and an
   optional force-cold flag: wiped /work, null previousState.
+
+### file_versions
+
+One row per uploaded file version (Integration Files.md). Bytes live in the
+file store at `<id><ext>`; the uploaded filename is display data only.
+
+| column | type | notes |
+|---|---|---|
+| id | uuid pk | also the stored file's name |
+| integration_id | text fk null | owning integration; null while a design session's upload waits for its draft row, which adopts it |
+| session_id | uuid fk null | design session it was attached in (one of the two is set) |
+| slot_id, version | text, int | version counts up from 1 per slot of its owner; unique per owner |
+| filename | text | as uploaded, control characters stripped; may carry personal data, so not shown to viewers |
+| ext | text | lowercase extension validated `^\.[a-z0-9]{1,10}$`, or empty |
+| sha256, size_bytes | text, bigint | kept after a purge so lineage still resolves |
+| uploaded_by | uuid fk null | uploading user |
+| uploaded_at | timestamptz | |
+| purged_at, purged_by | timestamptz, text null | an admin removed the bytes (`cli.js files purge`); purged versions cannot be pinned or downloaded |
+
+### file_slots
+
+The version each slot of an integration reads when a run pins nothing. Set
+only inside a successful production run's commit, so it always matches what
+the tables hold; design-session runs (scratch) never move it. A slot with no
+row awaits its first upload, and unpinned runs of that integration are refused
+(the scheduler and webhook receipts do not enqueue them).
+
+| column | type | notes |
+|---|---|---|
+| integration_id, slot_id | text, text pk | |
+| current_version_id | uuid fk | the version the last successful run read |
+| updated_at | timestamptz | |
 
 ### webhook_events
 
@@ -345,6 +379,16 @@ mWater production experience). No S3 SDK, no /vsis3/ credentials in GDAL.
 Snapshot files are immutable; deletion happens only through supersede cleanup.
 
 Promoted snapshots are also mirrored as out-db PostGIS rasters (the `rasters` table above) so SQL can read pixels at query time; tiles and point lookups go through GDAL against the COGs.
+
+## File store
+
+Uploaded integration files live under `FILE_STORE_PATH` (default
+`./file-store`), one file per version at `<versionId><ext>`, never in
+Postgres. Uploads stream into `.tmp` and are renamed into place inside the
+transaction that inserts their row; jobs that read files get their `/in`
+under `.jobs`, so versions hardlink rather than copy. Boot cleanup removes
+`.tmp` and `.jobs` entries and version-named files with no live row once they
+are an hour old, leaving younger ones to whichever process owns them.
 
 ## Conventions
 

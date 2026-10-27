@@ -2,14 +2,31 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { LanguageModel, ToolSet, tool } from "ai"
+import pg from "pg"
 import { z } from "zod"
 import { IntegrationDefinition, RuntimeId } from "@data-integrator/definitions"
-import { AgentEventListener, AgentImplementation, ToolOutcome } from "./types.js"
+import {
+  AgentEventListener,
+  AgentImplementation,
+  MessageRejectedError,
+  SessionAttachment,
+  SessionDeleteRefusedError,
+  ToolOutcome
+} from "./types.js"
 import { ExecutorDeps, executeRun } from "../executor.js"
+import {
+  adoptSessionFiles,
+  AwaitingFileError,
+  currentVersions,
+  FileVersion,
+  getVersion,
+  ResolvedFiles,
+  resolveFiles
+} from "../files.js"
 import { ID_PATTERN, definitionHash, installIntegration, validateDefinition } from "../install.js"
 import { COUNTRIES, lookupCountry } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
-import { startProductionRun } from "../runService.js"
+import { startPinnedRun, startProductionRun } from "../runService.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
 import { getSecrets, listAllSecrets, listSecrets, SECRET_NAME_PATTERN } from "../secrets.js"
 import { getLocales } from "../settings.js"
@@ -21,8 +38,8 @@ import { searchLibrary } from "./libraryTool.js"
 export interface DesignerState {
   /** Draft integration definition being designed */
   definition: IntegrationDefinition
-  /** Successful cold run certifying a definition hash, if any */
-  coldRun: { definitionHash: string; runId: string } | null
+  /** Successful cold run certifying a definition hash and the file versions it read, if any */
+  coldRun: { definitionHash: string; runId: string; files?: Record<string, string> } | null
   /** Most recent test run, for status display */
   lastRun: { runId: string; status: string; cold: boolean } | null
   /** Consecutive failed runs sharing one error signature (thrash guard); absent on older sessions */
@@ -33,6 +50,10 @@ export interface DesignerState {
   baseLocale?: { code: string; sample: string } | null
   /** Latest credentials request the agent made; the session view renders it as a card */
   secretRequest?: SecretRequest | null
+  /** File versions this session works with, per slot; slots without a pin read the integration's current version */
+  files?: Record<string, string> | null
+  /** True until the seeded files are announced to the agent in the first message */
+  filesNote?: boolean
 }
 
 /** One credential the agent needs the operator to provide. */
@@ -79,6 +100,38 @@ function textOf(value: unknown): string {
 
 /** Snippet resource limits: exploration jobs stay small and short. */
 const SNIPPET_LIMITS = { cpus: 2, memoryMb: 2048, timeoutMs: 180_000 }
+
+/** Where the job reads a slot's file. */
+function inPath(slotId: string, ext: string): string {
+  return `/in/files/${slotId}${ext}`
+}
+
+/** A version as notes and tool results name it. */
+function describeVersion(version: FileVersion): string {
+  return `${version.filename} (v${version.version}, ${version.sizeBytes} bytes)`
+}
+
+/** Version id per slot of resolved files. */
+function fileIds(files: ResolvedFiles): Record<string, string> {
+  return Object.fromEntries(Object.entries(files).map(([slotId, version]) => [slotId, version.id]))
+}
+
+/** True when both maps pin the same version for every slot. */
+function sameFiles(a: Record<string, string>, b: Record<string, string>): boolean {
+  const slots = new Set([...Object.keys(a), ...Object.keys(b)])
+  return [...slots].every(slotId => a[slotId] === b[slotId])
+}
+
+/**
+ * True unless the session pins a declared slot to a version other than the
+ * one its cold run read (a cheap check for the session view; finish also
+ * re-resolves the slots that read current versions).
+ */
+export function pinsMatchColdRun(state: DesignerState): boolean {
+  const certified = state.coldRun?.files ?? {}
+  const declared = state.definition.files ?? {}
+  return Object.entries(state.files ?? {}).every(([slotId, versionId]) => !(slotId in declared) || certified[slotId] === versionId)
+}
 
 /**
  * Fresh draft state for a new designer session. With no integrationId the
@@ -201,7 +254,7 @@ of truth. previousState is the state returned by the last successful run (null o
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
 
 Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, netCDF4,
-h5netcdf, h5py, cfgrib, pyproj, requests. Node image: csv-parse, fast-xml-parser,
+h5netcdf, h5py, cfgrib, pyproj, requests, openpyxl (xlsx), xlrd (legacy xls), odfpy (ods). Node image: csv-parse, fast-xml-parser,
 date-fns. Jobs have public-internet egress only; private networks are blocked.
 
 These curated libraries are ALL you get. Every snippet and run starts a fresh
@@ -230,6 +283,29 @@ snapshots as /in/<inputId>/<timestamp>.tif, table extracts as /in/<inputId>.<ext
 described by /in/manifest.json (paths, snapshot ids, timestamps, band order, row
 counts). Read the manifest rather than guessing paths. Inputs must not reference
 this integration's own destinations.
+
+# Files (uploaded by users)
+An integration can read files people upload: a spreadsheet, a shapefile, a
+GeoPackage, a CSV. Declare a slot per file: files: {<slotId>: {description?
+[what the file is and must contain, shown beside the upload button], accept?
+[".xlsx", ...] lowercase extensions}}. Each upload is a new version; a run reads
+the slot at /in/files/<slotId><ext>, described under files in /in/manifest.json
+(path, version, filename, sha256). Read the manifest for the path, since the
+extension follows the upload. When the user attaches a file, a note at the top of
+their message names the slot and path; snippets see it straight away, even before
+the slot is declared, but runs read declared slots only. Never ask the user to
+paste file contents into the chat.
+Once you finish, replacing the file is the user's job and needs no designer, so
+the code must cope with the next version on its own:
+- Check the structure first (sheet names, header row, required columns, geometry
+  type) and fail with a plain-language message naming what was expected and what
+  was found, e.g. "Sheet 'Inventory' is missing column 'Latitude'; found: Lat, Lon,
+  Name". That message is what the user sees when a replacement has drifted.
+- Use action "replace" for tables built from a file: merge never deletes, so rows
+  removed from the file would persist.
+- Do file work in Python. Read zipped shapefiles in place with geopandas or
+  ogr via /vsizip/ (e.g. "/vsizip//in/files/districts.zip"), never by unzipping
+  to /work, and reproject geometry to EPSG:4326.
 
 # Workflow
 0. If the draft id is empty, choose one (short snake_case derived from the request)
@@ -342,7 +418,8 @@ ${index}`
   tools(): ToolSet {
     return {
       get_definition: tool({
-        description: "Read the current draft definition. Code is elided unless includeCode is true.",
+        description:
+          "Read the current draft definition, and the files this session's snippets and runs read. Code is elided unless includeCode is true.",
         inputSchema: z.object({
           includeCode: z.boolean().optional().describe("Include the full code text")
         })
@@ -465,7 +542,7 @@ ${index}`
     const args = (input ?? {}) as Record<string, unknown>
     switch (name) {
       case "get_definition":
-        return this.getDefinition(state, args.includeCode === true)
+        return await this.getDefinition(state, args.includeCode === true, sessionId)
       case "write_definition":
         return await this.writeDefinition(state, String(args.definitionJson ?? ""), events, sessionId)
       case "edit_code":
@@ -501,12 +578,108 @@ ${index}`
     return row?.locale ?? "en"
   }
 
-  /** Returns the draft as JSON, eliding code by default. */
-  private getDefinition(state: DesignerState, includeCode: boolean): ToolOutcome<DesignerState> {
+  /** Returns the draft as JSON, eliding code by default, followed by the session's files. */
+  private async getDefinition(state: DesignerState, includeCode: boolean, sessionId: string): Promise<ToolOutcome<DesignerState>> {
     const definition = includeCode
       ? state.definition
       : { ...state.definition, code: `<${state.definition.code.length} chars, pass includeCode: true>` }
-    return { result: JSON.stringify(definition, null, 2) }
+    return { result: JSON.stringify(definition, null, 2) + (await this.filesSummary(state, sessionId)) }
+  }
+
+  /**
+   * The files snippets and runs read, per slot, plus what is out of step with
+   * the declarations: session files no slot declares, declared slots with no
+   * file. Empty when the session involves no files.
+   */
+  private async filesSummary(state: DesignerState, sessionId: string): Promise<string> {
+    const declared = Object.keys(state.definition.files ?? {})
+    const pins = state.files ?? {}
+    if (declared.length === 0 && Object.keys(pins).length === 0) return ""
+    const files = await this.sessionFiles(state, sessionId, "snippet")
+    const lines = Object.entries(files).map(
+      ([slotId, version]) =>
+        `- ${slotId}: ${describeVersion(version)} at ${inPath(slotId, version.ext)}, ${
+          pins[slotId] === version.id ? "attached in this session" : "the integration's current version"
+        }`
+    )
+    const undeclared = Object.keys(files).filter(slotId => !declared.includes(slotId))
+    const missing = declared.filter(slotId => !files[slotId])
+    if (undeclared.length > 0) {
+      lines.push(`Not declared under files yet (runs will not read them): ${undeclared.join(", ")}`)
+    }
+    if (missing.length > 0) lines.push(`Declared slots with no file yet (ask the user to attach one): ${missing.join(", ")}`)
+    return `\n\nSession files:\n${lines.length > 0 ? lines.join("\n") : "(none)"}`
+  }
+
+  /**
+   * The versions this session reads: its pins, else the integration's current
+   * version, per declared slot. Runs read declared slots only and are refused
+   * when one has nothing; snippets also read pinned slots not declared yet and
+   * leave out slots with nothing.
+   */
+  private async sessionFiles(state: DesignerState, sessionId: string, mode: "run" | "snippet"): Promise<ResolvedFiles> {
+    const definition = state.definition
+    const declared = definition.files ?? {}
+    const pins = Object.fromEntries(
+      Object.entries(state.files ?? {}).filter(([slotId]) => mode === "snippet" || slotId in declared)
+    )
+    return resolveFiles(this.deps.pool, {
+      integrationId: definition.id,
+      definition,
+      pins,
+      sessionId,
+      includeUndeclaredPins: mode === "snippet",
+      skipMissing: mode === "snippet",
+      awaitingHint: ": ask the user to attach it in this session"
+    })
+  }
+
+  /**
+   * Prepares a user message that starts a loop: drops pins whose version was
+   * purged or deleted since, announces the seeded files on the first message,
+   * and records each attachment as the session's pin for its slot, with a
+   * note the agent reads. Attachments must be this session's uploads or its
+   * integration's versions.
+   */
+  async prepareMessage(
+    sessionId: string,
+    state: DesignerState,
+    text: string,
+    attachments: SessionAttachment[]
+  ): Promise<{ text: string; state: DesignerState }> {
+    const notes: string[] = []
+    const pins = { ...(state.files ?? {}) }
+    for (const [slotId, versionId] of Object.entries(pins)) {
+      const version = await getVersion(this.deps.pool, versionId)
+      if (!version || version.purgedAt) {
+        delete pins[slotId]
+        notes.push(
+          `[The file pinned for slot "${slotId}" was ${version ? "purged by an admin" : "deleted"}; snippets and runs now read the slot's current version, if it has one]`
+        )
+      } else if (state.filesNote) {
+        notes.push(
+          `[File slot "${slotId}" holds ${describeVersion(version)}, the version this integration's latest run read; snippets and runs see it at ${inPath(slotId, version.ext)}]`
+        )
+      }
+    }
+    for (const attachment of attachments) {
+      const version = await getVersion(this.deps.pool, attachment.versionId)
+      const owned =
+        version !== null &&
+        (version.sessionId === sessionId || (state.definition.id !== "" && version.integrationId === state.definition.id))
+      if (!version || !owned || version.slotId !== attachment.slot) {
+        throw new MessageRejectedError(`No file version ${attachment.versionId} in slot ${attachment.slot} of this session`)
+      }
+      if (version.purgedAt) throw new MessageRejectedError(`v${version.version} of slot ${attachment.slot} was purged`)
+      pins[attachment.slot] = version.id
+      notes.push(
+        `[Uploaded ${describeVersion(version)} to file slot "${attachment.slot}"; snippets and runs see it at ${inPath(attachment.slot, version.ext)}]`
+      )
+    }
+    return {
+      text: notes.length > 0 ? `${notes.join("\n")}\n\n${text}` : text,
+      state: { ...state, files: Object.keys(pins).length > 0 ? pins : null, filesNote: false }
+    }
   }
 
   /**
@@ -535,6 +708,18 @@ ${index}`
       const taken = await this.deps.pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [id])
       if (taken.rows.length > 0) {
         return { result: `Integration id "${id}" is already installed; choose a different id` }
+      }
+      // Another session may have named its draft this without a row yet; two
+      // sessions sharing an id would share its draft, credentials, and files
+      const claimed = await this.deps.pool.query(
+        `SELECT id FROM app.agent_sessions
+         WHERE kind = 'designer' AND id <> $2 AND client_state->'definition'->>'id' = $1 LIMIT 1`,
+        [id, sessionId]
+      )
+      if (claimed.rows.length > 0) {
+        return {
+          result: `Integration id "${id}" is being designed in another session (${claimed.rows[0].id}); choose a different id, or the user can delete that session to free it`
+        }
       }
       events({ type: "integration_bound", integrationId: id })
     }
@@ -572,8 +757,11 @@ ${index}`
           JSON.stringify(definition)
         ])
       }
+      // Files attached before the row existed belong to the session alone; the integration owns them from here
+      await adoptSessionFiles(this.deps.pool, sessionId, id)
     }
-    return { result: `Draft saved. Validation: ${validation}`, state: { ...state, definition, baseLocale } }
+    const next = { ...state, definition, baseLocale }
+    return { result: `Draft saved. Validation: ${validation}${await this.filesSummary(next, sessionId)}`, state: next }
   }
 
   /** Exact-string code edit; the empty oldString only initializes empty code. */
@@ -614,9 +802,13 @@ ${index}`
     const outDir = await mkdtemp(path.join(tmpdir(), "snippet-out-"))
     let inDir: string | undefined
     try {
-      if (state.definition.inputs && Object.keys(state.definition.inputs).length > 0) {
-        inDir = await mkdtemp(path.join(tmpdir(), "snippet-in-"))
-        await materializeInputs(this.deps, state.definition, inDir)
+      const files = await this.sessionFiles(state, sessionId, "snippet")
+      const readsFiles = Object.keys(files).length > 0
+      if (readsFiles && !this.deps.files) return { result: "Error: this server has no file store configured" }
+      if (readsFiles || (state.definition.inputs && Object.keys(state.definition.inputs).length > 0)) {
+        // Under the file store when versions are read, so they hardlink in
+        inDir = readsFiles ? await this.deps.files!.jobDir() : await mkdtemp(path.join(tmpdir(), "snippet-in-"))
+        await materializeInputs(this.deps, state.definition, inDir, files)
       }
       const result = await this.deps.runner.run(
         {
@@ -667,6 +859,14 @@ ${index}`
     // A missing credential fails before any job is spent on it
     const secretsCheck = await this.loadSecrets(state)
     if (typeof secretsCheck === "string") return { result: secretsCheck }
+    // So does a declared file slot with nothing to read
+    let files: Record<string, string>
+    try {
+      files = fileIds(await this.sessionFiles(state, sessionId, "run"))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { result: err instanceof AwaitingFileError ? message : `File error: ${message}` }
+    }
     const hash = definitionHash(definition)
 
     let runId: string
@@ -687,9 +887,11 @@ ${index}`
        WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params, attempt`,
       [runId]
     )
+    // The versions resolved above, current ones included, are pinned so the
+    // run reads exactly what the certificate will record
     await executeRun(this.deps, claimed.rows[0], {
       cold,
-      scratch: { sessionId, definition },
+      scratch: { sessionId, definition, files },
       onLogLine: line => events({ type: "job_log", line })
     })
 
@@ -726,7 +928,7 @@ ${index}`
     const next: DesignerState = {
       ...state,
       lastRun: { runId, status, cold },
-      coldRun: cold && status === "succeeded" ? { definitionHash: hash, runId } : state.coldRun,
+      coldRun: cold && status === "succeeded" ? { definitionHash: hash, runId, files } : state.coldRun,
       failStreak
     }
     return { result: parts.join("\n"), state: next, pause: pause || undefined }
@@ -841,6 +1043,44 @@ ${index}`
   }
 
   /**
+   * Readies a design session for deletion inside the delete's transaction:
+   * refused while an integration row carries its id (the integration's own
+   * delete owns that) or one of its runs is in progress. Removes its scratch
+   * area, scratch runs and the uploads no integration adopted, and hands
+   * adopted versions over to their integration alone. The returned cleanup
+   * deletes the removed uploads' bytes once the delete commits.
+   */
+  async beforeDelete(client: pg.PoolClient, sessionId: string): Promise<() => Promise<void>> {
+    const bound = await client.query(
+      `SELECT i.id FROM app.agent_sessions s
+       JOIN app.integrations i ON i.id = s.integration_id OR i.id = NULLIF(s.client_state->'definition'->>'id', '')
+       WHERE s.id = $1 LIMIT 1`,
+      [sessionId]
+    )
+    if (bound.rows.length > 0) {
+      throw new SessionDeleteRefusedError(
+        `This session designs integration ${bound.rows[0].id}; delete the integration to remove it`
+      )
+    }
+    const active = await client.query("SELECT 1 FROM app.runs WHERE session_id = $1 AND status IN ('queued', 'running')", [
+      sessionId
+    ])
+    if (active.rows.length > 0) throw new SessionDeleteRefusedError("A run of this session is in progress; stop it first")
+    await cleanupScratch(client, this.deps.store, this.deps.workRoot, sessionId)
+    const removed = await client.query(
+      "DELETE FROM app.file_versions WHERE session_id = $1 AND integration_id IS NULL RETURNING id, ext",
+      [sessionId]
+    )
+    await client.query("UPDATE app.file_versions SET session_id = NULL WHERE session_id = $1", [sessionId])
+    await client.query("DELETE FROM app.runs WHERE session_id = $1 AND integration_id IS NULL", [sessionId])
+    await client.query("UPDATE app.runs SET session_id = NULL WHERE session_id = $1", [sessionId])
+    return async () => {
+      // A file left behind is a version-named file with no row, which store cleanup removes
+      for (const row of removed.rows) await this.deps.files?.deleteVersion(row.id, row.ext).catch(() => {})
+    }
+  }
+
+  /**
    * Runs one requested credential's check snippet against the stored value,
    * outside the agent loop (the card calls this right after a save).
    */
@@ -879,6 +1119,37 @@ ${index}`
           "Rejected: finish requires a successful cold run of the current definition. Run run_integration with cold=true (again if you edited anything since)."
       }
     }
+    // The certificate covers the files too: code adapted to a new file must
+    // not be certified against the old one
+    const declaresFiles = Object.keys(state.definition.files ?? {}).length > 0
+    let certifiedFiles: Record<string, string> = {}
+    if (declaresFiles) {
+      let resolved: ResolvedFiles
+      try {
+        resolved = await this.sessionFiles(state, sessionId, "run")
+      } catch (err) {
+        return { result: `Rejected: ${err instanceof Error ? err.message : String(err)}` }
+      }
+      // Finishing runs the certified files in production; a version older than
+      // the slot's current one (someone uploaded and ran a newer file since this
+      // session pinned its version) would silently reload the tables from it
+      const current = await currentVersions(this.deps.pool, state.definition.id)
+      for (const [slotId, version] of Object.entries(resolved)) {
+        const newer = current[slotId]
+        if (newer && version.integrationId === state.definition.id && version.version < newer.version) {
+          return {
+            result: `Rejected: slot ${slotId} now reads v${newer.version} (${newer.filename}), newer than the v${version.version} this session certified. Tell the user and ask them to attach the file they want this integration to read, then run cold again.`
+          }
+        }
+      }
+      certifiedFiles = fileIds(resolved)
+      if (!sameFiles(certifiedFiles, state.coldRun.files ?? {})) {
+        return {
+          result:
+            "Rejected: the files this session reads changed since the cold run (a new attachment, or the integration's current version moved). Run run_integration with cold=true again."
+        }
+      }
+    }
     const session = await this.deps.pool.query("SELECT user_id FROM app.agent_sessions WHERE id = $1", [sessionId])
     const prior = await this.deps.pool.query("SELECT 1 FROM app.runs WHERE integration_id = $1 LIMIT 1", [
       state.definition.id
@@ -897,23 +1168,40 @@ ${index}`
       // Base-language text still installs and renders via fallback
     }
     await installIntegration(this.deps.pool, state.definition, "ready", session.rows[0]?.user_id ?? null)
+    await adoptSessionFiles(this.deps.pool, sessionId, state.definition.id)
     await cleanupScratch(this.deps.pool, this.deps.store, this.deps.workRoot, sessionId)
-    let firstLoadStarted = false
-    if (prior.rows.length === 0) {
+    // Design runs are scratch runs and never make a version current, so the
+    // certified files reach production through a run pinning them: always on
+    // a fresh install, and whenever a certified version differs from current
+    // (otherwise the next scheduled run would read the old file with new code)
+    const current = declaresFiles ? await currentVersions(this.deps.pool, state.definition.id) : {}
+    const filesMoved = Object.entries(certifiedFiles).some(([slotId, versionId]) => current[slotId]?.id !== versionId)
+    let load: "running" | "queued" | null = null
+    if (prior.rows.length === 0 || filesMoved) {
       try {
-        await startProductionRun(this.deps, state.definition.id)
-        firstLoadStarted = true
+        if (declaresFiles) {
+          load = (await startPinnedRun(this.deps, state.definition.id, state.definition, certifiedFiles)).status
+        } else {
+          await startProductionRun(this.deps, state.definition.id)
+          load = "running"
+        }
       } catch {
-        // The install stands; the first load can still be started from the integration page
+        // The install stands; the run can still be started from the integration page
       }
     }
+    const loadText =
+      load === "queued"
+        ? " A run reading the certified files is queued behind the run in progress; the integration page shows progress."
+        : load === "running"
+          ? prior.rows.length === 0
+            ? " Its first data load is already running; the integration page shows progress."
+            : " A run reading the certified files is already running; the integration page shows progress."
+          : filesMoved
+            ? " Start a run with the certified file versions from the Files section of the integration page."
+            : " Data loads on its scheduled or manual runs."
     return {
-      result: `Saved ${state.definition.id} as the installed integration (scratch area discarded).${
-        firstLoadStarted
-          ? " Its first data load is already running; the integration page shows progress."
-          : " Data loads on its scheduled or manual runs."
-      } ${summary}`,
-      state: { ...state, firstLoadStarted },
+      result: `Saved ${state.definition.id} as the installed integration (scratch area discarded).${loadText} ${summary}`,
+      state: { ...state, firstLoadStarted: load !== null },
       finished: true
     }
   }

@@ -1,7 +1,9 @@
 import pg from "pg"
 import { AgentSessionController } from "./controller.js"
-import { AgentImplementation } from "./types.js"
-import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState } from "./designer.js"
+import { AgentImplementation, MessageRejectedError, SessionAttachment } from "./types.js"
+export { MessageRejectedError, SessionDeleteRefusedError } from "./types.js"
+export type { SessionAttachment } from "./types.js"
+import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState, pinsMatchColdRun } from "./designer.js"
 import { DashboardAgentState, DashboardDeps, DashboardImplementation, initialDashboardState } from "./dashboard.js"
 import { AssistantDeps, AssistantImplementation, AssistantState, initialAssistantState } from "./assistant.js"
 import { ID_PATTERN, definitionHash } from "../install.js"
@@ -54,6 +56,13 @@ export interface SessionDetail extends SessionSummary {
   error: string | null
   /** Scratch preview layers with data, for map links during design (designer only) */
   scratchLayers: { id: string; name: string }[]
+  /** True when the session may be deleted: a designer session only while no integration row carries its id */
+  deletable: boolean
+}
+
+/** A user message without the bracketed notes prepended to it (file attachments), for labels. */
+function withoutNotes(text: string): string {
+  return text.replace(/^(\[[^\n]*\]\n)+\n?/, "")
 }
 
 /** Per-kind behavior the shared service delegates to. */
@@ -78,6 +87,19 @@ interface KindAdapter<S> {
   ensureReady(): Promise<void>
   /** Runs a requested credential's check snippet outside the loop; absent for kinds without credentials */
   checkSecret?(sessionId: string, state: S, name: string): Promise<{ ok: boolean; output: string }>
+  /**
+   * Prepares a user message that starts a loop: records attachments in the
+   * state and returns the text the agent reads (with notes prepended). Throws
+   * MessageRejectedError for attachments it cannot accept. Absent for kinds
+   * that take no attachments.
+   */
+  prepareMessage?(sessionId: string, state: S, text: string, attachments: SessionAttachment[]): Promise<{ text: string; state: S }>
+  /**
+   * Removes what the session owns besides its own row, inside the delete's
+   * transaction, and returns cleanup to run once it commits. Throws
+   * SessionDeleteRefusedError to refuse. Absent for kinds that own nothing else.
+   */
+  beforeDelete?(client: pg.PoolClient, sessionId: string): Promise<() => Promise<void>>
 }
 
 /** Per-session live bookkeeping. */
@@ -125,6 +147,21 @@ export class AgentService<S = unknown> {
         const state = initialDesignerState(integrationId)
         const installed = await pool.query("SELECT definition FROM app.integrations WHERE id = $1", [integrationId])
         if (installed.rows.length > 0) state.definition = installed.rows[0].definition
+        // Start from the files the latest run read: after a failed
+        // replacement, the session works with the file that failed. Only live
+        // versions seed; the first message announces them to the agent
+        const latest = await pool.query(
+          `SELECT f.key AS slot_id, v.id
+           FROM (SELECT inputs->'files' AS files FROM app.runs
+                 WHERE integration_id = $1 AND inputs ? 'files' ORDER BY scheduled_at DESC LIMIT 1) r,
+                jsonb_each(r.files) f
+           JOIN app.file_versions v ON v.id = (f.value->>'versionId')::uuid AND v.purged_at IS NULL`,
+          [integrationId]
+        )
+        if (latest.rows.length > 0) {
+          state.files = Object.fromEntries(latest.rows.map(row => [row.slot_id as string, row.id as string]))
+          state.filesNote = true
+        }
         return state
       },
       bindId: state => state.definition?.id || null,
@@ -133,13 +170,23 @@ export class AgentService<S = unknown> {
           "SELECT id, name FROM app.raster_layers WHERE session_id = $1 AND current_snapshot_id IS NOT NULL ORDER BY id",
           [sessionId]
         )
+        const installed = state.definition?.id
+          ? (await pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [state.definition.id])).rows.length > 0
+          : false
         return {
-          certified: state.coldRun != null && state.coldRun.definitionHash === definitionHash(state.definition),
+          deletable: !installed,
+          certified:
+            state.coldRun != null &&
+            state.coldRun.definitionHash === definitionHash(state.definition) &&
+            pinsMatchColdRun(state),
           scratchLayers: scratchLayers.rows
         }
       },
       ensureReady: () => deps.runner.ensureReady(),
-      checkSecret: (sessionId, state, name) => implementation.checkSecret(state, name, sessionId)
+      checkSecret: (sessionId, state, name) => implementation.checkSecret(state, name, sessionId),
+      prepareMessage: (sessionId, state, text, attachments) =>
+        implementation.prepareMessage(sessionId, state, text, attachments),
+      beforeDelete: (client, sessionId) => implementation.beforeDelete(client, sessionId)
     })
   }
 
@@ -193,7 +240,8 @@ export class AgentService<S = unknown> {
       `SELECT id, status, user_id, ${this.adapter.bindIdSql} AS bind_id, ${this.adapter.unsavedSql ?? "false"} AS unsaved,
               ${this.adapter.labelSql ?? "NULL"} AS label,
               (SELECT email FROM app.users u WHERE u.id = user_id) AS user_email,
-              (SELECT left(msg->>'content', 120) FROM jsonb_array_elements(messages) msg
+              (SELECT left(regexp_replace(msg->>'content', '^(\\[[^\\n]*\\]\\n)+\\n?', ''), 120)
+               FROM jsonb_array_elements(messages) msg
                WHERE msg->>'role' = 'user' LIMIT 1) AS first_message,
               COALESCE((usage->>'steps')::int, 0) AS steps, updated_at
        FROM app.agent_sessions WHERE kind = $1 ${forUserId ? "AND user_id = $2" : ""}
@@ -247,7 +295,7 @@ export class AgentService<S = unknown> {
       kind: this.adapter.kind,
       status: row.status,
       integrationId: this.adapter.bindId(state),
-      firstMessage: typeof firstUser?.content === "string" ? firstUser.content.slice(0, 120) : null,
+      firstMessage: typeof firstUser?.content === "string" ? withoutNotes(firstUser.content).slice(0, 120) : null,
       steps: (row.usage?.steps as number) ?? 0,
       updatedAt: row.updated_at.toISOString(),
       userId: row.user_id ?? null,
@@ -261,24 +309,43 @@ export class AgentService<S = unknown> {
       running: this.channel(sessionId).running,
       error: row.error ?? null,
       scratchLayers: [],
+      deletable: true,
       ...extras
     }
   }
 
   /**
-   * Deletes one session of this kind with its transcript and stored state.
-   * forUserId restricts the delete to that creator's own sessions; a running
-   * loop is asked to stop first, and its later saves fall on the deleted row.
-   * Returns false when nothing matched.
+   * Deletes one session of this kind with its transcript and stored state,
+   * plus whatever the kind's beforeDelete removes. forUserId restricts the
+   * delete to that creator's own sessions; a running loop is asked to stop
+   * first, and its later saves fall on the deleted row. Returns false when
+   * nothing matched.
    */
   async deleteSession(sessionId: string, forUserId?: string): Promise<boolean> {
     this.stop(sessionId)
-    const result = await this.pool.query(
-      `DELETE FROM app.agent_sessions WHERE id = $1 AND kind = $2${forUserId ? " AND user_id = $3" : ""}`,
-      forUserId ? [sessionId, this.adapter.kind, forUserId] : [sessionId, this.adapter.kind]
-    )
-    if ((result.rowCount ?? 0) === 0) return false
+    const client = await this.pool.connect()
+    let cleanup: (() => Promise<void>) | null = null
+    try {
+      await client.query("BEGIN")
+      const found = await client.query(
+        `SELECT 1 FROM app.agent_sessions WHERE id = $1 AND kind = $2${forUserId ? " AND user_id = $3" : ""} FOR UPDATE`,
+        forUserId ? [sessionId, this.adapter.kind, forUserId] : [sessionId, this.adapter.kind]
+      )
+      if (found.rows.length === 0) {
+        await client.query("ROLLBACK")
+        return false
+      }
+      if (this.adapter.beforeDelete) cleanup = await this.adapter.beforeDelete(client, sessionId)
+      await client.query("DELETE FROM app.agent_sessions WHERE id = $1", [sessionId])
+      await client.query("COMMIT")
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {})
+      throw err
+    } finally {
+      client.release()
+    }
     this.channels.delete(sessionId)
+    if (cleanup) await cleanup()
     return true
   }
 
@@ -298,14 +365,16 @@ export class AgentService<S = unknown> {
    * Appends a user message and starts the loop, broadcasting events. Resolves
    * once the loop is launched; completion is signaled by a `stop` (or `error`)
    * event. When the session is already running, the message queues as steering
-   * and lands at the next step boundary.
+   * and lands at the next step boundary; attachments are refused then, because
+   * the running loop owns the session state until it pauses.
    */
-  async send(sessionId: string, text: string): Promise<void> {
+  async send(sessionId: string, text: string, attachments: SessionAttachment[] = []): Promise<void> {
     const channel = this.channel(sessionId)
     const broadcast: SessionListener = event => {
       for (const listener of channel.listeners) listener(event)
     }
     if (channel.running) {
+      if (attachments.length > 0) throw new Error("The agent is working; attach files once it pauses")
       channel.steering.push(text)
       broadcast({ type: "user_message", text })
       return
@@ -313,7 +382,15 @@ export class AgentService<S = unknown> {
     channel.running = true
     channel.stopRequested = false
     try {
+      // Ready first: preparing consumes one-time state (the seeded-files note)
       await this.ensureRunner()
+      if (this.adapter.prepareMessage) {
+        const prepared = await this.adapter.prepareMessage(sessionId, await this.controller.getState(sessionId), text, attachments)
+        text = prepared.text
+        await this.controller.setState(sessionId, prepared.state)
+      } else if (attachments.length > 0) {
+        throw new MessageRejectedError("This session kind takes no file attachments")
+      }
       // Persist the message before launching the loop, so a page navigating
       // here right after this call finds it in the stored transcript instead
       // of waiting out the first (slow) model step

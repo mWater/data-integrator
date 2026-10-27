@@ -118,7 +118,7 @@ as_app "podman build -t localhost/integrator-runtime-python:dev runtimes/python/
 as_app "podman build -t localhost/integrator-runtime-node:dev runtimes/node/"
 
 echo "==> Environment file"
-mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache} /etc/data-integrator
+mkdir -p "$DATA_DIR"/{raster-store,work,tile-cache,file-store} /etc/data-integrator
 chown -R "$APP_USER:$APP_USER" "$DATA_DIR"
 # Out-db raster SQL: Postgres reads the COGs directly (postgres user needs
 # traverse+read on the store) and the out-db settings are superuser-set
@@ -134,6 +134,7 @@ PORT=8080
 RASTER_STORE_PATH=${DATA_DIR}/raster-store
 WORK_ROOT=${DATA_DIR}/work
 TILE_CACHE_PATH=${DATA_DIR}/tile-cache
+FILE_STORE_PATH=${DATA_DIR}/file-store
 INTEGRATOR_SECRET_KEY=$(openssl rand -base64 32)
 EOF
   [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" >> "$ENV_FILE"
@@ -141,6 +142,8 @@ EOF
 else
   # keep the existing file (and its secret key), but refresh the DB password we just set
   sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator|" "$ENV_FILE"
+  # Uploaded files belong with the data, not under the checkout the service runs in
+  grep -q '^FILE_STORE_PATH=' "$ENV_FILE" || echo "FILE_STORE_PATH=${DATA_DIR}/file-store" >> "$ENV_FILE"
 fi
 chown root:"$APP_USER" "$ENV_FILE"
 chmod 640 "$ENV_FILE"

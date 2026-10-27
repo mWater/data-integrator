@@ -1,6 +1,5 @@
 import { createServer, request as httpRequest, Server, IncomingMessage, ServerResponse } from "node:http"
 import { BasemapProxy } from "./basemap.js"
-import { createReadStream } from "node:fs"
 import { readFile, rm, stat } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
@@ -8,8 +7,9 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
+import { json, readJsonBody, sendFile } from "./http.js"
 import { snapshotSources } from "./catalog.js"
-import { AgentService } from "./agent/service.js"
+import { AgentService, MessageRejectedError, SessionAttachment, SessionDeleteRefusedError } from "./agent/service.js"
 import { saveDashboardSession } from "./agent/dashboard.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
@@ -20,7 +20,17 @@ import { parseCron } from "./cron.js"
 import { loadSkill, loadSkillsIndex, skillsDir } from "./skills.js"
 import { listSources, tableGeometry } from "./sources.js"
 import { copySecret, deleteSecret, listAllSecrets, listSecrets, loadSecretKey, setSecret } from "./secrets.js"
-import { RunService } from "./runService.js"
+import { RunRequestError, RunService } from "./runService.js"
+import {
+  deferContinue,
+  FileApiOptions,
+  handleSessionUpload,
+  limitRequestTime,
+  parseRunPins,
+  REQUEST_DEADLINE_MS,
+  routeIntegrationFiles,
+  UPLOAD_PATH
+} from "./filesApi.js"
 import { RasterStore } from "./rasterStore.js"
 import { listTables, parseRowsQuery, queryRows, rowsToCsv, rowsToGeoJson } from "./queryApi.js"
 import {
@@ -94,7 +104,7 @@ const TILE_PATH =
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
 const SESSION_PATH =
-  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/save|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
+  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/save|\/files\/[^/]+|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
 
 /** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
 const DASHBOARD_TILE_PATH =
@@ -158,34 +168,34 @@ export function createApiServer(
   assistantAgent: AgentService | null = null,
   aiProvider: AiProvider | null = null,
   viteDevUrl: string | null = null,
-  model: LanguageModel | null = null
+  model: LanguageModel | null = null,
+  files: FileApiOptions | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
-  return createServer(async (req, res) => {
+  const handle = async (req: IncomingMessage, res: ServerResponse) => {
+    if (!UPLOAD_PATH.test((req.url ?? "").split("?")[0])) limitRequestTime(req, res)
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, model, req, res)
+      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, model, files, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
     }
-  })
-}
-
-/** Sends a JSON response. */
-function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { "content-type": "application/json" })
-  res.end(JSON.stringify(body))
-}
-
-/** Reads and parses a JSON request body (capped at 1 MB). */
-async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
-  let data = ""
-  for await (const chunk of req) {
-    data += chunk
-    if (data.length > 1024 * 1024) throw new Error("Request body too large")
   }
-  return data ? JSON.parse(data) : {}
+  const server = createServer(handle)
+  // Large uploads on slow links outlast the five minute default; uploads
+  // carry their own idle timeout, and limitRequestTime holds every other
+  // request to the default
+  server.requestTimeout = REQUEST_DEADLINE_MS
+  // Uploads answer 100 Continue only after their checks pass, so a refused
+  // upload is never sent; every other request continues at once
+  server.on("checkContinue", (req: IncomingMessage, res: ServerResponse) => {
+    if (UPLOAD_PATH.test((req.url ?? "").split("?")[0])) deferContinue(req)
+    else res.writeContinue()
+    void handle(req, res)
+  })
+  return server
 }
+
 
 /** Reads the session token from the request cookies. */
 function cookieToken(req: IncomingMessage): string | null {
@@ -219,6 +229,7 @@ async function route(
   aiProvider: AiProvider | null,
   viteDevUrl: string | null,
   model: LanguageModel | null,
+  files: FileApiOptions | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -229,20 +240,13 @@ async function route(
   // Kit runtime assets are public open-source code; versioned URLs cache hard
   const kitMatch = pathname.match(KIT_PATH)
   if (kitMatch && req.method === "GET") {
-    const file = path.join(KIT_ASSETS, kitMatch[1])
-    try {
-      await stat(file)
-    } catch {
-      json(res, 404, { error: "no such kit asset" })
-      return
-    }
-    res.writeHead(200, {
+    const sent = await sendFile(res, path.join(KIT_ASSETS, kitMatch[1]), {
       "content-type": kitMatch[1].endsWith(".css") ? "text/css" : "text/javascript",
       "cache-control": "public, max-age=31536000, immutable",
       // Module scripts fetch with CORS from the opaque-origin dashboard frame
       "access-control-allow-origin": "*"
     })
-    createReadStream(file).pipe(res)
+    if (!sent) json(res, 404, { error: "no such kit asset" })
     return
   }
 
@@ -727,11 +731,12 @@ async function route(
       return
     }
     const suffix = sources > 1 ? `_${ordinal}` : ""
-    res.writeHead(200, {
+    const sent = await sendFile(res, store.absolute(relPath), {
       "content-type": "image/tiff",
       "content-disposition": `attachment; filename="${layer_id}_${downloadMatch[1]}${suffix}.tif"`
     })
-    createReadStream(store.absolute(relPath)).pipe(res)
+    // A catalogued file missing from the store (deleted, or an unmounted store)
+    if (!sent) json(res, 404, { error: "snapshot file is missing from the raster store" })
     return
   }
 
@@ -1111,6 +1116,7 @@ async function route(
         await tiles.dropLayer(layerId).catch(() => {})
       }
       await runs?.removeWorkDir(integrationMatch[1]).catch(() => {})
+      for (const file of result.files) await files?.store.deleteVersion(file.id, file.ext).catch(() => {})
       json(res, 200, { tables: result.tables, snapshots: result.snapshots, runs: result.runs, sessions: result.sessions })
       return
     }
@@ -1199,6 +1205,9 @@ async function route(
     return
   }
 
+  // Uploads, listing, and downloads of integration files
+  if (await routeIntegrationFiles(pool, files, runs, user, req, res, pathname, searchParams)) return
+
   const runMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/run$/)
   if (runMatch && req.method === "POST") {
     if (user.role === "viewer") {
@@ -1210,10 +1219,25 @@ async function route(
       return
     }
     try {
-      json(res, 202, { runId: await runs.start(runMatch[1]) })
+      // Optional { files: { slotId: versionId } }: a revert or multi-slot
+      // replace, which starts or queues; without pins, a plain manual run
+      const pins = parseRunPins(await readJsonBody(req))
+      if (pins) {
+        const started = await runs.startPinned(runMatch[1], pins)
+        json(res, 202, { runId: started.runId, status: started.status })
+      } else {
+        json(res, 202, { runId: await runs.start(runMatch[1]), status: "running" })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const status = message.includes("already queued") || message.includes("is a draft") ? 409 : message.includes("Unknown") ? 404 : 500
+      const status =
+        err instanceof RunRequestError || err instanceof SyntaxError
+          ? 400
+          : /already (queued|running)|is a draft/.test(message)
+            ? 409
+            : message.includes("Unknown")
+              ? 404
+              : 500
       json(res, status, { error: message })
     }
     return
@@ -1295,7 +1319,7 @@ async function route(
   }
 
   if (pathname.startsWith("/api/sessions")) {
-    await routeSessions(pool, agent, dashboardAgent, assistantAgent, aiProvider, user, req, res, url)
+    await routeSessions(pool, agent, dashboardAgent, assistantAgent, aiProvider, files, user, req, res, url)
     return
   }
 
@@ -1553,6 +1577,7 @@ async function routeSessions(
   dashboardAgent: AgentService | null,
   assistantAgent: AgentService | null,
   aiProvider: AiProvider | null,
+  files: FileApiOptions | null,
   user: AuthUser,
   req: IncomingMessage,
   res: ServerResponse,
@@ -1602,8 +1627,14 @@ async function routeSessions(
   }
 
   if (pathname === "/api/sessions") {
-    // Design sessions are team artifacts; assistant chats list per creator
-    const lists = await Promise.all([agent?.listSessions(), dashboardAgent?.listSessions(), assistantAgent?.listSessions(user.id)])
+    // Design sessions are team artifacts, editor-only (transcripts carry what
+    // the agent saw, file names and contents included); assistant chats list
+    // per creator
+    const lists = await Promise.all([
+      isViewer ? [] : agent?.listSessions(),
+      dashboardAgent?.listSessions(),
+      assistantAgent?.listSessions(user.id)
+    ])
     const sessions = lists
       .flatMap(l => l ?? [])
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -1623,8 +1654,14 @@ async function routeSessions(
     return
   }
   const ownerKind: string = owner.rows[0].kind
-  if (isViewer && req.method === "POST" && ownerKind !== "assistant") {
-    json(res, 403, { error: "Viewers cannot run design sessions" })
+  if (isViewer && (ownerKind === "designer" || (req.method !== "GET" && ownerKind !== "assistant"))) {
+    json(res, 403, { error: "Viewers cannot open integration design sessions" })
+    return
+  }
+  // A design session's file attachment, staged before the message carrying it
+  const fileMatch = sub?.match(/^\/files\/([^/]+)$/)
+  if (fileMatch && req.method === "PUT") {
+    await handleSessionUpload(pool, files, user, req, res, sessionId, fileMatch[1], searchParams)
     return
   }
   // Ahead of the service lookup: what may be deleted is a permission question,
@@ -1659,11 +1696,32 @@ async function routeSessions(
     else json(res, 400, { error: result.error })
     return
   }
+  if (!sub && req.method === "DELETE" && ownerKind === "designer") {
+    // A design session is its creator's (or an admin's) to delete while no
+    // integration carries its id, which frees the id it claimed; once one
+    // does, deleting the integration is what removes it
+    if (!agent) {
+      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      return
+    }
+    if (agent.isRunning(sessionId)) {
+      json(res, 409, { error: "The agent is still working; stop it first" })
+      return
+    }
+    try {
+      const deleted = await agent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
+      if (!deleted) json(res, 403, { error: "Only the person who started this design session can delete it" })
+      else json(res, 200, { ok: true })
+    } catch (err) {
+      if (!(err instanceof SessionDeleteRefusedError)) throw err
+      json(res, 409, { error: err.message })
+    }
+    return
+  }
   if (!sub && req.method === "DELETE") {
-    // Integration design sessions are team artifacts carrying runs and scratch
-    // layers; assistant chats are the user's to throw away
+    // Assistant chats are the user's to throw away
     if (ownerKind !== "assistant") {
-      json(res, 403, { error: "Only assistant chats and dashboard drafts can be deleted" })
+      json(res, 403, { error: "Only assistant chats, dashboard drafts and design sessions can be deleted" })
       return
     }
     if (!assistantAgent) {
@@ -1756,11 +1814,20 @@ async function routeSessions(
       json(res, 400, { error: "text is required" })
       return
     }
+    // Files staged through PUT /files/:slot, recorded as the session's pins
+    const attachments = body.files ?? []
+    if (
+      !Array.isArray(attachments) ||
+      !attachments.every(a => a && typeof a === "object" && typeof a.slot === "string" && typeof a.versionId === "string")
+    ) {
+      json(res, 400, { error: "files must be a list of { slot, versionId }" })
+      return
+    }
     try {
-      await agentService.send(sessionId, text)
+      await agentService.send(sessionId, text, attachments as SessionAttachment[])
       json(res, 202, { accepted: true })
     } catch (err) {
-      json(res, 409, { error: err instanceof Error ? err.message : String(err) })
+      json(res, err instanceof MessageRejectedError ? 400 : 409, { error: err instanceof Error ? err.message : String(err) })
     }
     return
   }

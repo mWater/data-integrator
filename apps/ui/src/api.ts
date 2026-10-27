@@ -47,11 +47,21 @@ export interface DesignerState {
   /** Draft definition */
   definition: Definition
   /** Cold-run certification, when one passed */
-  coldRun: { definitionHash: string; runId: string } | null
+  coldRun: { definitionHash: string; runId: string; files?: Record<string, string> } | null
   /** Most recent test run */
   lastRun: { runId: string; status: string; cold: boolean } | null
   /** True when finish started the fresh install's first production load; absent before finish */
   firstLoadStarted?: boolean
+  /** File versions the session works with, per slot */
+  files?: Record<string, string> | null
+}
+
+/** One declared file slot of a definition. */
+export interface FileSlotSpec {
+  /** What the file is and must contain */
+  description?: LocalizedString | string
+  /** Accepted extensions, e.g. [".xlsx"]; absent accepts any */
+  accept?: string[]
 }
 
 /** Build outcome inside a dashboard session's client state. */
@@ -124,6 +134,8 @@ export interface SessionDetail extends SessionSummary {
   error: string | null
   /** Scratch preview layers with data, for map links during design */
   scratchLayers: { id: string; name: LocalizedString }[]
+  /** True when the session may be deleted (a design session only while no integration carries its id) */
+  deletable: boolean
 }
 
 /** One content part of a stored model message. */
@@ -682,9 +694,154 @@ export function listIntegrations(): Promise<{ integrations: IntegrationSummary[]
   return request("/api/integrations")
 }
 
-/** Starts a manual run of an integration. */
-export function startRun(integrationId: string): Promise<{ runId: string }> {
-  return request(`/api/integrations/${integrationId}/run`, { method: "POST" })
+/** Where a run went: started now, or queued behind the run in progress. */
+export interface RunStart {
+  /** Run id */
+  runId: string
+  /** running, or queued when pinned files had to wait their turn */
+  status: "running" | "queued"
+}
+
+/** Starts a manual run of an integration; files pins versions per slot (a revert or multi-file replace). */
+export function startRun(integrationId: string, files?: Record<string, string>): Promise<RunStart> {
+  return request(`/api/integrations/${integrationId}/run`, jsonBody("POST", files ? { files } : {}))
+}
+
+/** One uploaded file version as the files API lists it; filename and uploader are null for viewers. */
+export interface FileVersionListing {
+  /** Version id */
+  id: string
+  /** Number within the slot */
+  version: number
+  /** Name it was uploaded under; null for viewers */
+  filename: string | null
+  /** Uploader email; null for viewers or when unknown */
+  uploadedBy: string | null
+  /** Upload time (ISO) */
+  uploadedAt: string
+  /** Size in bytes */
+  sizeBytes: number
+  /** SHA-256, hex */
+  sha256: string
+  /** True for the version runs read when they pin nothing */
+  current: boolean
+  /** Purge time (ISO) when an admin purged the bytes */
+  purgedAt: string | null
+  /** Runs that read this version, newest first */
+  runs: { id: string; status: string; finishedAt: string | null }[]
+}
+
+/** One file slot of an integration with its versions. */
+export interface FileSlotListing {
+  /** Slot id */
+  slotId: string
+  /** True when the installed definition declares it */
+  declared: boolean
+  /** Declared description */
+  description: LocalizedString | string | null
+  /** Declared accept list */
+  accept: string[] | null
+  /** Bytes held by live versions */
+  bytesStored: number
+  /** Versions, newest first */
+  versions: FileVersionListing[]
+}
+
+/** Lists an integration's file slots and versions. */
+export function listIntegrationFiles(integrationId: string): Promise<{ slots: FileSlotListing[]; maxUploadMb: number }> {
+  return request(`/api/integrations/${integrationId}/files`)
+}
+
+/** A stored upload as upload responses return it. */
+export interface UploadedVersion {
+  /** Version id */
+  id: string
+  /** Slot it went to */
+  slotId: string
+  /** Number within the slot */
+  version: number
+  /** Name it was uploaded under */
+  filename: string
+  /** Size in bytes */
+  sizeBytes: number
+}
+
+/** Result of an integration-page upload. */
+export interface IntegrationUpload {
+  /** The new version */
+  version: UploadedVersion
+  /** The run it started or queued; null with run=false, or when none could be created */
+  run: { id: string; status: "running" | "queued" } | null
+  /** Why no run was created, when one was asked for */
+  runError?: string
+}
+
+/**
+ * PUTs a file as a raw body, reporting upload progress (0-1). XMLHttpRequest
+ * rather than fetch, which cannot report upload progress. A 413 that is not
+ * the server's own JSON came from a proxy in front of it.
+ */
+function uploadRaw<T>(url: string, file: File, onProgress?: (fraction: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("PUT", url)
+    xhr.setRequestHeader("content-type", "application/octet-stream")
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total)
+    }
+    // A server that refuses an upload early closes the connection mid-body,
+    // which the browser reports as a network error, not as the refusal
+    xhr.onerror = () =>
+      reject(new Error(T`The upload failed: the connection closed. The file may be too large or of a type this slot does not accept.`))
+    xhr.onload = () => {
+      let body: { error?: string } | null = null
+      try {
+        body = JSON.parse(xhr.responseText)
+      } catch {
+        body = null
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body) resolve(body as T)
+      else if (xhr.status === 401) {
+        window.dispatchEvent(new Event("auth:required"))
+        reject(new Error(body?.error ?? "HTTP 401"))
+      } else if (xhr.status === 413 && !body?.error) {
+        reject(
+          new Error(
+            T`The file is larger than a proxy in front of this server allows. Ask the administrator to raise the proxy's upload limit (Cloudflare allows 100 MB on its Free and Pro plans; nginx needs client_max_body_size).`
+          )
+        )
+      } else reject(new Error(body?.error ?? `HTTP ${xhr.status}`))
+    }
+    xhr.send(file)
+  })
+}
+
+/** Uploads a new version of a file slot; with run, starts or queues a run reading it. */
+export function uploadIntegrationFile(
+  integrationId: string,
+  slotId: string,
+  file: File,
+  run: boolean,
+  onProgress?: (fraction: number) => void
+): Promise<IntegrationUpload> {
+  const query = new URLSearchParams({ filename: file.name, run: String(run) })
+  return uploadRaw(`/api/integrations/${integrationId}/files/${slotId}?${query}`, file, onProgress)
+}
+
+/** Stages a design-session attachment; the message that carries it pins it. */
+export function uploadSessionFile(
+  sessionId: string,
+  slotId: string,
+  file: File,
+  onProgress?: (fraction: number) => void
+): Promise<{ version: UploadedVersion }> {
+  const query = new URLSearchParams({ filename: file.name })
+  return uploadRaw(`/api/sessions/${sessionId}/files/${slotId}?${query}`, file, onProgress)
+}
+
+/** Download URL of one file version (editors and admins). */
+export function fileVersionUrl(integrationId: string, slotId: string, versionId: string): string {
+  return `/api/integrations/${integrationId}/files/${slotId}/versions/${versionId}/download`
 }
 
 /** Fetches the newest rows of a destination table. */
@@ -775,12 +932,19 @@ export function stopSession(sessionId: string): Promise<{ stopping: boolean }> {
   return request(`/api/sessions/${sessionId}/stop`, { method: "POST" })
 }
 
-/** Sends a user message into a session; while running it queues as steering. */
-export function sendMessage(sessionId: string, text: string): Promise<{ accepted: boolean }> {
+/**
+ * Sends a user message into a session; while running it queues as steering.
+ * files attaches uploads staged with uploadSessionFile (refused while running).
+ */
+export function sendMessage(
+  sessionId: string,
+  text: string,
+  files: { slot: string; versionId: string }[] = []
+): Promise<{ accepted: boolean }> {
   return request(`/api/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text })
+    body: JSON.stringify(files.length > 0 ? { text, files } : { text })
   })
 }
 

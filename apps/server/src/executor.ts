@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdir, mkdtemp, rm, statfs } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, statfs, utimes } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
@@ -17,6 +17,8 @@ import {
 } from "./destinations.js"
 import { ensureScratchLayer, resolveArtifactPath, storeArtifact, registerSnapshot } from "./catalog.js"
 import { materializeInputs } from "./materialize.js"
+import { FileStore } from "./fileStore.js"
+import { ResolvedFiles, resolveFiles, setCurrentVersions } from "./files.js"
 import { RasterStore } from "./rasterStore.js"
 import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
 import { getSecrets } from "./secrets.js"
@@ -33,6 +35,8 @@ export interface ExecutorDeps {
   store: RasterStore
   /** Root for persistent per-integration /work directories */
   workRoot: string
+  /** Uploaded file versions; absent on hosts that never run file-reading integrations */
+  files?: FileStore
   /** Encryption key for secrets; null when no definitions use secrets */
   secretKey: Buffer | null
   /** Runtime image per RuntimeId */
@@ -189,6 +193,8 @@ export interface RunOptions {
     sessionId: string
     /** Draft definition to execute */
     definition: IntegrationDefinition
+    /** The session's file pins per slot; declared slots without one read the integration's current version */
+    files?: Record<string, string>
   }
 }
 
@@ -216,6 +222,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         if (result.rowCount === 0) jobHandle?.abort("lease lost: the run was reclaimed by another worker")
         else lastHeartbeat = Date.now()
       })
+      // A job's /in under the file store is a leftover to boot cleanup once
+      // its mtime is an hour old; a live job keeps it young
+      .then(() => (inDir ? utimes(inDir, new Date(), new Date()).catch(() => {}) : undefined))
       .catch(() => {
         if (Date.now() - lastHeartbeat > SELF_FENCE_MS) {
           jobHandle?.abort("lease lost: the database was unreachable for too long to keep the lease")
@@ -246,11 +255,45 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     const defaultAoi = definition.aoi === undefined ? await getDefaultAoi(deps.pool) : null
     definition = resolveAoi(definition, defaultAoi)
 
-    let manifest = null
-    if (definition.inputs && Object.keys(definition.inputs).length > 0) {
-      inDir = await mkdtemp(path.join(tmpdir(), "job-in-"))
-      manifest = await materializeInputs(deps, definition, inDir)
+    // Pins were fixed when the run was created; declared slots without one
+    // read their current version, and a slot with neither refuses the run.
+    // A queued run can outlive its slot (a session renames or drops it before
+    // the run starts), so pins for slots no longer declared are ignored.
+    const declaredSlots = Object.keys(definition.files ?? {})
+    const declaredPins = (pins: Record<string, string> | null | undefined) =>
+      Object.fromEntries(Object.entries(pins ?? {}).filter(([slotId]) => declaredSlots.includes(slotId)))
+    let files: ResolvedFiles = {}
+    if (declaredSlots.length > 0) {
+      if (scratch) {
+        files = await resolveFiles(deps.pool, {
+          integrationId: definition.id,
+          definition,
+          pins: declaredPins(scratch.files),
+          sessionId: scratch.sessionId
+        })
+      } else {
+        const pinned = await deps.pool.query("SELECT file_pins FROM app.runs WHERE id = $1", [run.id])
+        files = await resolveFiles(deps.pool, { integrationId: run.integration_id!, definition, pins: declaredPins(pinned.rows[0]?.file_pins) })
+      }
     }
+
+    let manifest = null
+    const readsFiles = Object.keys(files).length > 0
+    if (readsFiles || (definition.inputs && Object.keys(definition.inputs).length > 0)) {
+      // Under the file store when versions are read, so they hardlink in
+      if (readsFiles && !deps.files) throw new Error("This integration reads uploaded files but no file store is configured")
+      inDir = readsFiles ? await deps.files!.jobDir() : await mkdtemp(path.join(tmpdir(), "job-in-"))
+      manifest = await materializeInputs(deps, definition, inDir, files)
+    }
+    // Lineage records the AOI the run actually executed with: the deployment
+    // default resolves at run time, so the definition alone cannot answer
+    // "what area did run X ingest". Written before the job starts, so a
+    // failed run still records which inputs and files it read.
+    const inputs = JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null })
+    await deps.pool.query(
+      `UPDATE app.runs SET inputs = $2 WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $3`,
+      [run.id, inputs, run.attempt]
+    )
 
     const image = deps.images[definition.runtime]
     if (!image) throw new Error(`No image configured for runtime ${definition.runtime}`)
@@ -529,14 +572,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
             ...(workUsedMb !== null ? { workMb: workUsedMb } : {})
           }),
           log,
-          // Lineage records the AOI the run actually executed with: the
-          // deployment default resolves at run time, so the definition alone
-          // cannot answer "what area did run X ingest"
-          JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null }),
+          inputs,
           run.attempt
         ]
       )
       if (committed.rowCount === 0) throw new Error("lease lost: the run was reclaimed by another worker")
+      // The files this run read become current with the data they produced
+      if (!scratch && manifest?.files) await setCurrentVersions(client, run.integration_id!, manifest.files)
       await client.query("COMMIT")
     } catch (err) {
       await client.query("ROLLBACK")

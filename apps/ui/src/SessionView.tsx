@@ -16,8 +16,10 @@ import {
   SessionDetail,
   SessionEvent,
   stopSession,
-  subscribeEvents
+  subscribeEvents,
+  uploadSessionFile
 } from "./api.js"
+import { ComposerAttachments, PendingAttachment, SLOT_PATTERN } from "./ComposerAttachments.js"
 import { ensureAiAck } from "./aiAck.js"
 import { isBlockCall } from "./blocks/types.js"
 import { DashboardFrame, fetchTileBytes } from "./DashboardFrame.js"
@@ -27,6 +29,7 @@ import { Transcript } from "./Transcript.js"
 import { StatePanel } from "./StatePanel.js"
 import { localizeData } from "./localization.js"
 import { leaveTo, setLeaveGuard } from "./navGuard.js"
+import { RowMenu } from "./RowMenu.js"
 
 // Same lazy chunk as the stored transcript's blocks
 const BlockRenderer = lazy(() => import("./blocks/BlockRenderer.js"))
@@ -202,6 +205,11 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState("")
+  // Files waiting to go out with the next message (design sessions only)
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const [uploading, setUploading] = useState<string | null>(null)
+  // Enter submits through requestSubmit, which ignores a disabled Send button
+  const uploadingRef = useRef(false)
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const [split, setSplit] = useState(storedSplit)
   // Full-screen preview hides the conversation so the dashboard can be judged
@@ -340,13 +348,61 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   }, [live, detail])
 
   async function send(text: string) {
-    if (!text) return
+    const pending = attachments
+    if (!text && pending.length === 0) return
     setError(null)
+    const badSlot = pending.find(a => !SLOT_PATTERN.test(a.slot))
+    if (badSlot) {
+      setError(T`Slot "${badSlot.slot}" for ${badSlot.file.name}: lowercase letters, digits and underscores, starting with a letter`)
+      return
+    }
+    // The running loop owns the session state, so the server refuses attachments until it pauses
+    if (busy && pending.length > 0) {
+      setError(T`Attach files once the agent pauses`)
+      return
+    }
+    if (uploadingRef.current) return
     if (!(await ensureAiAck())) return
+    // Uploads go first; the message then pins them. The message leaves the
+    // composer while they upload, so anything typed meanwhile is kept for the
+    // next message; a failed upload or send puts everything back to retry,
+    // with each finished upload remembered so the retry does not repeat it
+    const typed = text
+    const restoreInput = () => setInput(current => (current.trim() ? current : typed))
+    const files: { slot: string; versionId: string }[] = []
+    let uploaded = pending
+    if (pending.length > 0) {
+      uploadingRef.current = true
+      setAttachments([])
+      setInput("")
+      try {
+        for (const attachment of pending) {
+          let versionId = attachment.versionId
+          if (versionId === undefined) {
+            setUploading(T`Uploading ${attachment.file.name}…`)
+            const { version } = await uploadSessionFile(sessionId, attachment.slot, attachment.file, fraction =>
+              setUploading(T`Uploading ${attachment.file.name}… ${Math.round(fraction * 100)}%`)
+            )
+            versionId = version.id
+            uploaded = uploaded.map(a => (a.key === attachment.key ? { ...a, versionId } : a))
+          }
+          files.push({ slot: attachment.slot, versionId })
+        }
+      } catch (err) {
+        setAttachments(uploaded)
+        restoreInput()
+        setError(err instanceof Error ? err.message : String(err))
+        return
+      } finally {
+        uploadingRef.current = false
+        setUploading(null)
+      }
+    }
+    if (!text) text = files.length === 1 ? T`Here is the file.` : T`Here are the files.`
     const wasBusy = busy
     if (!wasBusy) frozenRef.current = messagesLenRef.current
     setBusy(true)
-    setInput("")
+    if (pending.length === 0) setInput("")
     // Preview runtime errors ride along with the next message so the agent
     // hears about crashes without the user pasting them
     let outgoing = text
@@ -355,8 +411,10 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
       setPreviewErrors([])
     }
     try {
-      await sendMessage(sessionId, outgoing)
+      await sendMessage(sessionId, outgoing, files)
     } catch (err) {
+      if (pending.length > 0) setAttachments(uploaded)
+      restoreInput()
       if (!wasBusy) {
         setBusy(false)
         frozenRef.current = null
@@ -420,6 +478,7 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   const unsaved = draftState != null && isUnsaved(draftState)
   const [saveOpen, setSaveOpen] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   useEffect(() => {
@@ -464,9 +523,10 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
   async function discard() {
     try {
       await deleteSession(sessionId)
-      leaveTo("#/dashboards")
+      leaveTo(detail?.kind === "dashboard" ? "#/dashboards" : "#/integrations")
     } catch (err) {
       setDiscardOpen(false)
+      setDeleteOpen(false)
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -540,6 +600,15 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
                   <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
                 </svg>
               </button>
+            )}
+            {/* A design session that never became an integration can be
+                deleted by its creator, freeing the id it named */}
+            {!isDashboard && !isAssistant && canDesign && detail.deletable && (isAdmin || detail.userId === userId) && (
+              <RowMenu label={T`Session actions`}>
+                <button role="menuitem" className="row-menu-danger" disabled={busy} onClick={() => setDeleteOpen(true)}>
+                  {T`Delete Session`}
+                </button>
+              </RowMenu>
             )}
             <button className="icon-btn" onClick={() => setShowDetails(v => !v)} title={T`Session details`} aria-label={T`Session details`}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -647,12 +716,21 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
             disabled={!canSend}
             rows={3}
           />
+          {detail.kind === "designer" && canSend && (
+            <ComposerAttachments
+              attachments={attachments}
+              onChange={setAttachments}
+              definition={(detail.state as DesignerState)?.definition}
+              enabled={!busy && uploading === null}
+            />
+          )}
+          {uploading && <span className="dim" role="status">{uploading}</span>}
           {busy && input.trim() === "" ? (
             <button type="button" className="stop" onClick={() => void onStop()} disabled={!canSend || stopping}>
               {stopping ? T`Stopping…` : T`Stop`}
             </button>
           ) : (
-            <button type="submit" disabled={!canSend || !input.trim()}>{T`Send`}</button>
+            <button type="submit" disabled={!canSend || uploading !== null || (!input.trim() && attachments.length === 0)}>{T`Send`}</button>
           )}
         </form>
       </div>
@@ -738,6 +816,23 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
               </button>
               <button className="danger" onClick={() => void discard()}>
                 {T`Discard Changes`}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      {deleteOpen && (
+        <>
+          <div className="modal-backdrop" onClick={() => setDeleteOpen(false)} />
+          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={T`Delete this session?`}>
+            <h2>{T`Delete this session?`}</h2>
+            <p>{T`This deletes the conversation, its draft, its test runs and the files attached in it. It cannot be recovered.`}</p>
+            <div className="confirm-actions">
+              <button className="secondary" onClick={() => setDeleteOpen(false)}>
+                {T`Cancel`}
+              </button>
+              <button className="danger" onClick={() => void discard()}>
+                {T`Delete Session`}
               </button>
             </div>
           </div>
