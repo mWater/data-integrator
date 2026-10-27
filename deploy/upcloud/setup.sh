@@ -10,8 +10,8 @@
 #
 # Configuration (environment variables):
 #   ADMIN_EMAIL          (required) first admin account; password is printed once at the end
-#   OPENROUTER_API_KEY   (optional) enables the designer agent
-#   ANTHROPIC_API_KEY    (optional) alternative agent provider
+#   OPENROUTER_API_KEY   (optional) seeds the AI provider in Settings on first start
+#   ANTHROPIC_API_KEY    (optional) alternative provider, same seeding
 #   REPO_URL             (optional) git URL to clone if /opt/data-integrator doesn't exist
 #                        yet; for a private repo, rsync your checkout there instead
 #   REPO_REF             (optional) branch/tag to clone, default main

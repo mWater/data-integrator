@@ -7243,6 +7243,222 @@
       "es": "Esto elimina la conversación, su borrador, sus ejecuciones de prueba y los archivos adjuntos. No se puede recuperar.",
       "mg": "Izany dia mamafa ny resaka, ny volavolan-kevitra, ny fampandehanana andrana ary ireo rakitra nampiarahina taminy. Tsy azo averina izany.",
       "sw": "Hii itafuta mazungumzo, rasimu yake, majaribio yake ya uendeshaji na faili zilizoambatishwa humo. Haviwezi kurejeshwa."
+    },
+    {
+      "_base": "en",
+      "en": "AI features",
+      "fr": "Fonctionnalités d’IA",
+      "pt": "Recursos de IA",
+      "es": "Funciones de IA",
+      "mg": "Endri-javatra AI",
+      "sw": "Vipengele vya AI"
+    },
+    {
+      "_base": "en",
+      "en": "The integration designer, Explore, and the dashboard builder use a language model. Nothing else does.",
+      "fr": "Le concepteur d’intégrations, Explore et le générateur de tableaux de bord utilisent un modèle de langage. Aucune autre fonctionnalité ne l’utilise.",
+      "pt": "O designer de integrações, o Explore e o criador de painéis usam um modelo de linguagem. Nenhum outro recurso o utiliza.",
+      "es": "El diseñador de integraciones, Explorar y el creador de paneles usan un modelo de lenguaje. Ninguna otra función lo usa.",
+      "mg": "Mampiasa maodelin-teny ny mpamolavola fampidirana, Explore, ary ny mpamorona tabilao fitantanana. Tsy misy fiasa hafa mampiasa izany.",
+      "sw": "Zana ya kubuni miunganisho, Explore na zana ya kuunda dashibodi hutumia modeli ya lugha. Hakuna kipengele kingine kinachoitumia."
+    },
+    {
+      "_base": "en",
+      "en": "AI features are off. Choose a provider below to turn them on.",
+      "fr": "Les fonctionnalités d’IA sont désactivées. Choisissez un fournisseur ci-dessous pour les activer.",
+      "pt": "Os recursos de IA estão desativados. Escolha um provedor abaixo para ativá-los.",
+      "es": "Las funciones de IA están desactivadas. Elige un proveedor a continuación para activarlas.",
+      "mg": "Tsy mandeha ny endri-javatra AI. Misafidiana mpamatsy eto ambany hampandeha azy.",
+      "sw": "Vipengele vya AI vimezimwa. Chagua mtoa huduma hapa chini ili kuviwasha."
+    },
+    {
+      "_base": "en",
+      "en": "AI features are off. An administrator can turn them on.",
+      "fr": "Les fonctionnalités d’IA sont désactivées. Un administrateur peut les activer.",
+      "pt": "Os recursos de IA estão desativados. Um administrador pode ativá-los.",
+      "es": "Las funciones de IA están desactivadas. Un administrador puede activarlas.",
+      "mg": "Tsy mandeha ny endri-javatra AI. Afaka mampandeha azy ny mpitantana.",
+      "sw": "Vipengele vya AI vimezimwa. Msimamizi anaweza kuviwasha."
+    },
+    {
+      "_base": "en",
+      "en": "AI requests go to this deployment's own model endpoint ({0}), not to an external provider.",
+      "fr": "Les requêtes d’IA sont envoyées au point de terminaison du modèle propre à ce déploiement ({0}), et non à un fournisseur externe.",
+      "pt": "As solicitações de IA são enviadas ao endpoint de modelo desta implantação ({0}), não a um provedor externo.",
+      "es": "Las solicitudes de IA se envían al punto de conexión del modelo de esta implementación ({0}), no a un proveedor externo.",
+      "mg": "Alefa any amin'ny endpoint-n'ny maodelin'ity fametrahana ity ({0}) ny fangatahana AI, fa tsy any amin'ny mpamatsy ivelany.",
+      "sw": "Maombi ya AI hutumwa kwenye kituo cha modeli cha usakinishaji huu ({0}), si kwa mtoa huduma wa nje."
+    },
+    {
+      "_base": "en",
+      "en": "AI requests go to {0}, model {1}. Each request can include:",
+      "fr": "Les requêtes d’IA sont envoyées à {0}, modèle {1}. Chaque requête peut inclure :",
+      "pt": "As solicitações de IA são enviadas para {0}, modelo {1}. Cada solicitação pode incluir:",
+      "es": "Las solicitudes de IA se envían a {0}, modelo {1}. Cada solicitud puede incluir:",
+      "mg": "Alefa any amin'ny {0}, maodely {1}, ny fangatahana AI. Mety ahitana ireto ny fangatahana tsirairay:",
+      "sw": "Maombi ya AI hutumwa kwa {0}, modeli {1}. Kila ombi linaweza kujumuisha:"
+    },
+    {
+      "_base": "en",
+      "en": "You will be asked to accept this notice before your first AI request.",
+      "fr": "Vous devrez accepter cet avis avant votre première requête d’IA.",
+      "pt": "Você deverá aceitar este aviso antes da sua primeira solicitação de IA.",
+      "es": "Se te pedirá que aceptes este aviso antes de tu primera solicitud de IA.",
+      "mg": "Hangatahana hanaiky ity fampahafantarana ity ianao alohan'ny fangatahana AI voalohany.",
+      "sw": "Utaombwa ukubali ilani hii kabla ya ombi lako la kwanza la AI."
+    },
+    {
+      "_base": "en",
+      "en": "You have accepted this notice.",
+      "fr": "Vous avez accepté cet avis.",
+      "pt": "Você aceitou este aviso.",
+      "es": "Has aceptado este aviso.",
+      "mg": "Efa nanaiky ity fampahafantarana ity ianao.",
+      "sw": "Umekubali ilani hii."
+    },
+    {
+      "_base": "en",
+      "en": "AI features are off. The saved key was removed.",
+      "fr": "Les fonctionnalités d’IA sont désactivées. La clé enregistrée a été supprimée.",
+      "pt": "Os recursos de IA estão desativados. A chave salva foi removida.",
+      "es": "Las funciones de IA están desactivadas. Se eliminó la clave guardada.",
+      "mg": "Tsy mandeha ny endri-javatra AI. Nesorina ny fanalahidy voatahiry.",
+      "sw": "Vipengele vya AI vimezimwa. Ufunguo uliohifadhiwa umeondolewa."
+    },
+    {
+      "_base": "en",
+      "en": "Saved. The provider answered a test request, and AI features use it now.",
+      "fr": "Enregistré. Le fournisseur a répondu à une requête de test et les fonctionnalités d’IA l’utilisent désormais.",
+      "pt": "Salvo. O provedor respondeu a uma solicitação de teste, e os recursos de IA agora o utilizam.",
+      "es": "Guardado. El proveedor respondió a una solicitud de prueba y ahora se usa para las funciones de IA.",
+      "mg": "Voatahiry. Namaly fangatahana fitsapana ny mpamatsy, ary mampiasa azy izao ny endri-javatra AI.",
+      "sw": "Imehifadhiwa. Mtoa huduma alijibu ombi la majaribio, na vipengele vya AI vinatumia huduma hiyo sasa."
+    },
+    {
+      "_base": "en",
+      "en": "Model provider",
+      "fr": "Fournisseur du modèle",
+      "pt": "Provedor do modelo",
+      "es": "Proveedor del modelo",
+      "mg": "Mpamatsy maodely",
+      "sw": "Mtoa huduma wa modeli"
+    },
+    {
+      "_base": "en",
+      "en": "Off",
+      "fr": "Désactivé",
+      "pt": "Desativado",
+      "es": "Desactivado",
+      "mg": "Tsy mandeha",
+      "sw": "Imezimwa"
+    },
+    {
+      "_base": "en",
+      "en": "Custom endpoint (OpenAI-compatible)",
+      "fr": "Point de terminaison personnalisé (compatible avec OpenAI)",
+      "pt": "Endpoint personalizado (compatível com OpenAI)",
+      "es": "Punto de conexión personalizado (compatible con OpenAI)",
+      "mg": "Endpoint manokana (mifanaraka amin'ny OpenAI)",
+      "sw": "Kituo maalum (kinaoana na OpenAI)"
+    },
+    {
+      "_base": "en",
+      "en": "Base URL",
+      "fr": "URL de base",
+      "pt": "URL base",
+      "es": "URL base",
+      "mg": "URL fototra",
+      "sw": "URL msingi"
+    },
+    {
+      "_base": "en",
+      "en": "For vLLM, Ollama, LiteLLM and similar servers. Requests and data stay on this endpoint.",
+      "fr": "Pour vLLM, Ollama, LiteLLM et les serveurs similaires. Les requêtes et les données restent sur ce point de terminaison.",
+      "pt": "Para vLLM, Ollama, LiteLLM e servidores semelhantes. As solicitações e os dados permanecem neste endpoint.",
+      "es": "Para vLLM, Ollama, LiteLLM y servidores similares. Las solicitudes y los datos permanecen en este punto de conexión.",
+      "mg": "Ho an'ny vLLM, Ollama, LiteLLM ary lohamilina mitovy aminy. Mijanona ao amin'ity endpoint ity ny fangatahana sy ny angona.",
+      "sw": "Kwa vLLM, Ollama, LiteLLM na seva zinazofanana. Maombi na data hubaki kwenye kituo hiki."
+    },
+    {
+      "_base": "en",
+      "en": "API key",
+      "fr": "Clé API",
+      "pt": "Chave de API",
+      "es": "Clave de API",
+      "mg": "Fanalahidy API",
+      "sw": "Ufunguo wa API"
+    },
+    {
+      "_base": "en",
+      "en": "Saved key kept; enter a new one to replace it",
+      "fr": "Clé enregistrée conservée ; saisissez-en une nouvelle pour la remplacer",
+      "pt": "A chave salva será mantida; insira uma nova para substituí-la",
+      "es": "Se conserva la clave guardada; escribe una nueva para reemplazarla",
+      "mg": "Tazonina ny fanalahidy voatahiry; mampidira vaovao hanoloana azy",
+      "sw": "Ufunguo uliohifadhiwa umebakizwa; weka mpya ili kuubadilisha"
+    },
+    {
+      "_base": "en",
+      "en": "Optional",
+      "fr": "Facultatif",
+      "pt": "Opcional",
+      "es": "Opcional",
+      "mg": "Tsy voatery",
+      "sw": "Si lazima"
+    },
+    {
+      "_base": "en",
+      "en": "Set INTEGRATOR_SECRET_KEY on the server to save an API key.",
+      "fr": "Définissez INTEGRATOR_SECRET_KEY sur le serveur pour enregistrer une clé API.",
+      "pt": "Defina INTEGRATOR_SECRET_KEY no servidor para salvar uma chave de API.",
+      "es": "Configura INTEGRATOR_SECRET_KEY en el servidor para guardar una clave de API.",
+      "mg": "Apetraho ao amin'ny lohamilina ny INTEGRATOR_SECRET_KEY mba hitahirizana fanalahidy API.",
+      "sw": "Weka INTEGRATOR_SECRET_KEY kwenye seva ili kuhifadhi ufunguo wa API."
+    },
+    {
+      "_base": "en",
+      "en": "Model",
+      "fr": "Modèle",
+      "pt": "Modelo",
+      "es": "Modelo",
+      "mg": "Maodely",
+      "sw": "Modeli"
+    },
+    {
+      "_base": "en",
+      "en": "Leave blank for the default, {0}.",
+      "fr": "Laissez vide pour utiliser le modèle par défaut, {0}.",
+      "pt": "Deixe em branco para usar o padrão, {0}.",
+      "es": "Déjalo en blanco para usar el valor predeterminado, {0}.",
+      "mg": "Avelao ho banga raha hampiasa ny sanda mahazatra, {0}.",
+      "sw": "Acha wazi ili kutumia chaguo-msingi, {0}."
+    },
+    {
+      "_base": "en",
+      "en": "Testing Connection…",
+      "fr": "Test de la connexion…",
+      "pt": "Testando conexão…",
+      "es": "Probando la conexión…",
+      "mg": "Fitsapana ny fifandraisana…",
+      "sw": "Inajaribu muunganisho…"
+    },
+    {
+      "_base": "en",
+      "en": "Turn Off AI",
+      "fr": "Désactiver l’IA",
+      "pt": "Desativar IA",
+      "es": "Desactivar IA",
+      "mg": "Atsaharo ny AI",
+      "sw": "Zima AI"
+    },
+    {
+      "_base": "en",
+      "en": "Save and Test",
+      "fr": "Enregistrer et tester",
+      "pt": "Salvar e testar",
+      "es": "Guardar y probar",
+      "mg": "Tehirizo ary andramo",
+      "sw": "Hifadhi na Ujaribu"
     }
   ],
   "unused": [

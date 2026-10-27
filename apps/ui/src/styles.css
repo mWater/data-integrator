@@ -1046,6 +1046,14 @@ table.users tbody tr:hover { background: none }
 .settings-page .aoi-editor select { width: 100%; min-width: 0; padding: 9px 11px; margin: 0; font: inherit; border: 1px solid var(--control-border); border-radius: 6px }
 .settings-page .password-form label { gap: 6px; font-size: 13px }
 .settings-page .password-form > button { align-self: flex-start; margin-top: 4px }
+.settings-page .ai-provider-form { display: flex; flex-direction: column; gap: 12px; margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--border) }
+.settings-page .ai-provider-form h4 { margin: 0; font-size: 13px; font-weight: 600 }
+.settings-page .ai-provider-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px }
+.settings-page .ai-provider-form :is(input, select) { width: 100%; min-width: 0; padding: 9px 11px; margin: 0; font: inherit; border: 1px solid var(--control-border); border-radius: 6px }
+.settings-page .ai-provider-form .dim { font-size: 12.5px }
+.settings-row-content a { color: var(--link) }
+.settings-ai-data ul { margin: 8px 0; padding-left: 20px; font-size: 13px; line-height: 1.6 }
+.settings-ai-data p { margin: 0 0 8px; font-size: 13px }
 .settings-actions, .settings-page .aoi-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 4px }
 .settings-page button { font: inherit; font-size: 13px; padding: 8px 14px }
 .settings-page .aoi-editor { border: 0; padding: 0; margin: 0; min-width: 0; align-items: stretch; gap: 14px }

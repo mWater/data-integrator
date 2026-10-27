@@ -257,6 +257,10 @@ export function App() {
     : route.library ? "library" : route.ask ? "ask"
     : route.sessionId || route.sessions || route.settings || route.settingsUsers || route.aiPrivacy || route.howItWorks ? null : "home"
   const canDesign = user.role !== "viewer"
+  const refreshAi = () => void getMe().then(me => {
+    setAi(me?.ai ?? null)
+    setAiInfo(me?.ai ?? null)
+  })
   return (
     <div className="app">
       <header className="topbar">
@@ -299,9 +303,9 @@ export function App() {
       ) : route.settingsUsers ? (
         <UsersPage user={user} />
       ) : route.settings ? (
-        <Settings user={user} />
+        <Settings user={user} ai={ai ?? { provider: null, model: null, ackRequired: false }} onAiChanged={refreshAi} />
       ) : route.aiPrivacy ? (
-        <AiPrivacy ai={ai ?? { provider: null, ackRequired: false }} />
+        <AiPrivacy ai={ai ?? { provider: null, model: null, ackRequired: false }} />
       ) : route.sessions ? (
         <SessionList />
       ) : route.integrations ? (

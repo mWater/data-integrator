@@ -1,5 +1,5 @@
 import { LoadState } from "./LoadState.js"
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
   CatalogTranslation,
   setLocalesSetting,
@@ -11,29 +11,17 @@ import {
   listCountries,
   setDefaultAoi,
   setSiteTitle,
+  AiInfo,
   User
 } from "./api.js"
 import { ThemePreference, useAppTheme } from "./theme.js"
 import { formatDateTime, setOfferedLocales } from "./localization.js"
 import { UsersSection } from "./UsersSection.js"
+import { SettingsRow } from "./SettingsRow.js"
+import { AiSettingsSection } from "./AiSettingsSection.js"
 
 /** Shown as the home page title when the deployment has not set one. */
 const DEFAULT_SITE_TITLE = "mWater Data Integrator"
-
-/** Shared layout keeps descriptions and controls aligned across settings. */
-function SettingsRow({ id, title, description, children }: {
-  id: string; title: string; description: string; children: ReactNode
-}) {
-  return (
-    <section className="settings-row" id={id} aria-labelledby={`${id}-heading`}>
-      <div className="settings-row-heading">
-        <h3 id={`${id}-heading`}>{title}</h3>
-        <p>{description}</p>
-      </div>
-      <div className="settings-row-content">{children}</div>
-    </section>
-  )
-}
 
 /**
  * The deployment's display name, shown as the home page heading. Blank restores
@@ -113,7 +101,13 @@ function ThemeSection() {
  * installed without an AOI of its own; admins pick a country from the built-in
  * list or enter a custom bounding box.
  */
-export function Settings({ user }: { user: User }) {
+export function Settings({ user, ai, onAiChanged }: {
+  user: User
+  /** The deployment's AI wiring, from /api/me */
+  ai: AiInfo
+  /** Reloads /api/me after an admin changes the provider */
+  onAiChanged: () => void
+}) {
   const [current, setCurrent] = useState<DefaultAoi | null>(null)
   const [siteTitle, setSiteTitleState] = useState<string | null>(null)
   const [locales, setLocales] = useState<string[]>([])
@@ -312,6 +306,7 @@ export function Settings({ user }: { user: User }) {
             }}
           />
         )}
+        <AiSettingsSection ai={ai} isAdmin={isAdmin} onChanged={onAiChanged} />
       </div>
       <div className="settings-group-heading">
         <div><h2>{T`Personal`}</h2><p>{T`Preferences and security for your account.`}</p></div>

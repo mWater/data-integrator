@@ -50,16 +50,8 @@ export interface AppConfig {
   tileRenderConcurrency: number
   /** SANDBOX_MEMORY_MB: total job sandbox memory admitted at once; 0 disables the budget */
   sandboxMemoryMb: number
-  /** Agent model wiring; no key and no base URL means no model (core runs AI-free) */
+  /** Agent tuning; the provider, key and model are set in Settings (aiSettings.ts) */
   agent: {
-    /** LLM_BASE_URL: any OpenAI-compatible endpoint (vLLM, Ollama, LiteLLM…); wins over the hosted keys */
-    baseUrl: string | null
-    /** LLM_API_KEY for the LLM_BASE_URL endpoint; null when the endpoint needs none */
-    baseUrlKey: string | null
-    openrouterKey: string | null
-    anthropicKey: string | null
-    /** AGENT_MODEL; null uses the provider default (required with LLM_BASE_URL) */
-    model: string | null
     /** AGENT_EFFORT; null uses the model default */
     effort: AgentEffort | null
   }
@@ -139,17 +131,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     problems.push(`AGENT_EFFORT must be one of ${AGENT_EFFORTS.join(", ")}, got "${effortRaw}"`)
   }
 
-  const llmBaseUrl = env.LLM_BASE_URL?.trim().replace(/\/+$/, "") || null
-  if (llmBaseUrl && !/^https?:\/\//.test(llmBaseUrl)) {
-    problems.push(`LLM_BASE_URL must be an http(s) URL, got "${llmBaseUrl}"`)
-  }
-
   const viteDevUrl = env.VITE_DEV_URL?.trim().replace(/\/+$/, "") || null
   if (viteDevUrl && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(viteDevUrl)) {
     problems.push(`VITE_DEV_URL must be a local http(s) origin, got "${viteDevUrl}"`)
-  }
-  if (llmBaseUrl && !env.AGENT_MODEL) {
-    problems.push("AGENT_MODEL is required when LLM_BASE_URL is set (the endpoint's model name)")
   }
 
   if (problems.length > 0) {
@@ -181,11 +165,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       node: env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"
     },
     agent: {
-      baseUrl: llmBaseUrl,
-      baseUrlKey: env.LLM_API_KEY ?? null,
-      openrouterKey: env.OPENROUTER_API_KEY ?? null,
-      anthropicKey: env.ANTHROPIC_API_KEY ?? null,
-      model: env.AGENT_MODEL ?? null,
       effort: (effortRaw as AgentEffort | undefined) ?? null
     },
     basemap: {
@@ -196,34 +175,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 }
 
-/** Which kind of model endpoint the agents talk to. */
-export type AiProvider = "openrouter" | "anthropic" | "custom"
-
 /**
- * The configured model provider, mirroring buildModel's precedence: a custom
- * OpenAI-compatible endpoint wins, then OpenRouter, then Anthropic. "custom"
- * means the admin points at their own infrastructure, so the external-provider
+ * Which kind of model endpoint the agents talk to. "custom" means the admin
+ * points at their own infrastructure, so the external-provider
  * acknowledgement does not apply.
  */
-export function aiProvider(config: AppConfig): AiProvider | null {
-  if (config.agent.baseUrl) return "custom"
-  if (config.agent.openrouterKey) return "openrouter"
-  if (config.agent.anthropicKey) return "anthropic"
-  return null
-}
+export type AiProvider = "openrouter" | "anthropic" | "custom"
 
 /**
  * One-line effective-config summary for the startup log: every path and
  * switch, no secret values.
  */
 export function describeConfig(config: AppConfig): string {
-  const model = config.agent.baseUrl
-    ? `${config.agent.baseUrl}:${config.agent.model}`
-    : config.agent.openrouterKey
-      ? `openrouter:${config.agent.model ?? "(default)"}`
-      : config.agent.anthropicKey
-        ? `anthropic:${config.agent.model ?? "(default)"}`
-        : "none"
   return [
     `port=${config.port}`,
     `rasterStore=${config.rasterStorePath}`,
@@ -231,7 +194,6 @@ export function describeConfig(config: AppConfig): string {
     `fileStore=${config.fileStorePath}`,
     `tileCache=${config.tileCachePath}`,
     `secrets=${config.secretKey ? "on" : "off"}`,
-    `model=${model}`,
     `basemap=${config.basemap.upstream ?? "off"}`,
     `ui=${config.viteDevUrl ? `vite:${config.viteDevUrl}` : "dist"}`
   ].join(" ")

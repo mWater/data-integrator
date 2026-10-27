@@ -38,10 +38,6 @@ import path from "node:path"
 import { hostname } from "node:os"
 import { createInterface } from "node:readline/promises"
 import { fileURLToPath } from "node:url"
-import { createAnthropic } from "@ai-sdk/anthropic"
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
-import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import { LanguageModel } from "ai"
 import { Runner } from "@mwater/integration-runner"
 import { IntegrationDefinition } from "@data-integrator/definitions"
 import { createPool } from "./db.js"
@@ -55,7 +51,8 @@ import { RasterStore } from "./rasterStore.js"
 import { TileRenderer } from "./tiles.js"
 import { createApiServer } from "./server.js"
 import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
-import { aiProvider, AppConfig, describeConfig, loadConfig } from "./config.js"
+import { AppConfig, describeConfig, loadConfig } from "./config.js"
+import { AiRuntime } from "./aiSettings.js"
 import { startScheduler } from "./scheduler.js"
 import { backfillCellSizes } from "./catalog.js"
 import { registerMissingRasters } from "./rasterSql.js"
@@ -123,43 +120,6 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
     minFreeDiskMb: config.minFreeDiskMb,
     sandboxes: config.sandboxMemoryMb > 0 ? new SandboxBudget(config.sandboxMemoryMb) : undefined
   }
-}
-
-/** Default agent model (OpenRouter); see Quickstart "Choosing a model". */
-const DEFAULT_MODEL = "openai/gpt-5.6-sol"
-
-/** Agent model from configuration: a custom OpenAI-compatible endpoint wins, then OpenRouter, then Anthropic. */
-function buildModel(config: AppConfig): LanguageModel | null {
-  const { baseUrl, baseUrlKey, openrouterKey, anthropicKey, effort: configEffort } = config.agent
-  if (baseUrl) {
-    // Self-hosted or third-party endpoint (vLLM, Ollama, LiteLLM…); config
-    // guarantees AGENT_MODEL is set. No effort/caching knobs: those vary by server.
-    const provider = createOpenAICompatible({
-      name: "custom",
-      baseURL: baseUrl,
-      ...(baseUrlKey ? { apiKey: baseUrlKey } : {})
-    })
-    return provider(config.agent.model!)
-  }
-  if (openrouterKey) {
-    const modelId = config.agent.model ?? DEFAULT_MODEL
-    // The default model runs at medium effort: high cost 6x for no visible gain
-    const effort = configEffort ?? (modelId === DEFAULT_MODEL ? "medium" : undefined)
-    // Anthropic only caches prompts on an explicit directive (OpenAI and Gemini
-    // cache automatically); 1h TTL because sandbox jobs and user think-time
-    // routinely outlast the 5m default
-    const settings = {
-      ...(modelId.startsWith("anthropic/")
-        ? { cache_control: { type: "ephemeral" as const, ttl: "1h" as const } }
-        : {}),
-      ...(effort ? { reasoning: { effort } } : {})
-    }
-    return createOpenRouter({ apiKey: openrouterKey })(modelId, settings)
-  }
-  if (anthropicKey) {
-    return createAnthropic({ apiKey: anthropicKey })(config.agent.model ?? "claude-sonnet-5")
-  }
-  return null
 }
 
 /** Prints agent events as an indented console transcript. */
@@ -406,11 +366,12 @@ async function main(): Promise<number> {
       }
       case "agent": {
         const target = process.argv[3]
-        const model = buildModel(config)
-        if (!model) {
-          console.error("Set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL (AGENT_MODEL overrides the default model)")
+        const ai = await AiRuntime.load(pool, config.secretKey, config.agent.effort)
+        if (!ai.configured()) {
+          console.error("No AI provider is configured; an admin sets one in Settings, AI")
           return 1
         }
+        const model = ai.model
         const runner = new Runner()
         await runner.ensureReady()
         const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath), libraryPath: config.libraryPath }
@@ -572,11 +533,12 @@ async function main(): Promise<number> {
         // ceiling, so subset deployments find their languages present and
         // update detection stays quiet (canonical identity ignores
         // translations anyway). Rewrites each definition.json in place.
-        const model = buildModel(config)
-        if (!model) {
-          console.error("Set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL")
+        const ai = await AiRuntime.load(pool, config.secretKey, config.agent.effort)
+        if (!ai.configured()) {
+          console.error("No AI provider is configured; an admin sets one in Settings, AI")
           return 1
         }
+        const model = ai.model
         const root = path.join(process.argv[3] ?? config.libraryPath, process.argv[3] ? "" : "integrations")
         const targets = SUPPORTED_LOCALES.map(l => l.code)
         for (const id of (await readdir(root, { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)) {
@@ -606,13 +568,14 @@ async function main(): Promise<number> {
         const tiles = new TileRenderer(deps.store, config.tileCachePath, {
           maxConcurrentRenders: config.tileRenderConcurrency
         })
-        const model = buildModel(config)
+        // The agents always exist and call through the runtime's model handle,
+        // so an admin can switch the provider in Settings without a restart
+        const ai = await AiRuntime.load(pool, config.secretKey, config.agent.effort)
+        const model = ai.model
         const libraryPath = config.libraryPath
-        const agent = model
-          ? AgentService.forDesigner(pool, { ...deps, model, skillsDir: skillsDir(libraryPath), libraryPath })
-          : null
-        const dashboardAgent = model ? AgentService.forDashboard(pool, { pool, model, libraryPath }) : null
-        const assistantAgent = model ? AgentService.forAssistant(pool, { pool, model, libraryPath }) : null
+        const agent = AgentService.forDesigner(pool, { ...deps, model, skillsDir: skillsDir(libraryPath), libraryPath })
+        const dashboardAgent = AgentService.forDashboard(pool, { pool, model, libraryPath })
+        const assistantAgent = AgentService.forAssistant(pool, { pool, model, libraryPath })
         const runService = new RunService(deps)
         const basemap = new BasemapProxy(basemapConfigFrom(config))
         // Cron scheduling and queue draining need the job runner; the API
@@ -635,9 +598,8 @@ async function main(): Promise<number> {
           config.uiDistPath,
           config.libraryPath,
           assistantAgent,
-          aiProvider(config),
+          ai,
           config.viteDevUrl,
-          model,
           { store: deps.files!, maxUploadMb: config.fileUploadMaxMb }
         ).listen(
           config.port,
@@ -646,7 +608,7 @@ async function main(): Promise<number> {
             if (config.viteDevUrl) {
               console.log(`UI hot-reloads from ${config.viteDevUrl}`)
             }
-            if (!agent) console.log("No model configured; session API disabled")
+            console.log(ai.configured() ? `AI: ${ai.provider} ${ai.modelId}` : "AI: off (an admin can set a provider in Settings)")
           }
         )
         return await new Promise<number>(() => {})

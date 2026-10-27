@@ -58,21 +58,29 @@ interest — lives in the Settings page, not the environment.
 | `FILE_UPLOAD_MAX_MB` | `100` | largest accepted upload; a proxy in front must allow at least this much |
 | `LIBRARY_PATH` | `./library` | integration library root; the designer agent loads `skills/` from here |
 | `PORT` | `8080` | HTTP port |
-| `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` | (none) | enables the AI agents; without a model configured the platform runs with the session API disabled |
-| `LLM_BASE_URL` | (none) | any OpenAI-compatible endpoint (vLLM, Ollama, LiteLLM, Azure…) instead of a hosted provider; takes precedence over the keys above. Requires `AGENT_MODEL` |
-| `LLM_API_KEY` | (none) | API key for `LLM_BASE_URL`, if the endpoint needs one |
-| `AGENT_MODEL` | `openai/gpt-5.6-sol` (OpenRouter) / `claude-sonnet-5` (Anthropic) | agent model override, see Choosing a model below |
+| `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `LLM_BASE_URL`, `LLM_API_KEY`, `AGENT_MODEL` | (none) | first start only: seeds the AI settings when the database has none (see AI provider below); not read afterwards |
 | `AGENT_EFFORT` | `medium` for the default model, else model default | reasoning effort for OpenRouter models: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
-| `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets; `openssl rand -base64 32`. Only needed once definitions declare secrets |
+| `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets and the AI provider key; `openssl rand -base64 32`. Needed once definitions declare secrets or an admin saves a hosted AI provider |
 | `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/integrator-runtime-{python,node}:dev` | runtime image overrides |
 
 ```sh
 export DATABASE_URL=postgres://postgres:changeme@127.0.0.1:15432/postgres
 ```
 
+### AI provider
+
+The AI features (integration designer, Explore, dashboard builder) are off
+until an admin picks a provider in Settings, AI features: OpenRouter,
+Anthropic, or any OpenAI-compatible endpoint (vLLM, Ollama, LiteLLM, Azure…),
+which keeps all AI traffic on your own infrastructure when the endpoint is
+local. Saving sends one short test request and refuses settings the provider
+does not answer; the change applies at once, without a restart. The key is
+stored encrypted under `INTEGRATOR_SECRET_KEY` and never shown again. Switching
+provider asks every user to accept the data notice again.
+
 ### Choosing a model
 
-`AGENT_MODEL` takes any OpenRouter model id. Guidance from running the same
+The Model field takes any OpenRouter model id. Guidance from running the same
 design task across models (2026-08):
 
 - `openai/gpt-5.6-sol` (default, at medium effort): wrote the strongest code in
@@ -115,8 +123,7 @@ remain for bootstrap and for recovering a locked-out admin.
 ## Run the server
 
 ```sh
-export OPENROUTER_API_KEY=sk-or-...     # optional: enables the agent
-node apps/server/dist/cli.js serve
+node apps/server/dist/cli.js serve      # then set the AI provider in Settings
 ```
 
 Open http://127.0.0.1:8080, sign in, and you have the whole loop: integrations,
@@ -197,9 +204,10 @@ pnpm localize --translate all            # fill every missing translation
 pnpm localize --translate fr,pt          # or just these locales
 ```
 
-Translation uses the same model configuration as the agent
+Translation is a build-time tool with its own model configuration
 (`OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY`, optionally `AGENT_MODEL`), read
-from the environment or the repository-root `.env`. Extraction needs no key.
+from the environment or the repository-root `.env`; the server's AI settings
+are not involved. Extraction needs no key.
 
 Run `pnpm localize` after any change that adds or edits UI text, and commit the
 updated `localizations.json` alongside it. Strings the extractor no longer finds

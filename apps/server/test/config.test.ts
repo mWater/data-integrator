@@ -12,7 +12,7 @@ test("loadConfig: minimal valid environment applies defaults", () => {
   assert.equal(config.port, 8080)
   assert.equal(config.rasterStorePath, "./raster-store")
   assert.equal(config.secretKey, null)
-  assert.equal(config.agent.openrouterKey, null)
+  assert.equal(config.agent.effort, null)
   assert.equal(config.viteDevUrl, null)
   assert.ok(config.basemap.upstream)
 })
