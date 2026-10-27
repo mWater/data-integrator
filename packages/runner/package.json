@@ -1,6 +1,6 @@
 {
   "name": "@mwater/integration-runner",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Sandboxed job runner: podman + gVisor execution of integration jobs, with the job contract types and the runtime image tags released alongside",
   "license": "Apache-2.0",
   "type": "module",
