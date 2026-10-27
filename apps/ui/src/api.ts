@@ -270,8 +270,52 @@ export interface User {
 export interface AiInfo {
   /** Configured model provider; "custom" is an admin-run endpoint, null is none */
   provider: "openrouter" | "anthropic" | "custom" | null
+  /** Model id in use; null when AI is off */
+  model: string | null
   /** True until this user acknowledges the external-provider data notice */
   ackRequired: boolean
+}
+
+/** Model provider kinds an admin can choose. */
+export type AiProviderKind = "openrouter" | "anthropic" | "custom"
+
+/** The admin view of the AI settings; the key itself never comes back. */
+export interface AiSettings {
+  /** Provider kind; null when AI is off */
+  provider: AiProviderKind | null
+  /** Saved model id; null uses the provider default */
+  model: string | null
+  /** Custom endpoint base URL; null otherwise */
+  baseUrl: string | null
+  /** True when an API key is saved */
+  keySaved: boolean
+  /** False when the server has no INTEGRATOR_SECRET_KEY to encrypt keys with */
+  canStoreKeys: boolean
+  /** Default model per hosted provider */
+  defaults: { openrouter: string; anthropic: string }
+}
+
+/** Reads the AI settings (admins). */
+export function getAiSettings(): Promise<AiSettings> {
+  return request("/api/settings/ai")
+}
+
+/**
+ * Saves the AI provider (admins). The server sends one test request first and
+ * refuses settings the provider does not answer. A blank key keeps the saved
+ * one when the provider and endpoint are unchanged.
+ */
+export function saveAiSettings(body: { provider: AiProviderKind; model: string; baseUrl: string; apiKey: string }): Promise<AiSettings> {
+  return request("/api/settings/ai", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
+}
+
+/** Turns AI off and forgets the saved key (admins). */
+export function clearAiSettings(): Promise<AiSettings> {
+  return request("/api/settings/ai", { method: "DELETE" })
 }
 
 /** The /api/me payload: the signed-in user plus the AI wiring. */

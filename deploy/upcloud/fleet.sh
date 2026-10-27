@@ -23,7 +23,7 @@
 #
 # Environment:
 #   ADMIN_EMAIL         (setup) first admin; default clayton@mwater.co
-#   OPENROUTER_API_KEY  (setup) passed through to the boxes; unset = no designer agent
+#   OPENROUTER_API_KEY  (setup) passed through to the boxes, seeding AI Settings; unset = AI off
 #   USERS_FILE          (configure) "email password [role]" lines; default .dev/conference-users.txt
 #   IMAGES=1            (push) also rebuild the sandbox images
 #   LOG_DIR             default .dev/fleet-logs

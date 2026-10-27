@@ -39,6 +39,21 @@ export function ensureAiAck(): Promise<boolean> {
   })
 }
 
+/** What each AI request can carry, and what it never does. */
+export function AiDataSent() {
+  return (
+    <>
+      <ul>
+        <li>{T`your messages`}</li>
+        <li>{T`table and column names, and the deployment's area of interest`}</li>
+        <li>{T`SQL and samples of query results`}</li>
+        <li>{T`integration code and run logs`}</li>
+      </ul>
+      <p>{T`Passwords, API keys, and stored secret values are never sent.`}</p>
+    </>
+  )
+}
+
 /** Settles every waiting send with the user's choice. */
 function settle(ok: boolean): void {
   if (ok && info) info = { ...info, ackRequired: false }
@@ -93,13 +108,7 @@ export function AiAckHost() {
         <p>
           {T`The AI features (integration designer, Explore, and dashboard builder) work by sending context to an external model provider, ${provider}. Each request can include:`}
         </p>
-        <ul>
-          <li>{T`your messages`}</li>
-          <li>{T`table and column names, and the deployment's area of interest`}</li>
-          <li>{T`SQL and samples of query results`}</li>
-          <li>{T`integration code and run logs`}</li>
-        </ul>
-        <p>{T`Passwords, API keys, and stored secret values are never sent.`}</p>
+        <AiDataSent />
         <p>
           <a href="#/ai-privacy" target="_blank" rel="noreferrer">{T`How AI features handle data`}</a>
         </p>

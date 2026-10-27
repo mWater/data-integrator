@@ -74,6 +74,7 @@ import {
 } from "./auth.js"
 import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
+import { AiRuntime, aiSettingsView, buildModel, parseAiConfig, saveAiConfig, testModel } from "./aiSettings.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
 import { createManagedUser, listUsers, resetPassword, setDisabled, setRole } from "./users.js"
@@ -153,6 +154,8 @@ const COOKIE_MAX_AGE = 30 * 24 * 3600
  * streams, and the built SPA.
  * @param agent - Session service; null when no model is configured
  * @param runs - Manual-run service; null when the host has no job runner
+ * @param ai - Live AI settings; while AI is off the session services are
+ *   withheld. Null leaves the services as given, with no provider
  * @param viteDevUrl - Live Vite origin; null serves the built SPA from dist
  */
 export function createApiServer(
@@ -166,16 +169,19 @@ export function createApiServer(
   uiDistPath: string | null = null,
   libraryPath: string | null = null,
   assistantAgent: AgentService | null = null,
-  aiProvider: AiProvider | null = null,
+  ai: AiRuntime | null = null,
   viteDevUrl: string | null = null,
-  model: LanguageModel | null = null,
   files: FileApiOptions | null = null
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
     if (!UPLOAD_PATH.test((req.url ?? "").split("?")[0])) limitRequestTime(req, res)
     try {
-      await route(pool, tiles, agent, runs, store, dashboardAgent, basemap, uiDist, libraryPath, assistantAgent, aiProvider, viteDevUrl, model, files, req, res)
+      // Read per request: an admin can switch the provider at any time
+      const live = ai === null || ai.configured()
+      const model = ai?.configured() ? ai.model : null
+      await route(pool, tiles, live ? agent : null, runs, store, live ? dashboardAgent : null, basemap, uiDist, libraryPath,
+        live ? assistantAgent : null, ai?.provider ?? null, viteDevUrl, model, files, ai, req, res)
     } catch (err) {
       if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -230,6 +236,7 @@ async function route(
   viteDevUrl: string | null,
   model: LanguageModel | null,
   files: FileApiOptions | null,
+  ai: AiRuntime | null,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -330,6 +337,7 @@ async function route(
       user: { id: user.id, email: user.email, role: user.role },
       ai: {
         provider: aiProvider,
+        model: ai?.modelId ?? null,
         ackRequired: hosted && !(await getAiAcknowledged(pool, user.id))
       }
     })
@@ -524,11 +532,63 @@ async function route(
       return
     }
     if (!model) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
       return
     }
     json(res, 202, { catalogTranslation: startCatalogTranslation(pool, model, await getLocales(pool)) })
     return
+  }
+
+  // Model provider, key and model: admins only; the key is write-only
+  if (pathname === "/api/settings/ai") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change the AI provider" })
+      return
+    }
+    if (!ai) {
+      json(res, 503, { error: "AI settings are not available on this server" })
+      return
+    }
+    let secretKey: Buffer | null = null
+    try {
+      secretKey = loadSecretKey()
+    } catch {
+      secretKey = null
+    }
+    if (req.method === "GET") {
+      json(res, 200, aiSettingsView(ai, secretKey))
+      return
+    }
+    if (req.method === "DELETE") {
+      await saveAiConfig(pool, secretKey, null)
+      ai.apply(null)
+      json(res, 200, aiSettingsView(ai, secretKey))
+      return
+    }
+    if (req.method === "PUT") {
+      let next
+      try {
+        next = parseAiConfig(await readJsonBody(req), ai.current)
+        if (next.apiKey && !secretKey) throw new Error("Set INTEGRATOR_SECRET_KEY on the server before saving an API key")
+      } catch (err) {
+        json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+        return
+      }
+      try {
+        await testModel(buildModel(next, null))
+      } catch (err) {
+        json(res, 400, { error: `The provider did not answer: ${err instanceof Error ? err.message : String(err)}`, code: "ai_test_failed" })
+        return
+      }
+      const previous = ai.provider
+      await saveAiConfig(pool, secretKey, next)
+      ai.apply(next)
+      // The data notice names the provider, so a different hosted provider
+      // asks everyone again
+      if (previous !== next.provider) await pool.query("UPDATE app.users SET ai_acknowledged_at = NULL")
+      json(res, 200, aiSettingsView(ai, secretKey))
+      return
+    }
   }
 
   // One-time acknowledgement that AI features send data to the model provider
@@ -1610,7 +1670,7 @@ async function routeSessions(
     }
     const service = kind === "dashboard" ? dashboardAgent : kind === "assistant" ? assistantAgent : agent
     if (!service) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
       return
     }
     if (await ackMissing()) return
@@ -1622,7 +1682,7 @@ async function routeSessions(
   }
 
   if (!agent && !dashboardAgent && !assistantAgent) {
-    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+    json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
     return
   }
 
@@ -1670,7 +1730,7 @@ async function routeSessions(
     // Discard Changes: a dashboard draft is its creator's (or an admin's) to
     // throw away; saved versions live in app.dashboards and are untouched
     if (!dashboardAgent) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
       return
     }
     const deleted = await dashboardAgent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
@@ -1701,7 +1761,7 @@ async function routeSessions(
     // integration carries its id, which frees the id it claimed; once one
     // does, deleting the integration is what removes it
     if (!agent) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
       return
     }
     if (agent.isRunning(sessionId)) {
@@ -1725,7 +1785,7 @@ async function routeSessions(
       return
     }
     if (!assistantAgent) {
-      json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+      json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
       return
     }
     const deleted = await assistantAgent.deleteSession(sessionId, user.role === "admin" ? undefined : user.id)
@@ -1736,7 +1796,7 @@ async function routeSessions(
 
   const agentService = ownerKind === "dashboard" ? dashboardAgent : ownerKind === "assistant" ? assistantAgent : agent
   if (!agentService) {
-    json(res, 503, { error: "No model configured (set OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or LLM_BASE_URL)" })
+    json(res, 503, { error: "AI features are off: an admin sets the model provider in Settings" })
     return
   }
 

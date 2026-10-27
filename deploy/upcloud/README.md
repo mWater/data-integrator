@@ -51,8 +51,9 @@ CLOUDFLARE_TUNNEL_TOKEN=eyJ... \
   bash /opt/data-integrator/deploy/upcloud/setup.sh
 ```
 
-The API key is optional; without it everything except the designer agent
-works. Without the tunnel token the server is reachable only over SSH
+The API key is optional; without it everything except the AI features
+works. The first start copies it into Settings, AI features, where an admin
+can change the provider later. Without the tunnel token the server is reachable only over SSH
 (`ssh -L 8080:127.0.0.1:8080 root@<ip>`, then http://localhost:8080) until
 `cloudflare-tunnel.sh` runs. The script finishes by printing the generated
 admin password.
