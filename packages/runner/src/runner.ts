@@ -113,17 +113,15 @@ export class Runner {
   }
 
   /**
-   * Re-verifies the job network before a launch: restarts the keeper (or
-   * rebuilds it) and re-applies the egress rules. A keeper that died while
-   * idle takes the netns and its drop rules with it, and the next job would
-   * otherwise get a fresh netns with open egress.
+   * Re-verifies the job network before a launch, under the network lock:
+   * restarts the keeper (or rebuilds it) and re-applies the egress rules. A
+   * keeper that died while idle takes the netns and its drop rules with it,
+   * and the next job would otherwise get a fresh netns with open egress.
    */
-  private prepareNetwork(): Promise<void> {
-    return this.withNetworkLock(async () => {
-      const keeper = `${this.opts.network}-keeper`
-      if (await this.podmanOk(["start", keeper])) await this.ensureEgress(false)
-      else await this.prepareStack(false)
-    })
+  private async refreshNetwork(): Promise<void> {
+    const keeper = `${this.opts.network}-keeper`
+    if (await this.podmanOk(["start", keeper])) await this.ensureEgress(false)
+    else await this.prepareStack(false)
   }
 
   /** Runs network changes one at a time across this runner's concurrent jobs. */
@@ -131,6 +129,17 @@ export class Runner {
     const next = this.networkLock.then(fn)
     this.networkLock = next.then(() => {}, () => {})
     return next
+  }
+
+  /** Takes the network lock until the returned release is called, for a step that spans other work. */
+  private acquireNetworkLock(): Promise<() => void> {
+    let release!: () => void
+    const held = new Promise<void>(resolve => {
+      release = resolve
+    })
+    const acquired = this.networkLock.then(() => release)
+    this.networkLock = acquired.then(() => held)
+    return acquired
   }
 
   /**
@@ -171,27 +180,27 @@ export class Runner {
     }
   }
 
-  /**
-   * Meters a starting job's traffic, with an optional quota. Waits for the
-   * container's address on the job network, then routes it to a fresh counter.
-   */
-  private async attachMeter(name: string, quotaMb: number | undefined, exited: () => boolean): Promise<Meter> {
+  /** Waits for a starting job container's address on the job network. */
+  private async waitForAddress(name: string, exited: () => boolean): Promise<string> {
     const deadline = Date.now() + SCOPE_WAIT_MS
-    let address = ""
     for (;;) {
       try {
         const networks = JSON.parse(
           await this.podman(["inspect", "--format", "{{json .NetworkSettings.Networks}}", name])
         ) as Record<string, { IPAddress?: string }>
-        address = networks[this.opts.network]?.IPAddress ?? ""
+        const address = networks[this.opts.network]?.IPAddress ?? ""
+        if (address) return address
       } catch {
         // Not created yet
       }
-      if (address) break
-      if (exited()) throw new Error("job exited before it could be metered")
+      if (exited()) throw new Error("job exited before it had a network address")
       if (Date.now() > deadline) throw new Error(`job container ${name} has no address on ${this.opts.network}`)
       await new Promise(resolve => setTimeout(resolve, 50))
     }
+  }
+
+  /** Meters a starting job's traffic at its address, with an optional quota, by routing it to a fresh counter. */
+  private async attachMeter(name: string, address: string, quotaMb: number | undefined): Promise<Meter> {
     const meter: Meter = { id: name.replace(/[^a-z0-9]/g, "_"), address, quotaMb }
     await this.withNetworkLock(async () => {
       const replace = (await this.meterElementTarget(address)) !== null
@@ -257,10 +266,23 @@ export class Runner {
     // finds the sandbox without contending for the container lock
     const stateDir = await mkdtemp(path.join(tmpdir(), "integrator-job-"))
     const conmonPidFile = path.join(stateDir, "conmon.pid")
-    const args = ["run", "--rm", "-i", "--name", name, "--conmon-pidfile", conmonPidFile]
+    const args = ["run", "-i", "--name", name, "--conmon-pidfile", conmonPidFile]
 
+    // Rootless podman (4.9 at least) can leave a container with no network at all when its
+    // network is set up while another job container's is set up or torn down. So a networked
+    // job holds the network lock from before launch until it has its address, and is removed
+    // under the lock after it exits (not by --rm, whose teardown would run unlocked).
     // Fails closed: a job is never launched onto a network whose rules are unverified
-    if (spec.network !== false) await this.prepareNetwork()
+    let releaseNetwork: (() => void) | null = null
+    if (spec.network !== false) {
+      releaseNetwork = await this.acquireNetworkLock()
+      try {
+        await this.refreshNetwork()
+      } catch (err) {
+        releaseNetwork()
+        throw err
+      }
+    }
 
     if (this.opts.runscPath) {
       args.push("--runtime", this.opts.runscPath, "--runtime-flag=ignore-cgroups")
@@ -320,6 +342,12 @@ export class Runner {
         resolve(null)
       })
     })
+    // Runs alongside the scope cap; the lock is released once the address is known or never will be
+    const addressed: Promise<{ address: string } | { error: Error }> | null = releaseNetwork
+      ? this.waitForAddress(name, () => exited)
+          .then(address => ({ address }), (error: Error) => ({ error }))
+          .finally(releaseNetwork)
+      : null
 
     let stdout = ""
     let stdoutTruncated = false
@@ -351,7 +379,7 @@ export class Runner {
     let timedOut = false
     const timer = setTimeout(() => {
       timedOut = true
-      // --rm cleans up; rm -f both stops and removes if podman outlives the child
+      // rm -f both stops and removes, even if podman outlives the child
       execFile(this.opts.podmanPath, ["rm", "-f", name], () => {})
     }, limits.timeoutMs)
 
@@ -401,9 +429,11 @@ export class Runner {
     }
     // Metered from before the payload is written, so no traffic escapes the count
     let meter: Meter | null = null
-    if (abortedReason === null && spec.network !== false && this.opts.egress === "public-only") {
+    if (abortedReason === null && addressed !== null && this.opts.egress === "public-only") {
       try {
-        meter = await this.attachMeter(name, limits.egressMb, () => exited)
+        const outcome = await addressed
+        if ("error" in outcome) throw outcome.error
+        meter = await this.attachMeter(name, outcome.address, limits.egressMb)
       } catch (err) {
         if (!exited) {
           handle.abort(`network meter could not be attached: ${(err as Error).message}`)
@@ -463,6 +493,12 @@ export class Runner {
     if (peakTimer !== null) clearInterval(peakTimer)
     if (lineBuffer && hooks?.onStderrLine) hooks.onStderrLine(lineBuffer)
     await rm(stateDir, { recursive: true, force: true })
+    if (addressed !== null) {
+      await addressed
+      await this.withNetworkLock(() => this.podmanOk(["rm", "-f", name]))
+    } else {
+      await this.podmanOk(["rm", "-f", name])
+    }
 
     let egressBytes: number | undefined
     if (meter) {

@@ -304,6 +304,29 @@ test("network:false gives no network at all", { skip: !NET_TESTS }, async () => 
   assert.equal(result.status, "failed")
 }, { timeout: 30_000 })
 
+test("overlapping networked jobs all get a network, and every job container is removed", { skip: !NET_TESTS }, async () => {
+  // Batches back to back, so starts overlap other jobs' starts and teardowns
+  const label = `overlap-${Date.now()}`
+  for (let round = 0; round < 8; round++) {
+    const results = await Promise.all(
+      [1, 2, 3].map(() =>
+        runner.run({
+          image: ALPINE,
+          payload: null,
+          labels: { "integrator-test": label },
+          // Retries ride out a flaky remote; a job left with no network fails every attempt
+          command: ["sh", "-c", "cat > /dev/null; for i in 1 2 3; do wget -q -T 10 -O /dev/null https://example.com && exit 0; sleep 2; done; exit 1"]
+        })
+      )
+    )
+    for (const result of results) assert.equal(result.status, "succeeded", `round ${round}: ${result.stderrTail}`)
+  }
+  const offline = await runner.run({ image: ALPINE, payload: null, network: false, labels: { "integrator-test": label }, command: ["true"] })
+  assert.equal(offline.status, "succeeded")
+  const { stdout } = await execFileP("podman", ["ps", "-a", "-q", "--filter", `label=integrator-test=${label}`])
+  assert.equal(stdout.trim(), "", "no job container is left behind")
+}, { timeout: 180_000 })
+
 test("GDAL pipeline under gVisor writes a COG artifact", { skip: !HAS_GDAL_IMG }, async () => {
   const outDir = await mkdtemp(path.join(tmpdir(), "job-gdal-"))
   const script =
