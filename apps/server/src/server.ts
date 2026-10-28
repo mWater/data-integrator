@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { BandSpec, IntegrationDefinition } from "@data-integrator/definitions"
 import { TileRenderer } from "./tiles.js"
-import { json, readJsonBody, sendFile } from "./http.js"
+import { ClientError, json, readJsonBody, sendFile } from "./http.js"
 import { snapshotSources } from "./catalog.js"
 import { AgentService, MessageRejectedError, SessionAttachment, SessionDeleteRefusedError } from "./agent/service.js"
 import { saveDashboardSession } from "./agent/dashboard.js"
@@ -50,6 +50,7 @@ import { refreshAoi } from "./aoi.js"
 import { getLocales, LOCALES_KEY, parseLocales,
   DEFAULT_AOI_KEY,
   getDefaultAoi,
+  DEFAULT_SITE_TITLE,
   getSiteTitle,
   parseAoi,
   parseDefaultAoi,
@@ -74,6 +75,8 @@ import {
 } from "./auth.js"
 import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
+import { parseItemQuery, STAC_CONFORMANCE, stacCollection, stacCollections, stacItem, stacItems, stacLanding } from "./stac.js"
+import { aiUsageToday, getAiLimits, parseAiLimits, saveAiLimits } from "./aiLimits.js"
 import { AiRuntime, aiSettingsView, buildModel, parseAiConfig, saveAiConfig, testModel } from "./aiSettings.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
@@ -101,11 +104,11 @@ const DEFAULT_UI_DIST = path.join(STATIC_DIR, "..", "..", "ui", "dist")
  * unambiguous because band ids must start with a letter and z never can.
  */
 const TILE_PATH =
-  /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
+  /^\/tiles\/([a-z][a-z0-9_]*)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
 
 /** Matches /api/sessions/:id and captures the trailing subresource. */
 const SESSION_PATH =
-  /^\/api\/sessions\/([0-9a-f-]+)(\/messages|\/events|\/stop|\/save|\/files\/[^/]+|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
+  /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/messages|\/events|\/stop|\/save|\/files\/[^/]+|\/queries\/[a-z][a-z0-9_]*|\/secrets\/[A-Za-z_][A-Za-z0-9_]{0,63}\/check|\/tiles\/[a-z][a-z0-9_]*\/\d+\/\d+\/\d+\.mvt)?$/
 
 /** Matches /api/dashboards/:id/tiles/:name/:z/:x/:y.mvt (stored tile queries). */
 const DASHBOARD_TILE_PATH =
@@ -113,7 +116,10 @@ const DASHBOARD_TILE_PATH =
 
 /** Matches /api/dashboards/:id/rastertiles/:layer/:snapshot[/:band]/:z/:x/:y.png (declared raster layers). */
 const DASHBOARD_RASTER_TILE_PATH =
-  /^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/rastertiles\/([a-z][a-z0-9_]*)\/([0-9a-f-]+)(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
+  /^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/rastertiles\/([a-z][a-z0-9_]*)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/([a-z][a-z0-9_]*))?\/(\d+)\/(\d+)\/(\d+)\.png$/
+
+/** A canonical lowercase UUID (snapshot, run and session ids). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Content type of encoded vector tiles. */
 const MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile"
@@ -183,7 +189,7 @@ export function createApiServer(
       await route(pool, tiles, live ? agent : null, runs, store, live ? dashboardAgent : null, basemap, uiDist, libraryPath,
         live ? assistantAgent : null, ai?.provider ?? null, viteDevUrl, model, files, ai, req, res)
     } catch (err) {
-      if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" })
+      if (!res.headersSent) res.writeHead(err instanceof ClientError ? err.status : 500, { "content-type": "application/json" })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
     }
   }
@@ -409,8 +415,8 @@ async function route(
     json(res, 200, { secrets: await listSecrets(pool, intSecretsMatch[1]) })
     return
   }
-  // Secret names are whatever the definition declares; the designer favours
-  // environment-variable style (TATIRANO_API_KEY), the library lowercase
+  // Secret names are whatever the definition declares: lowercase snake_case
+  // by convention, environment-variable style accepted
   const intSecretMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/secrets\/([A-Za-z_][A-Za-z0-9_]{0,63})$/)
   if (intSecretMatch && (req.method === "PUT" || req.method === "DELETE")) {
     const [, integrationId, name] = intSecretMatch
@@ -591,6 +597,27 @@ async function route(
     }
   }
 
+  // Daily AI token caps: admins only
+  if (pathname === "/api/settings/ai_limits") {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change AI limits" })
+      return
+    }
+    if (req.method === "PUT") {
+      try {
+        await saveAiLimits(pool, parseAiLimits(await readJsonBody(req)))
+      } catch (err) {
+        json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+        return
+      }
+    } else if (req.method !== "GET") {
+      json(res, 405, { error: "method not allowed" })
+      return
+    }
+    json(res, 200, { limits: await getAiLimits(pool), usedToday: (await aiUsageToday(pool, null)).deployment })
+    return
+  }
+
   // One-time acknowledgement that AI features send data to the model provider
   if (pathname === "/api/me/ai-acknowledge" && req.method === "POST") {
     await acknowledgeAi(pool, user.id)
@@ -694,6 +721,10 @@ async function route(
         return
       }
       const expiresDays = body.expiresDays === undefined ? undefined : Number(body.expiresDays)
+      if (expiresDays !== undefined && (!Number.isInteger(expiresDays) || expiresDays < 1)) {
+        json(res, 400, { error: "expiresDays must be a whole number of days, at least 1" })
+        return
+      }
       const bearer = await createApiToken(pool, user.id, name, expiresDays)
       json(res, 201, { token: bearer, note: "Shown once; store it now" })
     } else {
@@ -771,7 +802,7 @@ async function route(
 
   // One file of a snapshot; ?source=<ordinal> picks among a multi-file
   // snapshot's files (default the first). Empty snapshots have nothing to send.
-  const downloadMatch = pathname.match(/^\/api\/snapshots\/([0-9a-f-]+)\/download$/)
+  const downloadMatch = pathname.match(/^\/api\/snapshots\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/download$/)
   if (downloadMatch && store) {
     const ordinal = Number(searchParams.get("source") ?? "0")
     const source = await pool.query(
@@ -797,6 +828,56 @@ async function route(
     })
     // A catalogued file missing from the store (deleted, or an unmounted store)
     if (!sent) json(res, 404, { error: "snapshot file is missing from the raster store" })
+    return
+  }
+
+  // STAC view of the raster catalog (stac.ts). Links are absolute, built from
+  // the request's host as the client reached it (through any proxy).
+  if (pathname === "/api/stac" || pathname.startsWith("/api/stac/")) {
+    if (req.method !== "GET") {
+      json(res, 405, { error: "GET only" })
+      return
+    }
+    const proto = req.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+    const host = String(req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost")
+    const apiBase = `${proto}://${host}/api`
+    const base = `${apiBase}/stac`
+    const lang = searchParams.get("lang")
+    const locale = lang && SUPPORTED_LOCALES.some(l => l.code === lang) ? lang : "en"
+    const sub = pathname.slice("/api/stac".length)
+    const itemsMatch = sub.match(/^\/collections\/([a-z][a-z0-9_]*)\/items$/)
+    const itemMatch = sub.match(/^\/collections\/([a-z][a-z0-9_]*)\/items\/([0-9a-f-]{36})$/)
+    const collectionMatch = sub.match(/^\/collections\/([a-z][a-z0-9_]*)$/)
+    let body: object | null = null
+    let type = "application/json"
+    if (sub === "" || sub === "/") {
+      body = await stacLanding(pool, base, (await getSiteTitle(pool)) ?? DEFAULT_SITE_TITLE)
+    } else if (sub === "/conformance") {
+      body = { conformsTo: STAC_CONFORMANCE }
+    } else if (sub === "/collections") {
+      body = await stacCollections(pool, base, locale)
+    } else if (collectionMatch) {
+      body = await stacCollection(pool, base, locale, collectionMatch[1])
+    } else if (itemsMatch) {
+      let query
+      try {
+        query = parseItemQuery(searchParams)
+      } catch (err) {
+        json(res, 400, { code: "InvalidParameterValue", description: err instanceof Error ? err.message : String(err) })
+        return
+      }
+      body = await stacItems(pool, base, apiBase, itemsMatch[1], query)
+      type = "application/geo+json"
+    } else if (itemMatch) {
+      body = await stacItem(pool, base, apiBase, itemMatch[1], itemMatch[2])
+      type = "application/geo+json"
+    }
+    if (body === null) {
+      json(res, 404, { code: "NotFound", description: "Not found" })
+      return
+    }
+    res.writeHead(200, { "content-type": type })
+    res.end(JSON.stringify(body))
     return
   }
 
@@ -893,7 +974,7 @@ async function route(
     const lon = Number(searchParams.get("lon"))
     const lat = Number(searchParams.get("lat"))
     const snapshotId = searchParams.get("snapshot")
-    if (!snapshotId || !Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+    if (!snapshotId || !UUID.test(snapshotId) || !Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
       json(res, 400, { error: "snapshot, lon, and lat are required (WGS84)" })
       return
     }
@@ -1018,7 +1099,9 @@ async function route(
   }
 
   // Export: the definition is the whole integration, so sharing is one JSON
-  // file. The AOI stays home (deployment-owned); the importer's applies.
+  // file. A concrete AOI stays home (deployment-owned) and the importer's
+  // default applies; an explicit null (full extent) travels, since it is a
+  // property of the source rather than of this deployment.
   const exportMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/export$/)
   if (exportMatch && req.method === "GET") {
     const row = await pool.query("SELECT definition FROM app.integrations WHERE id = $1", [exportMatch[1]])
@@ -1026,7 +1109,8 @@ async function route(
       json(res, 404, { error: "unknown integration" })
       return
     }
-    const { aoi: _aoi, ...definition } = row.rows[0].definition
+    const { aoi, ...rest } = row.rows[0].definition
+    const definition = aoi === null ? { ...rest, aoi: null } : rest
     res.writeHead(200, {
       "content-type": "application/json",
       "content-disposition": `attachment; filename="${exportMatch[1]}.integration.json"`
@@ -1055,13 +1139,12 @@ async function route(
     let version: number
     try {
       const definition = wrapDefinitionStrings(body as unknown as IntegrationDefinition, "en")
-      version = (await installIntegration(pool, definition, "ready", user.id)).version
+      version = (await installIntegration(pool, definition, "ready", user.id, false)).version
     } catch (err) {
       // Validation failures and destination-ownership conflicts alike
       json(res, 400, { error: err instanceof Error ? err.message : String(err) })
       return
     }
-    await pool.query("UPDATE app.integrations SET enabled = false WHERE id = $1", [body.id])
     json(res, 200, { id: body.id, version, enabled: false })
     return
   }
@@ -1429,13 +1512,14 @@ async function routeDashboardView(
   }
 
   if (sub === undefined) {
-    // Source and SQL are editor-facing; anonymous viewers get only what the
-    // frame needs to mount
+    // Source and SQL are editor-facing, and who published is personal data;
+    // anonymous viewers get only what the frame needs to mount
     if (user) json(res, 200, detail)
     else {
-      const { source, queries, ...viewable } = detail
+      const { source, queries, publishedBy, ...viewable } = detail
       void source
       void queries
+      void publishedBy
       json(res, 200, viewable)
     }
     return true
@@ -1625,8 +1709,9 @@ async function serveRasterTile(
     res.destroy()
     return
   }
-  // Snapshot-pinned URL: content never changes, cache hard
-  res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" })
+  // Snapshot-pinned URL: content never changes, cache hard, but only in the
+  // viewer's browser: tiles are access-controlled, so shared caches must not keep them
+  res.writeHead(200, { "content-type": "image/png", "cache-control": "private, max-age=31536000, immutable" })
   res.end(png)
 }
 

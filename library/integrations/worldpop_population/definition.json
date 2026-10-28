@@ -134,5 +134,14 @@
       },
       "temporality": "time-series"
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "population",
+        "field": "population",
+        "min": 0
+      }
+    ]
+  }
 }

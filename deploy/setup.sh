@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
-# One-shot provisioning for a throwaway test server on a fresh Ubuntu 24.04 VM
-# (written for UpCloud, but nothing here is UpCloud-specific). Installs the full
-# stack from Quickstart.md and leaves the server running as a systemd service.
-# The app is published only through a Cloudflare tunnel (cloudflare-tunnel.sh),
-# so no web ports are opened.
+# Provisions Data Integrator on a fresh Ubuntu 24.04 host as a systemd service.
+# Run as root on the host; safe to re-run (keeps the env file and secret key):
+#   ADMIN_EMAIL=you@example.org PUBLIC_HOSTNAME=integrator.example.org bash setup.sh
 #
-# Run as root:
-#   ADMIN_EMAIL=you@example.org ./setup.sh
+# Installs the stack from docs/Quickstart.md: Node 22 + pnpm, GDAL, rootless podman with
+# the gVisor sandbox, PostgreSQL 16 + PostGIS. The source comes from REPO_URL,
+# or from a checkout already copied to /opt/data-integrator, e.g. from your machine:
+#   rsync -a --exclude node_modules --exclude .git/hooks ./ root@<host>:/opt/data-integrator/
 #
 # Configuration (environment variables):
 #   ADMIN_EMAIL          (required) first admin account; password is printed once at the end
+#   PUBLIC_HOSTNAME      (optional) DNS name already pointing at this host; installs
+#                        Caddy as the TLS reverse proxy (Let's Encrypt certificate)
+#                        and opens 80/443. Without it only SSH is reachable
 #   OPENROUTER_API_KEY   (optional) seeds the AI provider in Settings on first start
 #   ANTHROPIC_API_KEY    (optional) alternative provider, same seeding
-#   REPO_URL             (optional) git URL to clone if /opt/data-integrator doesn't exist
-#                        yet; for a private repo, rsync your checkout there instead
-#   REPO_REF             (optional) branch/tag to clone, default main
+#   REPO_URL             git URL cloned when /opt/data-integrator holds no checkout;
+#                        default https://github.com/mWater/data-integrator.git; set
+#                        it empty to insist on a copied checkout
+#   REPO_REF             branch/tag to clone, default main
 #   GVISOR_RELEASE       default 20260803.0; gVisor release whose runsc is installed
-#   CLOUDFLARE_TUNNEL_TOKEN (optional) installs the Cloudflare tunnel at the end;
-#                        without it, run cloudflare-tunnel.sh later
-#   SETUP_FIREWALL       default 1; ufw allowing only SSH (the app itself listens
-#                        on all interfaces, so this keeps :8080 private)
+#   SETUP_FIREWALL       default 1; ufw allowing only SSH (plus 80/443 with
+#                        PUBLIC_HOSTNAME). The app listens on all interfaces, so
+#                        this keeps plain-HTTP :8080 private
 set -euo pipefail
 
 ADMIN_EMAIL=${ADMIN_EMAIL:?set ADMIN_EMAIL=you@example.org}
+PUBLIC_HOSTNAME=${PUBLIC_HOSTNAME:-}
+REPO_URL=${REPO_URL-https://github.com/mWater/data-integrator.git}
 REPO_REF=${REPO_REF:-main}
 SETUP_FIREWALL=${SETUP_FIREWALL:-1}
 APP_DIR=/opt/data-integrator
@@ -32,9 +37,14 @@ ENV_FILE=/etc/data-integrator/env
 GVISOR_RELEASE=${GVISOR_RELEASE:-20260803.0}
 export DEBIAN_FRONTEND=noninteractive
 
+if [ -n "$PUBLIC_HOSTNAME" ] && ! [[ $PUBLIC_HOSTNAME =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
+  echo "ERROR: PUBLIC_HOSTNAME must be a bare DNS name (no scheme, port or path), got '$PUBLIC_HOSTNAME'" >&2
+  exit 1
+fi
+
 echo "==> Base packages"
 apt-get update -q
-apt-get install -qy curl git ca-certificates gnupg openssl gdal-bin \
+apt-get install -qy curl git ca-certificates gnupg openssl gdal-bin acl \
   podman uidmap slirp4netns passt nftables \
   postgresql-16 postgresql-16-postgis-3
 
@@ -74,15 +84,20 @@ if [ -f "$ENV_FILE" ]; then
   fi
 fi
 DB_PASS=$(openssl rand -hex 16)
+DATABASE_URL="postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='integrator'" | grep -q 1 ||
-  sudo -u postgres psql -c "CREATE USER integrator PASSWORD '${DB_PASS}'"
-sudo -u postgres psql -c "ALTER USER integrator PASSWORD '${DB_PASS}'"
+  sudo -u postgres psql -c "CREATE USER integrator"
+# The password goes over stdin: a command-line argument shows in process listings
+sudo -u postgres psql -q -v ON_ERROR_STOP=1 <<SQL
+ALTER USER integrator PASSWORD '${DB_PASS}';
+SQL
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='integrator'" | grep -q 1 ||
   sudo -u postgres createdb -O integrator integrator
 sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis"
 # Migrations run as the unprivileged integrator user, so the superuser-only parts
-# happen here: postgis_raster is not a trusted extension, and 0006 needs the
-# sql_engine role to exist (ADMIN OPTION lets that migration grant it onward).
+# happen here: postgis_raster is not a trusted extension, and the schema
+# migration needs the sql_engine role to exist (ADMIN OPTION lets it grant
+# the role onward).
 sudo -u postgres psql -d integrator -c "CREATE EXTENSION IF NOT EXISTS postgis_raster"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='sql_engine'" | grep -q 1 ||
   sudo -u postgres psql -c "CREATE ROLE sql_engine NOLOGIN"
@@ -94,13 +109,13 @@ APP_UID=$(id -u "$APP_USER")
 loginctl enable-linger "$APP_USER"
 
 echo "==> Source tree"
-if [ ! -d "$APP_DIR/.git" ]; then
-  if [ -n "${REPO_URL:-}" ]; then
+if [ ! -f "$APP_DIR/package.json" ]; then
+  if [ -n "$REPO_URL" ]; then
     git clone --branch "$REPO_REF" "$REPO_URL" "$APP_DIR"
   else
-    echo "ERROR: $APP_DIR is not a git checkout and REPO_URL is not set." >&2
+    echo "ERROR: $APP_DIR holds no checkout and REPO_URL is empty." >&2
     echo "Either set REPO_URL, or rsync a checkout to $APP_DIR first, e.g. from your machine:" >&2
-    echo "  rsync -a --exclude node_modules --exclude .git/hooks ./ root@<ip>:$APP_DIR/" >&2
+    echo "  rsync -a --exclude node_modules --exclude .git/hooks ./ root@<host>:$APP_DIR/" >&2
     exit 1
   fi
 fi
@@ -127,9 +142,12 @@ setfacl -R -d -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
 setfacl -R -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
 sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on" || true
 sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'" || true
+# Written with builtins only and created 0640 before any secret goes in, so
+# neither the DB password nor the secret key is ever world-readable or in argv
 if [ ! -f "$ENV_FILE" ]; then
+  install -m 640 -o root -g "$APP_USER" /dev/null "$ENV_FILE"
   cat > "$ENV_FILE" <<EOF
-DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator
+DATABASE_URL=${DATABASE_URL}
 PORT=8080
 RASTER_STORE_PATH=${DATA_DIR}/raster-store
 WORK_ROOT=${DATA_DIR}/work
@@ -137,13 +155,20 @@ TILE_CACHE_PATH=${DATA_DIR}/tile-cache
 FILE_STORE_PATH=${DATA_DIR}/file-store
 INTEGRATOR_SECRET_KEY=$(openssl rand -base64 32)
 EOF
-  [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" >> "$ENV_FILE"
-  [ -n "${ANTHROPIC_API_KEY:-}" ] && echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" >> "$ENV_FILE"
+  if [ -n "${OPENROUTER_API_KEY:-}" ]; then echo "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" >> "$ENV_FILE"; fi
+  if [ -n "${ANTHROPIC_API_KEY:-}" ]; then echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" >> "$ENV_FILE"; fi
 else
-  # keep the existing file (and its secret key), but refresh the DB password we just set
-  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgres://integrator:${DB_PASS}@127.0.0.1:5432/integrator|" "$ENV_FILE"
+  # Keep the existing file (and its secret key), but refresh the DB password just set
+  tmp_env=$(mktemp "$ENV_FILE.XXXXXX")
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      DATABASE_URL=*) printf 'DATABASE_URL=%s\n' "$DATABASE_URL" ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done < "$ENV_FILE" > "$tmp_env"
   # Uploaded files belong with the data, not under the checkout the service runs in
-  grep -q '^FILE_STORE_PATH=' "$ENV_FILE" || echo "FILE_STORE_PATH=${DATA_DIR}/file-store" >> "$ENV_FILE"
+  grep -q '^FILE_STORE_PATH=' "$tmp_env" || echo "FILE_STORE_PATH=${DATA_DIR}/file-store" >> "$tmp_env"
+  mv "$tmp_env" "$ENV_FILE"
 fi
 chown root:"$APP_USER" "$ENV_FILE"
 chmod 640 "$ENV_FILE"
@@ -159,7 +184,7 @@ ADMIN_OUTPUT=$(run_cli user add "$ADMIN_EMAIL" admin 2>&1) || ADMIN_OUTPUT="(use
 echo "==> systemd service"
 cat > /etc/systemd/system/data-integrator.service <<EOF
 [Unit]
-Description=mWater Data Integrator test server
+Description=Data Integrator
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -176,29 +201,63 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-APP_USER="$APP_USER" bash "$APP_DIR/deploy/upcloud/harden.sh"
-systemctl enable --now data-integrator
+APP_USER="$APP_USER" bash "$APP_DIR/deploy/harden.sh"
+systemctl enable data-integrator
+# Restart rather than start: on a re-run the DB password above has changed
+systemctl restart data-integrator
+
+# The port the app listens on, as the service sees it
+APP_PORT=$(sed -n 's/^PORT=//p' "$ENV_FILE" | tail -1)
+APP_PORT=${APP_PORT:-8080}
+
+if [ -n "$PUBLIC_HOSTNAME" ]; then
+  echo "==> Caddy (HTTPS for $PUBLIC_HOSTNAME)"
+  apt-get install -qy caddy
+  # Caddy's limit must not undercut the app's own, or large uploads fail at
+  # the proxy with a bare 413; the headroom covers request framing
+  upload_mb=$(sed -n 's/^FILE_UPLOAD_MAX_MB=//p' "$ENV_FILE" | tail -1)
+  [[ ${upload_mb:-} =~ ^[0-9]+$ ]] || upload_mb=100
+  body_mb=$(( 10#$upload_mb + 10 ))
+  cat > /etc/caddy/Caddyfile <<EOF
+# Written by data-integrator deploy/setup.sh; re-running it overwrites this file
+${PUBLIC_HOSTNAME} {
+	request_body {
+		max_size ${body_mb}MiB
+	}
+	reverse_proxy 127.0.0.1:${APP_PORT} {
+		# The app marks its session cookie Secure only when this says https
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+EOF
+  systemctl enable caddy
+  systemctl reload-or-restart caddy
+fi
 
 if [ "$SETUP_FIREWALL" = "1" ]; then
-  # The tunnel dials out, so nothing but SSH needs to be reachable
-  echo "==> Firewall (SSH only)"
+  echo "==> Firewall"
   apt-get install -qy ufw
   ufw allow OpenSSH
+  if [ -n "$PUBLIC_HOSTNAME" ]; then
+    # 80 serves the ACME challenge and the redirect to HTTPS; 443/udp is HTTP/3
+    ufw allow 80/tcp
+    ufw allow 443
+  fi
   ufw --force enable
 fi
 
-if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
-  CLOUDFLARE_TUNNEL_TOKEN="$CLOUDFLARE_TUNNEL_TOKEN" bash "$APP_DIR/deploy/upcloud/cloudflare-tunnel.sh"
-  NEXT=" Served at the Cloudflare tunnel's public hostname."
+if [ -n "$PUBLIC_HOSTNAME" ]; then
+  NEXT=" Served at https://${PUBLIC_HOSTNAME} once its DNS record points at this host
+ (Caddy retries the certificate until then: journalctl -u caddy -f)."
 else
-  NEXT=" Not public yet: install the Cloudflare tunnel (deploy/upcloud/README.md).
- Until then: ssh -L 8080:127.0.0.1:8080 root@<this host>, then http://localhost:8080"
+  NEXT=" Not public: only SSH is reachable. Re-run with PUBLIC_HOSTNAME to serve over HTTPS.
+ Until then: ssh -L 8080:127.0.0.1:${APP_PORT} root@<this host>, then http://localhost:8080"
 fi
 
 echo
 echo "============================================================"
-echo " Done.${NEXT:+
-$NEXT}"
+echo " Done."
+echo "$NEXT"
 echo
 echo " Admin account:"
 echo "   ${ADMIN_OUTPUT}"

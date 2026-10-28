@@ -1,5 +1,5 @@
 /**
- * nftables ruleset applied inside podman's rootless infra netns. See Spike Notes.md:
+ * nftables ruleset applied inside podman's rootless infra netns. See packages/runner/README.md:
  * jobs must run on a bridge network (slirp default has no filterable hop, gVisor's
  * netstack transmits via AF_PACKET), rules hook forward, and established/related must
  * be accepted first or NAT-reversed replies are dropped and all egress dies.

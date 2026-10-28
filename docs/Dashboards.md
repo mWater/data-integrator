@@ -6,12 +6,8 @@ SQL frozen at design time and executed server-side under a locked-down role. Com
 once at design time, rendered in a sandboxed iframe. Distinct from the ops dashboard
 (pipeline health, runs, lineage), which is ordinary app UI.
 
-mWater's visualization stack is not ported: it is inseparable from the Schema/Expr/JsonQL
-expression stack (three more libraries, two LGPL-3.0); its server-side policy layer lives
-in mwater-server and would be rewritten anyway; and most of its ~72k LOC is human
-designer UI, which agentic authoring makes unnecessary. The one mWater idea kept is the
-wire protocol: viewers never send queries, they name a persisted artifact and the server
-executes what an editor froze.
+The wire protocol is the core idea: viewers never send queries, they name a persisted
+artifact and the server executes what an editor froze.
 
 ## Model
 
@@ -19,11 +15,13 @@ A dashboard is a versioned artifact:
 
 ```
 Dashboard {
-  id, name, version
-  source       // single React file composing the component kit
-  queries      // { name, sql, params: ParamSpec[], maxRows? }[]
-  kitVersion   // kit the bundle was built with (provenance; viewers get the current kit)
-  bundle       // compiled { js, css } pair, immutable per version
+  id, name, currentVersion
+  public, publishedBy, publishedAt   // anonymous viewing, set by an admin
+  source        // single React file composing the component kit
+  queries       // { name, sql, params: ParamSpec[], maxRows?, tile? }[]
+  layers        // raster catalog layer ids the version may draw
+  builtWithKit  // kit the bundle was built with (provenance; viewers get the current kit)
+  bundleJs, bundleCss  // compiled pair, immutable per version
 }
 ```
 
@@ -36,27 +34,32 @@ Dashboard {
   wire protocol extended to large geodata. The SQL selects a geometry column named
   `geom` (SRID 4326) plus a few scalar attributes; the server wraps it per tile with
   an envelope filter (planned against the GIST index), `ST_AsMVTGeom` clipping, and
-  `ST_AsMVT` encoding under the query's name. Row caps do not apply — a 2 MB per-tile
+  `ST_AsMVT` encoding under the query's name. Row caps do not apply; a 2 MB per-tile
   byte cap does. The reserved parameter `zoom` (integer) is bound server-side to the
   tile zoom so frozen SQL can express level of detail (grid-aggregate at low zoom,
   raw features deep); the design prompt teaches the idiom. This is what makes
   million-point layers viable: only the visible tiles' bytes reach the browser.
-- `ParamSpec` declares name and ColumnSpec type; the server validates and binds.
+- `ParamSpec` is `{ name, type, required? }` with `type` one of `text`, `number`,
+  `integer`, `boolean`, `date`, `datetime`. The server validates each value against its
+  type, rejects a missing required one, and binds them positionally (`$1..$n` in
+  declaration order).
+- `layers` declares the raster catalog layers the version may draw, like its queries;
+  the dashboard's raster tile route serves only those.
 - Editing creates a new version with a new bundle; superseded bundles stay valid for
   in-flight viewers (immutable, like raster snapshots).
 
 ## Component kit
 
-The sanctioned UI surface, audited for accessibility once so generated dashboards do
-not each carry their own WCAG risk:
+The sanctioned UI surface: generated dashboards share one component set, so
+accessibility is handled once in the kit rather than in each dashboard:
 
 - Layout primitives, stat tile, chart (ECharts, Apache 2.0), table, filter bar (wires
-  control state to query params), markdown, map (MapLibre: automatic basemap, catalog
-  raster layers, vector tile layers over stored tile queries with declarative
-  data-driven styling — categorical/ramp color scales and radius scales compiled to
-  MapLibre expressions, so generated dashboards stay on the audited surface — and
-  GeoJSON overlays with fit-to-data and click popups; all bytes proxied through the
-  bridge).
+  control state to query params), markdown, and map.
+- Map (MapLibre): automatic basemap, catalog raster layers, vector tile layers over
+  stored tile queries, and GeoJSON overlays with fit-to-data and click popups; all
+  bytes are proxied through the bridge. Vector styling is declarative and data-driven:
+  categorical/ramp color scales and radius scales compile to MapLibre expressions, so
+  generated dashboards stay on the kit surface.
 - Basemap: the server proxies and disk-caches OpenFreeMap (explicitly free for
   commercial use, no key) at `/basemap/*`, rewriting style/TileJSON URLs to the
   frame's `di-basemap://` protocol. `BASEMAP_UPSTREAM` / `BASEMAP_STYLE_LIGHT` /
@@ -69,24 +72,24 @@ not each carry their own WCAG risk:
   the kit.
 - Versioned as provenance: saved versions record the kit they were built with, but the
   loader always serves the current kit, so kit changes must stay compatible with stored
-  source and bundles (exports and prop contracts are append-only) until a
-  rebuild-on-upgrade sweep exists. Upgrades are recompiles, usually agent-driven.
+  source and bundles (exports and prop contracts are append-only); nothing rebuilds
+  saved dashboards when the kit changes. Upgrading one is a recompile, usually
+  agent-driven.
 - The EChart escape hatch's ECharts major and registered module set are part of that
   surface: extended freely, never trimmed within a kit version.
 
-Stack: Tailwind CSS (pinned major version, stated in the design prompt) over vendored
-shadcn-style components on Radix primitives. Radix and Tailwind are the only runtime UI
-dependencies; the styled component layer is source in this repo, so the audited kit
-cannot drift under an upstream restyle and the SBOM stays small. Chosen for LLM
-fluency: the Tailwind/shadcn idiom is the best-represented UI stack in current model
-training data, including the open-weights models OS-3 requires. Tailwind JIT runs in
-the existing design-time build job and emits a plain stylesheet, so generated
-dashboards need no runtime style injection (CSP-friendly). The app UI (ops dashboard,
-agent UI) uses the same stack and theme tokens.
+Stack: the kit components are React source in this repo (`packages/kit`), styled with
+Tailwind CSS utilities. Runtime dependencies are React, ECharts, MapLibre GL, and
+`marked` with DOMPurify for Markdown; Tailwind is build-time only. Because the component
+layer is source here, the kit cannot drift under an upstream restyle and the
+SBOM stays small. Tailwind is chosen for LLM fluency: it is among the best-represented
+styling idioms in model training data, open-weights models included. Tailwind runs in
+the design-time build and emits a plain stylesheet, so generated dashboards need no
+runtime style injection (CSP-friendly).
 
 Free-form JSX is allowed at the edges; the design-session prompt hard-steers to the kit.
 Composing a documented kit is a far easier task than inventing UI, which is what keeps
-output acceptable on the weaker self-hosted models required by OS-3.
+output acceptable on weaker self-hosted models.
 
 ## Source contract
 
@@ -112,51 +115,57 @@ export default function Dashboard(props: DashboardProps): JSX.Element
 ```
 
 - Data arrives through kit hooks, not props: `useQuery(name, params)` returns
-  `{ data, loading, error }`, dedupes in-flight calls, and drops stale responses;
-  `useMeta()` exposes freshness for "data as of" displays. Both ride the postMessage
-  bridge underneath.
+  `{ data, loading, error }`, refetches when name or params change, drops stale
+  responses, and keeps the last good rows during a refetch; `useMeta()` exposes
+  freshness for "data as of" displays; `useLayers()` lists the declared raster layers
+  with their snapshot timelines (pass a snapshot id to a map layer to draw that
+  observation); `useTheme()` and `useLocale()` return the resolved theme tokens and the
+  host's locale. Data rides the postMessage bridge underneath.
 - Filter state is ordinary React state wired to kit controls (`FilterBar` is
   value/onChange); `initialState`/`onStateChange` make it deep-linkable.
 
 ## Query execution
 
-- `POST /dashboards/:id/queries/:name` with `{ params }`. Authorization is per
-  dashboard (below). The server validates parameter types, binds, and executes.
-- Dedicated `sql-engine` Postgres role: SELECT on the `data` schema only, read-only
-  transaction, statement timeout, row and byte caps. Both guards are required: READ
-  ONLY alone does not block everything, and the role must lack server-program and file
-  privileges.
+- `POST /api/dashboards/:id/queries/:name` with `{ params }` answers `{ rows }`.
+  Authorization is per dashboard (below). The server validates parameter types, binds,
+  and executes.
+- Dedicated `sql_engine` Postgres role: SELECT on the `data` schema only, in a
+  read-only transaction with a 15 s statement timeout. Rows are capped at the query's
+  `maxRows` (default 5000, at most 10000); tile queries have the per-tile byte cap
+  instead. Both guards are required: READ ONLY alone does not block everything, and the
+  role must lack server-program and file privileges.
 - The SQL surface is `data` only. Freshness and lineage metadata for "data as of"
   displays comes from the API via the bridge, not SQL.
 
 ## Build and rendering
 
 - Design-time compile in the server process: esbuild API (ESM output, `react`/`@kit/ui`
-  external), tsc against the kit types, and Tailwind JIT. Rebuilds are ~100ms, which
-  keeps the design loop tight. The sandbox is not needed here: compile, typecheck, and
-  Tailwind parse the source but never execute it; only execution of generated code (in
-  the browser iframe) is isolated. Output is a JS + CSS pair, typically tens of KB,
-  stored immutably per version. Deliberately not a single self-contained HTML: that
-  would duplicate the 1-2 MB kit runtime (React, kit components, ECharts, MapLibre)
-  into every dashboard and defeat caching.
+  external), the TypeScript compiler against the kit types, and Tailwind. Rebuilds are
+  fast enough to keep the design loop tight. The job sandbox is not needed here:
+  compile, typecheck, and Tailwind parse the source but never execute it; only
+  execution of generated code (in the browser iframe) is isolated. Output is a JS + CSS
+  pair stored immutably per version. Deliberately not a single self-contained HTML: that
+  would duplicate the kit runtime (React, kit components, ECharts, MapLibre) into every
+  dashboard and defeat caching.
 - The kit runtime ships as versioned immutable static assets (`/kit/:version/...`),
   public (it is the app's own open-source code), shared by all dashboards on that kit
   version, long-cache.
-- Mounting: the host page (the authenticated SPA) fetches the version's bundle and
-  builds an `iframe srcdoc`: an import map pinning `react`/`@kit/ui` to the kit
-  assets, the bundle JS and CSS inlined, `sandbox="allow-scripts"`. Without
+- Mounting: the host page (the app's SPA) fetches the version's bundle and builds an
+  `iframe srcdoc`: an import map pinning `react`/`@kit/ui` to the kit assets, the bundle
+  JS and CSS inlined, `sandbox="allow-scripts allow-modals"`. Without
   `allow-same-origin` the frame has an opaque origin and no cookies; it makes no
   credentialed request at all.
 - Everything crosses the postMessage bridge: stored-query calls and freshness metadata
   (surfaced in source as `useQuery`/`useMeta`), map tile and basemap bytes (MapLibre
   custom protocols in the kit request them from the host), runtime error reports, and
   state-change events for deep links. The host executes these with the viewer's
-  session against per-dashboard-authorized endpoints; the bridge proxies nothing else.
+  session (none for an anonymous viewer of a public dashboard) against
+  per-dashboard-authorized endpoints; the bridge proxies nothing else.
   The frame CSP allows `connect-src` to the app origin only (MapLibre fetches its
   worker script); the frame carries no credentials, so this reaches public assets,
   never data.
-- No token mechanism in v0: the host page is always the app itself. Short-lived scoped
-  tokens return when a frame must fetch directly (external embeds, share links).
+- The frame never holds a token: the host page is always the app itself. External
+  embeds that fetch directly would need short-lived scoped tokens, which do not exist.
 - Net effect: generated code can never see the viewer's session or reach anything an
   editor did not freeze. This bounds the editor-can-XSS-viewer risk that code output
   introduces.
@@ -186,44 +195,49 @@ One more AgentImplementation on the harness (`agent_sessions.kind = 'dashboard'`
   attached to the next user message when the loop is paused (never auto-resuming it,
   so a broken build cannot burn tokens unattended).
 - Save gate (`ready_to_save` and the save endpoint): the latest build compiled and
-  typechecked against the kit. A headless render test is deferred
-  to the library-install path, where no human watches a preview.
+  typechecked against the kit.
 
 ## Access control
 
-Roles are unchanged: viewer reads all data and all dashboards. Two deliberate choices:
-
+- Viewers, editors and admins read every dashboard; editors and admins design, save,
+  rename and delete them.
 - Dashboard endpoints authorize per dashboard ("may this principal view dashboard X"),
-  never via a blanket data-read check. Today every viewer passes for every dashboard,
-  so behavior is identical, but the seam exists.
-- A dashboard-only principal (a role below viewer, or share-link/public dashboards) is
-  deferred, not designed out. Because queries are frozen and parameters typed, adding
-  one is additive: grant the dashboard endpoints and layer-scoped tile tokens, nothing
-  else. The realistic future demand is public early-warning dashboards via share link,
-  not a fourth login role.
+  never via a blanket data-read check: any signed-in user passes, an anonymous one only
+  when the dashboard is public.
+- **Public dashboards.** An admin makes a dashboard public with
+  `PUT /api/dashboards/:id/public` `{ public: true }`; who did it and when are recorded
+  (`published_by`, `published_at`, cleared when made private). Its view surface (detail,
+  stored queries, vector tiles, declared raster tiles, freshness and sources metadata)
+  then answers without a session, at the dashboard's normal URL. Anonymous viewers get
+  the bundle but not the React source or the SQL. Management routes (list, save,
+  rename, delete, publish) stay behind sign-in. Absent and private dashboards answer
+  anonymous requests identically (401). Renaming a dashboard's id breaks its existing
+  links, public ones included.
 
-Recorded caveat: dashboard-scoped access limits reach; it is not statistical
-confidentiality. Frozen aggregates reveal what they aggregate, and filter parameters
-can be probed. Data that must stay hidden from an audience does not belong in a
-dashboard served to that audience.
+Caveat: dashboard-scoped access limits reach; it is not statistical confidentiality.
+Frozen aggregates reveal what they aggregate, and filter parameters can be probed. Data
+that must stay hidden from an audience does not belong in a dashboard served to that
+audience.
 
-## Library and no-AI deployments
+## No-AI deployments
 
-Dashboards ship in the versioned library like integrations: source plus queries,
-compiled at install against the local kit. Deployments with no model configured still
-install and view them; authoring changes need a model or a React-literate maintainer.
-"Fully functional with no AI configured" stays true for dashboards.
+Viewing a dashboard needs no model: the SQL is frozen and the bundle is compiled.
+Authoring needs a model, or a maintainer who saves React source and queries directly
+through `POST /api/dashboards`, which runs the same build and gate.
 
-## Schema (app schema additions)
+## Schema
 
 ### dashboards
 
 | column | type | notes |
 |---|---|---|
-| id | text pk | natural key, library-syncable like integrations |
+| id | text pk | slug; renamable, references cascade |
 | name | text | |
 | current_version | int | |
 | created_at, updated_at | timestamptz | |
+| public | boolean | viewable without signing in |
+| published_by | uuid fk users | admin who made it public; null while private |
+| published_at | timestamptz | null while private |
 
 ### dashboard_versions
 
@@ -235,5 +249,6 @@ install and view them; authoring changes need a model or a React-literate mainta
 | queries | jsonb | named parameterized SQL |
 | kit_version | text | |
 | bundle_js | text | compiled ESM, immutable |
-| bundle_css | text | Tailwind JIT output, immutable |
+| bundle_css | text | Tailwind output, immutable |
+| layers | jsonb | raster layer ids the version may draw |
 | created_at | timestamptz | |

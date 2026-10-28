@@ -155,8 +155,14 @@ export function parseRowsQuery(params: URLSearchParams): RowsQuery {
   const order = params.get("order")
   if (order) query.order = order
   const limit = params.get("limit")
-  if (limit) query.limit = Number(limit)
+  if (limit) {
+    query.limit = Number(limit)
+    if (!Number.isInteger(query.limit)) throw new Error("limit must be a whole number")
+  }
   const offset = params.get("offset")
-  if (offset) query.offset = Number(offset)
+  if (offset) {
+    query.offset = Number(offset)
+    if (!Number.isInteger(query.offset) || query.offset < 0) throw new Error("offset must be a whole number, at least 0")
+  }
   return query
 }

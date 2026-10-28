@@ -1,5 +1,5 @@
 /**
- * The query assistant (FUC-5): a read-only conversational agent over the data
+ * The query assistant (Explore): a read-only conversational agent over the data
  * schema. Answers are markdown plus typed blocks the UI renders from tool-call
  * inputs; query results live in client state, complete or rejected, never
  * truncated, so blocks and CSV downloads never show partial data.

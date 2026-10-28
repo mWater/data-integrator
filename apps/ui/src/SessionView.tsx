@@ -931,7 +931,7 @@ function QuestionCard({ question, onAnswer }: QuestionCardProps) {
               if (text.trim()) onAnswer(text.trim())
             }}
           >
-            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={T`Other…`} />
+            <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={T`Other…`} aria-label={T`Other answer`} />
             <button type="submit" disabled={!text.trim()}>{T`Send`}</button>
           </form>
         ) : (
@@ -942,13 +942,9 @@ function QuestionCard({ question, onAnswer }: QuestionCardProps) {
   )
 }
 
-/**
- * True when a dashboard draft has work nobody else can see: edits since the
- * last save, or a built draft never saved (sessions from before the dirty
- * flag). Mirrors the server's unsaved flag on session summaries.
- */
+/** True when a dashboard draft has edits nobody else can see yet. Mirrors the server's unsaved flag on session summaries. */
 function isUnsaved(state: DashboardAgentState): boolean {
-  return state.dirty ?? (state.saved == null && state.build != null)
+  return state.dirty
 }
 
 /** Lowercase URL slug from a display name: letters, digits and dashes, starting with a letter. */

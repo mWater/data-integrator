@@ -1,7 +1,7 @@
 # Library prompts
 
-Standardized design-session prompts for the sources named in the ToR
-architecture diagram. Each file is the prompt we give the designer agent to
+Standardized design-session prompts for the sources named in the platform's
+architecture. Each file is the prompt we give the designer agent to
 build that source's library entry, plus the scoping decisions behind it and
 the acceptance checks the result must pass before it ships.
 
@@ -19,11 +19,9 @@ needed is part of the validation record.
    every steer.
 3. When the agent is stuck on source knowledge, stop, write or extend the
    skill, and start a fresh session so the run is reproducible.
-4. Finish requires the platform's cold-run certification as always.
+4. Finishing the session requires the platform's cold-run certification.
 5. Before the entry ships to `library/integrations/`, run the acceptance
    checks in the prompt file against the ingested data.
-6. Log the outcome in `RESULTS.md`: first try, steered, or skill added, plus
-   session length and anything that should feed back into the platform.
 
 ## Sequencing
 
@@ -42,9 +40,9 @@ state, and derived analytics enter one at a time.
 | 8 | `insitu_sensors` | webhook trigger, tabular merge | generic entry, no single upstream |
 | 9 | `fapar_anomaly_gdo` | ten-daily time-series, full-cadence snapshots | hand-authored from the GDO skill |
 | 10 | `drought_risk_gdo` | categorical raster | RDrI-Agri stands in for the Europe-only CDI |
+| 11 | `worldpop_population` | annual time-series raster, country-keyed files mosaicked per snapshot | |
 
-Parked: UNICEF datasources (identified with UNICEF during the Deliverable 2
-consultations; add prompts when named). FABDEM (CC BY-NC-SA, a non-commercial
+Parked: UNICEF data sources (add prompts when named). FABDEM (CC BY-NC-SA, a non-commercial
 license: needs a licensing decision before it can ship in this library; GLO-30
 carries terrain until then).
 

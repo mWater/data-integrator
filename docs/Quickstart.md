@@ -1,7 +1,9 @@
 # Quickstart
 
 From clean checkout to a running server with a user, data, and the designer
-agent. Commands assume Linux and a POSIX shell.
+agent, on one machine, for development and evaluation. Commands assume Linux
+and a POSIX shell. For a production install, follow
+[Deployment](Deployment.md) instead.
 
 ## Prerequisites
 
@@ -42,11 +44,16 @@ podman build -t localhost/integrator-runtime-node:dev runtimes/node/
 ## Configure
 
 Infrastructure wiring is environment variables; only `DATABASE_URL` is
-required. All variables are read and validated once at startup
-(`apps/server/src/config.ts`); `.env.example` at the repository root documents
-every one, and `node --env-file=.env` loads a local copy for development.
-Runtime behavior an administrator owns — like the deployment's default area of
-interest — lives in the Settings page, not the environment.
+required. They are read and validated once at startup
+(`apps/server/src/config.ts`), except the AI seed variables, which
+`apps/server/src/aiSettings.ts` reads only to fill empty AI settings.
+[`.env.example`](../.env.example) at the repository root documents every
+variable, including job ceilings, disk guards, tile rendering, and the basemap
+proxy; `node --env-file=.env` loads a local copy. Runtime behavior an
+administrator owns, like the deployment's default area of interest, lives in
+the Settings page, not the environment.
+
+The common ones:
 
 | variable | default | purpose |
 |---|---|---|
@@ -54,11 +61,11 @@ interest — lives in the Settings page, not the environment.
 | `RASTER_STORE_PATH` | `./raster-store` | COG store (plain directory; mount S3 via FUSE if desired) |
 | `WORK_ROOT` | `./work` | persistent per-integration /work caches |
 | `TILE_CACHE_PATH` | `./tile-cache` | rendered tile cache |
-| `FILE_STORE_PATH` | `./file-store` | uploaded integration files, every version kept (Integration Files.md) |
+| `FILE_STORE_PATH` | `./file-store` | uploaded integration files, every version kept ([Integration Files](Integration%20Files.md)) |
 | `FILE_UPLOAD_MAX_MB` | `100` | largest accepted upload; a proxy in front must allow at least this much |
 | `LIBRARY_PATH` | `./library` | integration library root; the designer agent loads `skills/` from here |
 | `PORT` | `8080` | HTTP port |
-| `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `LLM_BASE_URL`, `LLM_API_KEY`, `AGENT_MODEL` | (none) | first start only: seeds the AI settings when the database has none (see AI provider below); not read afterwards |
+| `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `LLM_BASE_URL`, `LLM_API_KEY`, `AGENT_MODEL` | (none) | seed the AI settings when the database has none (see AI provider below); ignored once Settings holds a provider |
 | `AGENT_EFFORT` | `medium` for the default model, else model default | reasoning effort for OpenRouter models: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `INTEGRATOR_SECRET_KEY` | (none) | 32-byte base64/hex key encrypting integration secrets and the AI provider key; `openssl rand -base64 32`. Needed once definitions declare secrets or an admin saves a hosted AI provider |
 | `RUNTIME_IMAGE_PYTHON` / `RUNTIME_IMAGE_NODE` | `localhost/integrator-runtime-{python,node}:dev` | runtime image overrides |
@@ -76,12 +83,16 @@ which keeps all AI traffic on your own infrastructure when the endpoint is
 local. Saving sends one short test request and refuses settings the provider
 does not answer; the change applies at once, without a restart. The key is
 stored encrypted under `INTEGRATOR_SECRET_KEY` and never shown again. Switching
-provider asks every user to accept the data notice again.
+provider asks every user to accept the data notice again. Daily token caps
+(Settings, AI features, Daily limits) default to 5M tokens per user and 25M
+per deployment per UTC day.
 
 ### Choosing a model
 
-The Model field takes any OpenRouter model id. Guidance from running the same
-design task across models (2026-08):
+The Model field depends on the provider: an OpenRouter model id (default
+`openai/gpt-5.6-sol`), an Anthropic model id (default `claude-sonnet-5`), or,
+for a custom endpoint, the model name it serves (required). Guidance from
+running the same design task across OpenRouter models:
 
 - `openai/gpt-5.6-sol` (default, at medium effort): wrote the strongest code in
   our tests (retry policies, sentinel handling, debugged a live 503) at about
@@ -112,8 +123,9 @@ node apps/server/dist/cli.js user add you@example.org admin
 
 Roles: `admin` (everything, including credentials, settings, users, and
 making dashboards public), `editor` (integrations, dashboards, and agent
-sessions), `viewer` (read-only, plus Explore questions). More user commands: `user list`, `user disable <email>`,
-`user enable <email>`, `user token <email> [name]`.
+sessions), `viewer` (read-only, plus Explore questions). More user commands:
+`user list`, `user disable <email>`, `user enable <email>`,
+`user token <email> [name]`.
 
 Once the first admin exists, further users are managed in the UI under
 **Settings → Users** (add, reset password, change role, disable/enable), and
@@ -132,18 +144,23 @@ data previews, manual runs, the map, and design sessions.
 ## Install and run a library integration
 
 In the UI: set your deployment's default area of interest once (Settings,
-country picker), then open Library and click Install — the entry inherits the
+country picker), then open Library and click Install: the entry inherits the
 default AOI and its suggested schedule, and can start its first ingest
-immediately. From a terminal instead:
+immediately. From a terminal instead (set the default area in Settings first:
+without one, WorldPop ingests the current year for the whole world, about
+10 GB of source):
 
 ```sh
 node apps/server/dist/cli.js library-install worldpop_population
 node apps/server/dist/cli.js run worldpop_population
 ```
 
-Or click Run Now on the integration's page. `library/integrations/chirps_rainfall`
-adds a time-series layer; `library/integrations/rainfall_stats` derives population-weighted
-rainfall from the other two (install and run those first).
+Or click Run Now on the integration's page. Two more entries that need no
+credentials: `copernicus_spi3` adds a monthly drought-index time series
+(raster), and `hydrosheds_hydrography` loads catchment and river tables
+(`hydrobasins`, `hydrorivers`) to query through the API. Entries that need an
+account, like `glofas_river_discharge` and `clms_fpar_10daily`, declare
+credentials an admin sets on the integration's page before the first run.
 
 ## Develop live (no rebuilds)
 
@@ -164,7 +181,7 @@ processes; `set +a` turns that back off.)
 
 One caveat: the server dev process runs with `apps/server` as its working
 directory, so the relative path defaults (`./library`, `./raster-store`,
-...) resolve there — use absolute paths in your `.env` (including
+...) resolve there: use absolute paths in your `.env` (including
 `LIBRARY_PATH`) when developing, or the Library page will come up empty.
 
 ## Design an integration with the agent
@@ -173,8 +190,8 @@ In the UI: New Integration on the landing page, then describe what to build.
 From a terminal instead:
 
 ```sh
-node apps/server/dist/cli.js agent                    # new integration
-node apps/server/dist/cli.js agent chirps_rainfall    # edit an installed one
+node apps/server/dist/cli.js agent                      # new integration
+node apps/server/dist/cli.js agent worldpop_population  # edit an installed one
 ```
 
 The agent explores the source with sandboxed snippets, writes the definition
@@ -188,7 +205,8 @@ TOKEN=$(node apps/server/dist/cli.js user token you@example.org scripts | tail -
 curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/tables
 ```
 
-See [API.md](API.md) and `GET /api/openapi.json` for the full interface.
+Rasters are also browsable as a STAC catalog at `/api/stac`. See
+[API](API.md) and `GET /api/openapi.json` for the full interface.
 
 ## Translate the interface
 

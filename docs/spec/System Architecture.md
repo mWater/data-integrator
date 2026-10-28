@@ -10,18 +10,17 @@ ingestion pipelines themselves.
 The architecture is modular, standards-based, and technology-agnostic. It
 specifies components by their responsibilities and contracts so that any
 vendor can implement it with their own technology choices. Section 7 maps
-the architecture onto the reference implementation (mWater Data Integrator, the
-proof of concept developed under the same terms of reference and published
-under the same open-source license); nothing elsewhere in the document
-depends on those choices, and no part of the architecture requires that
-implementation.
+the architecture onto the reference implementation (mWater Data Integrator,
+published under the same open-source license); nothing elsewhere in the
+document depends on those choices, and no part of the architecture requires
+that implementation.
 
 Companion documents:
 
 - *Interoperability and Standards Mapping*: the standards each interface
   conforms to and the integration paths for national systems.
 - *Integration Library Specification*: the machine-readable definition format
-  for data sources, an independently reusable deliverable.
+  for data sources, independently reusable.
 
 ## 1. Design principles
 
@@ -126,10 +125,10 @@ flowchart TB
 | Pipeline engine | Triggers, queues, executes, and records ingestion runs |
 | Sandbox job runner | Executes integration code in isolated containers under resource limits and an egress policy |
 | Runtime images | Map the language-agnostic job contract onto each supported language |
-| Harmonization | Normalizes units, projections, time, and codings; validates results |
+| Harmonization | Declared target formats (units, projections, time, codings), schema enforcement on load, data-quality validation |
 | Tabular plane | Relational destination tables with spatial types |
 | Raster plane | Immutable cloud-optimized raster snapshots with a relational catalog |
-| Access layer | Documented query API, map tiles, dashboard, analytical dashboards, AI assistant |
+| Access layer | Documented query API, raster catalog (STAC), map tiles, dashboard, analytical dashboards, AI assistant |
 | AI pipeline designer | Agentic design, testing, and maintenance of integrations |
 | Security components | Accounts, roles, secrets, sandbox isolation, read-only analytical SQL |
 
@@ -138,8 +137,8 @@ flowchart TB
 An integration is described entirely by one machine-readable definition:
 
 ```
-{ id, name, source, trigger, secrets, aoi, inputs, runtime, limits,
-  destinations, validation, code, contract }
+{ id, name, description, source, trigger, secrets, aoi, inputs, files,
+  runtime, limits, destinations, validation, code, contract }
 ```
 
 - `source` documents the upstream provider, license, and documentation URLs.
@@ -148,7 +147,8 @@ An integration is described entirely by one machine-readable definition:
   high-frequency feeds are processed in batches rather than per event.
 - `secrets` names the credentials the code needs. Values are never part of
   the definition: the deployment stores them with the integration (write-only,
-  encrypted), and importing a definition prompts for them.
+  encrypted), so an exported definition never carries them and the
+  importing deployment sets its own.
 - `aoi` is the area of interest. It is tri-state: an explicit bounding box
   clips ingestion to it, an explicit null means the source's full extent, and
   omission inherits the deployment's default AOI at run time. The box is a
@@ -159,10 +159,14 @@ An integration is described entirely by one machine-readable definition:
 - `inputs` references catalog layers and tables that this integration
   consumes, which is how derived analytics (drought indices, exposure
   statistics) are expressed as ordinary integrations.
+- `files` declares file slots: user-uploaded files (spreadsheets, shapefiles)
+  the code reads. The definition names the slot; the deployment holds the
+  versioned contents, and uploading a new version can re-run the
+  integration against it.
 - `destinations` declare the outputs: tabular schemas (columns, types,
   merge behavior) and raster layers (bands, units, nodata, rendering).
-- `validation` declares quality rules (value ranges, expected cadence) that
-  the platform evaluates on every run.
+- `validation` declares quality rules: value ranges for numeric columns and
+  raster bands, and an expected cadence for freshness monitoring.
 - `code` is one self-contained file in the declared `runtime` language.
   Work that outgrows one file is split into chained integrations connected
   through `inputs`, keeping every unit independently testable.
@@ -187,7 +191,8 @@ The pipeline engine turns definitions into recorded runs.
   public webhook receiver accepts pushed events on per-integration
   capability URLs, buffers the payloads, and enqueues a run, immediately or
   at the end of the declared batch window. Operators can run any integration
-  manually. The AI designer enqueues test runs with priority.
+  manually. The AI designer's test runs execute directly in the session,
+  outside the queue, against session-scoped scratch destinations.
 - **Queue.** Runs queue in the database. Any number of workers drain the
   queue; database constraints guarantee at most one queued and one running
   run per integration, so runs are serialized per integration and burst
@@ -200,11 +205,11 @@ The pipeline engine turns definitions into recorded runs.
 - **Inputs.** Before launching a job, the engine resolves the definition's
   `inputs` to concrete snapshot and table versions and materializes them
   read-only inside the job. The resolved versions are recorded on the run,
-  which is the lineage record for derived data. Runs whose resolved inputs
-  are unchanged since the last success are skipped and flagged as such.
+  which is the lineage record for derived data. Whether new inputs warrant
+  new output is the integration code's decision.
 - **Records.** Every run stores its trigger, status, timing, data volumes,
-  logs, error, definition version, resolved inputs, and the AOI it executed
-  with. Validation violations and freshness lapses flag the run.
+  logs, error, definition version, resolved inputs and file versions, the
+  AOI it executed with, and any data-quality findings (3.4).
 - **Liveness.** Running jobs heart-beat; a reaper fails runs whose worker
   died, so the queue never wedges.
 
@@ -215,17 +220,22 @@ platform never runs source-specific code in its own process.
 
 The job contract is language-agnostic:
 
-- **stdin**: `{ definition, secrets, previousState, webhookData?, params }`.
-  `webhookData` is every pending webhook event, oldest first.
+- **stdin**: `{ definition, secrets, previousState, webhookData?, params,
+  catalog }`. `webhookData` is every pending webhook event, oldest first;
+  `catalog` lists the snapshots already published to each raster
+  destination, so the code can skip periods it has already produced.
 - **stdout**: `{ data?, tables?, rasters?, state? }`. Small tabular results
   return inline in `data`; larger tables are written as files and referenced
   in `tables[]`; raster outputs are files referenced in `rasters[]`.
 - **stderr**: logs, captured and stored with the run.
-- **`/in`** (read-only): materialized inputs with a manifest describing them.
+- **`/in`** (read-only): materialized inputs and uploaded files, with a
+  manifest describing them.
 - **`/work`**: a persistent per-integration workspace with cache semantics.
   It may be wiped at any time; correctness never depends on it. A disk quota
   is part of the job limits.
 - **`/out`**: where the job writes its file artifacts.
+- **`/tmp`**: a small writable scratch area; the rest of the filesystem is
+  read-only.
 - Nonzero exit fails the run; the stderr tail becomes the error message.
 
 A per-language harness in each runtime image maps this contract onto a single
@@ -247,7 +257,8 @@ Sandbox properties (see also section 5):
 
 - Rootless containers with a second isolation layer intercepting syscalls.
 - Read-only root filesystem, no capabilities, per-job CPU, memory, disk, and
-  wall-clock limits, declared in the definition and capped by the deployment.
+  wall-clock limits, declared in the definition and lowered to
+  deployment-wide maximums.
 - Egress to the public internet only: private, link-local, and cloud
   metadata address ranges are blocked at the network layer inside the job's
   network namespace.
@@ -257,8 +268,12 @@ Sandbox properties (see also section 5):
 ### 3.4 Harmonization
 
 Harmonization is split between declaration and enforcement. Definitions
-declare the target formats; the platform enforces them at registration time,
-so nothing enters the store unharmonized.
+declare the target formats. For tables the platform enforces them when it
+applies a result: values are cast to the declared column types and
+geometries stored in WGS 84. For rasters, registration reads only the
+footprint, CRS, and cell size from the files; the COG layout, band count and
+order, nodata value, and units are declared, and producing files that match
+is the job's responsibility.
 
 - **Units.** Bands and columns declare their units; values are stored in the
   declared units.
@@ -273,16 +288,19 @@ so nothing enters the store unharmonized.
   by their area at their latitude, and report the share of the shape covered
   by valid data; map tiles are cut to it.
 - **Time.** All timestamps are UTC. Raster snapshots carry an instant or an
-  explicit time range; time-step normalization is declared in the
-  definition.
+  explicit time range.
 - **Missing data.** Bands declare their nodata convention, and analytical
   interfaces respect it, so sentinels never contaminate statistics.
 - **Codings.** Categorical recoding to standard vocabularies is part of the
   integration's transformation logic, expressed in code against the declared
   destination schema.
-- **Validation.** Declared range and cadence rules are evaluated on every
-  run; violations flag the run and surface in the dashboard, and data
-  freshness is measured against the declared cadence.
+- **Validation.** Declared range rules are evaluated on what each run wrote:
+  exactly over a table's new rows, and against approximate band statistics
+  for each raster snapshot. Values outside an enum column's vocabulary are
+  flagged too. Findings are stored on the run and in its log and surface in
+  the dashboard; they never reject data. An integration that declares an
+  expected cadence is reported overdue when it has had no successful run
+  within twice that cadence.
 
 ### 3.5 Storage layers
 
@@ -310,8 +328,11 @@ snapshots, and bands with footprints, timestamps, units, and rendering hints.
   meeting a condition, coverage, cell size, snapshot used, boundary
   provenance), so agents and analysts never approximate a country by its
   envelope.
-- Raw source files are working data with short, per-integration retention;
-  the store holds harmonized products, not archives of upstream downloads.
+- Raw source files live only in the job's `/work` cache, bounded by its
+  disk quota; the store holds harmonized products, not archives of upstream
+  downloads.
+- Time-series layers may declare a retention window; older snapshots (never
+  the current one) and superseded snapshots are pruned with their files.
 
 ```mermaid
 flowchart LR
@@ -337,10 +358,14 @@ flowchart LR
   GeoJSON) and the raster catalog with direct snapshot downloads. The API is
   described by a machine-readable specification served by the platform.
   Fully functional with no AI configured.
+- **Raster catalog.** The same catalog is served as a read-only STAC API, so
+  STAC clients discover layers and snapshots without platform-specific
+  code.
 - **Map tiles.** Rendered raster tiles with snapshot-pinned, long-cacheable
   URLs, styled by the rendering declarations in the definition and clipped
   to the owning integration's area-of-interest shape (a query parameter
-  draws the full extent instead).
+  draws the full extent instead). Destination tables with geometry are also
+  served as vector tiles.
 - **Dashboard.** A web application covering the operator loop: data catalog,
   integration management, run history with logs and lineage, data preview,
   map views with time navigation, user management, and deployment settings.
@@ -349,10 +374,12 @@ flowchart LR
   capability: parameterized SQL frozen at design time, rendered by a fixed
   component kit in a sandboxed frame. Because the SQL is frozen and runs
   under the read-only analytical role, viewing a dashboard requires no AI.
+  An administrator can publish a dashboard for viewing without sign-in;
+  anonymous viewers get the rendered dashboard, never its source or SQL.
 - **AI assistant.** Conversational access for non-technical users: questions
-  in plain language are answered through the same query API, with results
-  shown as tables, charts, and maps, and the generated query available for
-  inspection.
+  in plain language are answered by read-only SQL the assistant writes and
+  runs under the analytical role (4.4), with results shown as tables,
+  charts, and maps, and the generated query available for inspection.
 
 ### 3.7 AI pipeline designer
 
@@ -362,10 +389,9 @@ through the same interfaces a human developer would use:
 - Tools to inspect sources, edit the definition and code, manage
   destinations, submit sandboxed test runs, stream their logs, and read
   library skills.
-- Test runs execute against a small AOI window to keep the loop fast, and
-  run in a session-scoped scratch area: draft schemas and preview layers are
-  isolated from production data, so designing or editing a live integration
-  is safe until the operator accepts the result.
+- Test runs execute in a session-scoped scratch area: draft schemas and
+  preview layers are isolated from production data, so designing or editing
+  a live integration is safe until the operator accepts the result.
 - Certification: a design can only be finished after a successful cold run
   of the final code, in a fresh workspace with no incremental state, so a
   warm cache cannot fake a pass.
@@ -417,9 +443,8 @@ A derived integration declares upstream layers and tables as `inputs`. At
 launch the engine resolves those inputs to concrete snapshot versions,
 materializes them read-only in the job, and records the resolved versions on
 the run. Chains of integrations (ingest rainfall, ingest population, compute
-population-weighted rainfall) are therefore reproducible: each link records
-exactly which upstream versions it consumed, and unchanged inputs skip the
-run.
+population-weighted rainfall) are therefore traceable: each link records
+exactly which upstream versions it consumed.
 
 ### 4.4 Access
 
@@ -442,19 +467,23 @@ the data and the host against untrusted inputs, misbehaving integration code
 | Authorization | Admin, editor, and viewer roles enforced server-side on every route |
 | Integration code | Rootless containers plus a syscall-isolation layer, read-only rootfs, no capabilities, resource limits |
 | Network egress | Public internet only from jobs; private, link-local, and metadata ranges blocked in the job's network namespace |
-| Secrets | Stored per integration and encrypted at rest with a deployment key; injected via stdin only into the owning integration's runs, so an imported definition cannot receive another integration's credential; never in images, environment, or definitions |
+| Secrets | Stored per integration and encrypted at rest with a deployment key; injected via stdin only into the owning integration's runs, so an imported definition cannot receive another integration's credential; never in images, environment, or definitions; literal values masked in stored logs, run errors, and live log streams |
 | Webhooks | Unguessable per-integration capability URLs, JSON-only with size caps, admin-rotatable |
+| Uploaded files | Never parsed on the host; size-capped streaming upload; served back only as attachments under a sandbox CSP; uploaders and original filenames hidden from viewers |
+| Public dashboards | Opt-in per dashboard by an administrator, recorded with who and when; anonymous access limited to the view surface |
 | Analytical SQL | Frozen at design time where applicable, always executed under a read-only role scoped to destination data |
 | Transport | TLS terminated by the deployer's reverse proxy, with secure-cookie behavior keyed to forwarded protocol |
 
-The platform stores environmental and infrastructure data; personal data is
-out of scope by design.
+Integrations hold environmental and infrastructure data. The platform's own
+personal data is limited to account emails and the uploader and original
+filename of uploaded files; what an operator chooses to ingest is the
+operator's responsibility.
 
 ## 6. Deployment architecture
 
 A deployment is one application server process (or several, sharing the
 database), one relational database with spatial extensions, a raster store
-path or bucket, and a container runtime for the sandbox. All components run
+path, and a container runtime for the sandbox. All components run
 on commodity Linux on-premises or in any cloud; there is no external service
 dependency.
 
@@ -481,12 +510,15 @@ normative: it records one set of choices that satisfies the contracts.
 |---|---|
 | Application server | Node.js (TypeScript), single process serving API, dashboard, scheduler, and agents |
 | Relational database | PostgreSQL with PostGIS |
-| Raster store | Local filesystem (S3-compatible object storage optional); cloud-optimized GeoTIFF |
+| Raster store | Local filesystem; cloud-optimized GeoTIFF |
 | Sandbox | podman (rootless) with gVisor syscall isolation; nftables egress policy |
 | Runtime images | `node` and `python` OCI images with the geospatial stack in Python |
 | Job queue | Database-backed queue with partial unique indexes for serialization |
-| Query API | REST with OpenAPI description; JSON, CSV, GeoJSON |
-| Tiles | XYZ raster tiles rendered from COGs via GDAL |
+| Query API | REST with OpenAPI 3.1 description; JSON, CSV, GeoJSON |
+| Raster catalog | STAC API 1.0.0 (core, collections, item listing) at `/api/stac` |
+| Tiles | XYZ raster tiles rendered from COGs via GDAL; vector tiles (MVT) encoded by PostGIS |
+| Analytical SQL | Read-only `sql_engine` PostgreSQL role on the data schema; snapshots registered as PostGIS out-of-database rasters |
+| Analytical dashboards | React and TypeScript compiled in-process with esbuild; component kit on ECharts and MapLibre GL; sandboxed `srcdoc` iframe; optional admin-published public view |
 | Dashboard | React single-page application served by the platform |
 | AI provider | Configurable; any model meeting the capability profile, including self-hosted open-weights models |
 | License | Apache 2.0 throughout; CI license and SBOM checks |

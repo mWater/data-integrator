@@ -13,7 +13,7 @@ never appear in a definition, a log, or this conversation.
 ## Getting a value from the operator
 
 Call `request_secrets` with one entry per name: a one-line `purpose` ("API
-key for app.tatirano.org"), a `help` URL or hint on where to obtain it, and a
+key for api.weather.example.org"), a `help` URL or hint on where to obtain it, and a
 `check` snippet when one cheap authenticated call can prove the value works.
 The session shows a form and pauses; the operator saves the values there and
 the session resumes with a names-only message. Then run again.
@@ -47,8 +47,8 @@ success, for example:
 
 ```python
 import requests
-r = requests.get("https://app.tatirano.org/api/doc/weather",
-                 headers={"Authorization": f"Bearer {ctx.secrets['tatirano_api_key']}"}, timeout=30)
+r = requests.get("https://api.weather.example.org/v1/stations",
+                 headers={"Authorization": f"Bearer {ctx.secrets['weather_api_key']}"}, timeout=30)
 r.raise_for_status()
 print("ok", r.status_code)
 ```

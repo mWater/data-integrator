@@ -1,5 +1,6 @@
 {
   "name": "@data-integrator/definitions",
+  "private": true,
   "version": "0.1.0",
   "description": "Integration definition types: the machine-readable library format",
   "license": "Apache-2.0",
@@ -21,5 +22,15 @@
   },
   "dependencies": {
     "@mwater/integration-runner": "workspace:*"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "packages/definitions"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/definitions",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

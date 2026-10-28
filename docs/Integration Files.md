@@ -59,8 +59,8 @@ otherwise waits its turn in the run queue. Only one run can be queued per
 integration, so when one is already waiting (a cron run, say) the pins are
 merged into it and its start time is pulled to now: it would have used the
 old current version, and the person uploading wants the new one. The newer
-pin for a slot replaces an older one. A plain manual run with no pins keeps
-its existing behaviour (409 while a run is going or waiting).
+pin for a slot replaces an older one. A plain manual run with no pins is
+refused with a 409 while a run is going or waiting.
 
 Operations:
 
@@ -79,7 +79,7 @@ user action.
 
 ## Storage and retention
 
-`app.file_versions` (Database.md) holds one row per upload; bytes live in the
+`app.file_versions` ([Database.md](Database.md)) holds one row per upload; bytes live in the
 file store (`FILE_STORE_PATH`, default `./file-store`) at
 `<versionId><ext>`. Paths are built only from the version id and an extension
 validated against `^\.[a-z0-9]{1,10}$`; the uploaded filename is display data
@@ -110,7 +110,7 @@ names.
 
 ## API
 
-See API.md and `/api/openapi.json`:
+See [API.md](API.md) and `/api/openapi.json`:
 
 - `PUT /api/integrations/:id/files/:slot?filename=<name>&run=true|false`
 - `PUT /api/sessions/:id/files/:slot?filename=<name>` (design-session staging)
@@ -139,12 +139,11 @@ Upload handling:
 - The whole-request deadline for uploads is one hour (the default five minutes
   would cut off large uploads on slow links), with a two minute socket idle
   timeout. Every other request keeps the five minute default.
-- Proxies must allow the body size. The reference deployment publishes through
-  a Cloudflare tunnel, whose request body limit is 100 MB on the Free and Pro
-  plans; that is why the default cap is 100 MB. A proxy that buffers request
-  bodies itself (Cloudflare is believed to) answers `100 Continue` on its own,
-  so through it the early refusal saves the origin, not the sender's
-  bandwidth. The UI says so when a proxy answers 413.
+- A reverse proxy in front of the server must allow the body size. The
+  default cap of 100 MB matches the request body limit of common CDN free
+  tiers. Some proxies buffer request bodies and answer `100 Continue`
+  themselves, so behind them the early refusal saves the server, not the
+  sender's bandwidth. The UI says so when a proxy answers 413.
 
 Downloads send `application/octet-stream`, `nosniff`, `Content-Security-Policy:
 sandbox`, `Cache-Control: private, no-store`, and an attachment disposition
@@ -214,12 +213,9 @@ persist), to do file work in Python, to read zipped shapefiles in place via
 
 ## Runtime image
 
-The Python image adds pinned `openpyxl` (xlsx), `xlrd` (legacy xls), and
-`odfpy` (LibreOffice ods). GDAL covers shapefile, GeoPackage, KML, CSV, and zip
-access via `/vsizip/`. Hosts that build their own image get them on the next
-`IMAGES=1 deploy/upcloud/push.sh`; the published images get them with the next
-`scripts/release-runner.sh`. Until a deployment runs such an image, only the
-GDAL and pandas formats are readable.
+The Python image carries pinned `openpyxl` (xlsx), `xlrd` (legacy xls), and
+`odfpy` (LibreOffice ods) alongside pandas. GDAL covers shapefile, GeoPackage,
+KML, CSV, and zip access via `/vsizip/`.
 
 ## Security notes
 
@@ -230,13 +226,3 @@ GDAL and pandas formats are readable.
   avoids extraction.
 - When the designer uses a cloud model, whatever snippets print leaves the
   deployment.
-
-## History
-
-First designed against another codebase, then adapted here after a review
-against this one. Decisions taken with the owner: keep every version with
-admin purge for mistakes, downloads editor-only, 100 MB default cap (the
-Cloudflare limit), `finish` pins the session's files into a production run,
-session-owned uploads adopted at draft creation, pinned runs queue, current
-stored rather than derived from run history. The review also surfaced the
-run-start bug fixed separately (manual starts now insert directly as running).

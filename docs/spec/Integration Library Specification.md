@@ -4,7 +4,7 @@ This document specifies the integration library: the machine-readable format
 in which data sources, their ingestion logic, and their outputs are described
 for the Open Source Data Integrator Platform. It is the companion to the
 *System Architecture* (section 3.1) and the *Interoperability and Standards
-Mapping* (section 6), and is an independently reusable deliverable: a library
+Mapping* (section 6), and is independently reusable: a library
 written to this specification can be consumed by any platform implementation
 that conforms to it, and an implementation that conforms to it can run any
 library written to it.
@@ -88,8 +88,8 @@ and imported into another.
 
 ### 2.1 Identifiers
 
-Every identifier in a definition (integration `id`, input ids, `tableId`,
-column ids, `layerId`, band ids, skill ids) MUST match:
+Every identifier in a definition (integration `id`, input ids, file slot
+ids, `tableId`, column ids, `layerId`, band ids, skill ids) MUST match:
 
 ```
 ^[a-z][a-z0-9_]{0,62}$
@@ -125,19 +125,22 @@ two-letter ISO 639-1 codes).
 | `secrets` | string[] | no | Names of credentials the code reads; values are never in the definition |
 | `aoi` | object (2.6), `null`, or absent | no | Area of interest, tri-state |
 | `inputs` | map of id to input reference (2.7) | no | Platform data the run consumes |
+| `files` | map of slot id to file slot (2.8) | no | Uploaded files the run reads |
 | `runtime` | `"node"` or `"python"` | yes | Runtime image the code executes in |
-| `limits` | object (2.8) | no | Per-run resource limits |
-| `destinations` | array (2.9) | yes | Tables and raster layers the integration writes |
-| `validation` | object (2.10) | no | Data quality rules evaluated on each run |
+| `limits` | object (2.9) | no | Per-run resource limits |
+| `destinations` | array (2.10) | yes | Tables and raster layers the integration writes |
+| `validation` | object (2.11) | no | Data quality rules evaluated on each run |
 | `code` | string | yes | The single self-contained code file |
 | `contract` | `2` | yes | Job contract version |
 
 Field names not listed here are reserved. Validators SHOULD reject unknown
-fields so that a definition means the same thing to every implementation.
+top-level fields so that a definition means the same thing to every
+implementation; the reference implementation ignores them.
 
 ### 2.4 Source
 
 Documentation and lineage only; nothing in `source` affects behavior.
+When `source` is present, `name` is required.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -165,6 +168,9 @@ can only be run manually.
 |---|---|---|
 | `bbox` | `[west, south, east, north]` | Geographic bounding box in WGS 84 (EPSG:4326) decimal degrees; `west > east` crosses the antimeridian |
 | `countries` | string[] | ISO 3166-1 alpha-3 codes covered by the box: a hint for sources keyed by country rather than extent, and the countries whose land outlines the platform clips statistics and map drawing to |
+
+`bbox` longitudes lie in -180 to 180 and latitudes satisfy
+-90 <= south < north <= 90.
 
 `aoi` is tri-state. An object clips ingestion and input extracts to the box.
 An explicit `null` means the source's full extent. An absent field inherits
@@ -205,18 +211,40 @@ A filter is an array of clauses combined with AND, each
 (`in` takes an array). Extracts are select, filter, and clip only, never
 aggregation, and implementations MAY cap their size.
 
-### 2.8 Limits
+### 2.8 File slots
+
+`files` maps a slot id to a **file slot**: a file users upload for the code
+to read (a spreadsheet, a shapefile archive). Like secrets, the definition
+names the slot and the deployment holds the contents, so a library entry can
+expect "a water point inventory" and each deployment uploads its own.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `description` | localized string | What the file is and what it must contain, shown beside the upload control |
+| `accept` | string[] | Accepted extensions, lowercase with the leading dot (for example `[".xlsx", ".xls"]`); absent accepts any |
+
+Each upload is an immutable, numbered version of its slot. Every run reads
+one version per declared slot: the version the run pins, else the slot's
+current version (the one the last successful run read). A run of an
+integration with a declared slot that has no version yet is refused. The
+version read is materialized under `/in/files` (3.3) and recorded on the
+run.
+
+### 2.9 Limits
 
 | Field | Type | Meaning |
 |---|---|---|
 | `cpus` | number | CPU cores |
 | `memoryMb` | integer | Memory ceiling in megabytes |
 | `timeoutMs` | integer | Wall-clock timeout in milliseconds |
-| `workDiskMb` | integer | Quota for the persistent `/work` workspace, checked between runs |
+| `workDiskMb` | integer | Quota for the persistent `/work` workspace; a run does not start while `/work` is over it, and is killed when polling during the run finds it exceeded |
 
-Declared limits are requests; the deployment caps them.
+Declared limits are requests. A deployment MAY set a maximum for each; a
+declared value above the maximum is lowered to it (and the run log says
+so), and a deployment `/work` maximum also applies when the definition
+declares no `workDiskMb`.
 
-### 2.9 Destinations
+### 2.10 Destinations
 
 A destination is a table or a raster layer. Each is created and owned by
 the installing integration.
@@ -248,8 +276,8 @@ A column is `{ id, name?, type, enumValues?, units? }` with `type` one of:
 | `json` | Arbitrary JSON |
 
 `enumValues` is an array of `{ id, name }` (name a localized string).
-Implementations SHOULD flag runs that deliver values outside the vocabulary.
-`units` is free text (for example `mm/day`).
+Implementations SHOULD flag runs that deliver values outside the vocabulary
+(2.11). `units` is free text (for example `mm/day`).
 
 `replace` truncates the table and loads the run's rows; `append` adds them;
 `merge` upserts on `mergeColumns`. Every row additionally records the run
@@ -262,9 +290,9 @@ that produced it, which is the lineage link.
 | `kind` | `"raster"` | yes | |
 | `layerId` | identifier | yes | Catalog layer; appears in tile and API URLs |
 | `name` | localized string | no | Display name |
-| `description` | string | no | One-sentence summary shown in the data catalog |
+| `description` | localized string | no | One-sentence summary shown in the data catalog |
 | `temporality` | `"time-series"` or `"current-only"` | yes | Whether promoted snapshots are retained as history or superseded |
-| `retention` | `{ days }` | no | Time-series only: snapshots whose observation ended more than `days` ago are deleted; the current snapshot is always kept. Absent keeps all history |
+| `retention` | `{ days }` | no | Time-series only, `days` a whole number of at least 1: snapshots whose observation ended more than `days` ago are deleted; the current snapshot is always kept. Absent keeps all history |
 | `bands` | band[] | yes | Bands in file band order |
 
 A band is `{ id, name?, units?, nodata?, rendering? }`. `nodata` is the
@@ -277,37 +305,66 @@ NaN. `rendering` is `{ colorMap?, defaultRange?, resampling? }`:
 | `defaultRange` | `{ min, max }` | Default value range for display scaling |
 | `resampling` | `"nearest"` or `"average"` | Overview resampling; `nearest` avoids inflating sparse data |
 
-### 2.10 Validation
+### 2.11 Validation
 
 | Field | Type | Meaning |
 |---|---|---|
-| `expectedCadence` | ISO 8601 duration (for example `P1D`) | Expected data cadence; freshness is measured against it |
-| `ranges` | `[{ destinationId, field, min?, max? }]` | Allowed value range for a column (`field` is a column id) or band (`field` is a band id) of the named destination |
+| `expectedCadence` | ISO 8601 duration (for example `P1D`, `PT6H`) | Expected data cadence |
+| `ranges` | `[{ destinationId, field, min?, max? }]` | Allowed value range for a numeric column (`field` is a `number` or `integer` column id) or band (`field` is a band id) of the named destination; at least one bound |
 
-Violations flag the run; they do not reject its data.
+The platform evaluates the rules on what each run wrote:
 
-### 2.11 Structural rules
+- **Table ranges** are checked exactly, over the rows the run wrote. A
+  finding counts the values outside the range.
+- **Raster ranges** are checked per stored snapshot against approximate
+  band statistics (overviews may be used), so a finding reports the observed
+  minimum and maximum. This catches sentinels and unit mistakes, not single
+  outlying cells.
+- **Enum columns** need no rule: values outside `enumValues` are counted the
+  same way.
+
+Findings are recorded on the run and appended to its log. They never reject
+data: a source that legitimately moves outside a declared range keeps
+loading while the operator is told.
+
+`expectedCadence` drives freshness monitoring: an enabled integration with
+no successful run within twice the cadence is reported as overdue. For the
+calculation a month counts as 30 days and a year as 365.
+
+### 2.12 Structural rules
 
 A validator MUST reject a definition when:
 
 - any identifier violates the grammar of 2.1;
-- `aoi` is an object whose `bbox` is malformed;
+- a human-facing text field is a plain string where a localized string is
+  required, or a required one (`name`, `source.name`, enum value names) is
+  missing;
+- `aoi` is an object whose `bbox` is malformed or whose `countries` holds a
+  code that is not ISO 3166-1 alpha-3;
+- `secrets` is not an array of names matching `^[A-Za-z_][A-Za-z0-9_]{0,63}$`,
+  or names a secret twice;
+- `files` is not an object, or a slot's `accept` is empty or holds an entry
+  that is not a lowercase extension with its dot (`^\.[a-z0-9]{1,10}$`);
 - `trigger.cron` is not a valid five-field expression, or
   `webhookDelaySeconds` is outside 0 to 86400;
 - a table destination's `action` is not one of the three values, a `merge`
   destination lacks `mergeColumns`, or a merge column is not a declared
   column;
-- a column `type` is outside the vocabulary of 2.9;
+- a column `type` is outside the vocabulary of 2.10;
+- a raster destination declares `retention` without `temporality`
+  `"time-series"`, or `retention.days` is not a whole number of at least 1;
 - an input references one of the definition's own destinations;
-- a human-facing text field is a plain string where a localized string is
-  required.
+- `validation` has fields other than `expectedCadence` and `ranges`,
+  `expectedCadence` is not an ISO 8601 duration, or a range rule has no
+  bound, a non-numeric bound, or names a destination, column, or band that
+  does not exist (or a table column that is not `number` or `integer`).
 
 ## 3. Job contract
 
 Integration code runs as a job inside an isolated container built from the
 declared runtime image. The contract between the platform and the job is
 language-agnostic: a JSON payload on standard input, a JSON result on
-standard output, logs on standard error, and three mount points. A
+standard output, logs on standard error, and the mount points of 3.3. A
 per-language **harness** inside the image maps this onto a single entrypoint
 function, so integration code is a plain module with no platform-specific
 imports.
@@ -319,9 +376,9 @@ imports.
   "definition": { ...the definition, with aoi resolved... },
   "secrets": { "name": "value" },
   "previousState": { ... } | null,
-  "webhookData": [ ...pending events, oldest first... ] | null,
+  "webhookData": [ ...pending events, oldest first... ],
   "params": { ... },
-  "catalog": { "<layerId>": { "snapshots": [ { "timestamp": "…", "timestampEnd": "…", "sources": 1 } ] } }
+  "catalog": { "<layerId>": { "snapshots": [ { "timestamp": "…", "timestampEnd": "…", "label": "…", "sources": 1 } ] } }
 }
 ```
 
@@ -331,15 +388,20 @@ imports.
 - `secrets` holds the values for the names declared in `definition.secrets`.
 - `previousState` is the `state` returned by the last successful run, or
   null on the first run and after a cold start.
-- `webhookData` is every buffered event since the last run, and absent or
-  null for runs not triggered by webhooks.
+- `webhookData` is every buffered event not yet consumed, oldest first,
+  each the JSON body of one webhook POST. Any run of the integration
+  receives every pending event, whatever triggered it; a successful run
+  consumes them. It is absent when none are pending. Test runs in a design
+  session never receive webhook events.
 - `params` are free-form parameters supplied by the trigger, an empty
   object for scheduled runs. A manual run may set `params.force` to ask for
   work the code would otherwise skip.
 - `catalog` lists, for each raster destination the definition declares, the
-  snapshots already promoted for that layer, ascending by `timestamp`, with
-  `timestampEnd` for periods and the number of `sources` (files; 0 is a
-  published empty snapshot). Whether a period still needs producing is the
+  most recent snapshots already promoted for that layer (implementations MAY
+  bound the list; the reference implementation sends the latest 100),
+  ascending by `timestamp`, with `timestampEnd` for periods, an optional
+  implementation-assigned `label`, and the number of `sources` (files; 0 is
+  a published empty snapshot). Whether a period still needs producing is the
   code's decision: it compares what the source offers with what `catalog`
   holds, honours `params.force`, and returns no artifact for a period that
   needs no update. The platform never skips a run on the code's behalf.
@@ -364,18 +426,20 @@ standard error.
 
 | Path | Access | Contents |
 |---|---|---|
-| `/in` | read-only | Materialized inputs plus `/in/manifest.json` (3.4); absent when the definition declares no inputs |
+| `/in` | read-only | Materialized inputs and uploaded files plus `/in/manifest.json` (3.4); absent when the run reads neither |
 | `/work` | read-write, persistent per integration | Cache workspace; may be wiped at any time, so correctness MUST NOT depend on it. Subject to `limits.workDiskMb` |
 | `/out` | read-write, per run | Where the job writes the files it references in its result |
+| `/tmp` | read-write, per run | Small scratch space (256 MB in the reference implementation), discarded with the job |
 
 The container's root filesystem is read-only, so any other write MUST go to
-`/work` or `/out`. Curated libraries are part of the runtime image; jobs
+one of these. Curated libraries are part of the runtime image; jobs
 cannot install packages at run time. Network egress is limited to the public
 internet.
 
 ### 3.4 Input manifest
 
-`/in/manifest.json` describes what was materialized, keyed by input id:
+`/in/manifest.json` describes what was materialized: inputs keyed by input
+id, and uploaded files keyed by slot id:
 
 ```json
 {
@@ -384,10 +448,16 @@ internet.
       "kind": "raster",
       "layerId": "chirps_monthly",
       "snapshots": [
-        { "path": "rain/2026-06-01T00:00:00Z.tif", "snapshotId": "…", "timestamp": "2026-06-01T00:00:00Z", "bands": ["precip"] }
+        { "path": "rain/2026-06-01T00-00-00.000Z.tif", "snapshotId": "…", "timestamp": "2026-06-01T00:00:00.000Z", "bands": ["precip"] }
       ]
     },
     "sites": { "kind": "table", "tableId": "water_points", "path": "sites.gpkg", "format": "gpkg", "rowCount": 1240 }
+  },
+  "files": {
+    "inventory": {
+      "path": "files/inventory.xlsx", "versionId": "…", "version": 3, "filename": "Inventory 2026.xlsx",
+      "sha256": "…", "sizeBytes": 48210, "uploadedAt": "2026-06-03T09:12:44.000Z"
+    }
   }
 }
 ```
@@ -395,10 +465,16 @@ internet.
 - Raster snapshots are listed ascending by `timestamp`, each with a `path`
   relative to `/in` (null for an empty snapshot), the catalog `snapshotId`
   recorded for lineage, `timestamp`, optional `timestampEnd` for periods,
-  and `bands` in file band order. A multi-file snapshot is presented as one
-  openable virtual raster.
+  and `bands` in file band order. A single-file snapshot is
+  `<inputId>/<stem>.tif`, where the stem is the timestamp with colons
+  replaced by dashes; a multi-file snapshot is presented as one openable
+  virtual raster, `<inputId>/<stem>.vrt`.
 - Table extracts are one file in the requested `format`. In `json`, dates
   are ISO 8601 strings and geometry columns are GeoJSON geometry objects.
+- Uploaded files are at `files/<slotId><ext>`, with the extension of the
+  uploaded file, and carry the version id and number, the name the file was
+  uploaded under (display only), its SHA-256, size, and upload time. The
+  section is absent when the run reads no files.
 
 The manifest is authoritative about paths; code SHOULD read it rather than
 assume a layout.
@@ -418,7 +494,7 @@ Every field is optional; an empty object is a successful run that changed
 nothing.
 
 - **`data`**: rows per destination table id, inline. Values follow the
-  column types of 2.9 (geometry as GeoJSON geometry objects, dates and
+  column types of 2.10 (geometry as GeoJSON geometry objects, dates and
   instants as ISO 8601 strings). Inline rows are bounded by the platform's
   standard-output cap; larger tables go through `tables`.
 - **`tables`**: table files written under `/out`, loaded into their
@@ -435,15 +511,19 @@ nothing.
   `EPSG:4326`), both derived from the files when absent; optional free-form
   `metadata`. Files MUST be Cloud-Optimized GeoTIFFs whose band order
   matches the destination's `bands` and whose nodata matches the declared
-  sentinel. Omitting a layer from `rasters` means no update to it.
+  sentinel; the platform reads only footprint, CRS, and cell size from them,
+  so meeting this is the job's responsibility. When `crs` is absent and the
+  file's CRS has no EPSG code, it is recorded as `unknown`. Omitting a layer
+  from `rasters` means no update to it.
 - **`state`**: the next incremental state, persisted and delivered as
   `previousState` to the next run. This is the only authoritative
   incremental state; it is what makes ingestion resumable after outages.
 
-The platform, not the job, applies the result: it validates rows against the
+The platform, not the job, applies the result: it casts rows to the
 declared schema, applies tabular changes transactionally, promotes raster
-files into the store, registers them in the catalog, and records volumes,
-lineage, and validation flags on the run.
+files into the store, registers them in the catalog, evaluates the
+validation rules of 2.11, and records volumes, lineage, and findings on the
+run.
 
 ### 3.6 Runtime images
 
@@ -465,9 +545,13 @@ contract; shared contract tests verify a harness against sections 3.1 to
   an unchanged definition is a no-op.
 - **Library updates** replace the installed definition but carry over the
   deployment-owned fields: `aoi`, `trigger`, and `limits`.
-- **Export** produces the definition document as-is. **Import** installs it
-  paused, with `aoi` removed so the importer's default area of interest
-  applies, and prompts for any declared `secrets` before the first run.
+- **Export** produces the definition document without a concrete `aoi`, so
+  the importer's default area of interest applies; an explicit `null` (the
+  source's full extent) is kept, since it describes the source rather than
+  the deployment. **Import** installs the document as it arrives, whatever
+  `aoi` it carries, paused so the operator can review the code and run it
+  manually first. An id that is already installed is refused. Declared
+  `secrets` and file slots are then filled in the importing deployment.
 - **Secrets** are stored by the deployment per integration, encrypted at
   rest, and injected only into that integration's runs.
 
@@ -499,7 +583,7 @@ code file matches the declared runtime, and no secret value appears.
 A **platform implementation** conforms when it:
 
 1. accepts and validates definitions per section 2, rejecting the
-   violations of 2.11;
+   violations of 2.12;
 2. executes code under the job contract of section 3, providing both
    runtime images and the manifest and mounts as specified;
 3. applies run results per 3.5, including transactional tabular loads,

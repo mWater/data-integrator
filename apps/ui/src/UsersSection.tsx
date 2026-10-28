@@ -196,7 +196,7 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
           onChange={e => setEmail(e.target.value)}
           required
         />
-        <select value={role} onChange={e => setRole(e.target.value as AdminUser["role"])}>
+        <select value={role} onChange={e => setRole(e.target.value as AdminUser["role"])} aria-label={T`Role`}>
           {ROLES.map(r => (
             <option key={r} value={r}>
               {roleLabel(r)}
@@ -229,6 +229,7 @@ export function UsersSection({ currentUser }: { currentUser: User }) {
                   <td>
                     <select
                       value={u.role}
+                      aria-label={T`Role of ${u.email}`}
                       disabled={busy}
                       onChange={e => void mutate(() => setUserRole(u.id, e.target.value as AdminUser["role"]))}
                     >

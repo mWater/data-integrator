@@ -320,8 +320,8 @@ export function Settings({ user, ai, onAiChanged }: {
 }
 
 /**
- * User administration on its own page: the table grows with the deployment,
- * so it no longer shares the scrolling settings page. Admins only.
+ * User administration on its own page, since the table grows with the
+ * deployment. Admins only.
  */
 export function UsersPage({ user }: { user: User }) {
   return (

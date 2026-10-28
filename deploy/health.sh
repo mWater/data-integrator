@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Health report for one Data Integrator box, printed as a few indented lines.
-# Runs as root on the box (fleet.sh health streams it over ssh). Read-only.
-# Exit status 1 when anything needs attention, so a cron wrapper can alert.
+# Read-only health report for a Data Integrator host, printed as a few indented
+# lines; exit status 1 when anything needs attention, so cron can alert. As root:
+#   bash /opt/data-integrator/deploy/health.sh   (or: ssh root@<host> bash -s < deploy/health.sh)
 #
-# Environment: APP_USER (default integrator), APP_DIR (default /opt/data-integrator)
+# Environment:
+#   APP_USER      default integrator
+#   APP_DIR       default /opt/data-integrator
+#   EXTRA_UNITS   (optional) space-separated systemd units to report on too, e.g.
+#                 a tunnel or proxy in front of the app; one not installed is skipped
+#   HEALTH_COLOR  default 0; 1 colours the output
 set -uo pipefail
 
 APP_USER=${APP_USER:-integrator}
@@ -28,7 +33,11 @@ printf '  %sbuild %s, service since %s%s\n' "$DIM" "$build" "${since:-never}" "$
 printf '  '
 state service data-integrator
 state "user manager" "user@${APP_UID}.service"
-systemctl list-unit-files cloudflared.service >/dev/null 2>&1 && state tunnel cloudflared
+# The reverse proxy setup.sh installs with PUBLIC_HOSTNAME, and any extra units
+for unit in caddy ${EXTRA_UNITS:-}; do
+  unit=${unit%.service}
+  if systemctl list-unit-files "$unit.service" >/dev/null 2>&1; then state "$unit" "$unit.service"; fi
+done
 if sudo -u postgres psql -qAt -d integrator -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else printf 'db %s ' "$(bad down)"; fi
 if [ -n "$since" ]; then
   sched=$(journalctl -u data-integrator --since "$since" --no-pager 2>/dev/null | grep -o 'Scheduler running\|No job runner available' | head -1)

@@ -1,4 +1,4 @@
-export { Runner, parseJobOutput } from "./runner.js"
+export { Runner, parseJobOutput, LIMIT_DEFAULTS as JOB_LIMIT_DEFAULTS } from "./runner.js"
 export { buildRuleset, EGRESS_TABLE } from "./egress.js"
 export { RUNTIME_IMAGES, RUNTIME_IMAGE_REPOSITORY, RUNTIME_VERSION } from "./images.js"
 export type {

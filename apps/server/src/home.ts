@@ -7,6 +7,7 @@
  */
 
 import pg from "pg"
+import { durationMs, RunFlag } from "./validation.js"
 import { listDashboards } from "./dashboards/service.js"
 import { listIntegrations } from "./integrations.js"
 import { listLibrary } from "./library.js"
@@ -79,6 +80,20 @@ export interface HomeCredentialNeed {
   sessionId: string | null
 }
 
+/** An enabled integration whose data needs a look: its latest run raised flags, or it is overdue. */
+export interface HomeQualityIssue {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** flagged: the latest successful run raised validation flags; stale: no success within twice validation.expectedCadence */
+  kind: "flagged" | "stale"
+  /** Flag messages (flagged only) */
+  messages: string[]
+  /** Latest successful run's finish time (ISO), or null when it never succeeded */
+  lastSuccessAt: string | null
+}
+
 /** Headline counts behind the home page's action cards and panel links. */
 export interface HomeCounts {
   /** Installed integrations */
@@ -119,6 +134,8 @@ export interface HomeSummary {
   problems: HomeProblem[]
   /** Integrations whose declared credentials are not all stored */
   credentialsNeeded: HomeCredentialNeed[]
+  /** Integrations whose latest data raised validation flags or is overdue */
+  quality: HomeQualityIssue[]
   /** Agent-backed features available on this deployment */
   ai: HomeAi
 }
@@ -149,6 +166,40 @@ async function listCredentialsNeeded(pool: pg.Pool): Promise<HomeCredentialNeed[
     missing: row.missing,
     sessionId: row.session_id ?? null
   }))
+}
+
+/**
+ * Enabled, ready integrations whose latest successful run raised flags, or
+ * that declare an expected cadence and have not succeeded within twice it.
+ * One that is failing outright already shows under problems.
+ */
+async function listQualityIssues(pool: pg.Pool, problemIds: Set<string>): Promise<HomeQualityIssue[]> {
+  const result = await pool.query(
+    `SELECT i.id, i.definition->'name' AS name, i.definition->'validation'->>'expectedCadence' AS cadence,
+            r.flags, r.finished_at
+     FROM app.integrations i
+     LEFT JOIN LATERAL (
+       SELECT flags, finished_at FROM app.runs
+       WHERE integration_id = i.id AND status = 'succeeded' AND session_id IS NULL
+       ORDER BY finished_at DESC LIMIT 1
+     ) r ON true
+     WHERE i.enabled AND i.status = 'ready'
+       AND (r.flags IS NOT NULL OR i.definition->'validation' ? 'expectedCadence')
+     ORDER BY i.updated_at DESC`
+  )
+  const issues: HomeQualityIssue[] = []
+  for (const row of result.rows) {
+    if (problemIds.has(row.id)) continue
+    const name = row.name ?? { _base: "en", en: row.id }
+    const lastSuccessAt = row.finished_at ? (row.finished_at as Date).toISOString() : null
+    const cadence = row.cadence ? durationMs(row.cadence) : null
+    if (cadence !== null && (!row.finished_at || Date.now() - (row.finished_at as Date).getTime() > 2 * cadence)) {
+      issues.push({ id: row.id, name, kind: "stale", messages: [], lastSuccessAt })
+    } else if (row.flags) {
+      issues.push({ id: row.id, name, kind: "flagged", messages: (row.flags as RunFlag[]).map(f => f.message), lastSuccessAt })
+    }
+  }
+  return issues
 }
 
 /** Enabled integrations whose most recent run ended badly, newest first. */
@@ -200,6 +251,8 @@ export async function getHomeSummary(
   const library =
     libraryPath && integrations.length === 0 ? (await listLibrary(pool, libraryPath)).length : null
 
+  const quality = await listQualityIssues(pool, new Set(problems.map(p => p.id)))
+
   return {
     title: title ?? DEFAULT_SITE_TITLE,
     hasData: filled.length > 0,
@@ -229,6 +282,7 @@ export async function getHomeSummary(
     })),
     problems,
     credentialsNeeded,
+    quality,
     ai
   }
 }

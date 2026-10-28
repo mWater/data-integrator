@@ -113,5 +113,15 @@
         "days": 365
       }
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "observed_flood_extent",
+        "field": "flood_extent",
+        "min": 0,
+        "max": 1
+      }
+    ]
+  }
 }

@@ -38,8 +38,8 @@ export interface DashboardAgentState {
   build: DashboardBuild | null
   /** Saved version, once the user saved */
   saved: { version: number } | null
-  /** True when the draft has changes the saved version (if any) lacks; absent in sessions from before saving was the user's */
-  dirty?: boolean
+  /** True when the draft has changes the saved version (if any) lacks */
+  dirty: boolean
   /** Id and name the agent proposed for the first save; null until it calls ready_to_save */
   proposed?: { id: string; name: string } | null
   /** Data-table schema block injected into the system prompt */
@@ -415,8 +415,6 @@ export class DashboardImplementation implements AgentImplementation<DashboardAge
       case "ask_user":
         return this.askUser(args)
       case "ready_to_save":
-      // Sessions from before saving was the user's still carry finish calls
-      case "finish":
         return this.readyToSave(state, args)
       default:
         return { result: `Unknown tool ${name}` }

@@ -24,10 +24,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mWater/data-integrator.git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
     "directory": "packages/runner"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/runner",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

@@ -94,8 +94,8 @@ export interface DashboardAgentState {
   build: DashboardBuild | null
   /** Saved version once the user saved */
   saved: { version: number } | null
-  /** True when the draft has edits the saved version lacks; absent in sessions from before saving was the user's */
-  dirty?: boolean
+  /** True when the draft has changes the saved version (if any) lacks */
+  dirty: boolean
   /** Slug and name the agent proposed for the first save; null until it is ready */
   proposed?: { id: string; name: string } | null
 }
@@ -224,6 +224,20 @@ export interface RunSummary {
   stats: { rows?: Record<string, number>; snapshots?: number; durationMs?: number } | null
   /** Error message on failure */
   error: string | null
+  /** Validation flags the run raised; null when none */
+  flags: RunFlag[] | null
+}
+
+/** One data-quality finding on a run: values outside a range rule or a column's codes. */
+export interface RunFlag {
+  /** tableId or layerId */
+  destinationId: string
+  /** Column id or band id */
+  field: string
+  /** Which rule raised it */
+  rule: "range" | "enum"
+  /** One-line description */
+  message: string
 }
 
 /** Per-destination stored-data stats. */
@@ -316,6 +330,36 @@ export function saveAiSettings(body: { provider: AiProviderKind; model: string; 
 /** Turns AI off and forgets the saved key (admins). */
 export function clearAiSettings(): Promise<AiSettings> {
   return request("/api/settings/ai", { method: "DELETE" })
+}
+
+/** Daily AI token caps; null means no cap. */
+export interface AiLimits {
+  /** Tokens one user's sessions may use per UTC day */
+  userDailyTokens: number | null
+  /** Tokens all sessions together may use per UTC day */
+  deploymentDailyTokens: number | null
+}
+
+/** The caps plus the deployment's usage so far today. */
+export interface AiLimitsView {
+  /** Caps in force */
+  limits: AiLimits
+  /** Tokens used by everyone since midnight UTC */
+  usedToday: number
+}
+
+/** Reads the daily AI token caps (admins). */
+export function getAiLimits(): Promise<AiLimitsView> {
+  return request("/api/settings/ai_limits")
+}
+
+/** Saves the daily AI token caps (admins). */
+export function saveAiLimits(limits: AiLimits): Promise<AiLimitsView> {
+  return request("/api/settings/ai_limits", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(limits)
+  })
 }
 
 /** The /api/me payload: the signed-in user plus the AI wiring. */
@@ -656,7 +700,20 @@ export interface HomeIntegration {
   lastRunAt: string | null
 }
 
-/** An enabled integration whose most recent run failed. */
+/** An enabled integration whose data needs a look: its latest run raised flags, or it is overdue. */
+export interface HomeQualityIssue {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** flagged: the latest successful run raised validation flags; stale: no success within twice its expected cadence */
+  kind: "flagged" | "stale"
+  /** Flag messages (flagged only) */
+  messages: string[]
+  /** Latest successful run's finish time (ISO), or null when it never succeeded */
+  lastSuccessAt: string | null
+}
+
 /** An integration waiting for credentials before it can run. */
 export interface HomeCredentialNeed {
   /** Integration id */
@@ -671,6 +728,7 @@ export interface HomeCredentialNeed {
   sessionId: string | null
 }
 
+/** An enabled integration whose most recent run failed. */
 export interface HomeProblem {
   /** Integration id */
   id: string
@@ -724,6 +782,8 @@ export interface HomeSummary {
   problems: HomeProblem[]
   /** Integrations whose declared credentials are not all stored */
   credentialsNeeded: HomeCredentialNeed[]
+  /** Integrations whose latest data raised validation flags or is overdue */
+  quality: HomeQualityIssue[]
   /** Agent-backed features available here */
   ai: HomeAi
 }

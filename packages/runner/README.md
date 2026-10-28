@@ -84,8 +84,49 @@ Requirements: rootless podman with a netavark bridge network (created by
 `ensureReady()`), gVisor's `runsc` at `/usr/local/bin/runsc`, `nft` on the host, `du`
 for the disk guard, and a systemd user manager for the job's user (`loginctl
 enable-linger`, with `XDG_RUNTIME_DIR` set in the calling process's environment) for
-resource limits. See `Spike Notes.md` in the repo root for why the network setup
-is shaped this way.
+resource limits.
+
+## Host networking and limits
+
+Rootless podman with gVisor shapes the setup in four ways:
+
+- **Limits live on the systemd scope.** gVisor under rootless podman needs
+  `--runtime-flag=ignore-cgroups`, so the container cgroup is never used and podman's
+  `-m`, `--cpus` and `--pids-limit` are not enforced. The runner caps the
+  `podman-<pid>.scope` podman runs in with `systemctl --user set-property` instead (see
+  above).
+- **Jobs run on a netavark bridge network** (`integrator-jobs` by default, created by
+  `ensureReady()`), not the rootless default. With slirp4netns the tap lives inside the
+  container's netns and gVisor's netstack transmits via AF_PACKET, so there is nowhere
+  to filter. A bridge network gives podman a rootless infra netns whose forward hook sees
+  all container traffic. A small keeper container holds that netns open between jobs.
+- **Egress rules live in the rootless infra netns**, applied atomically from a file with
+  `podman unshare --rootless-netns nft -f <file>` (quoted rules passed through `podman
+  unshare` get their braces mangled). The forward chain accepts established/related
+  traffic before the private-range drop; otherwise NAT-reversed replies (destination =
+  the container's private address) are dropped and all egress dies:
+
+  ```
+  table inet integrator_egress {
+    chain filter_forward {
+      type filter hook forward priority 0; policy accept;
+      ct state established,related accept
+      ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, ... } drop
+      ip6 daddr { fc00::/7, fe80::/10, ... } drop
+    }
+  }
+  ```
+
+  aardvark-dns on the bridge gateway still resolves: its upstream queries leave from the
+  infra netns's output path, which the forward hook does not see.
+- **Explicit DNS resolvers.** A host `resolv.conf` pointing only at systemd-resolved's
+  `127.0.0.53` stub (the modern Ubuntu default) leaves aardvark-dns with no reachable
+  upstream in the rootless netns, so every lookup fails while connections by IP work. The
+  runner passes `--dns` resolvers to every networked job (`dns` option, default
+  `1.1.1.1` and `9.9.9.9`).
+
+Job containers also run with a read-only root filesystem, a writable 256 MB `/tmp`
+tmpfs (`limits.tmpfsMb`), all capabilities dropped and `no-new-privileges`.
 
 Tests: `pnpm test`. The integration suite skips itself if podman/runsc are absent, skips
 network tests under `SKIP_NET_TESTS=1`, and skips the GDAL test unless

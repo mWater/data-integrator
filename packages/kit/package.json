@@ -1,5 +1,6 @@
 {
   "name": "@data-integrator/kit",
+  "private": true,
   "version": "0.1.0",
   "description": "Dashboard component kit: the sanctioned UI surface for agent-designed dashboards",
   "license": "Apache-2.0",
@@ -47,5 +48,15 @@
     "tailwindcss": "^4.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "packages/kit"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/kit",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

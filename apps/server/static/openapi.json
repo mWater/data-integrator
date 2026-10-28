@@ -3,7 +3,7 @@
   "info": {
     "title": "mWater Data Integrator API",
     "version": "0.1.0",
-    "description": "Query interface over the harmonized dataset: tabular destinations and the raster catalog. Authenticate with a session cookie (UI) or a personal access token (Authorization: Bearer dit_...). Data access works with no AI configured."
+    "description": "Programmatic interface to the harmonized dataset: tabular destinations, the raster catalog (with a read-only STAC API), webhooks, integration files, and integration export/import. Authenticate with a session cookie (POST /api/login) or a personal access token (Authorization: Bearer dit_...). Routes not listed here serve the web UI and are not a stable interface. Data access works with no AI configured."
   },
   "components": {
     "securitySchemes": {
@@ -33,6 +33,39 @@
           "units": { "type": "string" },
           "enumValues": { "type": "array", "items": { "type": "object" } }
         }
+      },
+      "Trigger": {
+        "type": "object",
+        "description": "Replaces the whole trigger; omitted fields are cleared",
+        "properties": {
+          "cron": { "type": ["string", "null"], "description": "Standard 5-field cron, UTC" },
+          "webhook": { "type": "boolean", "description": "Accept events at /hooks/{token}" },
+          "webhookDelaySeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400,
+            "description": "Batch window: the first event schedules a run this many seconds later and later events join it (webhook only; 0 runs at once)"
+          }
+        }
+      },
+      "AiLimits": {
+        "type": "object",
+        "properties": {
+          "userDailyTokens": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Input plus output tokens one user may use per UTC day; null for no cap"
+          },
+          "deploymentDailyTokens": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Input plus output tokens all users together may use per UTC day; null for no cap"
+          }
+        }
+      },
+      "StacError": {
+        "type": "object",
+        "properties": { "code": { "type": "string", "enum": ["InvalidParameterValue", "NotFound"] }, "description": { "type": "string" } }
       }
     }
   },
@@ -53,11 +86,33 @@
             }
           }
         },
-        "responses": { "200": { "description": "Signed in" }, "401": { "description": "Bad credentials or locked" } }
+        "responses": {
+          "200": { "description": "{ user: { email, role } }; sets the di_session cookie" },
+          "401": { "description": "Bad credentials or locked" }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "summary": "End the cookie session and clear the cookie",
+        "security": [],
+        "responses": { "200": { "description": "{ ok: true }" } }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "summary": "The signed-in user and the deployment's AI status",
+        "responses": {
+          "200": { "description": "{ user: { id, email, role }, ai: { provider, model, ackRequired } }" },
+          "401": { "description": "Not signed in" }
+        }
       }
     },
     "/api/tokens": {
-      "get": { "summary": "List your personal access tokens (never the secrets)", "responses": { "200": { "description": "Token list" } } },
+      "get": {
+        "summary": "List your personal access tokens: id, name, createdAt, lastUsedAt, expiresAt (never the secrets)",
+        "responses": { "200": { "description": "Token list" } }
+      },
       "post": {
         "summary": "Mint a personal access token; the secret is returned once",
         "requestBody": {
@@ -71,7 +126,7 @@
             }
           }
         },
-        "responses": { "201": { "description": "{ token }" } }
+        "responses": { "201": { "description": "{ token, note }; the token is shown once" }, "400": { "description": "Missing name" } }
       }
     },
     "/api/tokens/{id}": {
@@ -134,7 +189,11 @@
             }
           }
         },
-        "responses": { "200": { "description": "{ user }" }, "404": { "description": "No such user" }, "409": { "description": "Last active admin" } }
+        "responses": {
+          "200": { "description": "{ user }" },
+          "404": { "description": "No such user" },
+          "409": { "description": "Last active admin" }
+        }
       }
     },
     "/api/users/{id}/disabled": {
@@ -148,13 +207,17 @@
             }
           }
         },
-        "responses": { "200": { "description": "{ user }" }, "404": { "description": "No such user" }, "409": { "description": "Last active admin" } }
+        "responses": {
+          "200": { "description": "{ user }" },
+          "404": { "description": "No such user" },
+          "409": { "description": "Last active admin" }
+        }
       }
     },
     "/api/tables": {
       "get": {
         "summary": "List queryable tables with their declared column schemas",
-        "responses": { "200": { "description": "{ tables: [{ tableId, integrationId, columns: ColumnSpec[] }] }" } }
+        "responses": { "200": { "description": "{ tables: [{ tableId, integrationId, name, description, columns: ColumnSpec[] }] }" } }
       }
     },
     "/api/tables/{tableId}/rows": {
@@ -162,35 +225,78 @@
         "summary": "Filtered read over one table",
         "parameters": [
           { "name": "tableId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "where", "in": "query", "description": "URL-encoded JSON Filter", "schema": { "type": "string" } },
+          {
+            "name": "where",
+            "in": "query",
+            "description": "URL-encoded JSON Filter (an array, or a single clause object)",
+            "schema": { "type": "string" }
+          },
           { "name": "columns", "in": "query", "description": "Comma-separated column ids", "schema": { "type": "string" } },
-          { "name": "order", "in": "query", "description": "column or column.desc", "schema": { "type": "string" } },
+          { "name": "order", "in": "query", "description": "column, column.asc, or column.desc", "schema": { "type": "string" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 1000, "maximum": 10000 } },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
-          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["json", "csv", "geojson"], "default": "json" } }
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["json", "csv", "geojson"], "default": "json" },
+            "description": "geojson uses the first selected geometry column as the feature geometry"
+          }
         ],
         "responses": {
           "200": { "description": "{ columns, rows } | CSV text | GeoJSON FeatureCollection" },
-          "400": { "description": "Bad filter, column, or order" },
+          "400": { "description": "Bad filter, column, order, or geojson without a geometry column" },
           "404": { "description": "Unknown table" }
+        }
+      }
+    },
+    "/api/tables/{tableId}/geometry": {
+      "get": {
+        "summary": "Geometry facts of a table for map framing",
+        "parameters": [{ "name": "tableId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "{ geometryColumn: string | null, extent: [west, south, east, north] | null }" },
+          "404": { "description": "Unknown table" }
+        }
+      }
+    },
+    "/api/tables/{tableId}/tiles/{z}/{x}/{y}.mvt": {
+      "get": {
+        "summary": "Display vector tile of a table: source layer \"features\", every column as a property, geometry simplified to the tile and at most 2048 features per tile, largest first",
+        "parameters": [
+          { "name": "tableId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "z", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "x", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "y", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "application/vnd.mapbox-vector-tile" },
+          "400": { "description": "Tile query failed" },
+          "404": { "description": "Unknown table or no geometry column" }
         }
       }
     },
     "/api/layers": {
       "get": {
-        "summary": "Raster catalog: layers with band metadata and promoted snapshots",
+        "summary": "Raster catalog: installed layers with band metadata, the current snapshot, promoted snapshots ({ id, observed_at, observed_end, sources }), masked, and mask_key",
         "responses": { "200": { "description": "{ layers: [...] }" } }
+      }
+    },
+    "/api/layers/{id}": {
+      "get": {
+        "summary": "One layer in full (camelCase): bands, mask, current snapshot, snapshots, owning integration, source attribution, retentionDays, sizeBytes",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Layer detail" }, "404": { "description": "Unknown layer" } }
       }
     },
     "/api/layers/{id}/sample": {
       "get": {
-        "summary": "Pixel value of a snapshot at a WGS84 lon/lat (click-to-inspect)",
+        "summary": "Pixel value of a snapshot at a WGS84 lon/lat; null for nodata or outside the data",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "snapshot", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "lon", "in": "query", "required": true, "schema": { "type": "number" } },
           { "name": "lat", "in": "query", "required": true, "schema": { "type": "number" } },
-          { "name": "band", "in": "query", "schema": { "type": "string" } }
+          { "name": "band", "in": "query", "schema": { "type": "string" }, "description": "Band id; default the first band" }
         ],
         "responses": {
           "200": { "description": "{ value: number | null }" },
@@ -201,30 +307,158 @@
     },
     "/api/snapshots/{id}/download": {
       "get": {
-        "summary": "Download one snapshot as its Cloud-Optimized GeoTIFF",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "image/tiff attachment" }, "404": { "description": "Unknown snapshot" } }
+        "summary": "Download one Cloud-Optimized GeoTIFF of a snapshot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "source",
+            "in": "query",
+            "description": "0-based file ordinal within a multi-file snapshot",
+            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": { "description": "image/tiff attachment, named <layer>_<snapshot>[_<ordinal>].tif" },
+          "404": { "description": "Unknown snapshot, empty snapshot, ordinal past the last file, or file missing from the store" }
+        }
       }
     },
     "/tiles/{layerId}/{snapshotId}/{z}/{x}/{y}.png": {
       "get": {
-        "summary": "Rendered PNG map tile, snapshot-pinned and immutable",
+        "summary": "Rendered PNG map tile (XYZ, Web Mercator) of the layer's first band, snapshot-pinned and immutable",
         "parameters": [
           { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "z", "in": "path", "required": true, "schema": { "type": "integer" } },
           { "name": "x", "in": "path", "required": true, "schema": { "type": "integer" } },
-          { "name": "y", "in": "path", "required": true, "schema": { "type": "integer" } }
+          { "name": "y", "in": "path", "required": true, "schema": { "type": "integer" } },
+          {
+            "name": "mask",
+            "in": "query",
+            "description": "0 draws everything the files cover; otherwise drawing is clipped to the layer's mask",
+            "schema": { "type": "string", "enum": ["0"] }
+          },
+          {
+            "name": "m",
+            "in": "query",
+            "description": "The layer's mask_key; ignored by the server, it changes the URL when the area is reshaped so caches do not serve a stale clip",
+            "schema": { "type": "string" }
+          }
         ],
-        "responses": { "200": { "description": "PNG tile" } }
+        "responses": { "200": { "description": "PNG tile, cache-control immutable" }, "404": { "description": "Unknown snapshot or band" } }
+      }
+    },
+    "/tiles/{layerId}/{snapshotId}/{bandId}/{z}/{x}/{y}.png": {
+      "get": {
+        "summary": "Rendered PNG map tile of one band, snapshot-pinned and immutable",
+        "parameters": [
+          { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "bandId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "z", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "x", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "y", "in": "path", "required": true, "schema": { "type": "integer" } },
+          {
+            "name": "mask",
+            "in": "query",
+            "description": "0 draws everything the files cover; otherwise drawing is clipped to the layer's mask",
+            "schema": { "type": "string", "enum": ["0"] }
+          },
+          {
+            "name": "m",
+            "in": "query",
+            "description": "The layer's mask_key; ignored by the server, it changes the URL when the area is reshaped so caches do not serve a stale clip",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "PNG tile, cache-control immutable" }, "404": { "description": "Unknown snapshot or band" } }
+      }
+    },
+    "/api/stac": {
+      "get": {
+        "summary": "STAC landing page: a Catalog with conformsTo and a child link per collection",
+        "responses": { "200": { "description": "STAC Catalog" } }
+      }
+    },
+    "/api/stac/conformance": {
+      "get": { "summary": "STAC and OGC API Features conformance classes", "responses": { "200": { "description": "{ conformsTo }" } } }
+    },
+    "/api/stac/collections": {
+      "get": {
+        "summary": "One STAC Collection per installed raster layer",
+        "parameters": [
+          { "name": "lang", "in": "query", "description": "Locale of titles and descriptions; default en", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "{ collections, links }" } }
+      }
+    },
+    "/api/stac/collections/{layerId}": {
+      "get": {
+        "summary": "One STAC Collection",
+        "parameters": [
+          { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "lang", "in": "query", "description": "Locale of titles and descriptions; default en", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "STAC Collection" }, "404": { "description": "StacError NotFound" } }
+      }
+    },
+    "/api/stac/collections/{layerId}/items": {
+      "get": {
+        "summary": "Items (promoted snapshots) of a collection, newest first; follow the next link to page",
+        "parameters": [
+          { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size; values above 1000 are lowered to 1000",
+            "schema": { "type": "integer", "minimum": 1, "default": 100, "maximum": 1000 }
+          },
+          {
+            "name": "datetime",
+            "in": "query",
+            "description": "RFC 3339 instant, or interval start/end with .. for an open bound; matches observation periods overlapping it",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "description": "west,south,east,north (WGS84); matches intersecting footprints",
+            "schema": { "type": "string" }
+          },
+          { "name": "token", "in": "query", "description": "Paging cursor from the next link", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "GeoJSON FeatureCollection of STAC Items with numberReturned and links",
+            "content": { "application/geo+json": {} }
+          },
+          "400": { "description": "StacError InvalidParameterValue" },
+          "404": { "description": "StacError NotFound" }
+        }
+      }
+    },
+    "/api/stac/collections/{layerId}/items/{snapshotId}": {
+      "get": {
+        "summary": "One STAC Item; assets data (or data-0, data-1, ...) link to /api/snapshots/{id}/download",
+        "parameters": [
+          { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "STAC Item", "content": { "application/geo+json": {} } },
+          "404": { "description": "StacError NotFound" }
+        }
       }
     },
     "/api/integrations": {
-      "get": { "summary": "List installed integrations with last-run status", "responses": { "200": { "description": "{ integrations }" } } }
+      "get": {
+        "summary": "List installed integrations with last-run status",
+        "responses": { "200": { "description": "{ integrations }" } }
+      }
     },
     "/api/integrations/{id}": {
       "get": {
-        "summary": "Integration detail: definition, version, runs, destination stats",
+        "summary": "Integration detail: definition, version, enabled, status, the 50 most recent runs (with flags: data-quality findings, null when none), destination counts",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "IntegrationDetail" }, "404": { "description": "Unknown integration" } }
       }
@@ -247,7 +481,7 @@
         "responses": {
           "202": { "description": "{ runId, status: running | queued }" },
           "400": { "description": "A slot awaits its first upload, or a pin names no live, accepted version of the slot" },
-          "409": { "description": "Without files: already queued or running, or a draft" }
+          "409": { "description": "Without files: a run is already queued or running, or the integration is a draft" }
         }
       }
     },
@@ -255,23 +489,32 @@
       "get": {
         "summary": "File slots with their versions, current version, bytes stored, and the runs that read each version. Filenames and uploader emails are null for viewers",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "{ slots: [{ slotId, declared, description, accept, bytesStored, versions }] }" } }
+        "responses": {
+          "200": {
+            "description": "{ slots: [{ slotId, declared, description, accept, bytesStored, versions: [{ id, version, filename, uploadedBy, uploadedAt, sizeBytes, sha256, current, purgedAt, runs }] }], maxUploadMb }"
+          }
+        }
       }
     },
     "/api/integrations/{id}/files/{slot}": {
       "put": {
-        "summary": "Upload a new version of a file slot as a raw body (editor or admin). Checks run before the body is read; Expect: 100-continue is answered only after them. run=true (default) requires an installed integration declaring the slot and accepting the extension, and starts or queues a run pinning the version; run=false stages it",
+        "summary": "Upload a new version of a file slot as a raw body (editor or admin). Checks run before the body is read; Expect: 100-continue is answered only after them. run=true (default) requires an installed, non-draft integration declaring the slot and accepting the extension, and starts or queues a run pinning the version; run=false only stores it",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "slot", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "filename", "in": "query", "required": true, "schema": { "type": "string" } },
           { "name": "run", "in": "query", "required": false, "schema": { "type": "boolean", "default": true } }
         ],
-        "requestBody": { "required": true, "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } },
+        "requestBody": {
+          "required": true,
+          "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } }
+        },
         "responses": {
           "201": { "description": "{ version, run: { id, status } | null, runError? }" },
           "400": { "description": "Bad slot, filename, or extension; undeclared slot or unaccepted type with run=true" },
           "403": { "description": "Viewer" },
+          "404": { "description": "Unknown integration" },
+          "409": { "description": "run=true on a draft integration" },
           "413": { "description": "Larger than FILE_UPLOAD_MAX_MB (default 100)" },
           "507": { "description": "The file store's disk is full" }
         }
@@ -285,7 +528,12 @@
           { "name": "slot", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "versionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
-        "responses": { "200": { "description": "The file" }, "403": { "description": "Viewer" }, "410": { "description": "Purged" } }
+        "responses": {
+          "200": { "description": "The file" },
+          "403": { "description": "Viewer" },
+          "404": { "description": "Unknown version" },
+          "410": { "description": "Purged" }
+        }
       }
     },
     "/api/integrations/{id}/versions": {
@@ -299,16 +547,25 @@
       "put": {
         "summary": "Change the area of interest (editor or admin); archives a new attributed definition version",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "requestBody": { "content": { "application/json": { "schema": { "description": "{mode: \"inherit\"|\"full\"} or {mode: \"box\", aoi: {bbox, countries?}}" } } } },
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "description": "{mode: \"inherit\"|\"full\"} or {mode: \"box\", aoi: {bbox, countries?}}" } }
+          }
+        },
         "responses": { "200": { "description": "{ version }" }, "400": { "description": "Invalid mode or bbox" } }
       }
     },
     "/api/integrations/{id}/trigger": {
       "put": {
-        "summary": "Change the schedule (editor or admin); a versioned definition edit. Cron is 5-field, UTC, validated",
+        "summary": "Replace the schedule (editor or admin); a versioned definition edit. Cron is 5-field, UTC, validated",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "requestBody": { "content": { "application/json": { "schema": { "description": "{cron?: string|null, webhook?: boolean}" } } } },
-        "responses": { "200": { "description": "{ version, trigger }" }, "400": { "description": "Invalid cron" } }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Trigger" } } } },
+        "responses": {
+          "200": { "description": "{ version, trigger }" },
+          "400": { "description": "Invalid cron or webhookDelaySeconds" },
+          "403": { "description": "Viewer" },
+          "404": { "description": "Unknown integration" }
+        }
       }
     },
     "/api/integrations/{id}/enabled": {
@@ -319,11 +576,86 @@
         "responses": { "200": { "description": "{ enabled }" } }
       }
     },
+    "/api/integrations/{id}/webhook-token": {
+      "get": {
+        "summary": "The webhook capability URL (editor or admin)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "{ token, path: /hooks/{token} }" },
+          "403": { "description": "Viewer" },
+          "404": { "description": "Unknown integration" }
+        }
+      },
+      "post": {
+        "summary": "Rotate the webhook token (admin); the old URL stops working immediately",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "{ token, path }" },
+          "403": { "description": "Not an admin" },
+          "404": { "description": "Unknown integration" }
+        }
+      }
+    },
+    "/api/integrations/{id}/export": {
+      "get": {
+        "summary": "The current definition as a JSON attachment (<id>.integration.json). A concrete AOI is stripped so the importer's default applies; an explicit aoi: null (full extent) is kept",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Integration definition" }, "404": { "description": "Unknown integration" } }
+      }
+    },
+    "/api/integrations/import": {
+      "post": {
+        "summary": "Install an exported definition (editor or admin). Validates it and installs it paused for review",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "required": ["id", "runtime", "code"], "description": "An integration definition as exported" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ id, version, enabled: false }" },
+          "400": { "description": "Not a definition, validation failure, or a destination another integration owns" },
+          "403": { "description": "Viewer" },
+          "409": { "description": "An integration with this id is installed" }
+        }
+      }
+    },
+    "/hooks/{token}": {
+      "post": {
+        "summary": "Webhook receiver. The token is the credential (no session or bearer). The body is stored verbatim as one event; the next run receives pending events oldest-first. A run is enqueued at once, or after trigger.webhookDelaySeconds with later events joining it; paused or draft integrations buffer events",
+        "security": [],
+        "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "description": "Any JSON value, at most 1 MB" } } }
+        },
+        "responses": {
+          "202": { "description": "{ eventId }" },
+          "400": { "description": "Malformed JSON" },
+          "404": { "description": "Unknown token, or the integration does not accept webhooks" },
+          "405": { "description": "Not POST" },
+          "413": { "description": "Body over 1 MB" },
+          "415": { "description": "Content-Type is not application/json" }
+        }
+      }
+    },
     "/api/countries": {
-      "get": { "summary": "Baked-in country bounding boxes (Natural Earth derived) for AOI pickers", "responses": { "200": { "description": "{ countries: [{iso3, name, bbox}] }" } } }
+      "get": {
+        "summary": "Baked-in country bounding boxes (Natural Earth derived) for AOI pickers",
+        "responses": { "200": { "description": "{ countries: [{iso3, name, bbox}] }" } }
+      }
     },
     "/api/settings": {
-      "get": { "summary": "Deployment settings (currently default_aoi)", "responses": { "200": { "description": "{ settings }" } } }
+      "get": {
+        "summary": "Deployment settings, readable by any signed-in user",
+        "responses": {
+          "200": {
+            "description": "{ settings: { default_aoi, site_title, locales }, supportedLocales: [{ code, name }], catalogTranslation }"
+          }
+        }
+      }
     },
     "/api/settings/default_aoi": {
       "put": {
@@ -331,10 +663,71 @@
         "requestBody": { "content": { "application/json": { "schema": { "description": "{bbox, countries?, name?}" } } } },
         "responses": { "200": { "description": "{ default_aoi }" }, "400": { "description": "Invalid bbox or country codes" } }
       },
-      "delete": { "summary": "Clear the deployment default AOI (admin)", "responses": { "200": { "description": "{ default_aoi: null }" } } }
+      "delete": {
+        "summary": "Clear the deployment default AOI (admin)",
+        "responses": { "200": { "description": "{ default_aoi: null }" } }
+      }
+    },
+    "/api/settings/site_title": {
+      "put": {
+        "summary": "Set the deployment title (admin); empty or null restores the default",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "title": { "type": ["string", "null"], "maxLength": 120 } } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ site_title }" },
+          "400": { "description": "title is not a string" },
+          "403": { "description": "Not an admin" }
+        }
+      }
+    },
+    "/api/settings/locales": {
+      "put": {
+        "summary": "Set the offered locales (admin); adding one starts a background catalog translation when AI is configured",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["locales"],
+                "properties": { "locales": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ locales, added, catalogTranslation }" },
+          "400": { "description": "Empty or unsupported locales" },
+          "403": { "description": "Not an admin" }
+        }
+      }
+    },
+    "/api/settings/ai_limits": {
+      "get": {
+        "summary": "Daily AI token caps and today's deployment usage (admin)",
+        "responses": { "200": { "description": "{ limits: AiLimits, usedToday: integer }" }, "403": { "description": "Not an admin" } }
+      },
+      "put": {
+        "summary": "Set the daily AI token caps (admin); an omitted cap counts as null (no cap)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AiLimits" } } } },
+        "responses": {
+          "200": { "description": "{ limits: AiLimits, usedToday: integer }" },
+          "400": { "description": "A cap is not a positive integer or null" },
+          "403": { "description": "Not an admin" }
+        }
+      }
     },
     "/api/library": {
-      "get": { "summary": "Browsable integration library with per-entry install/update status", "responses": { "200": { "description": "{ entries }" } } }
+      "get": {
+        "summary": "Browsable integration library with per-entry install/update status",
+        "responses": { "200": { "description": "{ entries }" } }
+      }
     },
     "/api/library/{id}/install": {
       "post": {

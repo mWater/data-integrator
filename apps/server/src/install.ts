@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import pg from "pg"
 import { IntegrationDefinition } from "@data-integrator/definitions"
+import { durationMs } from "./validation.js"
 import { ensureTable, ident } from "./destinations.js"
 import { ensureLayer } from "./catalog.js"
 import { refreshLayerMasks } from "./aoi.js"
@@ -63,7 +64,7 @@ export function validateDefinition(definition: IntegrationDefinition): void {
     const seen = new Set<string>()
     for (const name of definition.secrets) {
       if (typeof name !== "string" || !SECRET_NAME_PATTERN.test(name)) {
-        throw new Error(`Invalid secret name "${String(name)}": letters, digits and underscores, starting with a letter`)
+        throw new Error(`Invalid secret name "${String(name)}": letters, digits and underscores, not starting with a digit`)
       }
       if (seen.has(name)) throw new Error(`Secret ${name} is declared twice`)
       seen.add(name)
@@ -139,6 +140,37 @@ export function validateDefinition(definition: IntegrationDefinition): void {
       if (inputRef === destId) throw new Error(`Input references own destination: ${destId}`)
     }
   }
+  if (definition.validation !== undefined) validateRules(definition)
+}
+
+/** The validation block: a known cadence and range rules naming real numeric columns or bands. */
+function validateRules(definition: IntegrationDefinition): void {
+  const validation = definition.validation
+  if (!validation || typeof validation !== "object" || Array.isArray(validation)) {
+    throw new Error("validation must be an object with expectedCadence and/or ranges")
+  }
+  const unknown = Object.keys(validation).filter(key => key !== "expectedCadence" && key !== "ranges")
+  if (unknown.length > 0) throw new Error(`Unknown validation field(s): ${unknown.join(", ")} (use expectedCadence, ranges)`)
+  if (validation.expectedCadence !== undefined && durationMs(validation.expectedCadence) === null) {
+    throw new Error(`validation.expectedCadence "${validation.expectedCadence}" is not an ISO 8601 duration such as P1D or PT6H`)
+  }
+  for (const rule of validation.ranges ?? []) {
+    const where = `validation range on ${rule.destinationId}.${rule.field}`
+    if (rule.min === undefined && rule.max === undefined) throw new Error(`${where} needs min, max, or both`)
+    for (const bound of [rule.min, rule.max]) {
+      if (bound !== undefined && (typeof bound !== "number" || !Number.isFinite(bound))) throw new Error(`${where}: bounds must be numbers`)
+    }
+    const dest = definition.destinations.find(d => (d.kind === "table" ? d.tableId : d.layerId) === rule.destinationId)
+    if (!dest) throw new Error(`${where}: no destination ${rule.destinationId}`)
+    if (dest.kind === "table") {
+      const column = dest.columns.find(c => c.id === rule.field)
+      if (!column || (column.type !== "number" && column.type !== "integer")) {
+        throw new Error(`${where}: ${rule.field} is not a number or integer column of ${rule.destinationId}`)
+      }
+    } else if (!dest.bands.some(b => b.id === rule.field)) {
+      throw new Error(`${where}: ${rule.field} is not a band of ${rule.destinationId}`)
+    }
+  }
 }
 
 /** Lifecycle of an installed integration; design sessions only install certified definitions. */
@@ -149,17 +181,19 @@ export type IntegrationStatus = "draft" | "ready"
  * definition when it changed (an unchanged definition keeps its version, so
  * library re-syncs are no-ops), updates the integration row, and ensures
  * destination tables and layers exist with this integration as their sole
- * owner. The definition is the integration's single specification (there is
- * no override layer); library installs copy the entry's defaults into it and
- * updates carry deployment-owned fields over. Design sessions run in a
+ * owner. The definition is the integration's single specification; library
+ * installs copy the entry's defaults into it and updates carry
+ * deployment-owned fields over. Design sessions run in a
  * scratch area and call this only at finish, with a cold-run-certified
- * definition. createdBy is the installing user, or null for CLI installs.
+ * definition. createdBy is the installing user, or null for CLI installs;
+ * enabledOnCreate sets a new row's scheduler switch (imports land paused).
  */
 export async function installIntegration(
   pool: pg.Pool,
   definition: IntegrationDefinition,
   status: IntegrationStatus = "ready",
-  createdBy: string | null = null
+  createdBy: string | null = null,
+  enabledOnCreate = true
 ): Promise<{ version: number }> {
   validateDefinition(definition)
   const definitionJson = JSON.stringify(definition)
@@ -167,16 +201,21 @@ export async function installIntegration(
   let version: number
   try {
     await client.query("BEGIN")
-    // Lock the row so version assignment is serialized per integration
+    // Lock the row so version assignment is serialized per integration.
+    // Unchanged means equal to the archived current version, not to the row:
+    // design sessions rewrite a draft's row in place without archiving
     const current = await client.query(
-      "SELECT version, definition = $2::jsonb AS unchanged FROM app.integrations WHERE id = $1 FOR UPDATE",
+      `SELECT i.version, v.definition IS NOT DISTINCT FROM $2::jsonb AS unchanged
+       FROM app.integrations i
+       LEFT JOIN app.integration_versions v ON v.integration_id = i.id AND v.version = i.version
+       WHERE i.id = $1 FOR UPDATE OF i`,
       [definition.id, definitionJson]
     )
     if (current.rows.length === 0) {
       version = 1
       await client.query(
-        `INSERT INTO app.integrations (id, definition, version, status) VALUES ($1, $2, $3, $4)`,
-        [definition.id, definitionJson, version, status]
+        `INSERT INTO app.integrations (id, definition, version, status, enabled) VALUES ($1, $2, $3, $4, $5)`,
+        [definition.id, definitionJson, version, status, enabledOnCreate]
       )
       await client.query(
         `INSERT INTO app.integration_versions (integration_id, version, definition, created_by)
@@ -185,8 +224,9 @@ export async function installIntegration(
       )
     } else if (current.rows[0].unchanged) {
       version = current.rows[0].version
-      await client.query(`UPDATE app.integrations SET status = $2, updated_at = now() WHERE id = $1`, [
+      await client.query(`UPDATE app.integrations SET definition = $2, status = $3, updated_at = now() WHERE id = $1`, [
         definition.id,
+        definitionJson,
         status
       ])
     } else {

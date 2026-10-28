@@ -19,17 +19,18 @@ without sharing any code with the reference implementation.
 |---|---|---|
 | Tabular query results | JSON (RFC 8259), CSV (RFC 4180), GeoJSON (RFC 7946) | Data exchange to clients and national systems |
 | Raster snapshots | Cloud-Optimized GeoTIFF (OGC GeoTIFF 1.1; COG layout) | Raster exchange; direct use in GIS tools |
+| Raster catalog | STAC API 1.0.0 (core, collections, OGC API - Features item listing) | Discovery of raster layers and snapshots by STAC clients |
 | Raster map tiles | XYZ tile scheme over PNG (Web Mercator) | Embedding maps in any web GIS client |
 | Vector map tiles | Mapbox Vector Tile 2.1 | Dashboard and table map rendering |
 | Coordinate references | EPSG registry codes; WGS 84 (EPSG:4326); Web Mercator (EPSG:3857) | Spatial harmonization |
 | Timestamps | ISO 8601 / RFC 3339, always UTC | Temporal harmonization |
 | Schedules | POSIX/Vixie five-field cron expressions, UTC | Trigger declaration |
-| Query API | HTTP/1.1 over TLS; REST described by OpenAPI 3 | Programmatic access contract |
+| Query API | HTTP/1.1 over TLS; REST described by OpenAPI 3.1 | Programmatic access contract |
 | API authentication | Bearer tokens in the HTTP Authorization header | Token-based programmatic access |
 | Push ingestion | HTTP POST of JSON to capability URLs | Sensor and event feeds into the platform |
 | Analytical SQL | ISO/IEC 9075 SQL with OGC Simple Features functions (SQL/MM spatial) | Zonal statistics, dashboards, assistant queries |
 | Geometry interchange | GeoJSON on the way in and out; WKB in the tabular plane | Vector data harmonization |
-| Integration definitions | JSON documents against a published schema | Portable pipeline specifications |
+| Integration definitions | JSON documents per a published specification | Portable pipeline specifications |
 | Licensing | SPDX license identifiers; Apache 2.0 for the platform | Open-source compliance and attribution |
 | Container images | OCI image format | Runtime images for the sandbox |
 
@@ -64,12 +65,13 @@ Consequences:
 
 - Any GDAL-based tool (QGIS, ArcGIS, rasterio, R terra) opens a downloaded
   snapshot directly; no export step or proprietary reader exists.
-- Bands declare units and a nodata value, both recorded in the file and in
-  the catalog, so downstream statistics are computed correctly by tools that
-  never talk to the platform.
-- Each snapshot records its CRS as an authority code (EPSG, or another
-  authority known to the spatial registry) and keeps its native grid;
-  nothing is resampled at ingest.
+- Bands declare units and a nodata value in the catalog. Writing the
+  declared nodata into the file is the producing job's responsibility; files
+  that carry it are read correctly by tools that never talk to the platform.
+- Each snapshot records its CRS as an authority code and keeps its native
+  grid; nothing is resampled at ingest. The job may declare the code (for
+  example `EPSG:32737`); when it does not, the platform derives an EPSG code
+  from the file, or records `unknown` when the file's CRS has none.
 
 Source-side, integrations commonly consume NetCDF (including CF-convention
 files), GRIB2, HDF, GeoPackage, shapefile archives, and plain GeoTIFF; the
@@ -105,25 +107,26 @@ formats in 2.1 and 2.2.
   shape from a bundled boundary dataset (Natural Earth 1:10m Admin 0
   countries with lakes removed, public domain), cut to the box, with the
   dataset and version recorded as provenance on every statistic taken over
-  it. Deployments needing an official national outline can substitute one
-  at the same point; the statistics and tile interfaces do not change.
+  it. An official national outline can be substituted at the same point;
+  the statistics and tile interfaces do not change.
 - **Time.** All timestamps are ISO 8601 in UTC, including raster snapshot
   observation times (instants or explicit ranges) and run records. Cron
   triggers evaluate in UTC.
-- **Units.** Every raster band and numeric column declares its units;
+- **Units.** Raster bands and numeric columns declare their units;
   library entries use SI or the source discipline's canonical unit (for
   example cubic meters per second for discharge), recorded in the catalog
   and surfaced through the API.
-- **Missing data.** Every band declares its nodata sentinel; the analytical
-  SQL surface and the tile renderer honor it, so sentinels never contaminate
-  statistics or maps.
+- **Missing data.** Bands declare their nodata sentinel; the analytical SQL
+  surface and the tile renderer honor the files' nodata, so sentinels never
+  contaminate statistics or maps when the files carry the declared value.
 
 ## 4. Access interfaces
 
 ### 4.1 Query API
 
 The query API is the contractual programmatic interface: REST over HTTPS,
-described by an OpenAPI 3 document the platform serves about itself. The
+described by an OpenAPI 3.1 document the platform serves about itself
+(`/api/openapi.json`). The
 description is machine-readable, so client generation and API gateways work
 against a live deployment. Authentication is a personal access token
 presented as an HTTP Bearer credential; browser sessions use cookies. All
@@ -135,20 +138,46 @@ serializations of 2.1; the raster catalog with per-snapshot metadata; and
 direct snapshot downloads (2.2). The API is fully functional with no AI
 model configured.
 
-### 4.2 Webhooks (push ingestion)
+### 4.2 STAC API
 
-Push-capable sources deliver events by HTTP POST of a JSON body to a
-per-integration capability URL: an unguessable URL that is itself the
-credential, rotatable by an administrator. Payload conventions are
-deliberately liberal: a single JSON object, an array of objects, or an
-`{"events": [...]}` wrapper are all accepted; malformed events are rejected
-individually and visibly without failing the batch. Delivery is
-at-least-once from the sender's perspective; integrations declare merge keys
-so redelivery updates rather than duplicates. This is the integration path
-for sensor networks and event-emitting national systems that push rather
-than serve an API.
+The raster catalog is also served as a read-only STAC API (STAC 1.0.0) under
+`/api/stac`, behind the same authentication as the query API. It conforms to
+STAC API Core, Collections, and the OGC API - Features item listing
+(`ogcapi-features`, with OGC API - Features Part 1 Core and GeoJSON):
 
-### 4.3 Analytical SQL
+- each installed raster layer is a Collection, with its spatial and temporal
+  extent, bands, license, and source links;
+- each promoted, non-empty snapshot is an Item, with its footprint, an
+  observation instant (`datetime`) or period (`start_datetime`,
+  `end_datetime`);
+- each of the snapshot's COG files is an asset linking to the snapshot
+  download route;
+- `GET /collections/{id}/items` filters by `datetime` (instant or interval)
+  and `bbox` and pages with `limit` (default 100, at most 1000) and a `next`
+  link.
+
+Cross-collection `/search` (STAC Item Search) is not implemented.
+
+### 4.3 Webhooks (push ingestion)
+
+Push-capable sources deliver events by HTTP POST of a JSON body
+(`Content-Type: application/json`, at most 1 MB) to a per-integration
+capability URL: an unguessable URL that is itself the credential, rotatable
+by an administrator. The platform stores each POST body as one opaque event
+and hands every pending event to the integration's next run, oldest first;
+the payload's shape is the integration's contract with its sender. This is
+the integration path for sensor networks and event-emitting national systems
+that push rather than serve an API.
+
+The library's generic sensor entry (`insitu_sensor_webhook`) defines a
+liberal convention on top: a body may be a single reading object, an array
+of readings, or an `{"events": [...]}` wrapper; malformed readings are
+rejected individually and reported in the run log without failing the
+batch. It merges on station, variable and timestamp, so redelivery updates
+rather than duplicates, which makes at-least-once delivery from the sender
+safe.
+
+### 4.4 Analytical SQL
 
 Dashboards, the assistant, and raster-vector statistics execute standard SQL
 with OGC Simple Features / SQL-MM spatial functions under a read-only role
@@ -173,27 +202,30 @@ demonstrate the common protocol families:
 | Satellite and gridded product archives | HTTPS file retrieval (GeoTIFF, NetCDF, GRIB2, zipped vector archives), directory or manifest discovery |
 | Asynchronous retrieval APIs | Job-based request/poll/download APIs (for example the Copernicus data store family), with authenticated requests and queued fulfilment |
 | Catalog and metadata endpoints | JSON catalog and constraint documents published alongside datasets |
-| Sensor networks | Webhook push (4.2) |
+| Sensor networks | Webhook push (4.3) |
 | National databases and MIS | HTTPS APIs where offered; file exchange (CSV, GeoJSON, GeoPackage) where not |
 
 Credentials for authenticated sources are named in the definition, supplied
 by the deployment, encrypted at rest, and injected into the sandboxed job
-only at run time; they never appear in definitions, library entries, logs,
-or images.
+only at run time; they never appear in definitions, library entries, or
+images. Job output is masked before it is stored or streamed: any literal
+secret value of six or more characters becomes `[secret:<name>]` in run
+logs and errors (encodings of a value are not recognized).
 
 ## 6. Portability formats
 
-- **Integration definitions** are single JSON documents against a published
-  schema (the *Integration Library Specification*). A definition exported
-  from one deployment imports into another, arriving paused for review with
-  the importer's area of interest applying. This is the unit of
+- **Integration definitions** are single JSON documents per a published
+  specification (the *Integration Library Specification*). A definition
+  exported from one deployment imports into another, arriving paused for
+  review. Export drops a concrete area of interest, so the importer's
+  default applies, but keeps an explicit `null` (full source extent). This is the unit of
   pipeline-level interoperability between deployments and between
   implementations.
 - **Library entries** are directories holding a definition plus prose
   documentation and per-source know-how, consumable by any implementation of
   the specification.
-- **Deployment data** is exportable losslessly through standard formats:
-  tables as CSV or GeoJSON, rasters as the COG files themselves.
+- **Deployment data** is exportable through standard formats: tables as
+  JSON, CSV or GeoJSON, rasters as the COG files themselves.
 
 ## 7. National-system integration paths
 
@@ -204,10 +236,11 @@ The concrete conventions, by direction and need:
 | National dashboard or portal shows platform maps | Embed tile URLs | XYZ PNG tiles (2.3) |
 | National GIS analyzes platform data | Query API or snapshot download | GeoJSON, CSV, COG |
 | Statistical office ingests time series | Query API, filtered and paginated | JSON or CSV |
-| Sensor network feeds the platform | Webhook push | JSON to capability URL (4.2) |
+| Sensor network feeds the platform | Webhook push | JSON to capability URL (4.3) |
+| STAC client discovers raster data | STAC API | STAC 1.0.0 JSON (4.2) |
 | WASH MIS or hydrological service feeds the platform | Pull integration against its API, or scheduled file exchange | Source's API; CSV/GeoJSON/GeoPackage |
 | National system needs derived analytics | Derived integration over `inputs`; results exposed like any table or layer | Same as above |
-| Analyst needs ad-hoc spatial queries | Read-only analytical SQL role | SQL with spatial functions (4.3) |
+| Analyst needs ad-hoc spatial queries | Read-only analytical SQL role | SQL with spatial functions (4.4) |
 | Another deployment needs a working pipeline | Definition export/import | Definition JSON (6) |
 
 Two properties make these paths durable. Interfaces are pinned and
@@ -228,9 +261,9 @@ Public Goods Standard. The mapping onto the DPG Standard's indicators:
 | Open licensing | Apache 2.0 for all platform code; OSI-approved throughout |
 | Clear ownership | Repository and license state ownership and provenance |
 | Platform independence | Self-hosted on commodity Linux; no mandatory vendor account or hosted service; the AI model is a replaceable, optional dependency with a documented capability profile, satisfiable by open-weights models |
-| Documentation | Architecture, standards mapping, deployment and API documentation ship in the repository; the API self-describes via OpenAPI |
+| Documentation | Architecture, standards mapping, deployment and API documentation ship in the repository; the API self-describes via OpenAPI and the raster catalog via STAC |
 | Mechanism for data extraction | Complete data egress through standard formats (CSV, GeoJSON, COG, SQL); no lock-in formats exist |
-| Privacy and applicable law | The platform stores environmental and infrastructure data; personal data is out of scope by design |
+| Privacy and applicable law | Integrations hold environmental and infrastructure data. Personal data is limited to account emails, the uploader and filename of uploaded files, and whatever an operator chooses to ingest; viewers never see uploaders or original filenames, and admins can purge an uploaded file version |
 | Standards and best practices | This document; dependency licensing verified with SPDX identifiers and an SBOM in CI |
 | Do no harm by design | Role-gated access, sandboxed untrusted code, encrypted secrets, no default credentials |
 
@@ -251,7 +284,8 @@ An implementation is interoperable with this ecosystem when it:
    times, and serves tabular data in the serializations of 2.1;
 4. exposes a query API described by a served OpenAPI document with bearer
    authentication and the role model of 4.1;
-5. accepts webhook payloads per 4.2 on rotatable capability URLs.
+5. accepts JSON webhook payloads per 4.3 on rotatable capability URLs and
+   delivers them to the integration's runs.
 
 Everything else (server language, database engine, container sandbox, tile
 renderer, AI provider) is an implementation choice, substitutable without

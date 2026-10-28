@@ -16,5 +16,14 @@
     "markdown-it": "^15.0.1",
     "mermaid": "^11.17.2",
     "playwright-core": "^1.63.0"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git"
+  },
+  "homepage": "https://github.com/mWater/data-integrator#readme",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

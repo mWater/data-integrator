@@ -8,16 +8,20 @@
  *
  * Library definitions are starting values: installing copies them into the
  * integration's own definition, the single specification of the installed
- * integration (there is no override layer). Updates from the library carry
- * the deployment-owned fields (aoi, trigger, limits) over. There is no
- * version field; the server assigns integration versions on install.
+ * integration. Updates from the library carry the deployment-owned fields
+ * (aoi, trigger, limits) over. There is no version field; the server assigns
+ * integration versions on install.
  *
- * See Architecture.md. Types only for now; validation comes with the server.
+ * Types only: the server validates definitions (apps/server/src/install.ts).
+ * The format is specified in docs/spec/Integration Library Specification.md.
  */
 
 // ============================================================================
 // Localization
 // ============================================================================
+
+import type { RuntimeId } from "@mwater/integration-runner"
+export type { RuntimeId }
 
 /**
  * A human-facing string localized per ez-localize's shape: _base names the
@@ -25,9 +29,6 @@
  * translations. Structurally identical to ez-localize's LocalizedString, so
  * either type flows into the other.
  */
-import type { RuntimeId } from "@mwater/integration-runner"
-export type { RuntimeId }
-
 export interface LocalizedString {
   /** Locale code the string was authored in; that locale is always a key below */
   _base: string
@@ -101,7 +102,7 @@ export interface IntegrationDefinition {
   limits?: JobLimitsSpec
   /** Tables and raster layers the integration writes to */
   destinations: Destination[]
-  /** Data quality rules evaluated on results (FUC-3) */
+  /** Data-quality rules evaluated on each run's results; violations flag the run */
   validation?: ValidationSpec
   /** Single self-contained file implementing the entrypoint */
   code: string
@@ -144,7 +145,7 @@ export interface Aoi {
   countries?: string[]
 }
 
-/** Per-run resource limits, capped by server configuration. */
+/** Per-run resource requests; the deployment lowers each to its configured maximum. */
 export interface JobLimitsSpec {
   /** CPU cores */
   cpus?: number
@@ -152,12 +153,12 @@ export interface JobLimitsSpec {
   memoryMb?: number
   /** Wall-clock timeout in ms */
   timeoutMs?: number
-  /** Quota for the persistent /work workspace in MB, checked between runs (no kernel enforcement) */
+  /** Quota for the persistent /work workspace in MB, polled during the run (the job is killed past it) */
   workDiskMb?: number
 }
 
 // ============================================================================
-// Inputs (materialized at /in; see Architecture.md)
+// Inputs (materialized at /in; see docs/Architecture.md)
 // ============================================================================
 
 /** Reference to platform data materialized read-only at /in. */
@@ -211,7 +212,7 @@ export type FilterSpec = {
 }[]
 
 // ============================================================================
-// File slots (uploaded files; see Integration Files.md)
+// File slots (uploaded files; see docs/Integration Files.md)
 // ============================================================================
 
 /**
@@ -339,7 +340,7 @@ export interface ColumnSpec {
   name?: LocalizedString
   /** Value type of the column; integer is exact (bigint), number is floating point */
   type: "text" | "number" | "integer" | "boolean" | "date" | "datetime" | "geometry" | "enum" | "json"
-  /** Permitted codes when type is "enum": the harmonization target for source codings (FUC-2). Stored as text; out-of-vocabulary values flag the run. */
+  /** Permitted codes when type is "enum": the harmonization target for source codings. Stored as text; out-of-vocabulary values flag the run. */
   enumValues?: { id: string; name: LocalizedString }[]
   /** Measurement units, e.g. "mm/day" */
   units?: string
@@ -354,7 +355,7 @@ export interface RasterLayerDestination {
   /** Human-readable display name */
   name?: LocalizedString
   /** One-sentence summary of what the layer shows, shown in the data catalog */
-  description?: string
+  description?: LocalizedString
   /** time-series retains promoted snapshots as history; current-only prunes superseded */
   temporality: "time-series" | "current-only"
   /** How much history a time-series layer keeps; absent keeps every snapshot */
@@ -394,7 +395,7 @@ export interface BandRendering {
 }
 
 // ============================================================================
-// Validation rules (FUC-3)
+// Validation rules
 // ============================================================================
 
 /** Data quality rules the server evaluates on each run's results. */

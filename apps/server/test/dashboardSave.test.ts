@@ -139,18 +139,12 @@ test("the agent proposes but never saves; its edits mark the draft unsaved", { s
   assert.equal(edited.state?.dirty, true)
 })
 
-test("session list flags unsaved drafts, including sessions from before the dirty flag", { skip: !AVAILABLE }, async () => {
+test("session list flags unsaved drafts", { skip: !AVAILABLE }, async () => {
   const service = AgentService.forDashboard(pool, { pool, model: {} as LanguageModel })
   const unsaved = await session(draft({ proposed: null }))
   const clean = await session(draft({ dirty: false, saved: { version: 1 }, dashboardId: "water_points" }))
-  const { dirty: _omitted, ...legacy } = draft()
-  void _omitted
-  const legacyBuilt = await session(legacy)
-  const legacyEmpty = await session({ ...legacy, build: null })
 
   const flags = Object.fromEntries((await service.listSessions()).map(s => [s.id, s.unsaved]))
   assert.equal(flags[unsaved], true)
   assert.equal(flags[clean], false)
-  assert.equal(flags[legacyBuilt], true)
-  assert.equal(flags[legacyEmpty], false)
 })

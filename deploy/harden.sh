@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Host guards for a Data Integrator box. Idempotent; run as root by setup.sh on
-# first provisioning and by push.sh on every update.
+# Host guards for a Data Integrator host. Idempotent; setup.sh and update.sh run
+# it on every provisioning and update, or run it yourself as root:
+#   bash /opt/data-integrator/deploy/harden.sh
 #
 # Why each guard exists: job sandboxes and map tile renders are memory-hungry
-# and the fleet boxes are small. When the kernel's OOM killer picks the app
+# and small hosts run out of RAM. When the kernel's OOM killer picks the app
 # user's systemd manager (user@<uid>.service), /run/user/<uid> disappears,
 # rootless podman stops working, and the server keeps running with its
 # scheduler disabled until someone notices.

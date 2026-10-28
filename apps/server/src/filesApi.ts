@@ -1,5 +1,5 @@
 /**
- * HTTP routes for integration files (Integration Files.md): raw-body uploads,
+ * HTTP routes for integration files (docs/Integration Files.md): raw-body uploads,
  * the per-slot listing, downloads, and design-session staging uploads. Every
  * upload check runs before the body is read, and a client that sent
  * `Expect: 100-continue` is only told to continue once they pass, so a

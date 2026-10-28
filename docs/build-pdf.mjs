@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Renders every Markdown document in docs/ to a PDF in docs/pdf/.
+ * Renders the architecture specifications in docs/spec/ to PDFs in docs/pdf/.
  *
  * Markdown is converted with markdown-it, mermaid fences are drawn by mermaid
  * inside headless Chrome, and Chrome prints the page with a title page, a
  * table of contents, running footers, and page numbers. Uses the system
  * Google Chrome via playwright-core, so no browser download is needed.
  *
- *   node docs/build-pdf.mjs            all documents
+ *   node docs/build-pdf.mjs            every specification
  *   node docs/build-pdf.mjs "System Architecture.md"
  */
 import { execSync } from "node:child_process"
@@ -18,6 +18,7 @@ import MarkdownIt from "markdown-it"
 import { chromium } from "playwright-core"
 
 const DOCS_DIR = path.dirname(fileURLToPath(import.meta.url))
+const SPEC_DIR = path.join(DOCS_DIR, "spec")
 const OUT_DIR = path.join(DOCS_DIR, "pdf")
 const MERMAID_PATH = path.join(DOCS_DIR, "..", "node_modules", "mermaid", "dist", "mermaid.min.js")
 
@@ -289,7 +290,7 @@ ${bodyWithoutH1}
 
 async function main() {
   const only = process.argv.slice(2)
-  const files = (await readdir(DOCS_DIR)).filter(f => f.endsWith(".md")).filter(f => only.length === 0 || only.includes(f)).sort()
+  const files = (await readdir(SPEC_DIR)).filter(f => f.endsWith(".md")).filter(f => only.length === 0 || only.includes(f)).sort()
   if (files.length === 0) {
     console.error("No Markdown documents matched.")
     process.exit(1)
@@ -300,7 +301,7 @@ async function main() {
   const browser = await chromium.launch({ channel: "chrome", headless: true })
   try {
     for (const file of files) {
-      const markdown = await readFile(path.join(DOCS_DIR, file), "utf8")
+      const markdown = await readFile(path.join(SPEC_DIR, file), "utf8")
       const html = buildHtml(markdown, rev)
       const htmlPath = path.join(OUT_DIR, file.replace(/\.md$/, ".html"))
       await writeFile(htmlPath, html)

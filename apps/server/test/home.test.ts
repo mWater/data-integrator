@@ -204,3 +204,30 @@ test("validateDefinition: secret names are checked", () => {
   assert.throws(() => validateDefinition({ ...base, secrets: ["a", "a"] }), /declared twice/)
   assert.throws(() => validateDefinition({ ...base, secrets: "a" as unknown as string[] }), /array of names/)
 })
+
+test("quality: flagged latest success and overdue cadence show; healthy ones do not", async () => {
+  const daily = (id: string, tableId: string): IntegrationDefinition => ({
+    ...LOADER,
+    id,
+    destinations: [{ kind: "table", tableId, action: "append", columns: [{ id: "site", type: "text" }] }],
+    validation: { expectedCadence: "P1D" }
+  })
+  await installIntegration(pool, daily("home_fresh", "home_fresh_rows"))
+  await installIntegration(pool, daily("home_overdue", "home_overdue_rows"))
+  await pool.query(
+    `INSERT INTO app.runs (integration_id, trigger, status, finished_at) VALUES
+       ('home_fresh', 'cron', 'succeeded', now() - interval '20 hours'),
+       ('home_overdue', 'cron', 'succeeded', now() - interval '3 days'),
+       ('home_loader', 'cron', 'succeeded', now())`
+  )
+  await pool.query(
+    `UPDATE app.runs SET flags = $1 WHERE integration_id = 'home_loader' AND finished_at = (SELECT max(finished_at) FROM app.runs WHERE integration_id = 'home_loader')`,
+    [JSON.stringify([{ destinationId: "home_rows", field: "site", rule: "enum", count: 2, message: "home_rows.site: 2 values not in the column's codes" }])]
+  )
+  const home = await getHomeSummary(pool, null, NO_AI)
+  const byId = new Map(home.quality.map(q => [q.id, q]))
+  assert.equal(byId.get("home_overdue")?.kind, "stale")
+  assert.equal(byId.get("home_loader")?.kind, "flagged")
+  assert.deepEqual(byId.get("home_loader")?.messages, ["home_rows.site: 2 values not in the column's codes"])
+  assert.equal(byId.has("home_fresh"), false)
+})

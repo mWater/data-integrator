@@ -14,6 +14,8 @@ import { installIntegration } from "../src/install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "../src/executor.js"
 import { cleanupScratch, draftSchema, scratchLayerId } from "../src/scratch.js"
 import { RasterStore } from "../src/rasterStore.js"
+import { setSecret } from "../src/secrets.js"
+import { randomBytes } from "node:crypto"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
@@ -333,6 +335,95 @@ test("failing code marks the run failed with the traceback", { skip: !AVAILABLE 
   const result = await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [run!.id])
   assert.equal(result.rows[0].status, "failed")
   assert.match(result.rows[0].error, /kaboom/)
+}, { timeout: 180_000 })
+
+test("secret values printed by the job are masked in the log and error", { skip: !AVAILABLE }, async () => {
+  const key = randomBytes(32)
+  const leaky: IntegrationDefinition = {
+    ...DEFINITION,
+    id: "e2e_leaky",
+    secrets: ["api_token"],
+    destinations: [{ kind: "table", tableId: "e2e_leaky_rows", action: "append", columns: [{ id: "site", type: "text" }] }],
+    code: `import sys\ndef run(ctx):\n    print("token is " + ctx.secrets["api_token"], file=sys.stderr)\n    raise RuntimeError("rejected " + ctx.secrets["api_token"])`
+  }
+  await installIntegration(pool, leaky)
+  await setSecret(pool, key, "e2e_leaky", "api_token", "s3cr3t-value-123")
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_leaky', 'manual', 'queued')`)
+  const run = await claimNextRun(pool, "test-worker")
+  assert.ok(run)
+  const streamed: string[] = []
+  await executeRun({ ...deps, secretKey: key }, run!, { onLogLine: line => streamed.push(line) })
+  const result = await pool.query("SELECT status, error, log FROM app.runs WHERE id = $1", [run!.id])
+  assert.equal(result.rows[0].status, "failed")
+  for (const text of [result.rows[0].error, result.rows[0].log ?? "", streamed.join("\n")]) {
+    assert.doesNotMatch(text, /s3cr3t-value-123/)
+  }
+  assert.match(result.rows[0].error, /rejected \[secret:api_token\]/)
+}, { timeout: 180_000 })
+
+test("validation rules flag out-of-range and out-of-vocabulary values without rejecting them", { skip: !AVAILABLE }, async () => {
+  const checked: IntegrationDefinition = {
+    ...DEFINITION,
+    id: "e2e_checked",
+    destinations: [
+      {
+        kind: "table",
+        tableId: "e2e_checked_rows",
+        action: "replace",
+        columns: [
+          { id: "site", type: "text" },
+          { id: "value", type: "number" },
+          { id: "kind", type: "enum", enumValues: [{ id: "well", name: { _base: "en", en: "Well" } }] }
+        ]
+      },
+      { kind: "raster", layerId: "e2e_checked_layer", temporality: "current-only", bands: [{ id: "v", units: "m" }] }
+    ],
+    validation: {
+      ranges: [
+        { destinationId: "e2e_checked_rows", field: "value", min: 0, max: 10 },
+        { destinationId: "e2e_checked_layer", field: "v", max: 5 }
+      ]
+    },
+    code: `
+import numpy as np
+import rasterio
+from rasterio.transform import from_origin
+
+def run(ctx):
+    with rasterio.open(
+        f"{ctx.out_dir}/snap.tif", "w", driver="GTiff", width=8, height=8, count=1, dtype="float32",
+        crs="EPSG:4326", transform=from_origin(44, -18, 0.01, 0.01),
+    ) as dst:
+        dst.write((np.ones((8, 8)) * 7).astype("float32"), 1)
+    return {
+        "data": {"e2e_checked_rows": [
+            {"site": "a", "value": 5, "kind": "well"},
+            {"site": "b", "value": -1, "kind": "spring"},
+            {"site": "c", "value": 11, "kind": None},
+        ]},
+        "rasters": [{"layerId": "e2e_checked_layer", "path": "snap.tif", "timestamp": "2026-01-01T00:00:00Z"}],
+    }
+`
+  }
+  await installIntegration(pool, checked)
+  await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_checked', 'manual', 'queued')`)
+  const run = await claimNextRun(pool, "test-worker")
+  assert.ok(run)
+  await executeRun(deps, run!)
+  const result = await pool.query("SELECT status, flags, log FROM app.runs WHERE id = $1", [run!.id])
+  assert.equal(result.rows[0].status, "succeeded")
+  const flags = result.rows[0].flags as { destinationId: string; field: string; rule: string; count?: number; observedMax?: number }[]
+  assert.deepEqual(
+    flags.map(f => [f.destinationId, f.field, f.rule, f.count ?? f.observedMax]),
+    [
+      ["e2e_checked_layer", "v", "range", 7],
+      ["e2e_checked_rows", "value", "range", 2],
+      ["e2e_checked_rows", "kind", "enum", 1]
+    ]
+  )
+  assert.match(result.rows[0].log, /flag: e2e_checked_rows\.value: 2 values outside 0 to 10/)
+  // Flagged data still lands
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM data.e2e_checked_rows")).rows[0].n, 3)
 }, { timeout: 180_000 })
 
 test("derived integration: /in materialization and lineage", { skip: !AVAILABLE }, async () => {

@@ -83,8 +83,9 @@ function tableDdl(schema: string, tableName: string, spec: TableDestination): st
 
 /**
  * Creates the destination table if absent, or applies additive evolution (new
- * columns) if present. Type changes and removals are rejected; those rebuild
- * via the replace action or a manual migration.
+ * columns) if present. Type changes and removals are not applied: the old
+ * column stays until a replace destination rebuilds the table or an operator
+ * alters it by hand.
  */
 export async function ensureTable(client: pg.ClientBase, spec: TableDestination, schema = "data"): Promise<void> {
   const existing = await client.query(

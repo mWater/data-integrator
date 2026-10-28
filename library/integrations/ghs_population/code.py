@@ -343,11 +343,11 @@ def run(ctx):
         if mode == "box":
             artifact = _box_epoch(session, epoch, bbox, published, cache_root, ctx.work_dir, ctx.out_dir)
             metadata["tiles"] = artifact.pop("tiles")
-            raster = {"layerId": "population", **artifact}
+            raster = {"layerId": "ghs_population", **artifact}
         else:
             sources = _world_epoch(session, epoch, published, cache_root, ctx.work_dir, ctx.out_dir)
             metadata["tiles"] = len(sources)
-            raster = {"layerId": "population", "sources": sources, "footprint": WORLD_BBOX}
+            raster = {"layerId": "ghs_population", "sources": sources, "footprint": WORLD_BBOX}
         raster.update({
             "timestamp": f"{epoch}-01-01T00:00:00Z",
             "timestampEnd": f"{epoch + 1}-01-01T00:00:00Z",

@@ -6,8 +6,8 @@
   --surface: #fff;
   --ink: #1a1d21;
   --ink-dim: #55606b;
-  --ink-muted: #6a737d;
-  --ink-faint: #97a1ab;
+  --ink-muted: #616a74;
+  --ink-faint: #646d77;
   --border: #e3e7ea;
   --border-soft: #eef0f2;
   --control-border: #ccd2d8;
@@ -40,8 +40,8 @@
   --surface: #1a1a19;
   --ink: #e6e4e1;
   --ink-dim: #b0aea8;
-  --ink-muted: #898781;
-  --ink-faint: #6f6e69;
+  --ink-muted: #94928c;
+  --ink-faint: #898781;
   --border: #2c2c2a;
   --border-soft: #242422;
   --control-border: #3c3c39;
@@ -249,6 +249,9 @@ button.danger:disabled { color: var(--ink-muted); border-color: var(--control-bo
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px }
 table.sessions { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden }
 table.sessions th, table.sessions td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-soft) }
+/* Keyboard focus is always visible; page-specific rules below may restyle it */
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
 table.sessions tbody tr { cursor: pointer }
 table.sessions tbody tr:hover { background: var(--hover-tint) }
 /* Rows that are not links: no pointer, no hover tint */
@@ -701,7 +704,7 @@ select { padding: 6px 10px; border: 1px solid var(--control-border); border-radi
   background: none; color: var(--ink-dim); border: 0; border-bottom: 2px solid transparent;
   border-radius: 0; padding: 10px 16px; text-transform: capitalize;
 }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600 }
+.tab.active { color: var(--link); border-bottom-color: var(--accent); font-weight: 600 }
 .pane { flex: 1; overflow: auto; margin: 0; padding: 14px; font-size: 12.5px }
 .pane-code { background: var(--code-bg); color: var(--code-ink) }
 
@@ -823,6 +826,12 @@ table.users tbody tr:hover { background: none }
 .home-alert:hover { background: var(--danger-bg) }
 .home-alert .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .home-alert-action { color: var(--link); font-size: 12.5px; white-space: nowrap }
+.run-flags { margin: 4px 0 0; padding-left: 18px; color: var(--ink) }
+/* Data-quality warnings: attention, not failure */
+.home-alert.attention { border-color: #f0dca0; box-shadow: inset 3px 0 0 #c99a06 }
+.home-alert.attention:hover { background: #fff8e1 }
+:root[data-theme="dark"] .home-alert.attention { border-color: #5c4a10; box-shadow: inset 3px 0 0 #e8c757 }
+:root[data-theme="dark"] .home-alert.attention:hover { background: #2a2208 }
 .home-alert-more { font-size: 12.5px; color: var(--link); padding-left: 2px }
 
 /* Panels */

@@ -40,12 +40,31 @@ export async function sendFile(res: ServerResponse, file: string, headers: Recor
   return true
 }
 
-/** Reads and parses a JSON request body (capped at 1 MB). */
-export async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
-  let data = ""
-  for await (const chunk of req) {
-    data += chunk
-    if (data.length > 1024 * 1024) throw new Error("Request body too large")
+/** A request the client got wrong; the server answers with its status instead of 500. */
+export class ClientError extends Error {
+  /** HTTP status to answer with */
+  readonly status: number
+
+  /** Creates an error answered with the given status. */
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
   }
-  return data ? JSON.parse(data) : {}
+}
+
+/** Reads and parses a JSON request body (capped at 1 MB); malformed or oversized bodies are client errors. */
+export async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length
+    if (size > 1024 * 1024) throw new ClientError(413, "Request body too large (1 MB at most)")
+    chunks.push(chunk as Buffer)
+  }
+  if (size === 0) return {}
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"))
+  } catch {
+    throw new ClientError(400, "Request body is not valid JSON")
+  }
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Post-provisioning configuration for a demo instance: users with known
-# passwords, the default area of interest, and the library installed. Run as
-# root on a server already provisioned by setup.sh; safe to re-run (users are
-# created once, passwords and the AOI are re-applied, installs are upserts).
+# Post-provisioning configuration that would otherwise be clicked through the UI:
+# users, default area of interest, site title, library installs and first runs.
+#   AOI=KEN USERS_FILE=/root/users.txt bash /opt/data-integrator/deploy/configure.sh
 #
-#   AOI=KEN USERS_FILE=/root/users.txt bash /opt/data-integrator/deploy/upcloud/configure-demo.sh
+# Run as root on a host provisioned by setup.sh; safe to re-run (users are
+# created once, passwords and the AOI are re-applied, installs are upserts).
 #
 # Configuration (environment variables):
 #   AOI            ISO3 country code for the default area of interest (bbox +
@@ -16,8 +16,7 @@
 #                  comments ignored. Passwords may contain spaces: everything
 #                  after the email up to a trailing role word is the password
 #   SITE_TITLE     (optional) home page title, e.g. "Data Integrator Kenya"
-#   SKIP_LIBRARY   default "mwater_admin_regions"; space-separated entry ids to
-#                  leave uninstalled (empty string installs everything)
+#   SKIP_LIBRARY   (optional) space-separated library entry ids to leave uninstalled
 #   INSTALL_LIBRARY default 1; set 0 to skip library installs entirely
 #   RUN            default 1; queue a first run of every installed entry, which
 #                  the service's scheduler workers drain in the background
@@ -27,7 +26,7 @@ set -euo pipefail
 AOI=${AOI:-}
 USERS_FILE=${USERS_FILE:-}
 SITE_TITLE=${SITE_TITLE:-}
-SKIP_LIBRARY=${SKIP_LIBRARY-mwater_admin_regions}
+SKIP_LIBRARY=${SKIP_LIBRARY:-}
 INSTALL_LIBRARY=${INSTALL_LIBRARY:-1}
 RUN=${RUN:-1}
 APP_DIR=/opt/data-integrator
@@ -42,6 +41,7 @@ run_cli() {
 
 # Settings are plain jsonb rows; the CLI has no settings command, so write
 # them directly and let `migrate` rebuild the AOI shape (it always does).
+# Values travel as psql variables (:'name' quotes them) in SQL read from stdin.
 psql_app() {
   sudo -u postgres psql -v ON_ERROR_STOP=1 -qAt -d integrator "$@"
 }
@@ -85,17 +85,21 @@ else
       if (!c) { console.error("Unknown country code " + process.argv[1]); process.exit(1) }
       console.log(JSON.stringify({ bbox: c.bbox, countries: [c.iso3], name: c.name }))
     })' "$AOI")
-  psql_app -c "INSERT INTO app.settings (key, value) VALUES ('default_aoi', \$j\$${aoi_json}\$j\$::jsonb)
-               ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()"
+  psql_app -v aoi="$aoi_json" <<'SQL'
+INSERT INTO app.settings (key, value) VALUES ('default_aoi', :'aoi'::jsonb)
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+SQL
   echo "$aoi_json"
 fi
 # migrate is a no-op on an up-to-date schema but always rebuilds data.aoi
-[ -n "$AOI" ] && run_cli migrate >/dev/null
+if [ -n "$AOI" ]; then run_cli migrate >/dev/null; fi
 
 if [ -n "$SITE_TITLE" ]; then
   echo "==> Site title: $SITE_TITLE"
-  psql_app -c "INSERT INTO app.settings (key, value) VALUES ('site_title', to_jsonb(\$t\$${SITE_TITLE}\$t\$::text))
-               ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()"
+  psql_app -v title="$SITE_TITLE" <<'SQL'
+INSERT INTO app.settings (key, value) VALUES ('site_title', to_jsonb(:'title'::text))
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+SQL
 fi
 
 if [ "$INSTALL_LIBRARY" = "1" ]; then

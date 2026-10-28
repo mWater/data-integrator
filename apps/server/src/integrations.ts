@@ -1,5 +1,6 @@
 import pg from "pg"
 import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
+import { RunFlag } from "./validation.js"
 
 /** Summary row for the integrations list. */
 export interface IntegrationSummary {
@@ -41,6 +42,8 @@ export interface RunSummary {
   stats: unknown
   /** Error message on failure */
   error: string | null
+  /** Validation flags the run raised; null when none */
+  flags: RunFlag[] | null
 }
 
 /** Per-destination stored-data stats. */
@@ -112,7 +115,7 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
   const { version, definition, enabled, status, updated_at } = result.rows[0]
 
   const runs = await pool.query(
-    `SELECT id, trigger, status, started_at, finished_at, stats, error
+    `SELECT id, trigger, status, started_at, finished_at, stats, error, flags
      FROM app.runs WHERE integration_id = $1 ORDER BY scheduled_at DESC LIMIT 50`,
     [id]
   )
@@ -153,7 +156,8 @@ export async function getIntegration(pool: pg.Pool, id: string): Promise<Integra
       startedAt: row.started_at ? row.started_at.toISOString() : null,
       finishedAt: row.finished_at ? row.finished_at.toISOString() : null,
       stats: row.stats,
-      error: row.error
+      error: row.error,
+      flags: row.flags ?? null
     })),
     destinations
   }

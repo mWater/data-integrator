@@ -7,7 +7,7 @@
  */
 
 import { loadSecretKey } from "./secrets.js"
-import { totalmem } from "node:os"
+import { availableParallelism, totalmem } from "node:os"
 import { DEFAULT_RENDER_CONCURRENCY } from "./tiles.js"
 
 /** Reasoning efforts OpenRouter accepts for AGENT_EFFORT. */
@@ -50,6 +50,15 @@ export interface AppConfig {
   tileRenderConcurrency: number
   /** SANDBOX_MEMORY_MB: total job sandbox memory admitted at once; 0 disables the budget */
   sandboxMemoryMb: number
+  /** Ceilings on what a definition's limits may request; 0 disables each */
+  jobMax: {
+    /** JOB_MAX_CPUS: CPU cores */
+    cpus: number
+    /** JOB_MAX_MEMORY_MB: memory in MB */
+    memoryMb: number
+    /** JOB_MAX_TIMEOUT_MIN: wall-clock timeout in minutes */
+    timeoutMin: number
+  }
   /** Agent tuning; the provider, key and model are set in Settings (aiSettings.ts) */
   agent: {
     /** AGENT_EFFORT; null uses the model default */
@@ -100,11 +109,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     }
   }
 
-  const quota = (name: string, fallback: number): number => {
+  const quota = (name: string, fallback: number, unit = "megabytes"): number => {
     const raw = env[name] ?? String(fallback)
     const value = Number(raw)
     if (!Number.isInteger(value) || value < 0) {
-      problems.push(`${name} must be a non-negative integer of megabytes, got "${raw}"`)
+      problems.push(`${name} must be a non-negative integer of ${unit}, got "${raw}"`)
       return fallback
     }
     return value
@@ -113,6 +122,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const minFreeDiskMb = quota("MIN_FREE_DISK_MB", 2048)
   const tileCacheMb = quota("TILE_CACHE_MB", 1024)
   const sandboxMemoryMb = quota("SANDBOX_MEMORY_MB", defaultSandboxMemoryMb())
+  const jobMax = {
+    cpus: quota("JOB_MAX_CPUS", availableParallelism(), "cores"),
+    memoryMb: quota("JOB_MAX_MEMORY_MB", sandboxMemoryMb),
+    timeoutMin: quota("JOB_MAX_TIMEOUT_MIN", 360, "minutes")
+  }
 
   const uploadRaw = env.FILE_UPLOAD_MAX_MB ?? "100"
   const fileUploadMaxMb = Number(uploadRaw)
@@ -160,6 +174,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tileCacheMb,
     tileRenderConcurrency,
     sandboxMemoryMb,
+    jobMax,
     runtimeImages: {
       python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
       node: env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"

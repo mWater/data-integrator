@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react"
-import { AiInfo, AiProviderKind, AiSettings, clearAiSettings, getAiSettings, saveAiSettings } from "./api.js"
+import { AiInfo, AiLimitsView, AiProviderKind, AiSettings, clearAiSettings, getAiLimits, getAiSettings, saveAiLimits, saveAiSettings } from "./api.js"
 import { AiDataSent } from "./aiAck.js"
 import { SettingsRow } from "./SettingsRow.js"
 
@@ -40,6 +40,7 @@ export function AiSettingsSection({ ai, isAdmin, onChanged }: AiSettingsSectionP
       )}
       <p><a href="#/ai-privacy">{T`How AI features handle data`}</a></p>
       {isAdmin && <AiProviderForm onChanged={onChanged} />}
+      {isAdmin && ai.provider !== null && <AiLimitsForm />}
     </SettingsRow>
   )
 }
@@ -147,6 +148,84 @@ function AiProviderForm({ onChanged }: { onChanged: () => void }) {
         <button disabled={busy || !dirty || !ready}>
           {busy ? (provider === "off" ? T`Saving…` : T`Testing Connection…`) : provider === "off" ? T`Turn Off AI` : T`Save and Test`}
         </button>
+        {notice && <span className="dim" role="status">{notice}</span>}
+      </div>
+    </form>
+  )
+}
+
+/** Millions of tokens as an input value; blank for no cap. */
+function toMillions(tokens: number | null): string {
+  return tokens === null ? "" : String(tokens / 1_000_000)
+}
+
+/** Parses an input value in millions of tokens; null for blank, undefined when invalid. */
+function fromMillions(value: string): number | null | undefined {
+  if (value.trim() === "") return null
+  const millions = Number(value)
+  if (!Number.isFinite(millions) || millions <= 0) return undefined
+  return Math.round(millions * 1_000_000)
+}
+
+/** Admin form: daily token caps per user and for the whole deployment. */
+function AiLimitsForm() {
+  const [view, setView] = useState<AiLimitsView | null>(null)
+  const [user, setUser] = useState("")
+  const [deployment, setDeployment] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  function reset(next: AiLimitsView) {
+    setView(next)
+    setUser(toMillions(next.limits.userDailyTokens))
+    setDeployment(toMillions(next.limits.deploymentDailyTokens))
+  }
+
+  useEffect(() => {
+    getAiLimits().then(reset, err => setError(err instanceof Error ? err.message : String(err)))
+  }, [])
+
+  if (!view) return error ? <div className="error">{error}</div> : null
+
+  const userTokens = fromMillions(user)
+  const deploymentTokens = fromMillions(deployment)
+  const valid = userTokens !== undefined && deploymentTokens !== undefined
+  const dirty = user !== toMillions(view.limits.userDailyTokens) || deployment !== toMillions(view.limits.deploymentDailyTokens)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!valid) return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      reset(await saveAiLimits({ userDailyTokens: userTokens, deploymentDailyTokens: deploymentTokens }))
+      setNotice(T`Saved.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="ai-provider-form" onSubmit={submit}>
+      <h4>{T`Daily limits`}</h4>
+      <p className="dim">
+        {T`Tokens (input plus output, in millions) AI features may use per day, reset at midnight UTC. Leave blank for no limit. Used today: ${(view.usedToday / 1_000_000).toFixed(2)} million.`}
+      </p>
+      {error && <div className="error" role="alert">{error}</div>}
+      <label>
+        {T`Per user`}
+        <input type="number" min="0" step="any" value={user} onChange={e => setUser(e.target.value)} aria-invalid={userTokens === undefined} />
+      </label>
+      <label>
+        {T`For the whole deployment`}
+        <input type="number" min="0" step="any" value={deployment} onChange={e => setDeployment(e.target.value)} aria-invalid={deploymentTokens === undefined} />
+      </label>
+      <div className="settings-actions">
+        <button disabled={busy || !dirty || !valid}>{busy ? T`Saving…` : T`Save Limits`}</button>
         {notice && <span className="dim" role="status">{notice}</span>}
       </div>
     </form>

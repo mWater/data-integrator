@@ -11,9 +11,9 @@
 
 ## Scope
 
-- GFM satisfies the ToR's SAR box with a derived, operationally consumable
+- GFM covers the architecture's SAR-derived flood source with a derived, operationally consumable
   product; ingesting raw Sentinel-1 scenes and running a SAR processing
-  chain is out of scope for the PoC and stated as such.
+  chain is out of scope for this entry and stated as such.
 - Event-driven data on a polling schedule: many runs will legitimately
   find nothing new, exercising clean no-op runs.
 - Coverage depends on Sentinel-1 revisit; gaps are expected and must not

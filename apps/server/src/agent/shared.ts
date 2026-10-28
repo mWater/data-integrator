@@ -13,9 +13,9 @@ export const RASTER_SQL_GUIDE = `The rasters table mirrors promoted raster snaps
 rasters: layer_id, snapshot_id, observed_at, observed_end, rast. Pixel reads
 go straight to the underlying files, so raster values compose with vector
 rows in ordinary SQL. Sample at features (band index from the layer list):
-  SELECT wp.name, ST_Value(r.rast, 1, wp.geom) AS rain
+  SELECT wp.name, ST_Value(r.rast, 1, wp.geom) AS spi3
   FROM water_points wp
-  JOIN rasters r ON r.layer_id = 'chirps_rainfall'
+  JOIN rasters r ON r.layer_id = 'spi3'
     AND ST_Intersects(ST_ConvexHull(r.rast), wp.geom)
   WHERE r.observed_at = $1
 Statistics "of the country" or "of the area": the deployment's area of

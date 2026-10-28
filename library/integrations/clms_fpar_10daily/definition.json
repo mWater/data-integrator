@@ -133,5 +133,15 @@
       },
       "temporality": "time-series"
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "vegetation_productivity_fpar",
+        "field": "fpar",
+        "min": 0,
+        "max": 1
+      }
+    ]
+  }
 }

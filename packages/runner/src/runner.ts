@@ -24,7 +24,7 @@ const DEFAULTS = {
 }
 
 /** Per-job limit defaults, used when JobSpec.limits omits a value. */
-const LIMIT_DEFAULTS = {
+export const LIMIT_DEFAULTS = {
   cpus: 2,
   memoryMb: 2048,
   timeoutMs: 15 * 60 * 1000,

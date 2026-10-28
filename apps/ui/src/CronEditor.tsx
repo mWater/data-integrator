@@ -81,7 +81,7 @@ export function CronEditor({ draft, onChange }: CronEditorProps) {
   return (
     <div className="cron-editor">
       <div className="cron-row">
-        <select value={draft.mode} onChange={e => set({ mode: e.target.value as CronMode })}>
+        <select value={draft.mode} onChange={e => set({ mode: e.target.value as CronMode })} aria-label={T`Schedule`}>
           <option value="manual">{T`Manual only`}</option>
           <option value="hourly">{T`Hourly`}</option>
           <option value="daily">{T`Daily`}</option>
@@ -96,7 +96,7 @@ export function CronEditor({ draft, onChange }: CronEditorProps) {
           </label>
         )}
         {draft.mode === "weekly" && (
-          <select value={draft.weekday} onChange={e => set({ weekday: e.target.value })}>
+          <select value={draft.weekday} onChange={e => set({ weekday: e.target.value })} aria-label={T`Day of the week`}>
             {weekdayNames().map((name, day) => (
               <option key={day} value={String(day)}>
                 {name}
@@ -120,6 +120,7 @@ export function CronEditor({ draft, onChange }: CronEditorProps) {
             type="text"
             style={{ width: 220 }}
             placeholder="0 6 10 * *"
+            aria-label={T`Cron expression (UTC)`}
             value={draft.raw}
             onChange={e => set({ raw: e.target.value })}
           />

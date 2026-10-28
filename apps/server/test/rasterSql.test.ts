@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { migrate } from "../src/migrations.js"
 import { pruneRasterSql, registerMissingRasters, registerRasterSql } from "../src/rasterSql.js"
-import { backfillCellSizes, registerSnapshot } from "../src/catalog.js"
+import { registerSnapshot } from "../src/catalog.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
@@ -182,17 +182,7 @@ test("unknown CRS is refused; ESRI authority codes resolve via spatial_ref_sys",
   assert.deepEqual(srid.rows, [{ srid: 54009 }])
 })
 
-test("cell size is written at registration and backfilled once for older snapshots", async () => {
-  // The fixture snapshot predates the column: the one-off backfill reads its first file
-  const unreadable = await backfillCellSizes(pool, () => "/nonexistent")
-  assert.deepEqual(unreadable.filled, 0)
-  assert.equal(unreadable.failures.length, 1)
-  const filled = await backfillCellSizes(pool, () => tifPath)
-  assert.deepEqual(filled, { filled: 1, failures: [] })
-  const fixture = await pool.query("SELECT cell_size_m FROM app.raster_snapshots WHERE id = $1", [SNAPSHOT])
-  assert.equal(Number(fixture.rows[0].cell_size_m), 111320)
-  assert.deepEqual(await backfillCellSizes(pool, () => tifPath), { filled: 0, failures: [] }, "nothing left to fill")
-
+test("cell size is written at registration", async () => {
   // A new registration carries the value the store read
   const run = await pool.query("SELECT run_id FROM app.raster_snapshots WHERE id = $1", [SNAPSHOT])
   const client = await pool.connect()
