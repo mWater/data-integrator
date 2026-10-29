@@ -63,6 +63,7 @@ weights.
 - [API](docs/API.md): tokens, tables, rasters, STAC, webhooks, files
 - [Dashboards](docs/Dashboards.md): agent-designed dashboards over frozen SQL
 - [Integration Files](docs/Integration%20Files.md): uploaded files integrations read
+- [Exceptions Register](docs/Exceptions%20Register.md): proprietary dependencies (only optional hosted AI models) and their justification
 - [System Architecture](docs/spec/System%20Architecture.md),
   [Integration Library Specification](docs/spec/Integration%20Library%20Specification.md),
   [Interoperability and Standards Mapping](docs/spec/Interoperability%20and%20Standards%20Mapping.md):
