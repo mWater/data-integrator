@@ -450,9 +450,20 @@ test("http: viewers chat with the assistant but stay blocked from design", async
     assert.equal(body.kind, "assistant")
     assert.deepEqual(body.state.results, {})
 
+    // Another user's chat cannot be read, followed or written to
+    const foreignId = foreign.rows[0].id
+    assert.equal((await fetch(`${base}/api/sessions/${foreignId}`, { headers: { cookie } })).status, 404)
+    assert.equal((await fetch(`${base}/api/sessions/${foreignId}/events`, { headers: { cookie } })).status, 404)
+    const foreignPost = await fetch(`${base}/api/sessions/${foreignId}/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ text: "hi" })
+    })
+    assert.equal(foreignPost.status, 404)
+
     // Delete reaches only your own chats, and only chats
-    const foreignDelete = await fetch(`${base}/api/sessions/${foreign.rows[0].id}`, { method: "DELETE", headers: { cookie } })
-    assert.equal(foreignDelete.status, 403)
+    const foreignDelete = await fetch(`${base}/api/sessions/${foreignId}`, { method: "DELETE", headers: { cookie } })
+    assert.equal(foreignDelete.status, 404)
     const designDelete = await fetch(`${base}/api/sessions/${design.rows[0].id}`, { method: "DELETE", headers: { cookie } })
     assert.equal(designDelete.status, 403)
     const survivors = await pool.query("SELECT id FROM app.agent_sessions WHERE id = ANY($1)", [

@@ -1841,12 +1841,21 @@ async function routeSessions(
     return
   }
   const [, sessionId, sub] = match
-  const owner = await pool.query("SELECT kind FROM app.agent_sessions WHERE id = $1", [sessionId])
+  const owner = await pool.query("SELECT kind, user_id FROM app.agent_sessions WHERE id = $1", [sessionId])
   if (owner.rows.length === 0) {
     json(res, 404, { error: "unknown session" })
     return
   }
   const ownerKind: string = owner.rows[0].kind
+  // Explore chats are private to their creator: admins may read and delete
+  // other people's, and nobody else learns that they exist
+  if (ownerKind === "assistant" && owner.rows[0].user_id !== user.id) {
+    const adminRead = user.role === "admin" && (req.method === "GET" || req.method === "DELETE")
+    if (!adminRead) {
+      json(res, 404, { error: "unknown session" })
+      return
+    }
+  }
   if (isViewer && (ownerKind === "designer" || (req.method !== "GET" && ownerKind !== "assistant"))) {
     json(res, 403, { error: "Viewers cannot open integration design sessions" })
     return
