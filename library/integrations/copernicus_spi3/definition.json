@@ -110,11 +110,7 @@
                 "value": 2.31
               }
             ],
-            "resampling": "average",
-            "defaultRange": {
-              "max": 2.31,
-              "min": -7
-            }
+            "resampling": "average"
           }
         }
       ],

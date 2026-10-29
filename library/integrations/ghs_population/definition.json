@@ -112,11 +112,7 @@
                 "value": 280
               }
             ],
-            "resampling": "nearest",
-            "defaultRange": {
-              "max": 280,
-              "min": 0
-            }
+            "resampling": "nearest"
           }
         }
       ],

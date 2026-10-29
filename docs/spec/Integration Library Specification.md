@@ -96,7 +96,6 @@ and imported into another.
           "nodata": -99999,
           "rendering": {
             "colorMap": [{ "value": 0, "color": "#ffffe5" }, { "value": 280, "color": "#005a32" }],
-            "defaultRange": { "min": 0, "max": 280 },
             "resampling": "nearest"
           }
         }
@@ -322,12 +321,11 @@ that produced it, which is the lineage link.
 
 A band is `{ id, name?, units?, nodata?, rendering? }`. `nodata` is the
 sentinel value written in the files; absent means the file's own nodata or
-NaN. `rendering` is `{ colorMap?, defaultRange?, resampling? }`:
+NaN. `rendering` is `{ colorMap?, resampling? }`:
 
 | Field | Type | Meaning |
 |---|---|---|
 | `colorMap` | `[{ value, color }]` | Value-to-color stops (CSS hex colors), interpolated between stops |
-| `defaultRange` | `{ min, max }` | Default value range for display scaling |
 | `resampling` | `"nearest"` or `"average"` | Overview resampling; `nearest` avoids inflating sparse data |
 
 ### 2.11 Validation

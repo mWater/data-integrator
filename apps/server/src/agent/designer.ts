@@ -216,14 +216,14 @@ Destinations:
   shows, shown in the data catalog], temporality: "time-series"|"current-only",
   retention? {days} [time-series only: snapshots observed more than days ago are
   deleted; set it for daily or finer layers whose history grows without bound], bands:
-  [{id, name?, units?, nodata?, rendering? {resampling: "nearest"|"average", defaultRange?
-  {min, max}, colorMap? [{value, color: "#rrggbb" or "#rrggbbaa"}]}}]}
+  [{id, name?, units?, nodata?, rendering? {resampling: "nearest"|"average",
+  colorMap? [{value, color: "#rrggbb" or "#rrggbbaa"}]}}]}
 Every raster band MUST declare nodata (matching the value written into the
 COG) and a rendering.colorMap with value stops spanning the data range - the
 map draws nothing without a colorMap, and SQL statistics count sentinel
 pixels without nodata. Make nodata transparent by relying on it (it always
 renders transparent) rather than adding a stop for it. Derive colorMap stops
-and defaultRange from the values actually ingested for this deployment's
+from the values actually ingested for this deployment's
 area (check statistics on a produced raster before finishing), NOT from the
 variable's theoretical global range: a global-scale ramp renders a small
 region's data as one flat color.

@@ -560,8 +560,6 @@ export interface BandColorStop {
 export interface BandRendering {
   /** Value-to-color stops; also the legend */
   colorMap?: BandColorStop[]
-  /** Display scaling range */
-  defaultRange?: { min: number; max: number }
   /** Overview resampling */
   resampling?: "nearest" | "average"
 }

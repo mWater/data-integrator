@@ -92,10 +92,6 @@
           "nodata": -9999,
           "rendering": {
             "resampling": "nearest",
-            "defaultRange": {
-              "min": 0,
-              "max": 3
-            },
             "colorMap": [
               {
                 "value": 0,

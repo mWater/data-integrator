@@ -90,11 +90,7 @@
                 "value": 1
               }
             ],
-            "resampling": "nearest",
-            "defaultRange": {
-              "max": 1,
-              "min": 0
-            }
+            "resampling": "nearest"
           }
         }
       ],

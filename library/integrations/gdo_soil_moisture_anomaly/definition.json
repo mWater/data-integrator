@@ -92,10 +92,6 @@
           "nodata": -9999,
           "rendering": {
             "resampling": "average",
-            "defaultRange": {
-              "min": -3,
-              "max": 3
-            },
             "colorMap": [
               {
                 "value": -3,

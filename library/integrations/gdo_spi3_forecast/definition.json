@@ -172,11 +172,7 @@
                 "color": "#053061"
               }
             ],
-            "resampling": "nearest",
-            "defaultRange": {
-              "min": -3,
-              "max": 3
-            }
+            "resampling": "nearest"
           }
         }
       ]

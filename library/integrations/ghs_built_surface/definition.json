@@ -100,11 +100,7 @@
                 "value": 10000
               }
             ],
-            "resampling": "average",
-            "defaultRange": {
-              "max": 10000,
-              "min": 0
-            }
+            "resampling": "average"
           }
         }
       ],

@@ -439,8 +439,6 @@ export interface BandSpec {
 export interface BandRendering {
   /** Value-to-color stops for gdaldem color-relief */
   colorMap?: { value: number; color: string }[]
-  /** Default value range for display scaling */
-  defaultRange?: { min: number; max: number }
   /** Overview resampling; nearest avoids inflating sparse data */
   resampling?: "nearest" | "average"
 }
