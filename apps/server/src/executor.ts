@@ -27,6 +27,7 @@ import { evaluateRasterRules, evaluateTableRules, RunFlag } from "./validation.j
 import { getDefaultAoi } from "./settings.js"
 import { SandboxBudget } from "./sandboxBudget.js"
 import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx, validateRasterSqlRef } from "./rasterSql.js"
+import { logSecurityEvent } from "./securityLog.js"
 
 const execFileP = promisify(execFile)
 
@@ -207,9 +208,15 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
 export async function reapStaleRuns(pool: pg.Pool, staleMs = LEASE_STALE_MS): Promise<number> {
   const result = await pool.query(
     `UPDATE app.runs SET status = 'failed', finished_at = now(), error = 'worker lease expired'
-     WHERE status = 'running' AND heartbeat_at < now() - make_interval(secs => $1)`,
+     WHERE status = 'running' AND heartbeat_at < now() - make_interval(secs => $1)
+     RETURNING id, integration_id`,
     [staleMs / 1000]
   )
+  for (const row of result.rows) {
+    if (row.integration_id) {
+      logSecurityEvent("run.finished", { runId: row.id, integrationId: row.integration_id, status: "failed", error: "worker lease expired" })
+    }
+  }
   return result.rowCount ?? 0
 }
 
@@ -668,6 +675,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     } finally {
       client.release()
     }
+    if (!scratch) logSecurityEvent("run.finished", { runId: run.id, integrationId: run.integration_id, status: "succeeded" })
 
     // Post-commit, best-effort: drop registrations of snapshots this run
     // superseded; the next run prunes again if this misses
@@ -706,11 +714,14 @@ async function finishRun(
   status: "failed" | "timeout",
   fields: { error: string; log: string | null }
 ): Promise<void> {
-  await pool.query(
+  const result = await pool.query(
     `UPDATE app.runs SET status = $2, finished_at = now(), error = $3, log = COALESCE($4, log)
      WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $5`,
     [run.id, status, fields.error, fields.log, run.attempt]
   )
+  if ((result.rowCount ?? 0) > 0 && run.integration_id) {
+    logSecurityEvent("run.finished", { runId: run.id, integrationId: run.integration_id, status, error: fields.error })
+  }
 }
 
 /**

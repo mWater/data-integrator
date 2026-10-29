@@ -474,6 +474,7 @@ the data and the host against untrusted inputs, misbehaving integration code
 | Public dashboards | Opt-in per dashboard by an administrator, recorded with who and when; anonymous access limited to the view surface |
 | Analytical SQL | Frozen at design time where applicable, always executed under a read-only role scoped to destination data |
 | Transport | TLS terminated by the deployer's reverse proxy, with secure-cookie behavior keyed to forwarded protocol |
+| Security logging | JSON-lines security events on the service log: sign-in outcomes, every API write with actor and outcome (refusals included), accounts disabled for inactivity, run outcomes; never request bodies or credentials |
 
 Integrations hold environmental and infrastructure data. The platform's own
 personal data is limited to account emails and the uploader and original

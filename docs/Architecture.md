@@ -427,6 +427,9 @@ encodings of it.
   with a forced change, and disabling of accounts inactive for N days, by the daily
   housekeeping sweep. Both are off by default, following NIST SP 800-63B; the sweep
   never disables the last active admin.
+- Security event log: JSON lines (`"type": "security"`) on the service log for
+  sign-in outcomes, every API write with its actor and outcome, inactivity
+  disabling and run outcomes (Deployment.md lists the events).
 - Credentials as above. Jobs run under gVisor with the egress policy above.
 - The `app`/`data` schema split is the query boundary: user-facing SQL (dashboards,
   Explore) runs as `sql_engine`, which has SELECT on `data` only.

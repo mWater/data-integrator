@@ -139,3 +139,31 @@ cron and mail its output. Within the app, the home page lists failing
 integrations, overdue ones, runs whose data was flagged by validation rules,
 and integrations waiting for credentials. Service logs are in
 `journalctl -u data-integrator`.
+
+## Security event log
+
+The service writes security events to the same log, one JSON object per line
+with `"type": "security"`, so a log forwarder or SIEM can pick them out:
+
+```sh
+journalctl -u data-integrator -o cat | grep '"type":"security"' | jq .
+```
+
+| event | when | fields |
+|---|---|---|
+| `auth.login` | every sign-in attempt | `outcome` (success, bad-credentials, locked, disabled, password-expired), `email`, `userId` on success |
+| `auth.password_renewed` | an expired password replaced at sign-in | `email` |
+| `api.write` | every POST, PUT, PATCH or DELETE to the API, refused ones included | `method`, `path`, `status`, `userId`, `email`, `role` (`userId` null when unauthenticated) |
+| `account.disabled_inactive` | the account policy disabled an idle account | `userId`, `email`, `role`, `inactiveDisableDays` |
+| `run.finished` | an integration run ends | `runId`, `integrationId`, `status`, `error` |
+
+Every event carries `time`; request events also carry `ip` (the socket peer)
+and `forwardedFor` (the proxy's `X-Forwarded-For`). `api.write` paths name the
+action and its target, e.g. `PUT /api/users/:id/role` for a role change,
+`POST /api/tokens` for a new API token, `PUT /api/integrations/:id/secrets/:name`
+for a credential. Request bodies are never logged, query strings are dropped,
+and webhook paths are logged as `/hooks/[redacted]`. Retention, forwarding,
+integrity protection and alerting are configured in the deployer's log
+pipeline (journald settings or a forwarder). Commands run with `cli.js` on the
+host are not in this log; they are covered by the host's own shell and sudo
+logging.

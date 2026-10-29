@@ -78,6 +78,7 @@ import { LanguageModel } from "ai"
 import { parseItemQuery, STAC_CONFORMANCE, stacCollection, stacCollections, stacItem, stacItems, stacLanding } from "./stac.js"
 import { aiUsageToday, getAiLimits, parseAiLimits, saveAiLimits } from "./aiLimits.js"
 import { ACCOUNT_POLICY_KEY, getAccountPolicy, parseAccountPolicy, saveAccountPolicy } from "./accountPolicy.js"
+import { actorFields, auditWrite, logSecurityEvent, originFields } from "./securityLog.js"
 import { AiRuntime, aiSettingsView, buildModel, parseAiConfig, saveAiConfig, testModel } from "./aiSettings.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
@@ -182,6 +183,7 @@ export function createApiServer(
 ): Server {
   const uiDist = uiDistPath ?? DEFAULT_UI_DIST
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
+    auditWrite(req, res, () => requestUsers.get(req) ?? null)
     if (!UPLOAD_PATH.test((req.url ?? "").split("?")[0])) limitRequestTime(req, res)
     try {
       // Read per request: an admin can switch the provider at any time
@@ -209,6 +211,9 @@ export function createApiServer(
   return server
 }
 
+
+/** The user each request authenticated as, for the security log's write events. */
+const requestUsers = new WeakMap<IncomingMessage, AuthUser>()
 
 /** Reads the session token from the request cookies. */
 function cookieToken(req: IncomingMessage): string | null {
@@ -311,6 +316,7 @@ async function route(
     // An expired password signs in only together with its replacement
     if (!result.ok && result.reason === "password-expired") {
       if (body.newPassword === undefined) {
+        logSecurityEvent("auth.login", { outcome: "password-expired", email, ...originFields(req) })
         json(res, 401, { error: "Password expired; choose a new one", code: "password_expired" })
         return
       }
@@ -320,12 +326,15 @@ async function route(
         return
       }
       await setPassword(pool, email, newPassword)
+      logSecurityEvent("auth.password_renewed", { email, ...originFields(req) })
       result = await authenticate(pool, email, newPassword)
     }
     if (!result.ok) {
+      logSecurityEvent("auth.login", { outcome: result.reason, email, ...originFields(req) })
       json(res, 401, { error: result.reason === "locked" ? "Account locked; try again later" : "Invalid email or password" })
       return
     }
+    logSecurityEvent("auth.login", { outcome: "success", ...actorFields(result.user), ...originFields(req) })
     const token = await createAuthSession(pool, result.user.id)
     res.setHeader("set-cookie", sessionCookie(token, req))
     json(res, 200, { user: { email: result.user.email, role: result.user.role } })
@@ -340,6 +349,7 @@ async function route(
   }
   const token = cookieToken(req)
   if (!user && token) user = await getSessionUser(pool, token)
+  if (user) requestUsers.set(req, user)
 
   if (pathname === "/api/logout" && req.method === "POST") {
     if (token) await deleteAuthSession(pool, token)

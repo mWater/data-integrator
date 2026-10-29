@@ -10,6 +10,7 @@
 
 import pg from "pg"
 import { getSetting, setSetting } from "./settings.js"
+import { logSecurityEvent } from "./securityLog.js"
 
 /** Settings key holding the policy. */
 export const ACCOUNT_POLICY_KEY = "account_policy"
@@ -66,12 +67,15 @@ export async function disableInactiveAccounts(pool: pg.Pool): Promise<number> {
          AND (u.role <> 'admin' OR EXISTS (
            SELECT 1 FROM app.users a
            WHERE a.role = 'admin' AND NOT a.disabled AND a.last_active_at >= now() - make_interval(days => $1)))
-       RETURNING u.id
+       RETURNING u.id, u.email, u.role
      ), revoked AS (
        DELETE FROM app.auth_sessions s USING disabled d WHERE s.user_id = d.id
      )
-     SELECT count(*)::int AS n FROM disabled`,
+     SELECT id, email, role FROM disabled`,
     [inactiveDisableDays]
   )
-  return result.rows[0].n
+  for (const row of result.rows) {
+    logSecurityEvent("account.disabled_inactive", { userId: row.id, email: row.email, role: row.role, inactiveDisableDays })
+  }
+  return result.rows.length
 }
