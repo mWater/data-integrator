@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { CatalogLayerState, JobHandle, JobPayload, JOB_LIMIT_DEFAULTS, Runner, parseJobOutput } from "@mwater/integration-runner"
+import { CatalogLayerState, JobHandle, JobPayload, JobResult, JOB_LIMIT_DEFAULTS, Runner, parseJobOutput } from "@mwater/integration-runner"
 import { IntegrationDefinition, JobLimitsSpec, RunResult } from "@data-integrator/definitions"
 import {
   applyRows,
@@ -155,6 +155,22 @@ export function effectiveJobLimits(
     timeoutMs: cap("timeoutMs", requested?.timeoutMs, JOB_LIMIT_DEFAULTS.timeoutMs, max.timeoutMs, "JOB_MAX_TIMEOUT_MIN"),
     notes
   }
+}
+
+/** Exit code of a container whose process was SIGKILLed, which is how the kernel ends a job over its memory limit. */
+const KILLED_EXIT_CODE = 137
+
+/**
+ * Why a job that was not aborted through its handle failed, in one line. A
+ * job killed for memory prints nothing of its own, so without this line its
+ * error would be whatever progress it last wrote.
+ */
+export function jobFailureReason(result: Pick<JobResult, "exitCode" | "memoryPeakBytes">, memoryMb: number): string {
+  if (result.exitCode === KILLED_EXIT_CODE) {
+    const peak = result.memoryPeakBytes !== undefined ? `; peak ${Math.round(result.memoryPeakBytes / (1024 * 1024))} MB including the sandbox` : ""
+    return `killed (exit code ${KILLED_EXIT_CODE}), most likely for exceeding its ${memoryMb} MB memory limit${peak}`
+  }
+  return result.exitCode === null ? "the job process could not be observed" : `exit code ${result.exitCode}`
 }
 
 /** One row of app.runs the executor cares about. */
@@ -516,11 +532,18 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         )
       }
     }
+    if (jobResult.status === "failed" && jobResult.abortedReason === undefined) {
+      logParts.push(jobFailureReason(jobResult, memoryMb))
+    }
     const log = logParts.join("\n").slice(-256 * 1024)
 
     if (jobResult.status !== "succeeded") {
-      await finishRun(deps.pool, run, jobResult.status === "timeout" ? "timeout" : "failed", {
-        error: jobResult.abortedReason ?? (redact(jobResult.stderrTail).slice(-2000) || `exit code ${jobResult.exitCode}`),
+      const stderr = redact(jobResult.stderrTail).slice(-2000)
+      const timedOut = jobResult.status === "timeout"
+      await finishRun(deps.pool, run, timedOut ? "timeout" : "failed", {
+        error:
+          jobResult.abortedReason ??
+          (timedOut ? stderr || `exit code ${jobResult.exitCode}` : [jobFailureReason(jobResult, memoryMb), stderr].filter(Boolean).join("\n")),
         log
       })
       return

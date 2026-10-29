@@ -14,7 +14,7 @@ import {
   ToolOutcome
 } from "./types.js"
 import { RunFlag } from "../validation.js"
-import { effectiveJobLimits, effectiveTmpQuotaMb, ExecutorDeps, executeRun } from "../executor.js"
+import { effectiveJobLimits, effectiveTmpQuotaMb, ExecutorDeps, executeRun, jobFailureReason } from "../executor.js"
 import { createJobTmp } from "../jobTmp.js"
 import {
   adoptSessionFiles,
@@ -847,7 +847,11 @@ ${index}`
         },
         { onStderrLine: line => events({ type: "job_log", line: redact(line) }) }
       ).finally(release)
-      const parts = [`Snippet ${result.status} (exit ${result.exitCode})`]
+      const parts = [
+        result.status === "failed" && result.abortedReason === undefined
+          ? `Snippet failed: ${jobFailureReason(result, limits.memoryMb)}`
+          : `Snippet ${result.status} (exit ${result.exitCode})`
+      ]
       if (result.stdout) parts.push(`stdout:\n${redact(result.stdout)}`)
       if (result.status !== "succeeded" && result.stderrTail) parts.push(`stderr:\n${redact(result.stderrTail)}`)
       return { result: parts.join("\n") }

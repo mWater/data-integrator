@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, writeFile, readdir, utimes } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { IntegrationDefinition } from "@data-integrator/definitions"
-import { DEFAULT_JOB_MEMORY_MB, effectiveJobLimits, effectiveTmpQuotaMb, effectiveWorkQuotaMb, freeDiskMb } from "../src/executor.js"
+import { DEFAULT_JOB_MEMORY_MB, effectiveJobLimits, effectiveTmpQuotaMb, effectiveWorkQuotaMb, freeDiskMb, jobFailureReason } from "../src/executor.js"
 import { createJobTmp, JOB_TMP_DIR, sweepJobTmp } from "../src/jobTmp.js"
 import { JOB_LIMIT_DEFAULTS } from "@mwater/integration-runner"
 import { RasterStore } from "../src/rasterStore.js"
@@ -74,6 +74,16 @@ test("effectiveJobLimits: deployment ceilings lower what definitions request", (
   const small = effectiveJobLimits(undefined, { jobMax: { cpus: 1, memoryMb: 1024, timeoutMs: 60_000 } })
   assert.deepEqual([small.cpus, small.memoryMb, small.timeoutMs, small.notes.length], [1, 1024, 60_000, 0])
   assert.equal(effectiveJobLimits(undefined, {}).memoryMb, DEFAULT_JOB_MEMORY_MB)
+})
+
+test("jobFailureReason: a kill names the memory limit, other exits their code", () => {
+  assert.equal(
+    jobFailureReason({ exitCode: 137, memoryPeakBytes: 4096 * 1024 * 1024 }, 4096),
+    "killed (exit code 137), most likely for exceeding its 4096 MB memory limit; peak 4096 MB including the sandbox"
+  )
+  assert.match(jobFailureReason({ exitCode: 137 }, 2048), /2048 MB memory limit$/)
+  assert.equal(jobFailureReason({ exitCode: 1 }, 2048), "exit code 1")
+  assert.equal(jobFailureReason({ exitCode: null }, 2048), "the job process could not be observed")
 })
 
 test("freeDiskMb: real filesystems report, bogus paths are null", async () => {
