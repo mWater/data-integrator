@@ -6,9 +6,11 @@
  *                           replacing the installed definition outright.
  *   library-install <id>... Install or update library entries the way the Library
  *                           page does: an update keeps the deployment's AOI,
- *                           schedule and limits.
- *   run <integrationId>     Start a manual run of that integration and execute it
- *                           to completion.
+ *                           schedule, limits and setting values.
+ *   run <integrationId> [--rebuild]
+ *                           Start a manual run of that integration and execute it
+ *                           to completion. --rebuild runs it cold: empty /work, no
+ *                           previous state, everything in scope produced again.
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
@@ -228,8 +230,9 @@ async function main(): Promise<number> {
       }
       case "run": {
         const integrationId = process.argv[3]
-        if (!integrationId) {
-          console.error("Usage: cli.js run <integrationId>")
+        const rebuild = process.argv[4] === "--rebuild"
+        if (!integrationId || (process.argv[4] !== undefined && !rebuild)) {
+          console.error("Usage: cli.js run <integrationId> [--rebuild]")
           return 1
         }
         const known = await pool.query("SELECT 1 FROM app.integrations WHERE id = $1", [integrationId])
@@ -242,7 +245,7 @@ async function main(): Promise<number> {
         // A run of exactly this integration, never whatever else is queued
         let run
         try {
-          run = await insertRunningRun(pool, integrationId, `cli-${hostname()}`)
+          run = await insertRunningRun(pool, integrationId, `cli-${hostname()}`, null, rebuild ? "rebuild" : "manual")
         } catch (err) {
           console.error(err instanceof Error ? err.message : String(err))
           return 1
@@ -618,7 +621,7 @@ async function main(): Promise<number> {
       }
       default:
         console.error(
-          "Usage: cli.js migrate | install <file|dir> | library-install <id>... | run <integrationId> | user add|passwd|list|token|disable|enable | secret list|set|export|import | agent [integrationId|sessionId] | files list|purge | register-rasters [--all] | prune-snapshots | localize-library | serve"
+          "Usage: cli.js migrate | install <file|dir> | library-install <id>... | run <integrationId> [--rebuild] | user add|passwd|list|token|disable|enable | secret list|set|export|import | agent [integrationId|sessionId] | files list|purge | register-rasters [--all] | prune-snapshots | localize-library | serve"
         )
         return 1
     }

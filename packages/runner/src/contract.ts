@@ -35,7 +35,7 @@ export interface JobPayload {
   previousState?: unknown
   /** Webhook deliveries since the last run, oldest first */
   webhookData?: unknown[]
-  /** Run parameters (manual-run overrides such as force), exposed as ctx.params */
+  /** Run parameters, exposed as ctx.params; the Data Integrator passes the definition's resolved settings */
   params?: Record<string, unknown>
   /** What is already published per raster destination, so code can skip work it has done */
   catalog?: Record<string, CatalogLayerState>

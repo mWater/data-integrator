@@ -27,16 +27,17 @@ export async function insertRunningRun(
   pool: pg.Pool,
   integrationId: string,
   claimedBy: string,
-  filePins: Record<string, string> | null = null
+  filePins: Record<string, string> | null = null,
+  trigger: "manual" | "rebuild" = "manual"
 ): Promise<RunRow> {
   let inserted
   try {
     inserted = await pool.query(
       `INSERT INTO app.runs (integration_id, trigger, status, claimed_by, attempt, heartbeat_at, started_at, file_pins)
-       SELECT $1, 'manual', 'running', $2, gen_random_uuid(), now(), now(), $3::jsonb
+       SELECT $1, $4, 'running', $2, gen_random_uuid(), now(), now(), $3::jsonb
        WHERE NOT EXISTS (SELECT 1 FROM app.runs WHERE integration_id = $1 AND status = 'queued')
-       RETURNING id, integration_id, params, attempt`,
-      [integrationId, claimedBy, filePins ? JSON.stringify(filePins) : null]
+       RETURNING id, integration_id, trigger, attempt`,
+      [integrationId, claimedBy, filePins ? JSON.stringify(filePins) : null, trigger]
     )
   } catch (err) {
     if ((err as { code?: string }).code === "23505") {
@@ -52,11 +53,17 @@ export async function insertRunningRun(
  * Starts one production run, returning its id immediately; execution
  * continues in the background of the server process. Shared by the
  * manual-run API and a design session's finish, which starts the first load
- * of a freshly installed integration. See insertRunningRun for refusals.
+ * of a freshly installed integration. A rebuild runs cold: an empty /work and
+ * no previous state, so the code produces everything in scope again. See
+ * insertRunningRun for refusals.
  */
-export async function startProductionRun(deps: ExecutorDeps, integrationId: string): Promise<string> {
+export async function startProductionRun(
+  deps: ExecutorDeps,
+  integrationId: string,
+  trigger: "manual" | "rebuild" = "manual"
+): Promise<string> {
   await deps.runner.ensureReady()
-  const run = await insertRunningRun(deps.pool, integrationId, "api")
+  const run = await insertRunningRun(deps.pool, integrationId, "api", null, trigger)
   void executeRun(deps, run).catch(() => {
     // executeRun records its own failures; nothing useful to add here
   })
@@ -122,16 +129,16 @@ export class RunService {
   }
 
   /**
-   * Starts one run of an existing integration; see startProductionRun. A
-   * draft (a design session that has not finished) has no certified code to
-   * run and is refused.
+   * Starts one run of an existing integration, or a rebuild; see
+   * startProductionRun. A draft (a design session that has not finished) has
+   * no certified code to run and is refused.
    */
-  async start(integrationId: string): Promise<string> {
+  async start(integrationId: string, trigger: "manual" | "rebuild" = "manual"): Promise<string> {
     const definition = await this.readyDefinition(integrationId)
     // Refused before any row exists: a run with nothing to read would only fail
     const missing = await missingFileSlot(this.deps.pool, integrationId, definition)
     if (missing) throw new RunRequestError(`Awaiting file upload for slot ${missing}`)
-    return startProductionRun(this.deps, integrationId)
+    return startProductionRun(this.deps, integrationId, trigger)
   }
 
   /** Starts (or queues) one run of an existing integration pinning file versions; see startPinnedRun. */

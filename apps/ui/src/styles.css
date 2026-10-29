@@ -1124,6 +1124,13 @@ table.users tbody tr:hover { background: none }
 .definition-section .aoi-bbox { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
 .definition-section .aoi-bbox input { width: 100%; padding: 9px 11px; border-color: var(--control-border) }
 .definition-section .aoi-bbox label { gap: 6px; text-transform: capitalize }
+.settings-editor { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px }
+.setting-field label:not(.setting-check) { display: flex; flex-direction: column; gap: 6px; font-weight: 500 }
+.setting-field .setting-check { display: flex; align-items: baseline; gap: 6px; font-weight: 500 }
+.setting-field input:not([type="checkbox"]), .setting-field select { width: 100%; max-width: 360px; padding: 9px 11px; border: 1px solid var(--control-border); border-radius: 6px }
+.setting-field .dim { margin: 6px 0 0; line-height: 1.5 }
+.layer-metadata { margin-top: 12px }
+.layer-metadata > summary { cursor: pointer; color: var(--link) }
 .definition-current { padding: 10px 12px; border-radius: 6px; background: var(--page); line-height: 1.6 }
 .definition-current b { font-weight: 500 }
 .definition-section .facts { margin-bottom: 20px }

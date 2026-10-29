@@ -23,8 +23,9 @@ NODATA = 255
 PIXEL_SIZE = 20
 INITIAL_DAYS = 365
 MAX_DAYS_PER_RUN = 7
-# Version 3 forces replacement of the historical snapshots because earlier COGs
-# used nearest-neighbour overviews, which erased sparse flood pixels.
+# Format of the stored snapshots. State from another format is discarded and the
+# configured history loaded again, replacing every snapshot; raise it whenever the
+# COGs this code writes change in a way existing snapshots must follow.
 STATE_VERSION = 3
 TARGET_CRS = "EPSG:3857"
 # Rows merged at once per frame: a multiple of the 512-row output block.
@@ -456,21 +457,20 @@ def run(ctx):
     bbox = _aoi_bbox(ctx.definition)
     today = dt.datetime.now(dt.timezone.utc).date()
     end_day = today - dt.timedelta(days=1)
+    # History depth applies only when there is no cursor: the first run and a rebuild
     requested_days = int((ctx.params or {}).get("days_back", INITIAL_DAYS))
-    if requested_days < 1 or requested_days > 3650:
-        raise ValueError("days_back must be between 1 and 3650")
 
     prior = dict(ctx.previous_state or {})
     if prior.get("state_version") == STATE_VERSION and prior.get("last_day"):
         start_day = dt.date.fromisoformat(prior["last_day"]) + dt.timedelta(days=1)
         state = prior
     else:
-        # State-version migrations intentionally ignore the old cursor so every
-        # timestamp in the configured history is replaced with the corrected COG.
+        # A cursor from another format is ignored, so every timestamp in the
+        # configured history is replaced
         start_day = today - dt.timedelta(days=requested_days)
         state = {"state_version": STATE_VERSION}
         if prior:
-            print("Overview-pyramid migration: restarting the configured history backfill")
+            print("Stored snapshots are in an earlier format: loading the configured history again")
 
     if start_day > end_day:
         print("No completed UTC day remains to search")

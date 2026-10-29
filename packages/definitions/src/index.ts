@@ -104,12 +104,61 @@ export interface IntegrationDefinition {
   destinations: Destination[]
   /** Data-quality rules evaluated on each run's results; violations flag the run */
   validation?: ValidationSpec
+  /**
+   * Settings operators may change without editing code, keyed by setting id.
+   * Job code reads the resolved values from ctx.params, and nothing else
+   * reaches ctx.params.
+   */
+  settings?: Record<string, SettingSpec>
+  /**
+   * This deployment's values for declared settings, keyed by setting id;
+   * absent ids take the declared default. Changing one is a definition edit
+   * and creates a new integration version. Carried over on library updates.
+   */
+  settingValues?: Record<string, SettingValue>
   /** Single self-contained file implementing the entrypoint */
   code: string
   /** Entrypoint contract version */
   contract: 2
 }
 
+
+/** A value of a declared setting: integer, boolean, or the text of a choice or text setting. */
+export type SettingValue = number | boolean | string
+
+/** One operator-facing setting the integration's code reads from ctx.params. */
+export interface SettingSpec {
+  /** Short label shown on the form */
+  label: LocalizedString
+  /** What the setting changes, and when it takes effect, shown beside the control */
+  description?: LocalizedString
+  /** integer (with optional bounds), boolean, choice (one of choices), or text (optionally matching pattern) */
+  type: "integer" | "boolean" | "choice" | "text"
+  /** Value when the deployment has not set one; must itself be valid */
+  default: SettingValue
+  /** Smallest allowed integer */
+  min?: number
+  /** Largest allowed integer */
+  max?: number
+  /** Allowed values of a choice setting, in display order */
+  choices?: SettingChoice[]
+  /** Regular expression a text value must match in full */
+  pattern?: string
+  /**
+   * "rebuild" when the code reads the setting only when it starts from no
+   * previous state (backfill depth, history to fetch), so a change shows on
+   * the next rebuild; "every-run" (the default) otherwise.
+   */
+  appliesOn?: "every-run" | "rebuild"
+}
+
+/** One allowed value of a choice setting. */
+export interface SettingChoice {
+  /** Value the code receives */
+  value: string
+  /** Label shown on the form */
+  label: LocalizedString
+}
 
 /** Provenance of the external data source, for documentation and lineage. */
 export interface SourceInfo {

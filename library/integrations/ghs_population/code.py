@@ -89,23 +89,10 @@ def _published_tiles(session, epoch):
     return names
 
 
-def _parse_years(value):
-    """params.years: 'all', a list, or a comma-separated string of years. None when unset."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, str):
-        if value.strip().lower() == "all":
-            return "all"
-        value = [part.strip() for part in value.split(",") if part.strip()]
-    years = sorted({int(year) for year in value})
-    return years or None
-
-
 def _runtime_scope(ctx):
-    """(mode, bbox) from the injected AOI and params: a box clips, no AOI means the world."""
-    params = ctx.params or {}
+    """(mode, bbox) from the injected AOI: a box clips, no AOI means the world."""
     aoi = ctx.definition.get("aoi") or {}
-    bbox = params.get("bbox") or aoi.get("bbox")
+    bbox = aoi.get("bbox")
     if bbox is None:
         return "world", None
     if len(bbox) != 4:
@@ -133,18 +120,11 @@ def _tile_names_for_box(epoch, bbox, published):
     return names
 
 
-def _select_years(available, requested, mode, current_year):
-    """Epochs to produce. Explicit params.years wins; otherwise a box takes every published
-    epoch (a deployment wants its full series) and the world takes only the newest epoch not
-    after the current year, since a global epoch is about 30 GB of source."""
-    if requested == "all":
-        return sorted(available)
-    if requested:
-        missing = sorted(set(requested) - set(available))
-        if missing:
-            print(f"Requested epochs not in the release: {missing}")
-        return sorted(set(requested) & set(available))
-    if mode == "box":
+def _select_years(available, choice, mode, current_year):
+    """Epochs to produce, from the years setting. "auto" takes every published epoch for a
+    box (a deployment wants its full series) and only the newest epoch not after the current
+    year for the world, since a global epoch is about 30 GB of source."""
+    if choice == "all" or (choice == "auto" and mode == "box"):
         return sorted(available)
     at_or_before = [year for year in available if year <= current_year]
     return [max(at_or_before)] if at_or_before else [min(available)]
@@ -293,15 +273,14 @@ def _world_epoch(session, epoch, published, cache_root, tmp_dir, out_dir):
 
 def run(ctx):
     mode, bbox = _runtime_scope(ctx)
-    params = ctx.params or {}
-    requested_years = _parse_years(params.get("years"))
+    years_choice = (ctx.params or {}).get("years", "auto")
     session = requests.Session()
     session.headers.update({"User-Agent": "DataIntegrator-GHSL/1.0"})
     available = _available_epochs(session)
     current_year = datetime.now(timezone.utc).year
 
     scope_key = {"mode": mode, "bbox": bbox}
-    wanted = _select_years(available, requested_years, mode, current_year)
+    wanted = _select_years(available, years_choice, mode, current_year)
     previous = ctx.previous_state or {}
     same_scope = (
         previous.get("release") == RELEASE
@@ -309,8 +288,6 @@ def run(ctx):
         and all(previous.get(key) == value for key, value in scope_key.items())
     )
     completed = {int(year) for year in previous.get("years", [])} if same_scope else set()
-    if params.get("force"):
-        completed = set()
     pending = [year for year in wanted if year not in completed]
     print(f"GHS-POP {RELEASE}; mode={mode}; available={available}; wanted={wanted}; pending={pending}")
     state = {

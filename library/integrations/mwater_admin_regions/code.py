@@ -9,7 +9,7 @@ import requests
 from shapely.geometry import box
 
 
-DEFAULT_BASE = "https://data.mwater.co/admin-regions"
+RELEASES_BASE = "https://data.mwater.co/admin-regions"
 REGION_COLUMNS = [
     "id", "iso3", "level", "name", "local_name", "full_name", "type", "local_type", "leaf",
     "parent_id", "level0", "level1", "level2", "level3", "level4", "level5", "source",
@@ -17,14 +17,11 @@ REGION_COLUMNS = [
 
 
 def _runtime_selection(ctx):
-    """Countries come from params.countries, then the AOI's country list, then the AOI bbox.
-    No AOI at all (the platform's "full source extent") means every published country."""
-    params = ctx.params or {}
+    """Countries come from the AOI's country list, then the AOI bbox. No AOI at all (the
+    platform's "full source extent") means every published country."""
     aoi = ctx.definition.get("aoi") or {}
-    countries = params.get("countries") or aoi.get("countries")
-    bbox = params.get("bbox") or aoi.get("bbox")
-    if isinstance(countries, str):
-        countries = [part.strip() for part in countries.split(",") if part.strip()]
+    countries = aoi.get("countries")
+    bbox = aoi.get("bbox")
     if countries:
         countries = sorted({str(code).upper() for code in countries})
         if any(not re.fullmatch(r"[A-Z]{3}", code) for code in countries):
@@ -47,16 +44,14 @@ def _countries_from_bbox(manifest, bbox):
     return sorted(selected)
 
 
-def _resolve_release(session, params):
-    """The pinned release from params.version, else whatever latest.json names."""
-    base = (params or {}).get("base_url") or DEFAULT_BASE
-    version = (params or {}).get("version")
+def _resolve_release(session, version):
+    """The pinned release when the version setting names one, else whatever latest.json names."""
     if version:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(version)):
-            raise ValueError("params.version must be a release date like 2026-09-07")
-        manifest_url = f"{base}/releases/{version}/manifest.json"
+            raise ValueError("The release version must be a date like 2026-09-07")
+        manifest_url = f"{RELEASES_BASE}/releases/{version}/manifest.json"
     else:
-        latest = session.get(f"{base}/latest.json", timeout=60)
+        latest = session.get(f"{RELEASES_BASE}/latest.json", timeout=60)
         latest.raise_for_status()
         manifest_url = latest.json()["manifest"]
     response = session.get(manifest_url, timeout=60)
@@ -107,7 +102,7 @@ def run(ctx):
     session = requests.Session()
     session.headers["User-Agent"] = "DataIntegrator-mWater-Admin-Regions/1.0"
 
-    manifest = _resolve_release(session, params)
+    manifest = _resolve_release(session, params.get("version", ""))
     release = manifest["version"]
     by_iso3 = {entry["iso3"]: entry for entry in manifest["countries"]}
 
@@ -116,7 +111,7 @@ def run(ctx):
         countries = _countries_from_bbox(manifest, bbox)
         print(f"Countries intersecting the AOI bbox: {', '.join(countries) or 'none'}")
         if not countries:
-            raise ValueError("The AOI matches no published country. Set aoi.countries or params.countries to ISO3 codes.")
+            raise ValueError("The area of interest matches no published country. Choose it by country instead.")
     if not countries:
         countries = sorted(iso3 for iso3, entry in by_iso3.items() if entry.get("file"))
         print(f"No AOI configured; loading all {len(countries)} published countries")

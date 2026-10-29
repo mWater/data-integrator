@@ -8,6 +8,7 @@ import { refreshLayerMasks } from "./aoi.js"
 import { parseAoi } from "./settings.js"
 import { parseCron } from "./cron.js"
 import { validateDefinitionStrings } from "./localizeCatalog.js"
+import { settingsProblems } from "./integrationSettings.js"
 import { SECRET_NAME_PATTERN } from "./secrets.js"
 import { deleteIntegrationFiles } from "./files.js"
 
@@ -46,7 +47,9 @@ export function canonicalDefinition(value: unknown): unknown {
  * current definition; never stored in the database.
  */
 export function definitionHash(definition: IntegrationDefinition): string {
-  return createHash("sha256").update(JSON.stringify(canonicalDefinition(definition))).digest("hex")
+  // Setting values are the deployment's to change; the code was certified against every valid value
+  const { settingValues: _values, ...rest } = definition
+  return createHash("sha256").update(JSON.stringify(canonicalDefinition(rest))).digest("hex")
 }
 
 /** Structural validation beyond what the types express. Throws on violations. */
@@ -57,8 +60,12 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   // only at the agent boundary and are wrapped before validation
   const stringProblems = validateDefinitionStrings(definition)
   if (stringProblems.length > 0) throw new Error(`Localized text problems: ${stringProblems.join("; ")}`)
+  if (definition.contract !== 2) throw new Error("contract must be 2, the entrypoint contract this platform runs")
+  if (definition.runtime !== "python" && definition.runtime !== "node") throw new Error('runtime must be "python" or "node"')
   // Tri-state AOI: explicit boxes must be well-formed (null and absent are meaningful)
   if (definition.aoi != null) parseAoi(definition.aoi)
+  const settingProblems = settingsProblems(definition)
+  if (settingProblems.length > 0) throw new Error(`Setting problems: ${settingProblems.join("; ")}`)
   if (definition.secrets !== undefined) {
     if (!Array.isArray(definition.secrets)) throw new Error("secrets must be an array of names")
     const seen = new Set<string>()

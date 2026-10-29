@@ -46,12 +46,12 @@
   "contract": 2,
   "description": {
     "_base": "en",
-    "en": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m, one snapshot per year from the newest release. With an area of interest naming countries, their files are mosaicked and clipped to the area, every published year included. Without an area of interest the whole world is ingested: each country's file becomes one source of the year's snapshot, and only the current year is taken by default, since a global year is about 10 GB of source and 8 GB stored. params.years (\"all\", or a list) widens or narrows the years, params.countries overrides the area.",
-    "fr": "Estimations annuelles contraintes et ajustées selon l’ONU des effectifs de population WorldPop à environ 100 m, avec un instantané par an issu de la version la plus récente. Si une zone d’intérêt désigne des pays, leurs fichiers sont assemblés en mosaïque et découpés selon cette zone, pour toutes les années publiées. Sans zone d’intérêt, le monde entier est ingéré : le fichier de chaque pays devient une source de l’instantané annuel et, par défaut, seule l’année en cours est retenue, car une année mondiale représente environ 10 Go de données source et 8 Go stockés. params.years (\"all\" ou une liste) élargit ou restreint les années ; params.countries remplace la zone.",
-    "pt": "Contagens populacionais anuais do WorldPop, restritas e ajustadas pela ONU, com resolução aproximada de 100 m e um instantâneo por ano da versão mais recente. Quando uma área de interesse identifica países, os respetivos ficheiros são unidos em mosaico e recortados pela área, incluindo todos os anos publicados. Sem uma área de interesse, o mundo inteiro é ingerido: o ficheiro de cada país torna-se uma fonte do instantâneo desse ano e, por predefinição, apenas o ano atual é obtido, pois um ano global corresponde a cerca de 10 GB de dados de origem e 8 GB armazenados. params.years (\"all\" ou uma lista) amplia ou restringe os anos; params.countries substitui a área.",
-    "es": "Conteos anuales de población de WorldPop, restringidos y ajustados según la ONU, con una resolución aproximada de 100 m y una instantánea por año de la versión más reciente. Si un área de interés identifica países, sus archivos se unen en mosaico y se recortan según el área, incluyendo todos los años publicados. Sin un área de interés, se ingiere el mundo entero: el archivo de cada país pasa a ser una fuente de la instantánea del año y, de forma predeterminada, solo se toma el año actual, ya que un año global ocupa unos 10 GB en origen y 8 GB almacenados. params.years (\"all\" o una lista) amplía o restringe los años; params.countries sustituye el área.",
-    "mg": "Isan’ny mponina WorldPop isan-taona, voafehy sy nampifanarahana tamin’ny UN, amin’ny elanelana manodidina ny 100 m, ka sarin’antontan-kevitra iray isan-taona avy amin’ny famoahana farany indrindra. Raha manonona firenena ny faritra mahaliana, dia atambatra ho mosaika sy tapahina araka ilay faritra ny rakitr’izy ireo, ary ampidirina ny taona rehetra navoaka. Raha tsy misy faritra mahaliana dia ampidirina izao tontolo izao: ny rakitry ny firenena tsirairay no lasa loharano iray ho an’ny sarin’antontan-kevitra amin’ilay taona, ary ny taona ankehitriny ihany no raisina ho default, satria manodidina ny 10 GB ny angona loharano ho an’ny taona iray maneran-tany ary 8 GB rehefa voatahiry. params.years (\"all\", na lisitra) no manitatra na mametra ny taona, ary params.countries no misolo ny faritra.",
-    "sw": "Idadi za watu za WorldPop za kila mwaka, zilizowekewa mipaka na kurekebishwa kulingana na UN, kwa takriban m 100, zikiwa na picha moja kwa kila mwaka kutoka toleo jipya zaidi. Eneo linalolengwa likitaja nchi, faili zake huunganishwa kuwa mosaiki na kukatwa kulingana na eneo hilo, huku kila mwaka uliochapishwa ukijumuishwa. Bila eneo linalolengwa, dunia nzima huingizwa: faili ya kila nchi huwa chanzo kimoja cha picha ya mwaka huo, na kwa chaguo-msingi ni mwaka wa sasa pekee unaochukuliwa, kwa kuwa mwaka mmoja wa dunia ni takriban GB 10 za chanzo na GB 8 zilizohifadhiwa. params.years (\"all\", au orodha) hupanua au hupunguza miaka; params.countries hubatilisha eneo hilo."
+    "en": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m, one snapshot per year from the newest release. With an area of interest naming countries, their files are mosaicked and clipped to the area, every published year included. Without an area of interest the whole world is ingested: each country's file becomes one source of the year's snapshot, and only the current year is taken by default, since a global year is about 10 GB of source and 8 GB stored. The Years setting overrides this: every published year, or only the current one.",
+    "fr": "Estimations annuelles contraintes et ajustées selon l’ONU des effectifs de population WorldPop à environ 100 m, avec un instantané par an issu de la version la plus récente. Si une zone d’intérêt désigne des pays, leurs fichiers sont assemblés en mosaïque et découpés selon cette zone, pour toutes les années publiées. Sans zone d’intérêt, le monde entier est ingéré : le fichier de chaque pays devient une source de l’instantané annuel et, par défaut, seule l’année en cours est retenue, car une année mondiale représente environ 10 Go de données source et 8 Go stockés. Le paramètre Années permet de choisir autrement : toutes les années publiées, ou seulement l’année en cours.",
+    "pt": "Contagens populacionais anuais do WorldPop, restritas e ajustadas pela ONU, com resolução aproximada de 100 m e um instantâneo por ano da versão mais recente. Quando uma área de interesse identifica países, os respetivos ficheiros são unidos em mosaico e recortados pela área, incluindo todos os anos publicados. Sem uma área de interesse, o mundo inteiro é ingerido: o ficheiro de cada país torna-se uma fonte do instantâneo desse ano e, por predefinição, apenas o ano atual é obtido, pois um ano global corresponde a cerca de 10 GB de dados de origem e 8 GB armazenados. A definição Anos permite escolher de outra forma: todos os anos publicados, ou apenas o ano atual.",
+    "es": "Conteos anuales de población de WorldPop, restringidos y ajustados según la ONU, con una resolución aproximada de 100 m y una instantánea por año de la versión más reciente. Si un área de interés identifica países, sus archivos se unen en mosaico y se recortan según el área, incluyendo todos los años publicados. Sin un área de interés, se ingiere el mundo entero: el archivo de cada país pasa a ser una fuente de la instantánea del año y, de forma predeterminada, solo se toma el año actual, ya que un año global ocupa unos 10 GB en origen y 8 GB almacenados. El ajuste Años permite elegir otra cosa: todos los años publicados, o solo el año actual.",
+    "mg": "Isan’ny mponina WorldPop isan-taona, voafehy sy nampifanarahana tamin’ny UN, amin’ny elanelana manodidina ny 100 m, ka sarin’antontan-kevitra iray isan-taona avy amin’ny famoahana farany indrindra. Raha manonona firenena ny faritra mahaliana, dia atambatra ho mosaika sy tapahina araka ilay faritra ny rakitr’izy ireo, ary ampidirina ny taona rehetra navoaka. Raha tsy misy faritra mahaliana dia ampidirina izao tontolo izao: ny rakitry ny firenena tsirairay no lasa loharano iray ho an’ny sarin’antontan-kevitra amin’ilay taona, ary ny taona ankehitriny ihany no raisina ho default, satria manodidina ny 10 GB ny angona loharano ho an’ny taona iray maneran-tany ary 8 GB rehefa voatahiry. Ny fandrindrana Taona no ahafahana misafidy hafa: ny taona rehetra navoaka, na ny taona ankehitriny ihany.",
+    "sw": "Idadi za watu za WorldPop za kila mwaka, zilizowekewa mipaka na kurekebishwa kulingana na UN, kwa takriban m 100, zikiwa na picha moja kwa kila mwaka kutoka toleo jipya zaidi. Eneo linalolengwa likitaja nchi, faili zake huunganishwa kuwa mosaiki na kukatwa kulingana na eneo hilo, huku kila mwaka uliochapishwa ukijumuishwa. Bila eneo linalolengwa, dunia nzima huingizwa: faili ya kila nchi huwa chanzo kimoja cha picha ya mwaka huo, na kwa chaguo-msingi ni mwaka wa sasa pekee unaochukuliwa, kwa kuwa mwaka mmoja wa dunia ni takriban GB 10 za chanzo na GB 8 zilizohifadhiwa. Mpangilio wa Miaka huruhusu kuchagua vinginevyo: kila mwaka uliochapishwa, au mwaka wa sasa pekee."
   },
   "destinations": [
     {
@@ -135,6 +135,68 @@
       "temporality": "time-series"
     }
   ],
+  "settings": {
+    "years": {
+      "label": {
+        "_base": "en",
+        "en": "Years",
+        "fr": "Années",
+        "pt": "Anos",
+        "es": "Años",
+        "mg": "Taona",
+        "sw": "Miaka"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Which years to load. Automatic takes every published year for named countries and only the current year for the whole world.",
+        "fr": "Années à charger. Automatique prend toutes les années publiées pour les pays désignés et seulement l’année en cours pour le monde entier.",
+        "pt": "Anos a carregar. Automático obtém todos os anos publicados para os países indicados e apenas o ano atual para o mundo inteiro.",
+        "es": "Años que se cargan. Automático toma todos los años publicados para los países indicados y solo el año actual para el mundo entero.",
+        "mg": "Ireo taona halaina. Ny Ho azy dia maka ny taona rehetra navoaka ho an’ny firenena voatonona, ary ny taona ankehitriny ihany ho an’izao tontolo izao.",
+        "sw": "Miaka ya kupakia. Otomatiki huchukua kila mwaka uliochapishwa kwa nchi zilizotajwa na mwaka wa sasa pekee kwa dunia nzima."
+      },
+      "type": "choice",
+      "default": "auto",
+      "choices": [
+        {
+          "value": "auto",
+          "label": {
+            "_base": "en",
+            "en": "Automatic",
+            "fr": "Automatique",
+            "pt": "Automático",
+            "es": "Automático",
+            "mg": "Ho azy",
+            "sw": "Otomatiki"
+          }
+        },
+        {
+          "value": "all",
+          "label": {
+            "_base": "en",
+            "en": "Every published year",
+            "fr": "Toutes les années publiées",
+            "pt": "Todos os anos publicados",
+            "es": "Todos los años publicados",
+            "mg": "Ny taona rehetra navoaka",
+            "sw": "Kila mwaka uliochapishwa"
+          }
+        },
+        {
+          "value": "current",
+          "label": {
+            "_base": "en",
+            "en": "Current year only",
+            "fr": "Année en cours seulement",
+            "pt": "Apenas o ano atual",
+            "es": "Solo el año actual",
+            "mg": "Ny taona ankehitriny ihany",
+            "sw": "Mwaka wa sasa pekee"
+          }
+        }
+      ]
+    }
+  },
   "validation": {
     "ranges": [
       {

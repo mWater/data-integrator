@@ -10,10 +10,10 @@ content, each under its own directory:
   so an installed copy inherits the deployment default at run time.
   - `node apps/server/dist/cli.js library-install <id>` installs or updates
     an entry the way the Library page does: an update keeps the deployment's
-    `aoi`, `trigger` and `limits`.
+    `aoi`, `trigger`, `limits` and still-valid `settingValues`.
   - `node apps/server/dist/cli.js install library/integrations/<id>`
     installs the directory as-is, replacing any installed definition
-    outright (including `aoi`, `trigger` and `limits`).
+    outright (including `aoi`, `trigger`, `limits` and `settingValues`).
 - `skills/<id>/`: reusable source and technique know-how the design agent
   loads on demand: how a source's protocols and file layouts work,
   independent of any particular integration built from it. One `SKILL.md`

@@ -1,6 +1,9 @@
 /** LocalizedString from ez-localize: _base names the authored locale. */
 import type { LocalizedString } from "ez-localize"
 import { currentLocale } from "./localization.js"
+import type { SettingSpec, SettingValue } from "@data-integrator/definitions"
+
+export type { SettingSpec, SettingValue }
 
 /** Session summary row from GET /api/sessions. */
 export interface SessionSummary {
@@ -837,6 +840,19 @@ export interface RunStart {
 /** Starts a manual run of an integration; files pins versions per slot (a revert or multi-file replace). */
 export function startRun(integrationId: string, files?: Record<string, string>): Promise<RunStart> {
   return request(`/api/integrations/${integrationId}/run`, jsonBody("POST", files ? { files } : {}))
+}
+
+/** Starts a rebuild: a cold run with an empty /work and no previous state, producing everything in scope again. */
+export function startRebuild(integrationId: string): Promise<RunStart> {
+  return request(`/api/integrations/${integrationId}/run`, jsonBody("POST", { rebuild: true }))
+}
+
+/** Sets this deployment's setting values; null restores a setting's default. Saving archives a new version. */
+export function setIntegrationSettings(
+  id: string,
+  values: Record<string, SettingValue | null>
+): Promise<{ version: number }> {
+  return request(`/api/integrations/${id}/settings`, jsonBody("PUT", { values }))
 }
 
 /** One uploaded file version as the files API lists it; filename and uploader are null for viewers. */

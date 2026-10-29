@@ -135,3 +135,44 @@ test("library: browse, role-gated install, update detection with carry-over", as
   // Unknown entries 404
   assert.equal((await call("/api/library/nope/install", editorBearer, { method: "POST", body: "{}" })).status, 404)
 })
+
+test("settings: editors set values as versioned edits; library updates keep the ones still valid", async () => {
+  const label = { _base: "en", en: "Months" }
+  const withSettings = (max: number) => ({
+    ...DEFINITION,
+    id: "lib_settings",
+    destinations: [{ kind: "table", tableId: "lib_settings_rows", action: "replace", columns: [{ id: "n", type: "integer" }] }],
+    settings: {
+      months_back: { label, type: "integer", default: 12, min: 1, max },
+      simplified: { label, type: "boolean", default: false }
+    }
+  })
+  const entryDir = path.join(libraryPath, "integrations", "lib_settings")
+  await mkdir(entryDir, { recursive: true })
+  await writeFile(path.join(entryDir, "definition.json"), JSON.stringify(withSettings(120)))
+  await writeFile(path.join(entryDir, "code.mjs"), "export default async function run() { return {} }\n")
+  assert.equal((await call("/api/library/lib_settings/install", editorBearer, { method: "POST", body: "{}" })).status, 200)
+
+  const put = (bearer: string, values: unknown) =>
+    call("/api/integrations/lib_settings/settings", bearer, { method: "PUT", body: JSON.stringify({ values }) })
+  assert.equal((await put(viewerBearer, { months_back: 24 })).status, 403)
+  const invalid = await put(editorBearer, { months_back: 500 })
+  assert.equal(invalid.status, 400)
+  assert.match((await invalid.json()).error, /settingValues\.months_back must be at most 120/)
+  assert.equal((await put(editorBearer, { undeclared: 1 })).status, 400)
+
+  assert.equal((await (await put(editorBearer, { months_back: 60, simplified: true })).json()).version, 2)
+  assert.equal((await (await put(editorBearer, { simplified: null })).json()).version, 3)
+  let detail = await (await call("/api/integrations/lib_settings", viewerBearer)).json()
+  assert.deepEqual(detail.definition.settingValues, { months_back: 60 })
+
+  // Setting values are the deployment's: they never read as a library update
+  const listed = await (await call("/api/library", viewerBearer)).json()
+  assert.equal(listed.entries.find((e: { id: string }) => e.id === "lib_settings").status, "installed")
+
+  // The entry narrows the setting: the deployment's 60 no longer fits and falls back to the default
+  await writeFile(path.join(entryDir, "definition.json"), JSON.stringify(withSettings(36)))
+  assert.equal((await call("/api/library/lib_settings/install", editorBearer, { method: "POST", body: "{}" })).status, 200)
+  detail = await (await call("/api/integrations/lib_settings", viewerBearer)).json()
+  assert.equal(detail.definition.settingValues, undefined)
+})

@@ -114,6 +114,33 @@
       }
     }
   ],
+  "settings": {
+    "days_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (days)",
+        "fr": "Historique à charger (jours)",
+        "pt": "Histórico a carregar (dias)",
+        "es": "Historial a cargar (días)",
+        "mg": "Tantara halaina (andro)",
+        "sw": "Historia ya kupakia (siku)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many days of past flood observations the first run or a rebuild loads, a week per run. Later runs add only new days.",
+        "fr": "Nombre de jours d’observations passées des inondations que charge la première exécution ou une reconstruction, une semaine par exécution. Les exécutions suivantes n’ajoutent que les nouveaux jours.",
+        "pt": "Quantos dias de observações anteriores de cheias a primeira execução ou uma reconstrução carrega, uma semana por execução. As execuções seguintes só acrescentam dias novos.",
+        "es": "Cuántos días de observaciones anteriores de inundaciones carga la primera ejecución o una reconstrucción, una semana por ejecución. Las ejecuciones posteriores solo añaden días nuevos.",
+        "mg": "Isan’ny andro amin’ny fandinihana tondra-drano taloha alain’ny fandefasana voalohany na ny fanorenana indray, herinandro isaky ny fandefasana. Ny fandefasana manaraka dia manampy andro vaovao ihany.",
+        "sw": "Idadi ya siku za uchunguzi wa zamani wa mafuriko ambazo uendeshaji wa kwanza au ujenzi upya hupakia, wiki moja kwa kila uendeshaji. Uendeshaji unaofuata huongeza siku mpya tu."
+      },
+      "type": "integer",
+      "default": 365,
+      "min": 1,
+      "max": 3650,
+      "appliesOn": "rebuild"
+    }
+  },
   "validation": {
     "ranges": [
       {

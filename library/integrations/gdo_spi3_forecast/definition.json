@@ -181,5 +181,32 @@
         }
       ]
     }
-  ]
+  ],
+  "settings": {
+    "issues_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (monthly issues)",
+        "fr": "Historique à charger (éditions mensuelles)",
+        "pt": "Histórico a carregar (edições mensais)",
+        "es": "Historial a cargar (ediciones mensuales)",
+        "mg": "Tantara halaina (famoahana isam-bolana)",
+        "sw": "Historia ya kupakia (matoleo ya kila mwezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many past monthly forecast issues the first run or a rebuild loads. Later runs add only new issues.",
+        "fr": "Nombre d’éditions mensuelles passées de la prévision que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles éditions.",
+        "pt": "Quantas edições mensais anteriores da previsão a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam edições novas.",
+        "es": "Cuántas ediciones mensuales anteriores del pronóstico carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden ediciones nuevas.",
+        "mg": "Isan’ny famoahana vinavina isam-bolana taloha alain’ny fandefasana voalohany na ny fanorenana indray. Ny fandefasana manaraka dia manampy famoahana vaovao ihany.",
+        "sw": "Idadi ya matoleo ya zamani ya kila mwezi ya utabiri ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza matoleo mapya tu."
+      },
+      "type": "integer",
+      "default": 12,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  }
 }

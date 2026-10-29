@@ -42,6 +42,11 @@ export function wrapDefinitionStrings(definition: IntegrationDefinition, base: s
   for (const slot of Object.values(d.files ?? {})) {
     if (slot.description !== undefined) slot.description = wrap(slot.description, base) as LocalizedString
   }
+  for (const setting of Object.values(d.settings ?? {})) {
+    setting.label = wrap(setting.label, base) as LocalizedString
+    if (setting.description !== undefined) setting.description = wrap(setting.description, base) as LocalizedString
+    for (const choice of setting.choices ?? []) choice.label = wrap(choice.label, base) as LocalizedString
+  }
   for (const dest of d.destinations ?? []) {
     const destAny = dest as unknown as Record<string, unknown>
     if (destAny.name !== undefined) destAny.name = wrap(destAny.name, base)
@@ -78,6 +83,11 @@ export function collectDefinitionStrings(definition: IntegrationDefinition): Loc
   push(definition.source?.name)
   push(definition.source?.limitations)
   for (const slot of Object.values(definition.files ?? {})) push(slot.description)
+  for (const setting of Object.values(definition.settings ?? {})) {
+    push(setting.label)
+    push(setting.description)
+    for (const choice of setting.choices ?? []) push(choice.label)
+  }
   for (const dest of definition.destinations ?? []) {
     push(dest.name)
     push(dest.description)
@@ -118,6 +128,11 @@ export function validateDefinitionStrings(definition: IntegrationDefinition): st
   }
   for (const [slotId, slot] of Object.entries(definition.files ?? {})) {
     check(slot?.description, `files.${slotId}.description`, false)
+  }
+  for (const [settingId, setting] of Object.entries(definition.settings ?? {})) {
+    check(setting?.label, `settings.${settingId}.label`, true)
+    check(setting?.description, `settings.${settingId}.description`, false)
+    setting?.choices?.forEach((choice, k) => check(choice?.label, `settings.${settingId}.choices[${k}].label`, true))
   }
   definition.destinations?.forEach((dest, i) => {
     const at = `destinations[${i}]`

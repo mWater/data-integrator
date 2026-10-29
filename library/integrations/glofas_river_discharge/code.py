@@ -349,8 +349,8 @@ def run(ctx):
     if not all_available:
         raise RuntimeError("EWDS catalogue reports no available GloFAS v4 discharge dates")
 
+    # The rolling window every run keeps current
     backfill_days = int((ctx.params or {}).get("backfill_days", 90))
-    backfill_days = max(1, min(backfill_days, 366))
     target_dates = all_available[-backfill_days:]
     prior = (ctx.previous_state or {}).get("products", {})
     products = dict(prior)

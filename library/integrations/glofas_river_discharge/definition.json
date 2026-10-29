@@ -130,6 +130,32 @@
       "temporality": "time-series"
     }
   ],
+  "settings": {
+    "backfill_days": {
+      "label": {
+        "_base": "en",
+        "en": "Days kept current",
+        "fr": "Jours tenus à jour",
+        "pt": "Dias mantidos atualizados",
+        "es": "Días mantenidos al día",
+        "mg": "Andro havaozina",
+        "sw": "Siku zinazosasishwa"
+      },
+      "description": {
+        "_base": "en",
+        "en": "The most recent days of discharge every run fetches or upgrades, as the source replaces provisional days with consolidated ones.",
+        "fr": "Les jours de débit les plus récents que chaque exécution récupère ou met à niveau, à mesure que la source remplace les jours provisoires par des jours consolidés.",
+        "pt": "Os dias de caudal mais recentes que cada execução obtém ou atualiza, à medida que a fonte substitui os dias provisórios por consolidados.",
+        "es": "Los días de caudal más recientes que cada ejecución obtiene o actualiza, a medida que la fuente sustituye los días provisionales por consolidados.",
+        "mg": "Ireo andro farany amin’ny fikorianan’ny rano alain’ny fandefasana tsirairay na havaozina, rehefa soloin’ny loharano andro voamarina ny andro vonjimaika.",
+        "sw": "Siku za karibuni zaidi za mtiririko ambazo kila uendeshaji hupakua au kuboresha, chanzo kinapobadilisha siku za muda kwa siku zilizothibitishwa."
+      },
+      "type": "integer",
+      "default": 90,
+      "min": 1,
+      "max": 366
+    }
+  },
   "validation": {
     "ranges": [
       {

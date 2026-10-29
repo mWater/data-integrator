@@ -465,7 +465,7 @@
     },
     "/api/integrations/{id}/run": {
       "post": {
-        "summary": "Start a manual run (editor or admin). With files, pins file versions per slot (a revert or multi-slot replace) and queues behind a run in progress, merging into an already-queued run",
+        "summary": "Start a manual run (editor or admin). With files, pins file versions per slot (a revert or multi-slot replace) and queues behind a run in progress, merging into an already-queued run. With rebuild: true, runs cold (no previous state, empty /work) so everything in scope is produced again",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "requestBody": {
           "required": false,
@@ -473,14 +473,17 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "files": { "type": "object", "additionalProperties": { "type": "string", "description": "versionId" } } }
+                "properties": {
+                  "files": { "type": "object", "additionalProperties": { "type": "string", "description": "versionId" } },
+                  "rebuild": { "type": "boolean", "description": "Run cold; takes no files" }
+                }
               }
             }
           }
         },
         "responses": {
           "202": { "description": "{ runId, status: running | queued }" },
-          "400": { "description": "A slot awaits its first upload, or a pin names no live, accepted version of the slot" },
+          "400": { "description": "A slot awaits its first upload, a pin names no live, accepted version of the slot, or rebuild is combined with files" },
           "409": { "description": "Without files: a run is already queued or running, or the integration is a draft" }
         }
       }
@@ -553,6 +556,35 @@
           }
         },
         "responses": { "200": { "description": "{ version }" }, "400": { "description": "Invalid mode or bbox" } }
+      }
+    },
+    "/api/integrations/{id}/settings": {
+      "put": {
+        "summary": "Set the deployment's values for the definition's declared settings (editor or admin); a versioned definition edit. null restores a setting's default",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["values"],
+                "properties": {
+                  "values": {
+                    "type": "object",
+                    "additionalProperties": { "oneOf": [{ "type": "integer" }, { "type": "boolean" }, { "type": "string" }], "nullable": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ version }" },
+          "400": { "description": "An undeclared setting, or a value outside its type, bounds, choices or pattern" },
+          "403": { "description": "Viewer" },
+          "404": { "description": "Unknown integration" }
+        }
       }
     },
     "/api/integrations/{id}/trigger": {

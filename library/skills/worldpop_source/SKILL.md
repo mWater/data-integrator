@@ -35,7 +35,7 @@ Global Demographic Data series (annual 2015-2030, revised releases):
 ## Choosing the country
 
 Take ISO3 codes from the runtime AOI (`aoi.countries`) so the entry stays
-portable across deployments, with a `params.countries` override. Never
+portable across deployments. Never
 guess countries from the bbox alone: a bare-box AOI is an error to report,
 not a puzzle to solve. Never substitute a built-in example country when no
 AOI is present - no AOI means the whole world (below).
@@ -48,8 +48,9 @@ URLs still need the per-country query). Do not mosaic: a global mosaic is
 432,000 x 216,000 pixels. Re-encode each country file to its own COG and
 return the year as one snapshot with `sources: [{path, footprint}]`
 (~240 files). Per year: ~10 GB of downloads (USA 1.5 GB, CHN 0.9, IND 0.8),
-~3.5 GB stored as COGs, so default to the current year and let
-`params.years` widen it. Cache finished COGs in /work per release+year and
+~3.5 GB stored as COGs, so default to the current year and declare a
+`years` choice setting (automatic / every published year / current year) to
+widen it. Cache finished COGs in /work per release+year and
 delete each source download once its COG exists, so an interrupted year
 resumes and disk stays near the stored size. Retry HTTP calls: the hub and
 data servers drop connections mid-run.

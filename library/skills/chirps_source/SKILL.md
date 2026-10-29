@@ -35,13 +35,14 @@ a trailing 404.
 
 ## Ingestion pattern
 
-The proven shape (see `library/integrations/chirps_rainfall`):
+The proven shape:
 
 - Cursor state `{last_month: "YYYY-MM"}` in previousState; resume at the
   next month, stop at the current month or first 404.
-- Cap months per run (the library entry uses 12) so a long backfill makes
-  progress within the job timeout; the next scheduled run continues.
-- First run backfills a default window; `params.months_back` overrides it.
+- Cap months per run (12 works well) so a long backfill makes progress
+  within the job timeout; the next scheduled run continues.
+- First run backfills a default window; declare it as a `months_back`
+  setting (`appliesOn: "rebuild"`) so operators can deepen it.
 - Cache raw downloads in /work (atomic: download to `.part`, rename).
 - Clip to the AOI and convert to COG in one step:
   `gdal_translate -projwin <west> <north> <east> <south> -of COG -co COMPRESS=DEFLATE`.

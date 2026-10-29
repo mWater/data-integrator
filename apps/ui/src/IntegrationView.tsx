@@ -28,10 +28,21 @@ import { CronEditor, fromCronDraft, toCronDraft } from "./CronEditor.js"
 import { RowMenu } from "./RowMenu.js"
 import { SecretsSection } from "./SecretsSection.js"
 import { FilesSection } from "./FilesSection.js"
+import { RebuildDialog, SettingsSection } from "./IntegrationSettings.js"
 import { triggerLabel } from "./IntegrationList.js"
 import { DataTab } from "./TablePage.js"
 import { formatDateTime, localizeData } from "./localization.js"
 import type { LocalizedString } from "ez-localize"
+
+/** Run triggers in the interface language. */
+function triggerLabels(): Record<string, string> {
+  return { cron: T`schedule`, webhook: T`webhook`, manual: T`manual`, rebuild: T`rebuild`, agent: T`design session` }
+}
+
+/** Run statuses in the interface language. */
+function runStatusLabels(): Record<string, string> {
+  return { queued: T`queued`, running: T`running`, succeeded: T`succeeded`, failed: T`failed`, timeout: T`timed out` }
+}
 
 /** What a finished run produced, as "sites: 412, readings: 9k in 3.4s". */
 function runStatsText(stats: NonNullable<RunSummary["stats"]>): string {
@@ -66,6 +77,7 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<IntegrationUsage | null>(null)
   const [renaming, setRenaming] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(() => {
@@ -152,6 +164,9 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
   if (!detail) return <main className="list-page">{error ? <div className="error">{error}</div> : T`Loading…`}</main>
 
   const { definition } = detail
+  const trigger = (definition.trigger ?? {}) as { cron?: string; webhook?: boolean }
+  // A webhook-only integration has nothing to fetch: its data arrives in deliveries
+  const canRebuild = canDesign && detail.status !== "draft" && !(trigger.webhook && !trigger.cron)
   const tableIds = detail.destinations.filter(d => d.kind === "table").map(d => d.id)
   // Data leads when there is data to show; raster-only integrations lead with runs
   const tab = picked ?? (tableIds.length > 0 ? "data" : "runs")
@@ -189,6 +204,16 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
                 {T`Rename`}
               </button>
             ) : null}
+            {canRebuild ? (
+              <button
+                role="menuitem"
+                disabled={running}
+                title={T`Run again from nothing: forget earlier progress and fetch everything in scope`}
+                onClick={() => setRebuilding(true)}
+              >
+                {T`Rebuild from Source`}
+              </button>
+            ) : null}
             {canDesign ? (
               <button
                 role="menuitem"
@@ -223,6 +248,17 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
           onCancel={() => setRenaming(false)}
           onRenamed={() => {
             setRenaming(false)
+            refresh()
+          }}
+        />
+      )}
+      {rebuilding && (
+        <RebuildDialog
+          detail={detail}
+          onCancel={() => setRebuilding(false)}
+          onStarted={() => {
+            setRebuilding(false)
+            setPicked("runs")
             refresh()
           }}
         />
@@ -291,8 +327,8 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
               {detail.runs.map(run => (
                 <tr key={run.id}>
                   <td>{run.startedAt ? formatDateTime(run.startedAt) : T`queued`}</td>
-                  <td>{run.trigger}</td>
-                  <td><span className={`chip chip-${run.status}`}>{run.status}</span></td>
+                  <td>{triggerLabels()[run.trigger] ?? run.trigger}</td>
+                  <td><span className={`chip chip-${run.status}`}>{runStatusLabels()[run.status] ?? run.status}</span></td>
                   <td className="dim">
                     {run.error
                       ? run.error.slice(0, 120)
@@ -333,6 +369,13 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
             />
           )}
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
+          <SettingsSection
+            key={detail.version}
+            detail={detail}
+            canDesign={canDesign}
+            onChanged={refresh}
+            onRebuild={() => canRebuild && setRebuilding(true)}
+          />
           <DefinitionTab definition={definition} />
           <details className="definition-history"><summary>{T`Version History`}</summary><VersionsSection integrationId={integrationId} currentVersion={detail.version} /></details>
         </div>
@@ -668,7 +711,7 @@ function AoiSection({ detail, canDesign, onChanged }: AoiSectionProps) {
           )}
           <div className="aoi-actions">
             <button onClick={save} disabled={busy || !dirty}>{busy ? T`Saving…` : T`Save Changes`}</button>
-            <span className="dim">{T`Applies to future runs. Expanding the region requires a backfill for existing data.`}</span>
+            <span className="dim">{T`Applies to future runs. To fill a larger region for periods already loaded, rebuild from source.`}</span>
           </div>
           {notice && <p className="dim" role="status">{notice}</p>}
         </fieldset>

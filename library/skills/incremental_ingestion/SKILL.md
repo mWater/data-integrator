@@ -58,8 +58,12 @@ and rots into the one path that never got tested.
 
 ## Reprocessing and backfill
 
-- Manual runs carry `params` — support an explicit backfill parameter
-  (e.g. `months_back`) for operator-driven reprocessing.
+- Operators reprocess with a rebuild: a run with null previousState and an
+  empty /work. Code that produces everything in scope from null state needs
+  nothing more. When the first run's history depth is a real choice, declare
+  it as a setting (e.g. `months_back`, `appliesOn: "rebuild"`) and read it
+  from `params` only when previousState is null, so scheduled runs stay
+  incremental.
 - Table destinations that re-ingest overlapping periods should use
   `action: "merge"` with mergeColumns on the period key, so reprocessing is
   idempotent instead of duplicating rows.

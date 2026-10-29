@@ -199,6 +199,78 @@ test("second run: state chains, merge updates, current pointer advances", { skip
   assert.equal(registered.rows[0].n, 2)
 }, { timeout: 180_000 })
 
+test("settings reach ctx.params resolved; a rebuild starts from no state and an empty /work", { skip: !AVAILABLE }, async () => {
+  const definition: IntegrationDefinition = {
+    id: "e2e_settings",
+    name: { _base: "en", en: "Settings test" },
+    trigger: {},
+    runtime: "python",
+    settings: {
+      months_back: { label: { _base: "en", en: "Months" }, type: "integer", default: 12, min: 1, max: 120, appliesOn: "rebuild" },
+      variant: {
+        label: { _base: "en", en: "Variant" },
+        type: "choice",
+        default: "full",
+        choices: [
+          { value: "full", label: { _base: "en", en: "Full" } },
+          { value: "simplified", label: { _base: "en", en: "Simplified" } }
+        ]
+      }
+    },
+    settingValues: { variant: "simplified" },
+    destinations: [
+      {
+        kind: "table",
+        tableId: "e2e_settings_seen",
+        action: "append",
+        columns: [
+          { id: "had_state", type: "boolean" },
+          { id: "had_work", type: "boolean" },
+          { id: "params", type: "text" }
+        ]
+      }
+    ],
+    code: `
+import json, os
+
+def run(ctx):
+    marker = os.path.join(ctx.work_dir, "marker")
+    had_work = os.path.exists(marker)
+    open(marker, "w").close()
+    return {
+        "data": {"e2e_settings_seen": [{
+            "had_state": ctx.previous_state is not None,
+            "had_work": had_work,
+            "params": json.dumps(ctx.params, sort_keys=True),
+        }]},
+        "state": {"seen": True},
+    }
+`,
+    contract: 2
+  }
+  await installIntegration(pool, definition)
+  const runWith = async (trigger: string) => {
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_settings', $1, 'queued')`, [trigger])
+    const run = await claimNextRun(pool, "test-worker")
+    assert.ok(run)
+    await executeRun(deps, run!)
+    const row = await pool.query("SELECT status, error, inputs FROM app.runs WHERE id = $1", [run!.id])
+    assert.equal(row.rows[0].status, "succeeded", row.rows[0].error ?? "")
+    return row.rows[0].inputs
+  }
+  const inputs = await runWith("manual")
+  await runWith("cron")
+  await runWith("rebuild")
+  const seen = await pool.query("SELECT had_state, had_work, params FROM data.e2e_settings_seen ORDER BY _id")
+  assert.deepEqual(
+    seen.rows.map(r => [r.had_state, r.had_work]),
+    [[false, false], [true, true], [false, false]]
+  )
+  assert.deepEqual(JSON.parse(seen.rows[0].params), { months_back: 12, variant: "simplified" })
+  // Lineage records the values the run executed with
+  assert.deepEqual(inputs.settings, { months_back: 12, variant: "simplified" })
+}, { timeout: 180_000 })
+
 test("tiled snapshot: many files register as one snapshot; an empty one supersedes it", { skip: !AVAILABLE }, async () => {
   // First run writes two adjacent tiles; the second reports nothing observed
   const tiled: IntegrationDefinition = {
@@ -627,7 +699,7 @@ test("scratch run: session schema, preview layer, no install, cleanup", { skip: 
   )
   await executeRun(
     deps,
-    { id: runId, integration_id: null, params: null },
+    { id: runId, integration_id: null, trigger: "agent" },
     { scratch: { sessionId, definition: scratchDef } }
   )
 
@@ -690,19 +762,22 @@ def run(ctx):
 }, { timeout: 120_000 })
 
 test("/tmp: each run gets its own disk-backed /tmp, removed after it, and is killed past tmpDiskMb", { skip: !AVAILABLE }, async () => {
-  await installIntegration(pool, {
+  const tmpDefinition: IntegrationDefinition = {
     id: "e2e_tmp",
     name: { _base: "en", en: "Temporary disk" },
     trigger: {},
     runtime: "python",
     limits: { tmpDiskMb: 64, timeoutMs: 120_000 },
+    settings: {
+      mb: { label: { _base: "en", en: "MB" }, type: "integer", default: 0 },
+      sleep: { label: { _base: "en", en: "Sleep" }, type: "boolean", default: false }
+    },
     destinations: [{ kind: "table", tableId: "tmp_rows", action: "replace", columns: [{ id: "n", type: "integer" }] }],
     code: `import os, time
 
 def run(ctx):
     leftover = os.path.exists(os.path.join(ctx.tmp_dir, "blob"))
     size = ctx.params.get("mb", 0) * 1024 * 1024
-    # Past the 256 MB tmpfs it replaces would need memory; on disk it only needs the quota
     with open(os.path.join(ctx.tmp_dir, "blob"), "wb") as f:
         f.write(b"x" * size)
     if ctx.params.get("sleep"):
@@ -710,9 +785,10 @@ def run(ctx):
     return {"data": {"tmp_rows": [{"n": 1 if leftover else 0}]}}
 `,
     contract: 2
-  })
-  const runWith = async (params: Record<string, unknown>) => {
-    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status, params) VALUES ('e2e_tmp', 'manual', 'queued', $1)`, [params])
+  }
+  const runWith = async (settingValues: Record<string, number | boolean>) => {
+    await installIntegration(pool, { ...tmpDefinition, settingValues })
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status) VALUES ('e2e_tmp', 'manual', 'queued')`)
     const run = await claimNextRun(pool, "test-worker")
     assert.ok(run)
     await executeRun({ ...deps, diskMonitorMs: 500 }, run!)

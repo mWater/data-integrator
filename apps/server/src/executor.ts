@@ -24,6 +24,7 @@ import { createDraftSchema, draftSchema, scratchLayerId, scratchWorkDir } from "
 import { createJobTmp } from "./jobTmp.js"
 import { getSecrets, secretRedactor } from "./secrets.js"
 import { evaluateRasterRules, evaluateTableRules, RunFlag } from "./validation.js"
+import { resolveSettings } from "./integrationSettings.js"
 import { getDefaultAoi } from "./settings.js"
 import { SandboxBudget } from "./sandboxBudget.js"
 import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx, validateRasterSqlRef } from "./rasterSql.js"
@@ -196,7 +197,8 @@ export interface RunRow {
   id: string
   /** Owning integration; null for session scratch runs */
   integration_id: string | null
-  params: unknown
+  /** How the run was started; "rebuild" runs cold */
+  trigger: string
   /** Lease token of this claim; null for scratch runs the designer executes directly */
   attempt: string | null
 }
@@ -223,7 +225,7 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
           `UPDATE app.runs
            SET status = 'running', claimed_by = $2, attempt = gen_random_uuid(), heartbeat_at = now(), started_at = now()
            WHERE id = $1 AND status = 'queued'
-           RETURNING id, integration_id, params, attempt`,
+           RETURNING id, integration_id, trigger, attempt`,
           [candidate.id, workerId]
         )
         if (claimed.rows.length > 0) return claimed.rows[0] as RunRow
@@ -278,7 +280,7 @@ export function resolveAoi(
 
 /** Per-run execution options. */
 export interface RunOptions {
-  /** Cold run: wipe /work and pass null previousState (the certification gate) */
+  /** Cold run: wipe /work and pass null previousState (the certification gate). A run with trigger "rebuild" is always cold. */
   cold?: boolean
   /** Receives each job stderr line as it streams */
   onLogLine?: (line: string) => void
@@ -309,6 +311,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   // job is killed rather than allowed to race the replacement to the commit.
   // A worker cut off from the database fences itself: past SELF_FENCE_MS its
   // lease may be reaped, so the job is killed before it could commit twice.
+  const cold = opts?.cold === true || run.trigger === "rebuild"
   let jobHandle: JobHandle | null = null
   let lastHeartbeat = Date.now()
   const heartbeat = setInterval(() => {
@@ -392,7 +395,8 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     // default resolves at run time, so the definition alone cannot answer
     // "what area did run X ingest". Written before the job starts, so a
     // failed run still records which inputs and files it read.
-    const inputs = JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null })
+    const params = resolveSettings(definition)
+    const inputs = JSON.stringify({ ...(manifest ?? {}), aoi: definition.aoi ?? null, settings: params })
     await deps.pool.query(
       `UPDATE app.runs SET inputs = $2 WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $3`,
       [run.id, inputs, run.attempt]
@@ -406,7 +410,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       : {}
     redact = secretRedactor(secrets)
     let previousState: unknown = null
-    if (!opts?.cold) {
+    if (!cold) {
       const stateResult = scratch
         ? await deps.pool.query(
             `SELECT state_out FROM app.runs
@@ -433,7 +437,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     const workDir = scratch
       ? scratchWorkDir(deps.workRoot, scratch.sessionId)
       : path.join(deps.workRoot, run.integration_id!)
-    if (opts?.cold) await rm(workDir, { recursive: true, force: true })
+    if (cold) await rm(workDir, { recursive: true, force: true })
     await mkdir(workDir, { recursive: true })
     // The /work quota is a between-runs check, not a kernel limit: a job over
     // quota does not start, and /work is a cache, so a cold run clears it
@@ -472,7 +476,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       secrets,
       previousState,
       webhookData: webhookEvents.rows.length ? webhookEvents.rows.map(r => r.payload) : undefined,
-      params: (run.params ?? {}) as Record<string, unknown>,
+      params,
       catalog
     }
     // The lease heartbeat is already running, so queueing here for host
@@ -769,7 +773,7 @@ async function finishRun(
 /**
  * What the job may already have published, per declared raster destination:
  * the most recent promoted snapshots of the layer (the session's scratch
- * layer during design), bounded so long-lived daily layers stay small. Code uses it to skip work it has done and to honour params.force.
+ * layer during design), bounded so long-lived daily layers stay small. Code uses it to skip work it has done.
  */
 async function catalogState(
   pool: pg.Pool,

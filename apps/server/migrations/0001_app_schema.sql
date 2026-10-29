@@ -203,7 +203,6 @@ CREATE TABLE app.runs (
   integration_id text REFERENCES app.integrations(id),
   trigger text NOT NULL CHECK (trigger IN ('cron', 'webhook', 'manual', 'rebuild', 'agent')),
   status text NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'timeout')),
-  params jsonb,
   scheduled_at timestamptz NOT NULL DEFAULT now(),
   started_at timestamptz,
   finished_at timestamptz,

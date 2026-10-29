@@ -185,14 +185,8 @@ def run(ctx):
     source_changed = previous.get("source_variant") != SOURCE_VARIANT
     last_issue = None if source_changed else previous.get("last_issue")
 
-    params = ctx.params or {}
-    requested_backfill = params.get("issues_back")
-    if requested_backfill is not None:
-        requested_backfill = int(requested_backfill)
-        if requested_backfill < 1 or requested_backfill > 120:
-            raise ValueError("issues_back must be between 1 and 120")
-    if params.get("force"):
-        last_issue = None
+    # History depth applies only when there is no cursor: the first run and a rebuild
+    backfill = int((ctx.params or {}).get("issues_back", BACKFILL_ISSUES))
 
     latest_start = max(item[2] for item in files)
     latest_issue = f"{latest_start[:4]}-{latest_start[4:6]}-{latest_start[6:8]}"
@@ -202,16 +196,16 @@ def run(ctx):
         "source_version": version,
         "catalogue_url": catalogue_url,
     }
-    if last_issue and requested_backfill is None and latest_issue <= last_issue:
+    if last_issue and latest_issue <= last_issue:
         print(f"No issue newer than {last_issue}; source latest is {latest_issue}")
         return {"state": state}
 
     # Yearly files: incremental runs need only files ending after the cursor, backfills
     # need enough files to cover the requested number of monthly issues.
-    if last_issue and requested_backfill is None:
+    if last_issue:
         selected_files = [item for item in files if item[2] > last_issue.replace("-", "")]
     else:
-        needed = requested_backfill or BACKFILL_ISSUES
+        needed = backfill
         selected_files = []
         count = 0
         for item in reversed(files):
@@ -235,15 +229,15 @@ def run(ctx):
             lon = dataset["lon"].values
             for index, time_value in enumerate(dataset["time"].values):
                 issue = iso_date(time_value)
-                if last_issue and requested_backfill is None and issue <= last_issue:
+                if last_issue and issue <= last_issue:
                     continue
                 classes = variable.isel(time=index, band=0).values
                 intensity = variable.isel(time=index, band=1).values
                 issues.append((issue, filename, classes, intensity, lat, lon))
 
     issues.sort(key=lambda item: item[0])
-    if not last_issue or requested_backfill is not None:
-        issues = issues[-(requested_backfill or BACKFILL_ISSUES):]
+    if not last_issue:
+        issues = issues[-backfill:]
 
     rasters = []
     for issue, filename, classes, intensity, lat, lon in issues:

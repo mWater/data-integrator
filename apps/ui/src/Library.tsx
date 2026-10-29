@@ -397,7 +397,7 @@ export function Library({ user, installId }: LibraryProps) {
                         <span>{T`none set — the source's full extent`}</span>
                       )}
                     </div>
-                    {entry.status === "update_available" && <p className="dim">{T`Your area of interest, schedule, and limits are preserved.`}</p>}
+                    {entry.status === "update_available" && <p className="dim">{T`Your area of interest, schedule, limits, and settings are preserved.`}</p>}
                     <label>
                       <input type="checkbox" disabled={busy} checked={runNow} onChange={e => setRunNow(e.target.checked)} />{" "}
                       {T`Run ingestion now`}

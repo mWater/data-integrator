@@ -65,7 +65,7 @@ EPSG:4326).
 ## Gotchas
 
 - Countries are keyed by ISO 3166-1 alpha-3. Take codes from the runtime AOI
-  (`aoi.countries`) with a `params.countries` override, like WorldPop. Only
+  (`aoi.countries`), like WorldPop. Only
   fall back to bbox intersection with the manifest `bbox` values when no
   country list exists, and expect neighbours to appear.
 - No AOI at all (the integration set to the source's full extent, or a

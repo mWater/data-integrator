@@ -4,18 +4,19 @@
  * Installing copies the entry's values into the integration's definition —
  * the single specification from then on. Updating re-installs the entry but
  * carries the deployment-owned fields over from the installed definition, so
- * a locally chosen AOI, schedule, or limits survives library updates; the
- * same fields are excluded from update detection.
+ * a locally chosen AOI, schedule, limits, or setting values survive library
+ * updates; the same fields are excluded from update detection.
  */
 
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import pg from "pg"
-import { LocalizedString, IntegrationDefinition } from "@data-integrator/definitions"
+import { LocalizedString, IntegrationDefinition, SettingValue } from "@data-integrator/definitions"
 import { canonicalDefinition, installIntegration, ID_PATTERN } from "./install.js"
+import { keepValidSettingValues } from "./integrationSettings.js"
 
 /** Fields the deployment owns once installed: carried over on update, ignored in update detection. */
-const DEPLOYMENT_FIELDS = ["aoi", "trigger", "limits"] as const
+const DEPLOYMENT_FIELDS = ["aoi", "trigger", "limits", "settingValues"] as const
 
 /** One library entry with its relationship to the deployment. */
 export interface LibraryEntry {
@@ -130,6 +131,13 @@ export async function installLibraryEntry(
       if (field in current) definition[field] = current[field]
       else delete definition[field]
     }
+    // Values for settings the entry no longer declares, or no longer accepts, fall back to its defaults
+    const kept = keepValidSettingValues(
+      current.settingValues as Record<string, SettingValue> | undefined,
+      entry.settings
+    )
+    if (Object.keys(kept).length > 0) definition.settingValues = kept
+    else delete definition.settingValues
   }
   return installIntegration(pool, definition as unknown as IntegrationDefinition, "ready", createdBy)
 }

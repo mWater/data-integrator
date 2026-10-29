@@ -13,7 +13,7 @@ import { AgentService, MessageRejectedError, SessionAttachment, SessionDeleteRef
 import { saveDashboardSession } from "./agent/dashboard.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
 import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
-import { deleteIntegration, installIntegration, integrationUsage } from "./install.js"
+import { deleteIntegration, installIntegration, integrationUsage, validateDefinition } from "./install.js"
 import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary, loadLibraryEntry } from "./library.js"
 import { parseCron } from "./cron.js"
@@ -1361,6 +1361,43 @@ async function route(
     return
   }
 
+  // Setting values are definition content too: each change archives a new
+  // attributed version. { values: { id: value | null } }; null restores the default
+  const settingsMatch = pathname.match(/^\/api\/integrations\/([a-z][a-z0-9_]*)\/settings$/)
+  if (settingsMatch && req.method === "PUT") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot change integrations" })
+      return
+    }
+    const row = await pool.query("SELECT definition, status FROM app.integrations WHERE id = $1", [settingsMatch[1]])
+    if (row.rows.length === 0) {
+      json(res, 404, { error: "unknown integration" })
+      return
+    }
+    const body = await readJsonBody(req)
+    if (!body.values || typeof body.values !== "object" || Array.isArray(body.values)) {
+      json(res, 400, { error: "values must be an object of { settingId: value | null }" })
+      return
+    }
+    const definition = { ...row.rows[0].definition }
+    const values: Record<string, unknown> = { ...(definition.settingValues ?? {}) }
+    for (const [id, value] of Object.entries(body.values as Record<string, unknown>)) {
+      if (value === null) delete values[id]
+      else values[id] = value
+    }
+    if (Object.keys(values).length > 0) definition.settingValues = values
+    else delete definition.settingValues
+    try {
+      validateDefinition(definition)
+    } catch (err) {
+      json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+      return
+    }
+    const { version } = await installIntegration(pool, definition, row.rows[0].status, user.id)
+    json(res, 200, { version })
+    return
+  }
+
   // Display-name edit: the id in the URL is permanent, the name is a definition
   // field, so this archives a new version like the schedule and AOI edits do.
   // The new text is authored in the caller's interface language and translated
@@ -1412,13 +1449,20 @@ async function route(
     }
     try {
       // Optional { files: { slotId: versionId } }: a revert or multi-slot
-      // replace, which starts or queues; without pins, a plain manual run
-      const pins = parseRunPins(await readJsonBody(req))
+      // replace, which starts or queues; { rebuild: true }: a cold run that
+      // produces everything in scope again; neither: a plain manual run
+      const body = await readJsonBody(req)
+      const pins = parseRunPins(body)
+      if (body.rebuild !== undefined && typeof body.rebuild !== "boolean") {
+        throw new RunRequestError("rebuild must be true or false")
+      }
+      if (pins && body.rebuild === true) throw new RunRequestError("A rebuild reads the current files; it takes no pins")
       if (pins) {
         const started = await runs.startPinned(runMatch[1], pins)
         json(res, 202, { runId: started.runId, status: started.status })
       } else {
-        json(res, 202, { runId: await runs.start(runMatch[1]), status: "running" })
+        const trigger = body.rebuild === true ? "rebuild" : "manual"
+        json(res, 202, { runId: await runs.start(runMatch[1], trigger), status: "running" })
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

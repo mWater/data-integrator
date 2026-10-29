@@ -75,28 +75,13 @@ def _parse_codes(value):
     return codes
 
 
-def _parse_years(value):
-    """params.years: 'all', a list, or a comma-separated string of years. None when unset."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, str):
-        if value.strip().lower() == "all":
-            return "all"
-        value = [part.strip() for part in value.split(",") if part.strip()]
-    years = sorted({int(year) for year in value})
-    if not years:
-        return None
-    return years
-
-
 def _runtime_scope(ctx):
-    """(mode, countries, bbox) from the injected AOI and params. Country codes come from the
-    AOI or params.countries; no AOI means the whole world. A bare box cannot be served:
-    WorldPop files are country-keyed and guessing countries from a box is not safe."""
-    params = ctx.params or {}
+    """(mode, countries, bbox) from the injected AOI. Country codes come from the AOI; no AOI
+    means the whole world. A bare box cannot be served: WorldPop files are country-keyed and
+    guessing countries from a box is not safe."""
     aoi = ctx.definition.get("aoi") or {}
-    countries = _parse_codes(params.get("countries") or aoi.get("countries"))
-    bbox = params.get("bbox") or aoi.get("bbox")
+    countries = _parse_codes(aoi.get("countries"))
+    bbox = aoi.get("bbox")
     if bbox is not None:
         if len(bbox) != 4:
             raise ValueError("bbox must be [west, south, east, north]")
@@ -107,8 +92,8 @@ def _runtime_scope(ctx):
         return "country", countries, bbox
     if bbox is not None:
         raise ValueError(
-            "WorldPop 100 m files are country-keyed and this AOI is a bare box. Set "
-            "params.countries (ISO3 codes) or use an AOI with countries."
+            "WorldPop 100 m files are country-keyed and this AOI is a bare box. "
+            "Choose an area of interest by country."
         )
     return "world", None, None
 
@@ -200,18 +185,11 @@ def _place_in_out(cached, out_dir, name):
     return name
 
 
-def _select_years(available, requested, mode, current_year):
-    """Years to produce. Explicit params.years wins; otherwise a country AOI takes every
-    published year (a deployment wants its full series) and the world takes only the current
-    year, since each global year is about 10 GB of source and 3.5 GB stored."""
-    if requested == "all":
-        return sorted(available)
-    if requested:
-        missing = sorted(set(requested) - set(available))
-        if missing:
-            print(f"Requested years not in the release: {missing}")
-        return sorted(set(requested) & set(available))
-    if mode == "country":
+def _select_years(available, choice, mode, current_year):
+    """Years to produce, from the years setting. "auto" takes every published year for a
+    country AOI (a deployment wants its full series) and only the current year for the world,
+    since each global year is about 10 GB of source and 3.5 GB stored."""
+    if choice == "all" or (choice == "auto" and mode == "country"):
         return sorted(available)
     at_or_before = [year for year in available if year <= current_year]
     return [max(at_or_before)] if at_or_before else [min(available)]
@@ -283,8 +261,7 @@ def _world_year(session, release, countries, year, cache_root, tmp_dir, out_dir)
 
 def run(ctx):
     mode, countries, bbox = _runtime_scope(ctx)
-    params = ctx.params or {}
-    requested_years = _parse_years(params.get("years"))
+    years_choice = (ctx.params or {}).get("years", "auto")
     session = requests.Session()
     session.headers.update({"User-Agent": "DataIntegrator-WorldPop/1.0"})
     release = _latest_release(session)
@@ -306,7 +283,7 @@ def run(ctx):
         available = sorted(listing)
         scope_key = {"mode": mode, "countries": None, "bbox": None}
 
-    wanted = _select_years(available, requested_years, mode, current_year)
+    wanted = _select_years(available, years_choice, mode, current_year)
     previous = ctx.previous_state or {}
     same_scope = (
         previous.get("release") == release
@@ -314,8 +291,6 @@ def run(ctx):
         and all(previous.get(key) == value for key, value in scope_key.items())
     )
     completed = {int(year) for year in previous.get("years", [])} if same_scope else set()
-    if params.get("force"):
-        completed = set()
     pending = [year for year in wanted if year not in completed]
     scope_label = f"{len(listing[max(listing)])} countries (world)" if mode == "world" else f"countries={countries}"
     print(f"WorldPop release {release}; {scope_label}; available={available}; wanted={wanted}; pending={pending}")

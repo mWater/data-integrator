@@ -385,5 +385,52 @@
         }
       ]
     }
-  ]
+  ],
+  "settings": {
+    "simplified": {
+      "label": {
+        "_base": "en",
+        "en": "Simplified boundaries",
+        "fr": "Limites simplifiées",
+        "pt": "Limites simplificados",
+        "es": "Límites simplificados",
+        "mg": "Fetra notsorina",
+        "sw": "Mipaka iliyorahisishwa"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Load the release's simplified geometries: much smaller and faster to draw, less exact along borders and coasts.",
+        "fr": "Charger les géométries simplifiées de la version : bien plus légères et rapides à afficher, moins exactes le long des frontières et des côtes.",
+        "pt": "Carregar as geometrias simplificadas da versão: muito mais leves e rápidas de desenhar, menos exatas ao longo de fronteiras e costas.",
+        "es": "Cargar las geometrías simplificadas de la versión: mucho más ligeras y rápidas de dibujar, menos exactas a lo largo de fronteras y costas.",
+        "mg": "Halaina ireo endrika notsorina amin’ilay famoahana: maivana sy haingana kokoa aseho, saingy tsy dia marina loatra eny amin’ny sisintany sy morontsiraka.",
+        "sw": "Pakia jiometri zilizorahisishwa za toleo: ndogo zaidi na huchorwa haraka, lakini si sahihi sana kando ya mipaka na pwani."
+      },
+      "type": "boolean",
+      "default": false
+    },
+    "version": {
+      "label": {
+        "_base": "en",
+        "en": "Release",
+        "fr": "Version",
+        "pt": "Versão",
+        "es": "Versión",
+        "mg": "Famoahana",
+        "sw": "Toleo"
+      },
+      "description": {
+        "_base": "en",
+        "en": "A release date such as 2026-09-07 keeps the boundaries at that release; blank follows the latest.",
+        "fr": "Une date de version telle que 2026-09-07 conserve les limites de cette version ; vide, la plus récente est suivie.",
+        "pt": "Uma data de versão como 2026-09-07 mantém os limites dessa versão; em branco, segue a mais recente.",
+        "es": "Una fecha de versión como 2026-09-07 mantiene los límites de esa versión; en blanco, se sigue la más reciente.",
+        "mg": "Daty famoahana toy ny 2026-09-07 no mitazona ny fetra amin’io famoahana io; raha banga dia ny farany no arahina.",
+        "sw": "Tarehe ya toleo kama 2026-09-07 huweka mipaka ya toleo hilo; ikiwa tupu, toleo jipya zaidi hufuatwa."
+      },
+      "type": "text",
+      "default": "",
+      "pattern": "|\\d{4}-\\d{2}-\\d{2}"
+    }
+  }
 }

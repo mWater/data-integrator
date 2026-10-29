@@ -152,6 +152,8 @@ two-letter ISO 639-1 codes).
 | `limits` | object (2.9) | no | Per-run resource limits |
 | `destinations` | array (2.10) | yes | Tables and raster layers the integration writes |
 | `validation` | object (2.11) | no | Data quality rules evaluated on each run |
+| `settings` | map of setting id to setting (2.12) | no | Options an operator may change without editing code |
+| `settingValues` | map of setting id to value (2.12) | no | The deployment's values for declared settings |
 | `code` | string | yes | The single self-contained code file |
 | `contract` | `2` | yes | Job contract version |
 
@@ -354,7 +356,30 @@ loading while the operator is told.
 no successful run within twice the cadence is reported as overdue. For the
 calculation a month counts as 30 days and a year as 365.
 
-### 2.12 Structural rules
+### 2.12 Settings
+
+A setting is an option the code offers, such as how much history a first
+load fetches or which product variant to read. The definition declares it;
+the deployment chooses its value without touching the code.
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `label` | localized string | yes | Short label for the control |
+| `description` | localized string | no | What the setting changes and when |
+| `type` | `"integer"`, `"boolean"`, `"choice"`, or `"text"` | yes | Value type |
+| `default` | value of `type` | yes | Value when the deployment sets none; must itself be valid |
+| `min`, `max` | number | no | Bounds of an `integer` setting |
+| `choices` | `[{ value, label }]` | for `choice` | Allowed values in display order; `value` is a string, `label` a localized string |
+| `pattern` | string | no | Regular expression a `text` value must match in full |
+| `appliesOn` | `"every-run"` or `"rebuild"` | no | `"rebuild"` when the code reads the setting only when `previousState` is null, so a change shows on the next rebuild (4); default `"every-run"` |
+
+`settingValues` holds the deployment's value per declared setting id;
+absent ids take the default. A value for an undeclared setting, or one that
+fails its setting's type, bounds, choices, or pattern, is invalid. The run
+payload's `params` (3.1) carries every declared setting resolved this way and
+nothing else, so code reads settings only from `params`.
+
+### 2.13 Structural rules
 
 A validator MUST reject a definition when:
 
@@ -380,7 +405,13 @@ A validator MUST reject a definition when:
 - `validation` has fields other than `expectedCadence` and `ranges`,
   `expectedCadence` is not an ISO 8601 duration, or a range rule has no
   bound, a non-numeric bound, or names a destination, column, or band that
-  does not exist (or a table column that is not `number` or `integer`).
+  does not exist (or a table column that is not `number` or `integer`);
+- a setting's id violates the grammar of 2.1, its `type` is outside the
+  four values, a `choice` setting has no choices or duplicate values, its
+  `pattern` is not a regular expression, or its `default` is not a valid
+  value; or `settingValues` names an undeclared setting or holds an invalid
+  value (2.12);
+- `contract` is not `2`, or `runtime` is not `"node"` or `"python"`.
 
 ## 3. Job contract
 
@@ -410,15 +441,16 @@ imports.
   loads from there.
 - `secrets` holds the values for the names declared in `definition.secrets`.
 - `previousState` is the `state` returned by the last successful run, or
-  null on the first run and after a cold start.
+  null on the first run and on a rebuild (4), which also starts with an
+  empty `/work`.
 - `webhookData` is every buffered event not yet consumed, oldest first,
   each the JSON body of one webhook POST. Any run of the integration
   receives every pending event, whatever triggered it; a successful run
   consumes them. It is absent when none are pending. Test runs in a design
   session never receive webhook events.
-- `params` are free-form parameters supplied by the trigger, an empty
-  object for scheduled runs. A manual run may set `params.force` to ask for
-  work the code would otherwise skip.
+- `params` holds the definition's settings resolved for this deployment
+  (2.12): every declared setting at its deployment value or its default.
+  It is an empty object when none are declared.
 - `catalog` lists, for each raster destination the definition declares, the
   most recent snapshots already promoted for that layer (implementations MAY
   bound the list; the reference implementation sends the latest 100),
@@ -426,8 +458,8 @@ imports.
   implementation-assigned `label`, and the number of `sources` (files; 0 is
   a published empty snapshot). Whether a period still needs producing is the
   code's decision: it compares what the source offers with what `catalog`
-  holds, honours `params.force`, and returns no artifact for a period that
-  needs no update. The platform never skips a run on the code's behalf.
+  holds and returns no artifact for a period that needs no update. The
+  platform never skips a run on the code's behalf.
 
 ### 3.2 Entrypoint
 
@@ -567,7 +599,15 @@ contract; shared contract tests verify a harness against sections 3.1 to
   subsequent change; each version is archived with attribution. Reinstalling
   an unchanged definition is a no-op.
 - **Library updates** replace the installed definition but carry over the
-  deployment-owned fields: `aoi`, `trigger`, and `limits`.
+  deployment-owned fields: `aoi`, `trigger`, `limits`, and those
+  `settingValues` the new definition still accepts (the rest fall back to
+  their defaults).
+- **Rebuild** is a run started from nothing: `previousState` is null and
+  `/work` is empty, so the code produces everything in scope again. Data is
+  replaced as the rebuild reproduces it (a current-only layer's snapshot,
+  time-series snapshots at the same timestamps, merged or replaced tables);
+  nothing is deleted beforehand, and append tables receive the reproduced
+  rows again.
 - **Export** produces the definition document without a concrete `aoi`, so
   the importer's default area of interest applies; an explicit `null` (the
   source's full extent) is kept, since it describes the source rather than
@@ -606,7 +646,7 @@ code file matches the declared runtime, and no secret value appears.
 A **platform implementation** conforms when it:
 
 1. accepts and validates definitions per section 2, rejecting the
-   violations of 2.12;
+   violations of 2.13;
 2. executes code under the job contract of section 3, providing both
    runtime images and the manifest and mounts as specified;
 3. applies run results per 3.5, including transactional tabular loads,

@@ -15,6 +15,7 @@ import {
 } from "./types.js"
 import { RunFlag } from "../validation.js"
 import { effectiveJobLimits, effectiveTmpQuotaMb, ExecutorDeps, executeRun, jobFailureReason } from "../executor.js"
+import { resolveSettings } from "../integrationSettings.js"
 import { createJobTmp } from "../jobTmp.js"
 import {
   adoptSessionFiles,
@@ -194,6 +195,14 @@ destinations [below], validation? {expectedCadence? [ISO 8601 duration such as "
 flags the integration when no run succeeds within twice it], ranges? [{destinationId, field, min?, max?}:
 physical bounds a numeric column or band can never cross, such as population >= 0 or a fraction 0..1;
 violations flag the run, never reject it, so do not use them for plausible-but-unusual values]},
+settings? {settingId: {label, description?, type: "integer"|"boolean"|"choice"|"text", default,
+min?, max? [integer], choices? [{value, label}] [choice], pattern? [text, a regex the whole value
+must match], appliesOn? "every-run"|"rebuild"}}: options an operator may change on the integration
+page without editing code, such as how much history to load or a product variant. Declare one only
+for a real choice the code honours; the default must be the value you would pick. appliesOn
+"rebuild" marks a setting the code reads only when previousState is null (history depth), so a
+change shows on the next rebuild. settingValues? {settingId: value} holds the deployment's choices;
+leave it out unless the user asks for a non-default value,
 code (via edit_code, not write_definition), contract: 2.
 
 Destinations:
@@ -231,9 +240,13 @@ Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webho
 ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir, ctx.tmp_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
 params, catalog, inDir, workDir, outDir, tmpDir}).
+params holds every declared setting at the deployment's value or its default, and nothing
+else; read settings from it, never from the definition. previousState is null on the first run
+and on a rebuild (which also empties /work): produce everything in scope then, honouring
+history-depth settings, and work incrementally from the state otherwise.
 catalog maps each declared raster layerId to {snapshots: [{timestamp, timestampEnd?,
-sources}]} already promoted, ascending. Use it to skip periods already published unless
-params.force is set; return no artifact for a period that needs no update.
+sources}]} already promoted, ascending. Use it within incremental runs to skip periods
+already published; return no artifact for a period that needs no update.
 webhookData is the batch of deliveries since the last run. Never fail the whole
 batch on a malformed event: load the valid events, skip the bad ones, and report
 each rejection loudly in the log with a rejected count in the result.
@@ -262,8 +275,9 @@ put unpacked archives, VRTs, intermediate GeoTIFFs and one-off downloads there, 
 GDAL subprocesses with cwd there. Both have disk quotas. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
 
-Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, netCDF4,
-h5netcdf, h5py, cfgrib, pyproj, requests, openpyxl (xlsx), xlrd (legacy xls), odfpy (ods). Node image: csv-parse, fast-xml-parser,
+Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, scipy, xarray, netCDF4,
+h5netcdf, h5py, cfgrib, pyproj, requests, cdsapi, ecmwf-opendata, openpyxl (xlsx), xlrd
+(legacy xls), odfpy (ods). Node image: csv-parse, fast-xml-parser,
 date-fns. Jobs have public-internet egress only; private networks are blocked.
 
 These curated libraries are ALL you get. Every snippet and run starts a fresh
@@ -835,7 +849,7 @@ ${index}`
             definition: state.definition,
             secrets,
             previousState: null,
-            params: {}
+            params: resolveSettings(state.definition)
           },
           mounts: { workDir, outDir, inDir, tmpDir },
           limits: {
@@ -910,7 +924,7 @@ ${index}`
     }
     const claimed = await this.deps.pool.query(
       `UPDATE app.runs SET status = 'running', claimed_by = 'designer', heartbeat_at = now(), started_at = now()
-       WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, params, attempt`,
+       WHERE id = $1 AND status = 'queued' RETURNING id, integration_id, trigger, attempt`,
       [runId]
     )
     // The versions resolved above, current ones included, are pinned so the

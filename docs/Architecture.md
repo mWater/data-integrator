@@ -90,9 +90,11 @@ One contract, language-agnostic:
   `webhookData` is every pending webhook event, oldest first. `catalog` lists, per
   declared raster destination, the most recent promoted snapshots (timestamp, period
   end, source count), so code decides for itself what still needs producing.
-  Completion policy lives in the integration, never in the scheduler. `params` is part
-  of the contract (exposed as `ctx.params`, e.g. a `force` flag for reruns), but the
-  application never sets it: its runs receive `{}`.
+  Completion policy lives in the integration, never in the scheduler. `params`
+  (`ctx.params`) carries the definition's declared `settings`, each at the deployment's
+  value from `settingValues` or its default, and nothing else; the run records them in
+  `runs.inputs`. A rebuild (trigger `rebuild`, from the integration page or `cli.js run
+  <id> --rebuild`) runs cold: `previousState` null and an empty `/work`.
 - stdout: JSON `{ data?: { [tableId]: rows[] }, tables?: TableArtifact[],
   rasters?: RasterArtifact[], state? }`. stdout is capped at 10 MB, so `data` is for
   result sets that fit comfortably; larger tables travel as files in `tables[]`.
@@ -199,7 +201,8 @@ code file). Installing an entry (Library page or `cli.js library-install`) copie
 into the integration's definition, which is from then on the single specification:
 there is no override layer, so the agent and the UI edit the same object and every
 change archives a new attributed version. Updating from the library carries the
-deployment-owned fields (`aoi`, `trigger`, `limits`) over from the installed definition.
+deployment-owned fields (`aoi`, `trigger`, `limits`, and the `settingValues` the new
+definition still accepts) over from the installed definition.
 Secret values never appear in the library.
 
 AOI is tri-state: an explicit box clips to it, explicit `null` means the source's full

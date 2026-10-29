@@ -200,14 +200,21 @@ items.
   body `{files: {slotId: versionId}}` pins file versions (a revert, or one run
   over several replaced files); a pinned run starts at once when the
   integration is idle, otherwise it queues, joining an already-queued run.
-  Returns `202 {runId, status}`. An unpinned run is refused with 400 while a
-  declared file slot awaits its first upload, and with 409 while a run is
-  queued or running or the integration is a draft.
+  Body `{rebuild: true}` starts a rebuild instead: a run with no previous
+  state and an empty `/work`, which produces everything in scope again (it
+  takes no pins). Returns `202 {runId, status}`. An unpinned run is refused
+  with 400 while a declared file slot awaits its first upload, and with 409
+  while a run is queued or running or the integration is a draft.
 - `GET /api/integrations/:id/versions` - definition history, newest first:
   version, when, installing user, and each version's area of interest.
 - `PUT /api/integrations/:id/aoi` - change the area of interest (editor/admin).
   Body `{mode: "inherit"}` (deployment default), `{mode: "full"}` (source's
   full extent), or `{mode: "box", aoi: {bbox, countries?}}`. Archives a new
+  attributed definition version.
+- `PUT /api/integrations/:id/settings` - set the deployment's values for the
+  definition's declared settings (editor/admin). Body `{values: {settingId:
+  value | null}}`; null restores the default. Values are checked against each
+  setting's type, bounds, choices and pattern (400 otherwise). Archives a new
   attributed definition version.
 - `PUT /api/integrations/:id/trigger` - replace the schedule (editor/admin).
   Body `{cron?: string|null, webhook?: boolean, webhookDelaySeconds?: number}`;
@@ -288,9 +295,10 @@ curl -X POST -H "Content-Type: application/json" \
 
 - `GET /api/library` - the deployment's integration library with per-entry
   status: `not_installed`, `installed`, or `update_available` (compared
-  ignoring the deployment-owned fields aoi/trigger/limits).
+  ignoring the deployment-owned fields aoi/trigger/limits/settingValues).
 - `POST /api/library/:id/install` - install or update (editor/admin). Updates
-  keep the installed aoi, trigger, and limits. Body `{runNow?: boolean}`
+  keep the installed aoi, trigger, limits, and the setting values the new
+  definition still accepts. Body `{runNow?: boolean}`
   starts the first ingest when a job runner is configured. Returns
   `{version, runId}`.
 

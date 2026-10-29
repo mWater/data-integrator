@@ -130,5 +130,32 @@
       },
       "temporality": "time-series"
     }
-  ]
+  ],
+  "settings": {
+    "months_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (months)",
+        "fr": "Historique à charger (mois)",
+        "pt": "Histórico a carregar (meses)",
+        "es": "Historial a cargar (meses)",
+        "mg": "Tantara halaina (volana)",
+        "sw": "Historia ya kupakia (miezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many months of past data the first run or a rebuild loads. Later runs add only new data.",
+        "fr": "Nombre de mois de données passées que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles données.",
+        "pt": "Quantos meses de dados anteriores a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam dados novos.",
+        "es": "Cuántos meses de datos anteriores carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden datos nuevos.",
+        "mg": "Isan’ny volana amin’ny angona taloha alain’ny fandefasana voalohany na ny fanorenana indray. Ny fandefasana manaraka dia manampy angona vaovao ihany.",
+        "sw": "Idadi ya miezi ya data ya zamani ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza data mpya tu."
+      },
+      "type": "integer",
+      "default": 24,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  }
 }

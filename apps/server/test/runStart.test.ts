@@ -160,6 +160,25 @@ test("an idle integration starts running at once, under its own lease", async ()
   assert.equal(await settled(runId), "succeeded")
 })
 
+test("a rebuild over HTTP starts a run with the rebuild trigger; a malformed request is refused", async () => {
+  const post = (body: unknown) =>
+    fetch(`${base}/api/integrations/rs_one/run`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${editorBearer}`, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    })
+  assert.equal((await post({ rebuild: "yes" })).status, 400)
+  assert.equal((await post({ rebuild: true, files: { data: "00000000-0000-0000-0000-000000000000" } })).status, 400)
+
+  const started = await post({ rebuild: true })
+  assert.equal(started.status, 202)
+  const { runId } = (await started.json()) as { runId: string }
+  const row = (await pool.query("SELECT trigger FROM app.runs WHERE id = $1", [runId])).rows[0]
+  assert.equal(row.trigger, "rebuild")
+  await runner.releaseStarted()
+  assert.equal(await settled(runId), "succeeded")
+})
+
 test("a start while a run is going is refused with 409 and leaves no row behind", async () => {
   const runId = await runs.start("rs_one")
   const before = (await pool.query("SELECT count(*)::int AS n FROM app.runs WHERE integration_id = 'rs_one'")).rows[0].n

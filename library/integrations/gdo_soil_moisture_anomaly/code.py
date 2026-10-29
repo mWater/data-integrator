@@ -174,14 +174,8 @@ def run(ctx):
     source_changed = previous.get("source_variant") != SOURCE_VARIANT
     last_dekad = None if source_changed else previous.get("last_dekad")
 
-    params = ctx.params or {}
-    requested_backfill = params.get("months_back")
-    if requested_backfill is not None:
-        requested_backfill = int(requested_backfill)
-        if requested_backfill < 1 or requested_backfill > 120:
-            raise ValueError("months_back must be between 1 and 120")
-    if params.get("force"):
-        last_dekad = None
+    # History depth applies only when there is no cursor: the first run and a rebuild
+    backfill = int((ctx.params or {}).get("months_back", BACKFILL_MONTHS))
 
     # The filename advertises the newest dekad a file holds, so freshness is known without
     # downloading anything
@@ -193,7 +187,7 @@ def run(ctx):
         "source_version": version,
         "catalogue_url": catalogue_url,
     }
-    incremental = bool(last_dekad) and requested_backfill is None
+    incremental = bool(last_dekad)
     if incremental and latest_dekad <= last_dekad:
         print(f"No source data newer than dekad {last_dekad}; source latest is {latest_dekad}")
         return {"state": state}
@@ -203,7 +197,7 @@ def run(ctx):
         selected_files = [item for item in files if item[2] > cursor_compact]
     else:
         # Enough yearly files, newest first, to cover the backfill window
-        needed_dekads = (requested_backfill or BACKFILL_MONTHS) * 3
+        needed_dekads = backfill * 3
         selected_files = []
         covered = 0
         for item in reversed(files):
@@ -234,7 +228,7 @@ def run(ctx):
                 wanted.append((dekad, filename, index))
     wanted.sort(key=lambda item: item[0])
     if not incremental:
-        wanted = wanted[-((requested_backfill or BACKFILL_MONTHS) * 3):]
+        wanted = wanted[-(backfill * 3):]
 
     rasters = []
     for filename in sorted({item[1] for item in wanted}):

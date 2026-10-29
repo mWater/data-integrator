@@ -12,10 +12,9 @@
 ## Scope
 
 - GDO/JRC public SPI grids. SPI-3 is the drought-monitoring workhorse;
-  other accumulations (1, 6, 12) can be later entries or params.
+  other accumulations (1, 6, 12) can be later entries.
 - First incremental time-series prompt in the set: exercises previousState
-  cursors, backfill, and publication lag, the CHIRPS pattern on a new
-  source.
+  cursors, backfill, and publication lag on a dekadal source.
 - Alternative if GDO access proves awkward: compute SPI from CHIRPS as a
   derived integration. That is a scope change; record it if taken.
 

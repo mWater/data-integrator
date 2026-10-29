@@ -187,18 +187,14 @@ def run(ctx):
     source_changed = previous.get("source_variant") != SOURCE_VARIANT
     last_dekad = None if source_changed else previous.get("last_dekad")
     if source_changed and previous:
-        print("Source variant changed to ERA5; forcing a fresh 24-month backfill")
+        print("Source variant changed to ERA5; starting a fresh backfill")
 
-    params = ctx.params or {}
-    requested_backfill = params.get("months_back")
-    if requested_backfill is not None:
-        requested_backfill = int(requested_backfill)
-        if requested_backfill < 1 or requested_backfill > 120:
-            raise ValueError("months_back must be between 1 and 120")
+    # History depth applies only when there is no cursor: the first run and a rebuild
+    backfill = int((ctx.params or {}).get("months_back", BACKFILL_MONTHS))
 
     latest_end = max(item[2] for item in files)
     latest_end_date = f"{latest_end[:4]}-{latest_end[4:6]}-{latest_end[6:8]}"
-    if last_dekad and requested_backfill is None and latest_end_date <= last_dekad:
+    if last_dekad and latest_end_date <= last_dekad:
         print(f"No source data newer than selected dekad {last_dekad}; source latest is {latest_end_date}")
         return {
             "state": {
@@ -212,11 +208,11 @@ def run(ctx):
     # Initial/migration runs need enough annual files to cover 24 final dekads.
     # Incremental runs only need files whose advertised end date is newer than the cursor.
     selected_files = []
-    if last_dekad and requested_backfill is None:
+    if last_dekad:
         cursor_compact = last_dekad.replace("-", "")
         selected_files = [item for item in files if item[2] > cursor_compact]
     else:
-        needed = requested_backfill or BACKFILL_MONTHS
+        needed = backfill
         approximate_count = 0
         for item in reversed(files):
             selected_files.append(item)
@@ -241,15 +237,15 @@ def run(ctx):
                 selected_dekad = iso_date(time_value)
                 if not selected_dekad.endswith("-21"):
                     continue
-                if last_dekad and requested_backfill is None and selected_dekad <= last_dekad:
+                if last_dekad and selected_dekad <= last_dekad:
                     continue
                 observations.append(
                     (selected_dekad, filename, variable.isel(time=index, band=0).load())
                 )
 
     observations.sort(key=lambda item: item[0])
-    if not last_dekad or requested_backfill is not None:
-        keep = requested_backfill or BACKFILL_MONTHS
+    if not last_dekad:
+        keep = backfill
         observations = observations[-keep:]
 
     rasters = []

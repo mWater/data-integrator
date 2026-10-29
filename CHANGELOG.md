@@ -16,12 +16,15 @@ the UNICEF WASH Innovation Hub.
 - Integrations: a definition plus one sandboxed code file per data source, run
   by cron, webhook, upload or hand; installed from the bundled library,
   imported from another deployment, or designed with the AI designer.
+- Integration settings: options a definition declares (history depth, product
+  variant, release pin) that operators change on the integration page as
+  versioned edits; Rebuild from Source re-runs an integration from nothing.
 - Library: WorldPop, GHS population and built surface, Copernicus DEM,
   HydroSHEDS, GloFAS river discharge, SPI-3 and drought indices, fAPAR, flood
   extent, administrative regions and an in-situ sensor webhook.
 - Harmonized storage: typed tables in PostgreSQL/PostGIS and immutable Cloud
   Optimized GeoTIFF snapshots registered for SQL; validation flags, freshness
-  monitoring and per-run lineage.
+  monitoring, per-run lineage and per-snapshot source metadata.
 - Access: REST API with an OpenAPI description, STAC catalog, map tiles,
   agent-designed dashboards (optionally public) and Explore.
 - AI: optional and swappable (OpenRouter, Anthropic, or any OpenAI-compatible
@@ -49,9 +52,8 @@ the UNICEF WASH Innovation Hub.
 - Interface in English, French, Portuguese, Spanish, Malagasy and Kiswahili.
 - Integration runner and runtime images 0.3.0.
 
-**Upgrading pre-release hosts**
+**Database and images**
 
-Database changes: `0001_app_schema.sql` (the baseline schema) and
-`0002_account_policy.sql`. Hosts on a pre-release build that already applied
-the baseline get `0002` from `update.sh`. Runtime images: rebuild with
-`IMAGES=1` if the host's images predate runner 0.3.0.
+The schema is `0001_app_schema.sql` and `0002_account_policy.sql`, applied by
+`deploy/setup.sh` on install. The runtime images are built by `setup.sh` from
+`runtimes/` at runner version 0.3.0.

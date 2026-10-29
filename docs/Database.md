@@ -91,15 +91,14 @@ One row per run. Doubles as the job queue.
 | id | uuid pk | |
 | integration_id | text fk null | null for design-session runs |
 | session_id | uuid fk null | owning design session for its scratch runs (one of the two is set) |
-| trigger | text | cron, webhook, manual, agent (design session) |
+| trigger | text | cron, webhook, manual, rebuild (a manual run started cold: no previous state, empty `/work`), agent (design session) |
 | status | text | queued, running, succeeded, failed, timeout |
-| params | jsonb | passed to the job as `ctx.params`; not set by the application |
 | scheduled_at, started_at, finished_at | timestamptz | a webhook run's `scheduled_at` includes its batch window |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
 | attempt | uuid null | token of the current claim; the heartbeat and the success commit both require it, so a stale attempt cannot land after a reclaim. Null for design-session runs |
 | definition_version | int null | archived definition that ran (composite FK with integration_id); set on success, null for design-session runs |
 | file_pins | jsonb null | `{slotId: versionId}` fixed when the run was created (an upload, revert, or a design session's finish); unpinned slots read their current version |
-| inputs | jsonb | lineage: the `aoi` the run executed with (null = full extent), materialized input snapshot ids and extract row counts, and the file versions read (as in `/in/manifest.json`). Written before the job starts, so a failed run still records what it read |
+| inputs | jsonb | lineage: the `aoi` the run executed with (null = full extent), the resolved `settings` it passed as `ctx.params`, materialized input snapshot ids and extract row counts, and the file versions read (as in `/in/manifest.json`). Written before the job starts, so a failed run still records what it read |
 | state_out | jsonb | state returned by the run; the next run reads the latest succeeded run's |
 | stats | jsonb | rows per table, snapshot count, duration, `/work` MB |
 | flags | jsonb null | validation findings of a successful run (`{destinationId, field, rule, count?, observedMin?, observedMax?, message}`); null when none |
