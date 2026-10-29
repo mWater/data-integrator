@@ -1087,7 +1087,7 @@ ${index}`
   async beforeDelete(client: pg.PoolClient, sessionId: string): Promise<() => Promise<void>> {
     const bound = await client.query(
       `SELECT i.id FROM app.agent_sessions s
-       JOIN app.integrations i ON i.id = s.integration_id OR i.id = NULLIF(s.client_state->'definition'->>'id', '')
+       JOIN app.integrations i ON i.id = NULLIF(s.client_state->'definition'->>'id', '')
        WHERE s.id = $1 LIMIT 1`,
       [sessionId]
     )

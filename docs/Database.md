@@ -1,7 +1,8 @@
 # Database
 
 PostgreSQL 16 + PostGIS (with `postgis_raster` and `citext`). The schema is defined by
-`apps/server/migrations/0001_app_schema.sql`. Two schemas with a hard boundary:
+`apps/server/migrations/0001_app_schema.sql` and the numbered migrations after it
+(see [Migrations](#migrations)). Two schemas with a hard boundary:
 
 - `app`: the platform's own state, secrets included. Never granted to query roles.
 - `data`: destination tables created from definitions, plus the raster SQL mirror and
@@ -77,11 +78,10 @@ One row per run. Doubles as the job queue.
 - Partial unique indexes allow at most one `running` and one `queued` run per
   integration, and likewise per design session, so serialization and queue dedup are
   constraints: cron and webhook enqueues insert with ON CONFLICT DO NOTHING.
-- A worker selects up to ten due queued candidates (priority desc, then
-  `scheduled_at`) and claims each with a conditional UPDATE (`WHERE status =
+- A worker selects up to ten due queued candidates, oldest `scheduled_at` first, and claims each with a conditional UPDATE (`WHERE status =
   'queued'`) that sets `running`, a fresh `attempt`, `claimed_by` and the heartbeat. A
   unique violation means the integration already has a running run; that candidate is
-  skipped. Every insert uses the default priority 0.
+  skipped.
 - Manual runs are inserted directly as `running` with their own attempt token.
   Design-session runs (`session_id` set) are never claimed by workers: the designer
   executes them in-process.
@@ -92,8 +92,7 @@ One row per run. Doubles as the job queue.
 | integration_id | text fk null | null for design-session runs |
 | session_id | uuid fk null | owning design session for its scratch runs (one of the two is set) |
 | trigger | text | cron, webhook, manual, agent (design session) |
-| status | text | queued, running, succeeded, failed, timeout (`skipped` is allowed by the check constraint but never written) |
-| priority | int | claim order; default 0 |
+| status | text | queued, running, succeeded, failed, timeout |
 | params | jsonb | passed to the job as `ctx.params`; not set by the application |
 | scheduled_at, started_at, finished_at | timestamptz | a webhook run's `scheduled_at` includes its batch window |
 | claimed_by, heartbeat_at | text, timestamptz | worker lease |
@@ -194,8 +193,7 @@ simply re-runs.
 
 ### raster_snapshots
 
-A run's snapshots are inserted directly as `promoted` in its commit transaction
-(`pending` is allowed by the check constraint but never written). A current-only layer
+A run's snapshots are inserted as `promoted` in its commit transaction. A current-only layer
 marks its previous promoted snapshot `superseded`; a time-series layer does the same
 for a re-ingested observation time (same `observed_at` and `observed_end`).
 
@@ -221,7 +219,8 @@ current snapshot is never deleted.
 | bands | jsonb | band ids in file order |
 | size_bytes | bigint | total across sources |
 | run_id | uuid fk | producing run (lineage) |
-| status | text | promoted, superseded (pending unused) |
+| status | text | promoted, superseded |
+| metadata | jsonb null | RasterArtifact.metadata: lineage the code attached (source URLs, product versions), a JSON object of at most 64 KB; shown on the layer page and as `integrator:metadata` in STAC items |
 | created_at | timestamptz | |
 
 ### raster_sources
@@ -255,7 +254,7 @@ Single-writer registry for `data` tables, and the API's source of column metadat
 ### dashboards and dashboard_versions
 
 Specified in [Dashboards](Dashboards.md). The dashboard id is a renamable slug: every
-reference (`dashboard_versions`, `agent_sessions.dashboard_id`) cascades on update, and
+reference (`dashboard_versions.dashboard_id`) cascades on update, and
 the composite FK from `current_version` into `dashboard_versions` is deferred to
 commit.
 
@@ -292,11 +291,9 @@ every step, so any server process resumes any session.
 | id | uuid pk | |
 | kind | text | designer, assistant (Explore), dashboard |
 | user_id | uuid fk null | who runs the session; null for CLI sessions |
-| integration_id | text fk null | not written (designer sessions bind through `client_state.definition.id`); cleared on integration delete |
-| dashboard_id | text fk null | the dashboard a dashboard session edits |
 | status | text | active (a loop is running or was interrupted), paused, finished (task done; the session still accepts messages) |
 | messages | jsonb | model transcript |
-| client_state | jsonb | per kind: the designer draft and its certification, the dashboard draft, Explore's stored query results |
+| client_state | jsonb | per kind: the designer draft and its certification (bound to an integration through `definition.id`), the dashboard draft (bound through `dashboardId`), Explore's stored query results |
 | usage | jsonb | `{steps, inputTokens, outputTokens}` |
 | error | text null | what crashed the last loop (model/provider failure); cleared on the next step |
 | locale | text null | UI locale at creation, which seeds the base language of authored text; null for CLI sessions |

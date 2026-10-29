@@ -193,7 +193,7 @@ test("a start while a run is queued is refused with 409; the queued run is left 
 })
 
 test("a direct start runs the named integration, not whatever else is queued (cli.js run)", async () => {
-  await pool.query("INSERT INTO app.runs (integration_id, trigger, status, priority) VALUES ('rs_other', 'cron', 'queued', 10)")
+  await pool.query("INSERT INTO app.runs (integration_id, trigger, status, scheduled_at) VALUES ('rs_other', 'cron', 'queued', now() - interval '1 hour')")
 
   const run = await insertRunningRun(pool, "rs_one", "cli-test")
   assert.equal(run.integration_id, "rs_one")

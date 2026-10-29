@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { CatalogLayerState, JobHandle, JobPayload, JobResult, JOB_LIMIT_DEFAULTS, Runner, parseJobOutput } from "@mwater/integration-runner"
+import { CatalogLayerState, JobHandle, JobPayload, JobResult, JOB_LIMIT_DEFAULTS, RasterArtifact, Runner, parseJobOutput } from "@mwater/integration-runner"
 import { IntegrationDefinition, JobLimitsSpec, RunResult } from "@data-integrator/definitions"
 import {
   applyRows,
@@ -173,6 +173,24 @@ export function jobFailureReason(result: Pick<JobResult, "exitCode" | "memoryPea
   return result.exitCode === null ? "the job process could not be observed" : `exit code ${result.exitCode}`
 }
 
+/** Largest raster artifact `metadata`, serialized; it is lineage, not data. */
+export const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024
+
+/** Rejects artifact metadata that is not a JSON object or is too large to keep on every snapshot. */
+export function checkSnapshotMetadata(artifact: Pick<RasterArtifact, "layerId" | "metadata">): void {
+  const metadata: unknown = artifact.metadata
+  if (metadata === undefined || metadata === null) return
+  if (typeof metadata !== "object" || Array.isArray(metadata)) {
+    throw new Error(`Artifact for ${artifact.layerId}: metadata must be a JSON object`)
+  }
+  const bytes = Buffer.byteLength(JSON.stringify(metadata))
+  if (bytes > SNAPSHOT_METADATA_MAX_BYTES) {
+    throw new Error(
+      `Artifact for ${artifact.layerId}: metadata is ${bytes} bytes, over the ${SNAPSHOT_METADATA_MAX_BYTES}-byte limit`
+    )
+  }
+}
+
 /** One row of app.runs the executor cares about. */
 export interface RunRow {
   id: string
@@ -197,7 +215,7 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
     // Scratch (session) runs are executed by the designer in-process, never claimed here
     const candidates = await client.query(
       `SELECT id FROM app.runs WHERE status = 'queued' AND scheduled_at <= now() AND integration_id IS NOT NULL
-       ORDER BY priority DESC, scheduled_at LIMIT 10`
+       ORDER BY scheduled_at LIMIT 10`
     )
     for (const candidate of candidates.rows) {
       try {
@@ -575,6 +593,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     for (const artifact of output.rasters ?? []) {
       const layer = layerSpecs.get(artifact.layerId)
       if (!layer) throw new Error(`Artifact for undeclared layer ${artifact.layerId}`)
+      checkSnapshotMetadata(artifact)
       storedArtifacts.push({
         artifact,
         layer,

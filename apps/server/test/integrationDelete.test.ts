@@ -94,7 +94,7 @@ before(async () => {
   await pool.query("UPDATE app.raster_layers SET current_snapshot_id = '22222222-2222-2222-2222-222222222222' WHERE id = 'del_layer'")
   await pool.query("INSERT INTO app.webhook_events (integration_id, payload) VALUES ('del_source', '{}')")
   await pool.query(
-    "INSERT INTO app.agent_sessions (kind, integration_id, status, client_state, usage) VALUES ('designer', 'del_source', 'paused', '{}', '{}')"
+    `INSERT INTO app.agent_sessions (kind, status, client_state, usage) VALUES ('designer', 'paused', '{"definition": {"id": "del_source"}}', '{}')`
   )
 }, { timeout: 120_000 })
 
@@ -154,9 +154,9 @@ test("delete removes everything owned and frees the names", { skip: !AVAILABLE }
   assert.equal((await pool.query("SELECT 1 FROM app.webhook_events WHERE integration_id = 'del_source'")).rows.length, 0)
 
   // The design transcript survives, unbound
-  const session = await pool.query("SELECT integration_id FROM app.agent_sessions WHERE kind = 'designer'")
+  const session = await pool.query("SELECT client_state FROM app.agent_sessions WHERE kind = 'designer'")
   assert.equal(session.rows.length, 1)
-  assert.equal(session.rows[0].integration_id, null)
+  assert.equal(session.rows[0].client_state.definition.id, "")
 
   // The caller cleans up files from the returned paths (route behavior);
   // the store file is untouched by the DB-side delete

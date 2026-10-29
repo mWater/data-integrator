@@ -751,7 +751,7 @@ test("deleting an abandoned design session frees its id and its uploads; only it
 test("a design session whose integration exists is not deleted; deleting the integration frees the id", async () => {
   await installIntegration(pool, fileDefinition("installed_name"))
   const session = await designerSession(initialDesignerState("installed_name"))
-  await pool.query("UPDATE app.agent_sessions SET integration_id = 'installed_name', user_id = $2 WHERE id = $1", [session, editorId])
+  await pool.query("UPDATE app.agent_sessions SET user_id = $2 WHERE id = $1", [session, editorId])
   const refused = await call(`/api/sessions/${session}`, editor, { method: "DELETE" })
   assert.equal(refused.status, 409)
   assert.match((await refused.json()).error, /delete the integration/)

@@ -44,8 +44,9 @@ async function seed(id: string): Promise<string> {
   }
   await pool.query("UPDATE app.dashboards SET current_version = 2 WHERE id = $1", [id])
   const session = await pool.query(
-    `INSERT INTO app.agent_sessions (kind, dashboard_id, status, client_state, usage)
-     VALUES ('dashboard', $1, 'paused', '{}', '{}') RETURNING id`,
+    `INSERT INTO app.agent_sessions (kind, status, client_state, usage)
+     VALUES ('dashboard', 'paused', jsonb_build_object('dashboardId', $1::text, 'saved', '{"version": 2}'::jsonb, 'dirty', false), '{}')
+     RETURNING id`,
     [id]
   )
   return session.rows[0].id as string
@@ -62,10 +63,10 @@ test("deleteDashboard removes the dashboard and its versions, keeping sessions",
   const versions = await pool.query("SELECT 1 FROM app.dashboard_versions WHERE dashboard_id = $1", ["del_dash"])
   assert.equal(versions.rows.length, 0)
 
-  // The design transcript outlives the dashboard, unbound
-  const session = await pool.query("SELECT dashboard_id FROM app.agent_sessions WHERE id = $1", [sessionId])
+  // The design transcript outlives the dashboard, as an unsaved draft
+  const session = await pool.query("SELECT client_state FROM app.agent_sessions WHERE id = $1", [sessionId])
   assert.equal(session.rows.length, 1)
-  assert.equal(session.rows[0].dashboard_id, null)
+  assert.deepEqual([session.rows[0].client_state.saved, session.rows[0].client_state.dirty], [null, true])
 })
 
 test("deleteDashboard reports an unknown id without touching others", { skip: !AVAILABLE }, async () => {

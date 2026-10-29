@@ -82,8 +82,8 @@ test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: 
      VALUES ('test-layer', 'test-int', '{"_base": "en", "en": "Test"}', 'time-series', '[]')`
   )
   const snapshot = await pool.query(
-    `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, bands, run_id)
-     VALUES ('test-layer', now(), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326), '["pop"]', $1)
+    `INSERT INTO app.raster_snapshots (layer_id, observed_at, footprint, bands, run_id, status)
+     VALUES ('test-layer', now(), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))', 4326), '["pop"]', $1, 'promoted')
      RETURNING id`,
     [run.rows[0].id]
   )

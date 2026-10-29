@@ -275,8 +275,8 @@ export async function registerSnapshot(
 ): Promise<void> {
   await client.query(
     `INSERT INTO app.raster_snapshots
-       (id, layer_id, observed_at, observed_end, footprint, crs, bands, run_id, status, size_bytes, cell_size_m)
-     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, 'promoted', $9, $10)`,
+       (id, layer_id, observed_at, observed_end, footprint, crs, bands, run_id, status, size_bytes, cell_size_m, metadata)
+     VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), $6, $7, $8, 'promoted', $9, $10, $11)`,
     [
       stored.snapshotId,
       layerRowId,
@@ -287,7 +287,8 @@ export async function registerSnapshot(
       JSON.stringify(stored.bandIds),
       runId,
       stored.sizeBytes,
-      stored.cellSizeM
+      stored.cellSizeM,
+      artifact.metadata ? JSON.stringify(artifact.metadata) : null
     ]
   )
   for (const source of stored.sources) {

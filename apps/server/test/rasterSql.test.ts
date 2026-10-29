@@ -10,6 +10,7 @@ import pg from "pg"
 import { migrate } from "../src/migrations.js"
 import { pruneRasterSql, registerMissingRasters, registerRasterSql } from "../src/rasterSql.js"
 import { registerSnapshot } from "../src/catalog.js"
+import { checkSnapshotMetadata, SNAPSHOT_METADATA_MAX_BYTES } from "../src/executor.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
@@ -182,8 +183,8 @@ test("unknown CRS is refused; ESRI authority codes resolve via spatial_ref_sys",
   assert.deepEqual(srid.rows, [{ srid: 54009 }])
 })
 
-test("cell size is written at registration", async () => {
-  // A new registration carries the value the store read
+test("cell size and lineage metadata are written at registration", async () => {
+  // A new registration carries the value the store read and the artifact's metadata
   const run = await pool.query("SELECT run_id FROM app.raster_snapshots WHERE id = $1", [SNAPSHOT])
   const client = await pool.connect()
   try {
@@ -191,7 +192,7 @@ test("cell size is written at registration", async () => {
     await registerSnapshot(
       client,
       run.rows[0].run_id,
-      { layerId: "rsql_layer", sources: [], timestamp: "2026-09-01T00:00:00Z" },
+      { layerId: "rsql_layer", sources: [], timestamp: "2026-09-01T00:00:00Z", metadata: { release: "R2025A" } },
       { snapshotId: "22222222-2222-2222-2222-222222222222", sources: [], footprint: null, crs: "EPSG:4326", bandIds: ["v"], sizeBytes: 0, cellSizeM: 250 },
       "time-series"
     )
@@ -202,8 +203,17 @@ test("cell size is written at registration", async () => {
   } finally {
     client.release()
   }
-  const registered = await pool.query("SELECT cell_size_m FROM app.raster_snapshots WHERE id = $1", [
+  const registered = await pool.query("SELECT cell_size_m, metadata FROM app.raster_snapshots WHERE id = $1", [
     "22222222-2222-2222-2222-222222222222"
   ])
   assert.equal(Number(registered.rows[0].cell_size_m), 250)
+  assert.deepEqual(registered.rows[0].metadata, { release: "R2025A" })
+
+  // Metadata is lineage: an object of bounded size
+  assert.throws(() => checkSnapshotMetadata({ layerId: "l", metadata: [] as never }), /must be a JSON object/)
+  assert.throws(
+    () => checkSnapshotMetadata({ layerId: "l", metadata: { blob: "x".repeat(SNAPSHOT_METADATA_MAX_BYTES) } }),
+    /over the 65536-byte limit/
+  )
+  checkSnapshotMetadata({ layerId: "l", metadata: { release: "R2025A" } })
 })

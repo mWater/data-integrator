@@ -601,6 +601,8 @@ export interface LayerDetail {
   observedEnd: string | null
   /** CRS of the stored rasters */
   crs: string | null
+  /** Lineage the integration attached to the current snapshot (source URLs, product versions) */
+  metadata: Record<string, unknown> | null
   /** Envelope of the current snapshot as GeoJSON */
   footprint: { coordinates: number[][][] } | null
   /** Promoted snapshots, ascending by time */

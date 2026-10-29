@@ -258,14 +258,14 @@ export interface DeleteDashboardResult {
   ok: boolean
   /** Versions deleted with it. */
   versions: number
-  /** Design sessions kept, with their dashboard binding cleared. */
+  /** Design sessions kept, each now an unsaved draft. */
   sessions: number
 }
 
 /**
  * Permanently deletes a dashboard and every stored version. Design sessions
- * survive with their binding cleared, so the transcript of how a dashboard was
- * built outlives the dashboard itself.
+ * survive as unsaved drafts, so the transcript of how a dashboard was built
+ * outlives the dashboard itself, and saving one again recreates it.
  */
 export async function deleteDashboard(pool: pg.Pool, id: string): Promise<DeleteDashboardResult> {
   const client = await pool.connect()
@@ -279,7 +279,8 @@ export async function deleteDashboard(pool: pg.Pool, id: string): Promise<Delete
     // current_version points into dashboard_versions; release it before the rows go
     await client.query("UPDATE app.dashboards SET current_version = NULL WHERE id = $1", [id])
     const sessions = await client.query(
-      "UPDATE app.agent_sessions SET dashboard_id = NULL WHERE dashboard_id = $1",
+      `UPDATE app.agent_sessions SET client_state = client_state || '{"saved": null, "dirty": true}'::jsonb
+       WHERE kind = 'dashboard' AND client_state->>'dashboardId' = $1`,
       [id]
     )
     const versions = await client.query("DELETE FROM app.dashboard_versions WHERE dashboard_id = $1", [id])

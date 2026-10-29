@@ -199,6 +199,8 @@ interface SnapshotRow {
   observed_at: Date
   observed_end: Date | null
   created_at: Date
+  /** Lineage the integration attached to the snapshot */
+  metadata: Record<string, unknown> | null
   geometry: object
   bbox: number[]
   sources: number
@@ -224,7 +226,11 @@ function item(layerId: string, row: SnapshotRow, base: string, apiBase: string):
     collection: layerId,
     geometry: row.geometry,
     bbox: row.bbox,
-    properties: { ...properties, created: row.created_at.toISOString() },
+    properties: {
+      ...properties,
+      created: row.created_at.toISOString(),
+      ...(row.metadata ? { "integrator:metadata": row.metadata } : {})
+    },
     assets,
     links: [
       { rel: "self", href: `${base}/collections/${layerId}/items/${row.id}`, type: "application/geo+json" },
@@ -237,7 +243,7 @@ function item(layerId: string, row: SnapshotRow, base: string, apiBase: string):
 
 /** SQL selecting promoted, non-empty snapshots of one layer. */
 const SNAPSHOT_SQL = `
-  SELECT s.id, s.observed_at, s.observed_end, s.created_at,
+  SELECT s.id, s.observed_at, s.observed_end, s.created_at, s.metadata,
          ST_AsGeoJSON(s.footprint)::json AS geometry,
          ARRAY[ST_XMin(s.footprint), ST_YMin(s.footprint), ST_XMax(s.footprint), ST_YMax(s.footprint)] AS bbox,
          (SELECT count(*) FROM app.raster_sources WHERE snapshot_id = s.id)::int AS sources

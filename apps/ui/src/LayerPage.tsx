@@ -5,7 +5,7 @@ import { LoadState } from "./LoadState.js"
  * layer is a stack of measurements over time rather than a single image.
  */
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react"
 import { LngLatBounds, Map as MapLibreMap, Popup, RasterTileSource, NavigationControl } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { basemapStyle } from "./maplibre.js"
@@ -39,6 +39,20 @@ function bandLabel(band: LayerBand): string {
 }
 
 /** Human byte size, for the storage line. */
+/** One metadata value as text; http(s) URLs become links. */
+function metadataValue(value: unknown): ReactNode {
+  if (typeof value === "string") {
+    return /^https?:\/\//.test(value) ? (
+      <a href={value} target="_blank" rel="noreferrer noopener">
+        {value}
+      </a>
+    ) : (
+      value
+    )
+  }
+  return typeof value === "number" || typeof value === "boolean" ? String(value) : JSON.stringify(value)
+}
+
 function bytes(n: number): string {
   if (n <= 0) return T`unknown`
   const units = [T`B`, T`KB`, T`MB`, T`GB`, T`TB`]
@@ -454,6 +468,19 @@ export function LayerPage({ layerId, sessionId }: LayerPageProps) {
             <dt>{T`Storage`}</dt>
             <dd>{bytes(layer.sizeBytes)}</dd>
           </dl>
+          {layer.metadata && Object.keys(layer.metadata).length > 0 && (
+            <details className="layer-metadata">
+              <summary>{T`Source details of the current snapshot`}</summary>
+              <dl className="layer-facts">
+                {Object.entries(layer.metadata).map(([key, value]) => (
+                  <Fragment key={key}>
+                    <dt>{key}</dt>
+                    <dd>{metadataValue(value)}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </details>
+          )}
         </section>
       </aside>
       {layer.snapshots.length === 0 ? (

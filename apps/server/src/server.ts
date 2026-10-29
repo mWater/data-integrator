@@ -857,7 +857,7 @@ async function route(
       `SELECT s.layer_id, src.path, (SELECT count(*) FROM app.raster_sources WHERE snapshot_id = s.id)::int AS sources
        FROM app.raster_snapshots s
        LEFT JOIN app.raster_sources src ON src.snapshot_id = s.id AND src.ordinal = $2
-       WHERE s.id = $1 AND s.status <> 'pending'`,
+       WHERE s.id = $1`,
       [downloadMatch[1], Number.isInteger(ordinal) ? ordinal : -1]
     )
     if (source.rows.length === 0) {
@@ -967,7 +967,7 @@ async function route(
               l.integration_id, i.definition->'name' AS integration_name,
               i.definition->'description' AS integration_description,
               i.definition->'source' AS source,
-              s.observed_at, s.observed_end, s.crs, s.cell_size_m,
+              s.observed_at, s.observed_end, s.crs, s.cell_size_m, s.metadata,
               ST_AsGeoJSON(ST_Envelope(s.footprint))::json AS footprint,
               COALESCE(sn.snapshots, '[]'::json) AS snapshots,
               COALESCE(sn.size_bytes, 0) AS size_bytes,
@@ -1007,6 +1007,7 @@ async function route(
       observedEnd: row.observed_end,
       crs: row.crs,
       cellSizeM: row.cell_size_m,
+      metadata: row.metadata,
       footprint: row.footprint,
       snapshots: row.snapshots,
       sizeBytes: Number(row.size_bytes),
@@ -1030,7 +1031,7 @@ async function route(
     const snapshot = await pool.query(
       `SELECT l.bands FROM app.raster_snapshots s
        JOIN app.raster_layers l ON l.id = s.layer_id
-       WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'
+       WHERE s.id = $1 AND s.layer_id = $2
          AND ${session ? "l.session_id = $3" : "l.session_id IS NULL"}`,
       session ? [snapshotId, sampleMatch[1], session] : [snapshotId, sampleMatch[1]]
     )
@@ -1715,7 +1716,7 @@ async function serveRasterTile(
             CASE WHEN $3 THEN left(md5(ST_AsBinary(l.mask_geom)::text), 8) END AS mask_key
      FROM app.raster_snapshots s
      JOIN app.raster_layers l ON l.id = s.layer_id
-     WHERE s.id = $1 AND s.layer_id = $2 AND s.status <> 'pending'`,
+     WHERE s.id = $1 AND s.layer_id = $2`,
     [snapshotId, layerId, wantMask]
   )
   if (snapshot.rows.length === 0) {

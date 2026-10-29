@@ -562,8 +562,8 @@ export async function saveDashboardSession(
   if (!saved.ok) return { ok: false, error: saved.errors.join("\n") }
   const next: DashboardAgentState = { ...state, dashboardId: id, name, saved: { version: saved.version! }, dirty: false }
   await pool.query(
-    "UPDATE app.agent_sessions SET client_state = $2, dashboard_id = $3, updated_at = now() WHERE id = $1",
-    [sessionId, JSON.stringify(next), id]
+    "UPDATE app.agent_sessions SET client_state = $2, updated_at = now() WHERE id = $1",
+    [sessionId, JSON.stringify(next)]
   )
   return { ok: true, dashboardId: id, version: saved.version!, state: next }
 }

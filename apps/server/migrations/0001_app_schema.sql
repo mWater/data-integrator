@@ -166,8 +166,6 @@ CREATE TABLE app.agent_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   kind text NOT NULL CHECK (kind IN ('designer', 'assistant', 'dashboard')),
   user_id uuid REFERENCES app.users(id),
-  integration_id text REFERENCES app.integrations(id),
-  dashboard_id text REFERENCES app.dashboards(id) ON UPDATE CASCADE,
   status text NOT NULL CHECK (status IN ('active', 'paused', 'finished')),
   messages jsonb NOT NULL DEFAULT '[]'::jsonb,
   client_state jsonb,
@@ -178,7 +176,7 @@ CREATE TABLE app.agent_sessions (
   locale text
 );
 
-CREATE INDEX agent_sessions_user_idx ON app.agent_sessions (user_id, created_at DESC);
+CREATE INDEX agent_sessions_user_idx ON app.agent_sessions (user_id, updated_at DESC);
 
 -- Daily AI token usage per user (null: CLI sessions), counted against the
 -- deployment's daily caps (aiLimits.ts). Days are UTC.
@@ -203,9 +201,8 @@ CREATE UNIQUE INDEX ai_usage_day_user ON app.ai_usage (day, user_id) NULLS NOT D
 CREATE TABLE app.runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   integration_id text REFERENCES app.integrations(id),
-  trigger text NOT NULL CHECK (trigger IN ('cron', 'webhook', 'manual', 'agent')),
-  status text NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'skipped')),
-  priority int NOT NULL DEFAULT 0,
+  trigger text NOT NULL CHECK (trigger IN ('cron', 'webhook', 'manual', 'rebuild', 'agent')),
+  status text NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'timeout')),
   params jsonb,
   scheduled_at timestamptz NOT NULL DEFAULT now(),
   started_at timestamptz,
@@ -233,7 +230,7 @@ ALTER TABLE app.runs
   REFERENCES app.integration_versions(integration_id, version);
 
 CREATE INDEX runs_integration_idx ON app.runs (integration_id, scheduled_at DESC);
-CREATE INDEX runs_queue_idx ON app.runs (priority DESC, scheduled_at) WHERE status = 'queued';
+CREATE INDEX runs_queue_idx ON app.runs (scheduled_at) WHERE status = 'queued';
 -- Serialization per integration and per session as constraints, not worker discipline
 CREATE UNIQUE INDEX runs_one_running_idx ON app.runs (integration_id) WHERE status = 'running';
 CREATE UNIQUE INDEX runs_one_queued_idx ON app.runs (integration_id) WHERE status = 'queued';
@@ -290,9 +287,10 @@ CREATE TABLE app.raster_snapshots (
   bands jsonb NOT NULL,
   size_bytes bigint,
   run_id uuid NOT NULL REFERENCES app.runs(id),
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'promoted', 'superseded')),
+  status text NOT NULL CHECK (status IN ('promoted', 'superseded')),
   created_at timestamptz NOT NULL DEFAULT now(),
-  cell_size_m double precision
+  cell_size_m double precision,
+  metadata jsonb
 );
 
 CREATE INDEX raster_snapshots_layer_time_idx ON app.raster_snapshots (layer_id, observed_at DESC);
