@@ -234,8 +234,9 @@ The job contract is language-agnostic:
   It may be wiped at any time; correctness never depends on it. A disk quota
   is part of the job limits.
 - **`/out`**: where the job writes its file artifacts.
-- **`/tmp`**: a small writable scratch area; the rest of the filesystem is
-  read-only.
+- **`/tmp`**: per-run temporary space on disk, empty at the start and
+  discarded with the job, with its own disk quota; the rest of the filesystem
+  is read-only.
 - Nonzero exit fails the run; the stderr tail becomes the error message.
 
 A per-language harness in each runtime image maps this contract onto a single

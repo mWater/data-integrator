@@ -238,11 +238,12 @@ run.
 | `memoryMb` | integer | Memory ceiling in megabytes |
 | `timeoutMs` | integer | Wall-clock timeout in milliseconds |
 | `workDiskMb` | integer | Quota for the persistent `/work` workspace; a run does not start while `/work` is over it, and is killed when polling during the run finds it exceeded |
+| `tmpDiskMb` | integer | Quota for the run's `/tmp`; the run is killed when polling finds it exceeded |
 
 Declared limits are requests. A deployment MAY set a maximum for each; a
 declared value above the maximum is lowered to it (and the run log says
-so), and a deployment `/work` maximum also applies when the definition
-declares no `workDiskMb`.
+so), and a deployment `/work` or `/tmp` maximum also applies when the
+definition declares no `workDiskMb` or `tmpDiskMb`.
 
 ### 2.10 Destinations
 
@@ -413,8 +414,8 @@ integration's entrypoint with it:
 
 | Runtime | Entrypoint | Context fields |
 |---|---|---|
-| `python` | module-level `def run(ctx)` | `ctx.definition`, `ctx.secrets`, `ctx.previous_state`, `ctx.webhook_data`, `ctx.params`, `ctx.catalog`, `ctx.in_dir`, `ctx.work_dir`, `ctx.out_dir` |
-| `node` | default-exported `async function run(ctx)` | `ctx.definition`, `ctx.secrets`, `ctx.previousState`, `ctx.webhookData`, `ctx.params`, `ctx.catalog`, `ctx.inDir`, `ctx.workDir`, `ctx.outDir` |
+| `python` | module-level `def run(ctx)` | `ctx.definition`, `ctx.secrets`, `ctx.previous_state`, `ctx.webhook_data`, `ctx.params`, `ctx.catalog`, `ctx.in_dir`, `ctx.work_dir`, `ctx.out_dir`, `ctx.tmp_dir` |
+| `node` | default-exported `async function run(ctx)` | `ctx.definition`, `ctx.secrets`, `ctx.previousState`, `ctx.webhookData`, `ctx.params`, `ctx.catalog`, `ctx.inDir`, `ctx.workDir`, `ctx.outDir`, `ctx.tmpDir` |
 
 The entrypoint returns (or resolves to) a run result (3.5). A nonzero exit
 or an uncaught exception fails the run, and the tail of standard error
@@ -429,7 +430,7 @@ standard error.
 | `/in` | read-only | Materialized inputs and uploaded files plus `/in/manifest.json` (3.4); absent when the run reads neither |
 | `/work` | read-write, persistent per integration | Cache workspace; may be wiped at any time, so correctness MUST NOT depend on it. Subject to `limits.workDiskMb` |
 | `/out` | read-write, per run | Where the job writes the files it references in its result |
-| `/tmp` | read-write, per run | Small scratch space (256 MB in the reference implementation), discarded with the job |
+| `/tmp` | read-write, per run | Temporary disk for intermediates (unpacked archives, VRTs, GeoTIFFs before COG conversion), empty at the start and discarded with the job. Subject to `limits.tmpDiskMb` |
 
 The container's root filesystem is read-only, so any other write MUST go to
 one of these. Curated libraries are part of the runtime image; jobs

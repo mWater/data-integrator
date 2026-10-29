@@ -217,7 +217,7 @@ def _select_years(available, requested, mode, current_year):
     return [max(at_or_before)] if at_or_before else [min(available)]
 
 
-def _country_year(session, release, countries, bbox, year, cache_root, work_dir, out_dir, urls_by_country):
+def _country_year(session, release, countries, bbox, year, cache_root, tmp_dir, out_dir, urls_by_country):
     """Country mode: mosaic the countries' files and clip to the box into one COG."""
     local_files = []
     for country in countries:
@@ -230,8 +230,8 @@ def _country_year(session, release, countries, bbox, year, cache_root, work_dir,
     if len(local_files) == 1:
         source_path = local_files[0]
     else:
-        source_path = os.path.join(work_dir, f"population_{year}.vrt")
-        _run_command(["gdalbuildvrt", "-srcnodata", str(NODATA), "-vrtnodata", str(NODATA), source_path] + local_files, work_dir)
+        source_path = os.path.join(tmp_dir, f"population_{year}.vrt")
+        _run_command(["gdalbuildvrt", "-srcnodata", str(NODATA), "-vrtnodata", str(NODATA), source_path] + local_files, tmp_dir)
 
     output_name = f"population_{year}.tif"
     output_path = os.path.join(out_dir, output_name)
@@ -241,13 +241,13 @@ def _country_year(session, release, countries, bbox, year, cache_root, work_dir,
     _run_command(
         ["gdalwarp", "-of", "COG", *clip, "-r", "near", "-srcnodata", str(NODATA), "-dstnodata", str(NODATA),
          *COG_OPTIONS, source_path, output_path],
-        work_dir,
+        tmp_dir,
     )
     footprint = _check_output(output_path)
     return {"path": output_name, "footprint": bbox or footprint}
 
 
-def _world_year(session, release, countries, year, cache_root, work_dir, out_dir):
+def _world_year(session, release, countries, year, cache_root, tmp_dir, out_dir):
     """World mode: one COG per country, cached across runs so an interrupted year resumes.
     The source download is dropped once its COG exists, keeping disk near the stored size."""
     cog_dir = os.path.join(cache_root, "cog", str(year))
@@ -269,7 +269,7 @@ def _world_year(session, release, countries, year, cache_root, work_dir, out_dir
             partial = cached + ".part.tif"
             _run_command(
                 ["gdal_translate", "-q", "-of", "COG", "-a_nodata", str(NODATA), *COG_OPTIONS, local_path, partial],
-                work_dir,
+                tmp_dir,
             )
             os.replace(partial, cached)
             os.remove(local_path)
@@ -345,11 +345,11 @@ def run(ctx):
             "units": "people per grid cell",
         }
         if mode == "country":
-            artifact = _country_year(session, release, countries, bbox, year, cache_root, ctx.work_dir, ctx.out_dir, urls_by_country)
+            artifact = _country_year(session, release, countries, bbox, year, cache_root, ctx.tmp_dir, ctx.out_dir, urls_by_country)
             metadata["countries"] = countries
             raster = {"layerId": "population", **artifact}
         else:
-            sources, missing = _world_year(session, release, listing[year], year, cache_root, ctx.work_dir, ctx.out_dir)
+            sources, missing = _world_year(session, release, listing[year], year, cache_root, ctx.tmp_dir, ctx.out_dir)
             metadata["countries"] = len(sources)
             if missing:
                 metadata["missingCountries"] = missing

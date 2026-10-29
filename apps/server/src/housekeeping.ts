@@ -19,6 +19,7 @@ import path from "node:path"
 import pg from "pg"
 import { RasterStore } from "./rasterStore.js"
 import { cleanupScratch, draftSchema } from "./scratch.js"
+import { sweepJobTmp } from "./jobTmp.js"
 
 /** Consumed webhook events are kept this long for debugging deliveries. */
 export const WEBHOOK_EVENT_DAYS = 30
@@ -44,6 +45,8 @@ export interface HousekeepingResult {
   scratchSessions: number
   /** Orphaned store snapshot directories removed */
   orphanSnapshots: number
+  /** Job /tmp directories left by a crashed process removed */
+  leftoverJobTmp: number
 }
 
 /** Runs every housekeeping step; each is independent and idempotent. */
@@ -64,7 +67,8 @@ export async function sweepHousekeeping(pool: pg.Pool, store: RasterStore, workR
     webhookEvents,
     runLogs,
     scratchSessions: await sweepIdleScratch(pool, store, workRoot),
-    orphanSnapshots: await sweepOrphanSnapshots(pool, store)
+    orphanSnapshots: await sweepOrphanSnapshots(pool, store),
+    leftoverJobTmp: await sweepJobTmp(workRoot)
   }
 }
 

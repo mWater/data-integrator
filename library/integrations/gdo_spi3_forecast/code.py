@@ -135,9 +135,9 @@ def subset_grid(class_grid, intensity_grid, lat, lon, bbox):
     return values, transform, footprint
 
 
-def write_cog(values, transform, issue, work_dir, out_dir):
+def write_cog(values, transform, issue, tmp_dir, out_dir):
     stem = f"spi3_forecast_{issue.strftime('%Y%m')}"
-    temporary = os.path.join(work_dir, stem + "_source.tif")
+    temporary = os.path.join(tmp_dir, stem + "_source.tif")
     destination = os.path.join(out_dir, stem + ".tif")
     profile = {
         "driver": "GTiff",
@@ -168,7 +168,7 @@ def write_cog(values, transform, issue, work_dir, out_dir):
             "-co", "RESAMPLING=NEAREST", "-co", "OVERVIEWS=IGNORE_EXISTING",
             temporary, destination,
         ],
-        cwd=work_dir,
+        cwd=tmp_dir,
         check=True,
     )
     os.remove(temporary)
@@ -249,7 +249,7 @@ def run(ctx):
     for issue, filename, classes, intensity, lat, lon in issues:
         issue_date = date.fromisoformat(issue)
         values, transform, footprint = subset_grid(classes, intensity, lat, lon, bbox)
-        relative_path = write_cog(values, transform, issue_date, ctx.work_dir, ctx.out_dir)
+        relative_path = write_cog(values, transform, issue_date, ctx.tmp_dir, ctx.out_dir)
         class_values = values[0]
         alarm_cells = int(np.sum((class_values >= 1) & (class_values <= 3)) + np.sum((class_values >= 5) & (class_values <= 7)))
         rasters.append(

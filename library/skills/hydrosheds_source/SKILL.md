@@ -20,10 +20,9 @@ Continental shapefile zips, plain HTTPS, no account:
 
 - Continent codes: af, ar, as, au, eu, gr, na, sa, si. Pick regions by AOI
   intersection with the continental extents; an AOI can straddle two.
-- Continental zips run to hundreds of MB and extract to more. **Do not
-  extract into /tmp: it is a small tmpfs and exploratory snippets die on
-  ENOSPC.** Download and extract in /work, and extract only the members you
-  need.
+- Continental zips run to hundreds of MB and extract to more. Download them
+  into /work, where they are cached between runs, and extract only the members
+  you need into ctx.tmp_dir, which is removed after the run.
 
 ## HydroBASINS levels
 

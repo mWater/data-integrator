@@ -23,8 +23,8 @@ const result = await runner.run(
   {
     image: RUNTIME_IMAGES.python,
     payload: { definition, secrets, previousState, params, catalog },
-    mounts: { inDir, workDir, outDir, readOnly: [{ hostPath: "/mnt/rasters", containerPath: "/mnt/rasters" }] },
-    limits: { cpus: 2, memoryMb: 2048, timeoutMs: 900_000, workDiskMb: 20_000 },
+    mounts: { inDir, workDir, outDir, tmpDir, readOnly: [{ hostPath: "/mnt/rasters", containerPath: "/mnt/rasters" }] },
+    limits: { cpus: 2, memoryMb: 2048, timeoutMs: 900_000, workDiskMb: 20_000, tmpDiskMb: 20_000 },
     labels: { "myapp.run": runId }
   },
   { onStderrLine: line => log(line), onStart: handle => keep(handle) }
@@ -67,8 +67,12 @@ harness reads stdin before running any job code; a custom `command` must do the 
 Multi-file jobs send `files` (paths relative to the code directory) and an `entry`
 instead of `code`, so packages and relative imports work. Snippets can import the files.
 
-`workDiskMb` is polled (every `diskMonitorMs`, default 30 s) and the job is aborted when
-`/work` exceeds it. `labels` let a restarted application find containers its previous
+`/work` is the integration's persistent cache. `/tmp` is per-job: with `mounts.tmpDir` it
+is that host directory, which the caller creates empty and removes after the job, so large
+intermediates (downloads, unpacked archives, GDAL temporaries) neither persist in `/work`
+nor count against memory; without it `/tmp` is a `tmpfsMb` tmpfs (default 256 MB) held in
+the job's memory. `workDiskMb` and `tmpDiskMb` are polled (every `diskMonitorMs`, default
+30 s) and the job is aborted when `/work` or a disk-backed `/tmp` exceeds its quota. `labels` let a restarted application find containers its previous
 process left running: `runner.killLabelled("myapp.run")` removes them all, since a job
 whose owner is gone can only ever commit twice.
 

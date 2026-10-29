@@ -157,7 +157,7 @@ def _build_max_pooled_overviews(intermediate, base, profile, ctx):
             child_width = (parent.width + 1) // 2
             child_height = (parent.height + 1) // 2
             factor *= 2
-            child_path = os.path.join(ctx.work_dir, f"{base}_overview_{factor}.tif")
+            child_path = os.path.join(ctx.tmp_dir, f"{base}_overview_{factor}.tif")
             partial_path = child_path + ".partial"
             # A killed worker can leave either name behind. Never let a digest/cache
             # hit make an incomplete level appear usable on the resumed run.
@@ -221,7 +221,7 @@ def _build_max_pooled_overviews(intermediate, base, profile, ctx):
 
 
 def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, base, ctx):
-    vrt_path = os.path.join(ctx.work_dir, base + ".vrt")
+    vrt_path = os.path.join(ctx.tmp_dir, base + ".vrt")
     partial_output = output + ".partial.tif"
     for stale_path in (vrt_path, partial_output):
         try:
@@ -241,7 +241,7 @@ def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, bas
 
     subprocess.run(
         ["gdal_translate", "-of", "VRT", intermediate, vrt_path],
-        cwd=ctx.work_dir,
+        cwd=ctx.tmp_dir,
         check=True,
     )
     tree = ET.parse(vrt_path)
@@ -263,7 +263,7 @@ def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, bas
         "-co", "BLOCKSIZE=512", "-co", "BIGTIFF=IF_SAFER",
         "-co", "OVERVIEWS=FORCE_USE_EXISTING", vrt_path, partial_output,
     ]
-    subprocess.run(command, cwd=ctx.work_dir, check=True)
+    subprocess.run(command, cwd=ctx.tmp_dir, check=True)
     os.replace(partial_output, output)
     os.remove(vrt_path)
 
@@ -300,7 +300,7 @@ def _write_daily_composite(items, day, bbox, ctx):
         transform = rasterio.transform.from_origin(left, top, PIXEL_SIZE, PIXEL_SIZE)
 
         base = f"observed_flood_extent_{day.strftime('%Y%m%d')}"
-        intermediate = os.path.join(ctx.work_dir, base + "_daily.tif")
+        intermediate = os.path.join(ctx.tmp_dir, base + "_daily.tif")
         output_name = base + ".tif"
         output = os.path.join(ctx.out_dir, output_name)
         profile = {

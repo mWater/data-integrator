@@ -42,6 +42,8 @@ export interface AppConfig {
   runtimeImages: { python: string; node: string }
   /** WORK_QUOTA_MB: /work ceiling and default per integration; 0 disables */
   workQuotaMb: number
+  /** TMP_QUOTA_MB: per-run /tmp ceiling and default (temporary disk under the work root); 0 leaves it uncapped */
+  tmpQuotaMb: number
   /** MIN_FREE_DISK_MB: free-space floor on work root and raster store; 0 disables */
   minFreeDiskMb: number
   /** TILE_CACHE_MB: tile + basemap cache budget, evicted oldest-first; 0 disables */
@@ -119,6 +121,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     return value
   }
   const workQuotaMb = quota("WORK_QUOTA_MB", 20480)
+  const tmpQuotaMb = quota("TMP_QUOTA_MB", 20480)
   const minFreeDiskMb = quota("MIN_FREE_DISK_MB", 2048)
   const tileCacheMb = quota("TILE_CACHE_MB", 1024)
   const sandboxMemoryMb = quota("SANDBOX_MEMORY_MB", defaultSandboxMemoryMb())
@@ -170,6 +173,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     viteDevUrl,
     secretKey,
     workQuotaMb,
+    tmpQuotaMb,
     minFreeDiskMb,
     tileCacheMb,
     tileRenderConcurrency,

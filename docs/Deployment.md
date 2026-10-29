@@ -82,8 +82,9 @@ service after changing them:
   (default: RAM minus 2 GB).
 - `JOB_MAX_CPUS`, `JOB_MAX_MEMORY_MB`, `JOB_MAX_TIMEOUT_MIN`: the most any one
   job may ask for; larger requests in a definition are lowered.
-- `WORK_QUOTA_MB`, `MIN_FREE_DISK_MB`: the per-integration `/work` ceiling and
-  the free-space floor below which runs refuse to start.
+- `WORK_QUOTA_MB`, `TMP_QUOTA_MB`, `MIN_FREE_DISK_MB`: the per-integration `/work`
+  ceiling, the per-run `/tmp` ceiling (temporary disk under the work root, removed
+  after each run), and the free-space floor below which runs refuse to start.
 - `FILE_UPLOAD_MAX_MB`: the largest upload. `setup.sh` sizes Caddy's request
   limit from it, so re-run `setup.sh` after changing it.
 

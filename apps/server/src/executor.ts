@@ -21,6 +21,7 @@ import { FileStore } from "./fileStore.js"
 import { ResolvedFiles, resolveFiles, setCurrentVersions } from "./files.js"
 import { RasterStore } from "./rasterStore.js"
 import { createDraftSchema, draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
+import { createJobTmp } from "./jobTmp.js"
 import { getSecrets, secretRedactor } from "./secrets.js"
 import { evaluateRasterRules, evaluateTableRules, RunFlag } from "./validation.js"
 import { getDefaultAoi } from "./settings.js"
@@ -46,6 +47,8 @@ export interface ExecutorDeps {
   databaseUrl: string
   /** /work ceiling and default in MB; absent or 0 leaves only workDiskMb */
   workQuotaMb?: number
+  /** Per-run /tmp ceiling and default in MB; absent or 0 leaves only tmpDiskMb */
+  tmpQuotaMb?: number
   /** Free-space floor in MB on the work root and raster store; absent or 0 disables */
   minFreeDiskMb?: number
   /** Ceilings on a definition's cpus, memoryMb and timeoutMs; absent or 0 leaves each uncapped */
@@ -96,6 +99,21 @@ export function effectiveWorkQuotaMb(
 ): number | null {
   const declared = definition.limits?.workDiskMb ?? null
   const ceiling = deps.workQuotaMb || null
+  if (ceiling === null) return declared
+  return declared === null ? ceiling : Math.min(declared, ceiling)
+}
+
+/**
+ * The /tmp quota a run executes under: the definition's tmpDiskMb capped by
+ * the deployment ceiling, or the ceiling itself when the definition declares
+ * nothing. Null means unlimited (the free-space floor still applies).
+ */
+export function effectiveTmpQuotaMb(
+  limits: IntegrationDefinition["limits"],
+  deps: Pick<ExecutorDeps, "tmpQuotaMb">
+): number | null {
+  const declared = limits?.tmpDiskMb ?? null
+  const ceiling = deps.tmpQuotaMb || null
   if (ceiling === null) return declared
   return declared === null ? ceiling : Math.min(declared, ceiling)
 }
@@ -276,6 +294,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   const scratch = opts?.scratch ?? null
   let outDir: string | null = null
   let inDir: string | null = null
+  let jobTmpDir: string | null = null
   // Masks the run's secret values in everything job output feeds
   let redact = (text: string) => text
   const stagedTables: StagedTable[] = []
@@ -397,6 +416,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     }
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
     const jobOutDir = outDir
+    jobTmpDir = await createJobTmp(deps.workRoot, "run")
+    const tmpDir = jobTmpDir
+    const tmpQuotaMb = effectiveTmpQuotaMb(definition.limits, deps)
 
     const logParts: string[] = []
     const started = Date.now()
@@ -431,12 +453,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       {
         image,
         payload,
-        mounts: { workDir, outDir: jobOutDir, inDir: inDir ?? undefined },
+        mounts: { workDir, outDir: jobOutDir, inDir: inDir ?? undefined, tmpDir },
         limits: {
           cpus: limits.cpus,
           memoryMb: limits.memoryMb,
           timeoutMs: limits.timeoutMs,
-          workDiskMb: workQuotaMb ?? undefined
+          workDiskMb: workQuotaMb ?? undefined,
+          tmpDiskMb: tmpQuotaMb ?? undefined
         },
         labels: { [RUN_LABEL]: run.id }
       },
@@ -661,6 +684,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     for (const staged of stagedTables) await dropStagedTable(deps.pool, staged)
     if (outDir) await rm(outDir, { recursive: true, force: true })
     if (inDir) await rm(inDir, { recursive: true, force: true })
+    if (jobTmpDir) await rm(jobTmpDir, { recursive: true, force: true })
   }
 }
 

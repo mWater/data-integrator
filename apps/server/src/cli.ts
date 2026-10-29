@@ -119,6 +119,7 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
       node: config.runtimeImages.node
     },
     workQuotaMb: config.workQuotaMb,
+    tmpQuotaMb: config.tmpQuotaMb,
     minFreeDiskMb: config.minFreeDiskMb,
     jobMax: {
       cpus: config.jobMax.cpus,

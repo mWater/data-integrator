@@ -274,7 +274,7 @@ export class Runner {
    * result channel; stderr streams to hooks and is kept as a capped tail.
    */
   async run(spec: JobSpec, hooks?: RunHooks): Promise<JobResult> {
-    const limits: Required<Omit<JobLimits, "workDiskMb" | "egressMb">> & Pick<JobLimits, "workDiskMb" | "egressMb"> = {
+    const limits: Required<Omit<JobLimits, "workDiskMb" | "tmpDiskMb" | "egressMb">> & Pick<JobLimits, "workDiskMb" | "tmpDiskMb" | "egressMb"> = {
       ...LIMIT_DEFAULTS,
       ...Object.fromEntries(Object.entries(spec.limits ?? {}).filter(([, v]) => v !== undefined))
     }
@@ -305,7 +305,6 @@ export class Runner {
       "--cap-drop=ALL",
       "--security-opt=no-new-privileges",
       "--read-only",
-      "--tmpfs", `/tmp:rw,size=${limits.tmpfsMb}m`,
       "--cpus", String(limits.cpus),
       "-m", `${limits.memoryMb}m`,
       "--pids-limit", String(limits.pidsMax),
@@ -313,6 +312,9 @@ export class Runner {
       "--timeout", String(Math.ceil(limits.timeoutMs / 1000) + 10)
     )
 
+    // /tmp on disk when the caller gives a directory, else a small tmpfs that counts against memory
+    if (spec.mounts?.tmpDir) args.push("-v", `${spec.mounts.tmpDir}:/tmp`)
+    else args.push("--tmpfs", `/tmp:rw,size=${limits.tmpfsMb}m`)
     if (spec.mounts?.inDir) args.push("-v", `${spec.mounts.inDir}:/in:ro`)
     if (spec.mounts?.workDir) args.push("-v", `${spec.mounts.workDir}:/work`)
     if (spec.mounts?.outDir) args.push("-v", `${spec.mounts.outDir}:/out`)
@@ -461,20 +463,28 @@ export class Runner {
       }, this.opts.diskMonitorMs)
     }
 
-    // Disk guard: /work is a bind mount, so no kernel limit applies; poll its
-    // usage and kill the job when it crosses the quota
+    // Disk guard: /work and a disk-backed /tmp are bind mounts, so no kernel
+    // limit applies; poll their usage and kill the job when one crosses its quota
     let diskTimer: ReturnType<typeof setInterval> | null = null
-    const workDir = spec.mounts?.workDir
-    if (workDir && limits.workDiskMb !== undefined) {
-      const quotaMb = limits.workDiskMb
+    const guarded: { dir: string; mount: string; quotaMb: number }[] = []
+    if (spec.mounts?.workDir && limits.workDiskMb !== undefined) {
+      guarded.push({ dir: spec.mounts.workDir, mount: "/work", quotaMb: limits.workDiskMb })
+    }
+    if (spec.mounts?.tmpDir && limits.tmpDiskMb !== undefined) {
+      guarded.push({ dir: spec.mounts.tmpDir, mount: "/tmp", quotaMb: limits.tmpDiskMb })
+    }
+    if (guarded.length > 0) {
       let checking = false
       diskTimer = setInterval(async () => {
         if (checking) return
         checking = true
         try {
-          const usedMb = await dirUsageMb(workDir)
-          if (usedMb !== null && usedMb > quotaMb) {
-            handle.abort(`/work reached ${usedMb} MB, over the ${quotaMb} MB quota`)
+          for (const { dir, mount, quotaMb } of guarded) {
+            const usedMb = await dirUsageMb(dir)
+            if (usedMb !== null && usedMb > quotaMb) {
+              handle.abort(`${mount} reached ${usedMb} MB, over the ${quotaMb} MB quota`)
+              return
+            }
           }
         } finally {
           checking = false

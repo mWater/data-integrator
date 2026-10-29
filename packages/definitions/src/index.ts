@@ -155,6 +155,8 @@ export interface JobLimitsSpec {
   timeoutMs?: number
   /** Quota for the persistent /work workspace in MB, polled during the run (the job is killed past it) */
   workDiskMb?: number
+  /** Quota for the run's /tmp in MB, temporary disk removed after the run, polled during the run (the job is killed past it) */
+  tmpDiskMb?: number
 }
 
 // ============================================================================

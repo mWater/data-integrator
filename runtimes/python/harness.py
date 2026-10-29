@@ -59,6 +59,7 @@ def build_ctx(payload):
         in_dir="/in",
         work_dir="/work",
         out_dir="/out",
+        tmp_dir="/tmp",
     )
 
 

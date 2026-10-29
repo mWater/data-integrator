@@ -124,7 +124,7 @@ def _period_start(nominal):
     return nominal.replace(day=1 if nominal.day <= 10 else 11 if nominal.day <= 20 else 21)
 
 
-def _convert(row, bbox, work_dir, out_dir):
+def _convert(row, bbox, tmp_dir, out_dir):
     nominal = row["nominal"]
     key = _fpar_key(row)
     source = f"/vsis3/{BUCKET}/{key}"
@@ -154,7 +154,7 @@ def _convert(row, bbox, work_dir, out_dir):
         }
         source_nodata = src.nodata
 
-    temp = os.path.join(work_dir, f"fpar_{nominal:%Y%m%d}_temp.tif")
+    temp = os.path.join(tmp_dir, f"fpar_{nominal:%Y%m%d}_temp.tif")
     name = f"fpar_{nominal:%Y%m%d}.tif"
     output = os.path.join(out_dir, name)
     with rasterio.open(temp, "w", **profile) as dst:
@@ -165,7 +165,7 @@ def _convert(row, bbox, work_dir, out_dir):
     subprocess.run([
         "gdal_translate", "-of", "COG", "-co", "COMPRESS=DEFLATE",
         "-co", "PREDICTOR=FLOATING_POINT", "-co", "BLOCKSIZE=512", temp, output,
-    ], check=True, cwd=work_dir)
+    ], check=True, cwd=tmp_dir)
     os.remove(temp)
 
     valid_values = data[valid]
@@ -200,7 +200,6 @@ def _convert(row, bbox, work_dir, out_dir):
 
 
 def run(ctx):
-    os.makedirs(ctx.work_dir, exist_ok=True)
     os.makedirs(ctx.out_dir, exist_ok=True)
     _credentials(ctx.secrets["cdse_s3_credentials"])
     bbox = _aoi(ctx.definition)
@@ -222,7 +221,7 @@ def run(ctx):
     rasters = []
     updated = dict(known)
     for day, row in sorted(changed):
-        rasters.append(_convert(row, bbox, ctx.work_dir, ctx.out_dir))
+        rasters.append(_convert(row, bbox, ctx.tmp_dir, ctx.out_dir))
         updated[day.isoformat()] = row["id"]
 
     # Retain only the active six-month window; revised products in it are detected by ID.

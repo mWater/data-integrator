@@ -2,7 +2,7 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { access, chmod, mkdtemp } from "node:fs/promises"
+import { access, chmod, mkdtemp, readdir } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -13,6 +13,7 @@ import { migrate } from "../src/migrations.js"
 import { installIntegration } from "../src/install.js"
 import { claimNextRun, executeRun, ExecutorDeps } from "../src/executor.js"
 import { cleanupScratch, draftSchema, scratchLayerId } from "../src/scratch.js"
+import { JOB_TMP_DIR } from "../src/jobTmp.js"
 import { RasterStore } from "../src/rasterStore.js"
 import { setSecret } from "../src/secrets.js"
 import { randomBytes } from "node:crypto"
@@ -687,3 +688,50 @@ def run(ctx):
   assert.match(row.rows[0].error, /\/work reached \d+ MB, over the 5 MB quota/)
   assert.ok(Date.now() - started < 60_000, "killed well before the sleep ended")
 }, { timeout: 120_000 })
+
+test("/tmp: each run gets its own disk-backed /tmp, removed after it, and is killed past tmpDiskMb", { skip: !AVAILABLE }, async () => {
+  await installIntegration(pool, {
+    id: "e2e_tmp",
+    name: { _base: "en", en: "Temporary disk" },
+    trigger: {},
+    runtime: "python",
+    limits: { tmpDiskMb: 64, timeoutMs: 120_000 },
+    destinations: [{ kind: "table", tableId: "tmp_rows", action: "replace", columns: [{ id: "n", type: "integer" }] }],
+    code: `import os, time
+
+def run(ctx):
+    leftover = os.path.exists(os.path.join(ctx.tmp_dir, "blob"))
+    size = ctx.params.get("mb", 0) * 1024 * 1024
+    # Past the 256 MB tmpfs it replaces would need memory; on disk it only needs the quota
+    with open(os.path.join(ctx.tmp_dir, "blob"), "wb") as f:
+        f.write(b"x" * size)
+    if ctx.params.get("sleep"):
+        time.sleep(120)
+    return {"data": {"tmp_rows": [{"n": 1 if leftover else 0}]}}
+`,
+    contract: 2
+  })
+  const runWith = async (params: Record<string, unknown>) => {
+    await pool.query(`INSERT INTO app.runs (integration_id, trigger, status, params) VALUES ('e2e_tmp', 'manual', 'queued', $1)`, [params])
+    const run = await claimNextRun(pool, "test-worker")
+    assert.ok(run)
+    await executeRun({ ...deps, diskMonitorMs: 500 }, run!)
+    return (await pool.query("SELECT status, error FROM app.runs WHERE id = $1", [run!.id])).rows[0]
+  }
+
+  for (let i = 0; i < 2; i++) {
+    const ok = await runWith({ mb: 32 })
+    assert.equal(ok.status, "succeeded", ok.error)
+    // The second run finds nothing the first wrote
+    assert.deepEqual((await pool.query("SELECT n::int AS n FROM data.tmp_rows")).rows, [{ n: 0 }])
+  }
+  assert.deepEqual(await readdir(path.join(deps.workRoot, JOB_TMP_DIR)), [])
+  assert.deepEqual(await readdir(path.join(deps.workRoot, "e2e_tmp")), [])
+
+  const started = Date.now()
+  const hog = await runWith({ mb: 100, sleep: true })
+  assert.equal(hog.status, "failed")
+  assert.match(hog.error, /\/tmp reached \d+ MB, over the 64 MB quota/)
+  assert.ok(Date.now() - started < 60_000, "killed well before the sleep ended")
+  assert.deepEqual(await readdir(path.join(deps.workRoot, JOB_TMP_DIR)), [])
+}, { timeout: 180_000 })

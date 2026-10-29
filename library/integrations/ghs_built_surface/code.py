@@ -196,22 +196,22 @@ def run(ctx):
     cache_dir.mkdir(parents=True, exist_ok=True)
     tile_paths = [_cached_tif(session, name, cache_dir) for name in tile_names]
 
-    aoi_path = Path(ctx.work_dir) / "aoi.geojson"
+    aoi_path = Path(ctx.tmp_dir) / "aoi.geojson"
     with open(aoi_path, "w", encoding="utf-8") as output:
         json.dump({
             "type": "FeatureCollection",
             "features": [{"type": "Feature", "properties": {}, "geometry": geometry}],
         }, output)
 
-    list_path = Path(ctx.work_dir) / "tile_list.txt"
+    list_path = Path(ctx.tmp_dir) / "tile_list.txt"
     with open(list_path, "w", encoding="utf-8") as output:
         for path in tile_paths:
             output.write(str(path) + "\n")
-    vrt_path = Path(ctx.work_dir) / "built_surface.vrt"
+    vrt_path = Path(ctx.tmp_dir) / "built_surface.vrt"
     _run(["gdalbuildvrt", "-overwrite", "-srcnodata", str(NODATA),
           "-vrtnodata", str(NODATA), "-input_file_list", str(list_path), str(vrt_path)])
 
-    intermediate = Path(ctx.work_dir) / "built_surface_clipped.tif"
+    intermediate = Path(ctx.tmp_dir) / "built_surface_clipped.tif"
     final_name = "ghs_built_surface_2020_100m.tif"
     final_path = Path(ctx.out_dir) / final_name
     env = os.environ.copy()

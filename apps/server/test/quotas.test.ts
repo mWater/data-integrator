@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, writeFile, readdir, utimes } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { IntegrationDefinition } from "@data-integrator/definitions"
-import { DEFAULT_JOB_MEMORY_MB, effectiveJobLimits, effectiveWorkQuotaMb, freeDiskMb } from "../src/executor.js"
+import { DEFAULT_JOB_MEMORY_MB, effectiveJobLimits, effectiveTmpQuotaMb, effectiveWorkQuotaMb, freeDiskMb } from "../src/executor.js"
+import { createJobTmp, JOB_TMP_DIR, sweepJobTmp } from "../src/jobTmp.js"
 import { JOB_LIMIT_DEFAULTS } from "@mwater/integration-runner"
 import { RasterStore } from "../src/rasterStore.js"
 import { TileRenderer } from "../src/tiles.js"
@@ -33,6 +34,28 @@ test("effectiveWorkQuotaMb: ceiling is both default and cap", () => {
   assert.equal(effectiveWorkQuotaMb(definitionWith(99999), { workQuotaMb: 2048 }), 2048)
   // 0 disables the ceiling
   assert.equal(effectiveWorkQuotaMb(definitionWith(), { workQuotaMb: 0 }), null)
+})
+
+test("effectiveTmpQuotaMb: ceiling is both default and cap", () => {
+  assert.equal(effectiveTmpQuotaMb(undefined, {}), null)
+  assert.equal(effectiveTmpQuotaMb({ tmpDiskMb: 512 }, {}), 512)
+  assert.equal(effectiveTmpQuotaMb(undefined, { tmpQuotaMb: 2048 }), 2048)
+  assert.equal(effectiveTmpQuotaMb({ tmpDiskMb: 512 }, { tmpQuotaMb: 2048 }), 512)
+  assert.equal(effectiveTmpQuotaMb({ tmpDiskMb: 99999 }, { tmpQuotaMb: 2048 }), 2048)
+  assert.equal(effectiveTmpQuotaMb(undefined, { tmpQuotaMb: 0 }), null)
+})
+
+test("job /tmp directories: created empty under the work root, leftovers swept once older than any job", async () => {
+  const workRoot = await mkdtemp(path.join(tmpdir(), "jobtmp-work-"))
+  assert.equal(await sweepJobTmp(workRoot), 0)
+  const fresh = await createJobTmp(workRoot, "run")
+  const stale = await createJobTmp(workRoot, "snippet")
+  assert.equal(path.dirname(fresh), path.join(workRoot, JOB_TMP_DIR))
+  assert.deepEqual(await readdir(fresh), [])
+  const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000)
+  await utimes(stale, threeDaysAgo, threeDaysAgo)
+  assert.equal(await sweepJobTmp(workRoot), 1)
+  assert.deepEqual(await readdir(path.join(workRoot, JOB_TMP_DIR)), [path.basename(fresh)])
 })
 
 test("effectiveJobLimits: deployment ceilings lower what definitions request", () => {

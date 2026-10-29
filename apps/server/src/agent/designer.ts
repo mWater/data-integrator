@@ -14,7 +14,8 @@ import {
   ToolOutcome
 } from "./types.js"
 import { RunFlag } from "../validation.js"
-import { effectiveJobLimits, ExecutorDeps, executeRun } from "../executor.js"
+import { effectiveJobLimits, effectiveTmpQuotaMb, ExecutorDeps, executeRun } from "../executor.js"
+import { createJobTmp } from "../jobTmp.js"
 import {
   adoptSessionFiles,
   AwaitingFileError,
@@ -227,9 +228,9 @@ sentences.
 # Code contract
 One file, entrypoint run(ctx).
 Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webhook_data,
-ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir.
+ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir, ctx.tmp_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
-params, catalog, inDir, workDir, outDir}).
+params, catalog, inDir, workDir, outDir, tmpDir}).
 catalog maps each declared raster layerId to {snapshots: [{timestamp, timestampEnd?,
 sources}]} already promoted, ascending. Use it to skip periods already published unless
 params.force is set; return no artifact for a period that needs no update.
@@ -255,7 +256,10 @@ fields are matched to declared columns by name and cast; the file's geometry col
 the declared geometry column whatever it is named, and is reprojected to 4326 if needed.
 One layer per file. A table is either inline or a file, never both in one run.
 /work persists between runs of this integration; treat it as a cache, never as the source
-of truth. previousState is the state returned by the last successful run (null on the
+of truth, and keep in it only what a later run reuses (raw downloads worth not fetching
+again). /tmp (ctx.tmp_dir) is this run's own disk, empty at the start and deleted after:
+put unpacked archives, VRTs, intermediate GeoTIFFs and one-off downloads there, and run
+GDAL subprocesses with cwd there. Both have disk quotas. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
 
 Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, netCDF4,
@@ -310,7 +314,7 @@ the code must cope with the next version on its own:
   removed from the file would persist.
 - Do file work in Python. Read zipped shapefiles in place with geopandas or
   ogr via /vsizip/ (e.g. "/vsizip//in/files/districts.zip"), never by unzipping
-  to /work, and reproject geometry to EPSG:4326.
+  them, and reproject geometry to EPSG:4326.
 
 # Workflow
 0. If the draft id is empty, choose one (short snake_case derived from the request)
@@ -806,6 +810,7 @@ ${index}`
     const workDir = scratchWorkDir(this.deps.workRoot, sessionId)
     await mkdir(workDir, { recursive: true })
     const outDir = await mkdtemp(path.join(tmpdir(), "snippet-out-"))
+    const tmpDir = await createJobTmp(this.deps.workRoot, "snippet")
     let inDir: string | undefined
     try {
       const files = await this.sessionFiles(state, sessionId, "snippet")
@@ -832,8 +837,13 @@ ${index}`
             previousState: null,
             params: {}
           },
-          mounts: { workDir, outDir, inDir },
-          limits: { cpus: limits.cpus, memoryMb: limits.memoryMb, timeoutMs: limits.timeoutMs }
+          mounts: { workDir, outDir, inDir, tmpDir },
+          limits: {
+            cpus: limits.cpus,
+            memoryMb: limits.memoryMb,
+            timeoutMs: limits.timeoutMs,
+            tmpDiskMb: effectiveTmpQuotaMb(state.definition.limits, this.deps) ?? undefined
+          }
         },
         { onStderrLine: line => events({ type: "job_log", line: redact(line) }) }
       ).finally(release)
@@ -843,6 +853,7 @@ ${index}`
       return { result: parts.join("\n") }
     } finally {
       await rm(outDir, { recursive: true, force: true })
+      await rm(tmpDir, { recursive: true, force: true })
       if (inDir) await rm(inDir, { recursive: true, force: true })
     }
   }

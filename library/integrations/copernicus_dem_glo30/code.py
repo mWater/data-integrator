@@ -131,13 +131,13 @@ def run(ctx):
         print(f"Source archive has no object for {len(missing)} tile position(s); these areas remain NoData")
     print(f"Using {len(paths)} source tile(s)")
 
-    vrt_path = os.path.join(ctx.work_dir, "glo30_mosaic.vrt")
+    vrt_path = os.path.join(ctx.tmp_dir, "glo30_mosaic.vrt")
     output_name = "elevation_glo30.tif"
     output_path = os.path.join(ctx.out_dir, output_name)
     os.makedirs(ctx.out_dir, exist_ok=True)
 
     # A response file avoids command-line length limits for broad AOIs.
-    list_path = os.path.join(ctx.work_dir, "glo30_sources.txt")
+    list_path = os.path.join(ctx.tmp_dir, "glo30_sources.txt")
     with open(list_path, "w", encoding="utf-8") as source_list:
         for path in paths:
             source_list.write(path + "\n")

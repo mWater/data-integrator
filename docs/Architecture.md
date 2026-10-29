@@ -51,9 +51,9 @@ implement the job contract below and know nothing about the rest of the applicat
 Integration code runs only as sandboxed container jobs.
 
 - Runtime: podman with gVisor (runsc). Rootless (container root maps to an unprivileged
-  host user), read-only root filesystem, tmpfs `/tmp`, all capabilities dropped,
+  host user), read-only root filesystem, a per-run `/tmp` on disk, all capabilities dropped,
   no-new-privileges, a pids limit.
-- Limits per job: CPU, memory, wall-clock timeout and a `/work` quota. The definition's
+- Limits per job: CPU, memory, wall-clock timeout and `/work` and `/tmp` quotas. The definition's
   `limits` requests them; the deployment ceilings `JOB_MAX_CPUS`, `JOB_MAX_MEMORY_MB`
   and `JOB_MAX_TIMEOUT_MIN` lower any request above them, and each lowered value is
   noted in the run log. Unset values take the runner defaults (2 CPUs, 2048 MB,
@@ -62,6 +62,11 @@ Integration code runs only as sandboxed container jobs.
   definition sets none. A run whose `/work` is already over quota does not start, and
   the runner kills a job that grows past it. `MIN_FREE_DISK_MB` is a free-space floor on
   the work root and raster store, checked before and during each run.
+- `/tmp` quota: each run and snippet gets an empty directory under `<work root>/.tmp`
+  mounted at `/tmp` and removed when the job ends, so intermediates never persist in
+  `/work` or count against memory. `TMP_QUOTA_MB` caps `limits.tmpDiskMb` and is the
+  quota when the definition sets none; the runner kills a job that grows past it.
+  Housekeeping removes directories a crashed process left behind after two days.
 - Host memory: `SANDBOX_MEMORY_MB` is the total memory admitted runs may hold at once.
   Each run reserves its memory limit before its container starts and waits while the
   budget is full.
@@ -158,7 +163,8 @@ Raster plane:
   whose time has arrived, so projection layers roll over on schedule without a run.
   Tile and download URLs pin the snapshot, so caches never go stale.
 - Source downloads (GRIBs, raw tiles) are working data in `/work`, bounded by the
-  quota and wiped by any cold run.
+  quota and wiped by any cold run. Intermediates built from them each run (unpacked
+  archives, VRTs, GeoTIFFs before COG conversion) go in `/tmp`.
 
 ## Harmonization
 

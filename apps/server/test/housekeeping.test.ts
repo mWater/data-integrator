@@ -83,7 +83,7 @@ test("housekeeping trims what only grows and keeps what is live", async () => {
   await utimes(orphan, twoDaysAgo, twoDaysAgo)
 
   const result = await sweepHousekeeping(pool, store, await mkdtemp(path.join(tmpdir(), "housekeeping-work-")))
-  assert.deepEqual(result, { authSessions: 1, webhookEvents: 1, runLogs: 1, scratchSessions: 1, orphanSnapshots: 1 })
+  assert.deepEqual(result, { authSessions: 1, webhookEvents: 1, runLogs: 1, scratchSessions: 1, orphanSnapshots: 1, leftoverJobTmp: 0 })
 
   assert.deepEqual((await pool.query("SELECT token_hash FROM app.auth_sessions")).rows.map(r => r.token_hash), ["live"])
   // Unconsumed events wait for their run however old they are
@@ -96,6 +96,6 @@ test("housekeeping trims what only grows and keeps what is live", async () => {
 
   // A second sweep finds nothing left to do
   assert.deepEqual(await sweepHousekeeping(pool, store, store.root), {
-    authSessions: 0, webhookEvents: 0, runLogs: 0, scratchSessions: 0, orphanSnapshots: 0
+    authSessions: 0, webhookEvents: 0, runLogs: 0, scratchSessions: 0, orphanSnapshots: 0, leftoverJobTmp: 0
   })
 })
