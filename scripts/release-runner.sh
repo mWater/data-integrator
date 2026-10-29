@@ -41,7 +41,6 @@ grep -q "RUNTIME_VERSION = \"$VERSION\"" packages/runner/src/images.ts
 
 echo "== building packages"
 pnpm --filter @mwater/integration-runner build
-pnpm --filter @data-integrator/definitions build
 
 echo "== building images"
 podman build -t "$NODE_IMAGE" runtimes/node
@@ -67,9 +66,10 @@ podman push "$PYTHON_IMAGE"
 echo "== publishing @mwater/integration-runner@$VERSION"
 (cd packages/runner && pnpm publish --access public --no-git-checks)
 
-echo "== committing and tagging v$VERSION"
+# Runner tags are prefixed: plain vX.Y.Z tags are the application's releases
+echo "== committing and tagging runner-v$VERSION"
 git add packages/runner/package.json packages/runner/src/images.ts pnpm-lock.yaml
 # Nothing to commit when the version was already stamped; the tag still applies
 git diff --cached --quiet || git commit -m "Release integration runner $VERSION"
-git tag "v$VERSION"
-echo "done: push the commit and tag with: git push && git push origin v$VERSION"
+git tag "runner-v$VERSION"
+echo "done: push the commit and tag with: git push && git push origin runner-v$VERSION"

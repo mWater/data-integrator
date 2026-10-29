@@ -14,8 +14,8 @@
 ## Scope
 
 - No single national feed exists yet, so the entry is a generic receiver
-  any sensor network can push to; a national service's format becomes a
-  variant entry or a skill when identified with the pilot countries.
+  any sensor network can push to; a specific national service's format
+  becomes a variant entry or a skill.
 - Exercises the push path end to end: webhook trigger, batch window,
   webhookData consumption, tabular merge destinations.
 - Pull-based sources (a public national or global API) can be a companion

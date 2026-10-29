@@ -108,6 +108,10 @@ service after changing them:
   (default: RAM minus 2 GB).
 - `JOB_MAX_CPUS`, `JOB_MAX_MEMORY_MB`, `JOB_MAX_TIMEOUT_MIN`: the most any one
   job may ask for; larger requests in a definition are lowered.
+- `JOB_BLOCKED_ADDRESSES`: addresses or CIDRs jobs may not reach, on top of the
+  private and link-local ranges that are always blocked. List the host's own
+  public IPs, so job code cannot reach its SSH or HTTPS ports from outside, and
+  any other services of yours that are on the internet.
 - `WORK_QUOTA_MB`, `TMP_QUOTA_MB`, `MIN_FREE_DISK_MB`: the per-integration `/work`
   ceiling, the per-run `/tmp` ceiling (temporary disk under the work root, removed
   after each run), and the free-space floor below which runs refuse to start.

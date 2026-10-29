@@ -378,6 +378,9 @@ Keys:
   `INTEGRATOR_SECRET_KEY`.
 - `ai_limits`: `{userDailyTokens, deploymentDailyTokens}`, each a positive integer or
   null for no cap; unset means 5,000,000 and 25,000,000.
+- `account_policy`: `{passwordMaxAgeDays, inactiveDisableDays}`, each a whole number of
+  days (1 to 3650) or null to turn the rule off; unset means both off. Expiry is checked
+  at sign-in; inactive accounts are disabled by the daily housekeeping sweep.
 
 ### migrations
 

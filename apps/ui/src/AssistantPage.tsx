@@ -83,7 +83,7 @@ export function AssistantPage() {
         title={T`Explore the data`}
         blurb={T`Plain-language questions, answered from the platform's ingested data with tables, charts, and maps - every answer carries its SQL and a CSV download.`}
         placeholder={T`Describe the data you want, e.g.:
-rainfall and groundwater levels for southern Madagascar over the last 6 months
+rainfall and groundwater levels for the northern districts over the last 6 months
 
 Name the place, the period, and the measurements you care about.`}
         hints={hints()}

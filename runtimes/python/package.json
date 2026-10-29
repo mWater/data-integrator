@@ -1,6 +1,6 @@
 {
   "name": "@data-integrator/runtime-python",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "python runtime image: geospatial stack + job harness",
   "license": "Apache-2.0",
   "private": true,

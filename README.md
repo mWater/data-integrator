@@ -95,7 +95,7 @@ gh auth token | podman login ghcr.io -u <github-user> --password-stdin
 npm login                                  # an account in the @mwater npm org
 scripts/release-runner.sh 0.3.0 --dry-run  # stamps, builds, tests; pushes nothing
 scripts/release-runner.sh 0.3.0            # pushes images, publishes, commits, tags
-git push && git push origin v0.3.0
+git push && git push origin runner-v0.3.0
 ```
 
 The first push of a new image name creates it private on GitHub; make it

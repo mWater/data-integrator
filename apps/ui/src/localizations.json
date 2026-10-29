@@ -469,15 +469,6 @@
     },
     {
       "_base": "en",
-      "en": "Describe the data you want, e.g.:\nrainfall and groundwater levels for southern Madagascar over the last 6 months\n\nName the place, the period, and the measurements you care about.",
-      "fr": "Décrivez les données souhaitées, par ex. :\nprécipitations et niveaux des eaux souterraines dans le sud de Madagascar au cours des 6 derniers mois\n\nIndiquez le lieu, la période et les mesures qui vous intéressent.",
-      "pt": "Descreva os dados que deseja, por exemplo:\nprecipitação e níveis de água subterrânea no sul de Madagascar nos últimos 6 meses\n\nIndique o local, o período e as medições de interesse.",
-      "es": "Describa los datos que desea, p. ej.:\nprecipitación y niveles de aguas subterráneas en el sur de Madagascar durante los últimos 6 meses\n\nIndique el lugar, el período y las mediciones que le interesan.",
-      "mg": "Farito ny angona tadiavinao, oh.:\nrotsak'orana sy haavon'ny rano ambanin'ny tany any atsimon'i Madagasikara nandritra ny 6 volana farany\n\nLazao ny toerana, ny fe-potoana ary ny fandrefesana ilainao.",
-      "sw": "Eleza data unayotaka, kwa mfano:\nkiwango cha mvua na maji ya ardhini kusini mwa Madagascar katika miezi 6 iliyopita\n\nTaja eneo, kipindi na vipimo unavyohitaji."
-    },
-    {
-      "_base": "en",
       "en": "Question",
       "fr": "Question",
       "pt": "Pergunta",
@@ -1546,15 +1537,6 @@
       "es": "te espera",
       "mg": "miandry anao",
       "sw": "inakusubiri"
-    },
-    {
-      "_base": "en",
-      "en": "No design sessions yet. Start one with New Integration on the Integrations page.",
-      "fr": "Aucune session de conception pour l’instant. Lancez-en une avec Nouvelle intégration sur la page Intégrations.",
-      "pt": "Ainda não há sessões de criação. Inicie uma com Nova integração na página Integrações.",
-      "es": "Aún no hay sesiones de diseño. Inicia una con Nueva integración en la página Integraciones.",
-      "mg": "Tsy mbola misy fotoam-pandrafetana. Manomboha iray amin'ny Fampidirana vaovao eo amin'ny pejy Fampidirana angona.",
-      "sw": "Bado hakuna vipindi vya usanifu. Anzisha kimoja kwa Ujumuishaji mpya kwenye ukurasa wa Ujumuishaji."
     },
     {
       "_base": "en",
@@ -4339,15 +4321,6 @@
     },
     {
       "_base": "en",
-      "en": "The country or bounding box the deployment cares about. Integrations clip their data to it unless they declare an area of their own, so a Madagascar deployment stores Madagascar, not the world.",
-      "fr": "Pays ou emprise géographique concerné par le déploiement. Les intégrations y découpent leurs données, sauf si elles définissent leur propre zone. Ainsi, un déploiement pour Madagascar stocke les données de Madagascar, et non celles du monde entier.",
-      "pt": "O país ou a caixa delimitadora relevante para a implementação. As integrações recortam os dados para essa área, salvo se declararem uma área própria. Assim, uma implementação de Madagáscar armazena dados de Madagáscar, não do mundo inteiro.",
-      "es": "El país o cuadro delimitador de interés para el despliegue. Las integraciones recortan sus datos a esa área, salvo que declaren una propia, por lo que un despliegue de Madagascar almacena Madagascar, no el mundo entero.",
-      "mg": "Ny firenena na efajoro mamaritra faritra izay ifantohan'ilay rafitra. Fintinin'ny fampidirana angona amin'izany faritra izany ny angony, raha tsy hoe mamaritra faritra azy manokana izy, ka i Madagascar no tehirizin'ny rafitra napetraka ho an'i Madagascar, fa tsy izao tontolo izao.",
-      "sw": "Nchi au kisanduku cha mipaka ambacho mfumo unalenga. Miunganisho hupunguza data zake kulingana nacho isipokuwa itaje maeneo yake yenyewe, hivyo mfumo wa Madagascar huhifadhi data za Madagascar, si za dunia nzima."
-    },
-    {
-      "_base": "en",
       "en": "Ready-made integrations shipped with the platform, installable in one click: WorldPop population, Copernicus flood and drought products, HydroSHEDS rivers and basins, and more.",
       "fr": "Intégrations prêtes à l’emploi fournies avec la plateforme et installables en un clic : population WorldPop, produits Copernicus sur les inondations et les sécheresses, cours d’eau et bassins HydroSHEDS, et plus encore.",
       "pt": "Integrações predefinidas fornecidas com a plataforma e instaláveis com um clique: população do WorldPop, produtos de cheias e secas do Copernicus, rios e bacias do HydroSHEDS, entre outros.",
@@ -5176,15 +5149,6 @@
     },
     {
       "_base": "en",
-      "en": "Applies to future runs. Expanding the region requires a backfill for existing data.",
-      "fr": "S’applique aux prochaines exécutions. L’extension de la région nécessite un chargement rétrospectif des données existantes.",
-      "pt": "Aplica-se a execuções futuras. Ampliar a região exige o reprocessamento dos dados existentes.",
-      "es": "Se aplica a las ejecuciones futuras. Ampliar la región requiere completar los datos históricos existentes.",
-      "mg": "Mihatra amin'ny fampandehanana ho avy. Mila famenoana angona taloha ny fanitarana ny faritra ho an'ny angona efa misy.",
-      "sw": "Inatumika kwa uendeshaji wa baadaye. Kupanua eneo kunahitaji kujaza upya data iliyopo."
-    },
-    {
-      "_base": "en",
       "en": "Source & Outputs",
       "fr": "Source et données produites",
       "pt": "Fonte e saídas",
@@ -5389,15 +5353,6 @@
       "es": "Mantiene la programación actual",
       "mg": "Mitazona ny fandaharam-potoananao ankehitriny",
       "sw": "Huhifadhi ratiba yako ya sasa"
-    },
-    {
-      "_base": "en",
-      "en": "Your area of interest, schedule, and limits are preserved.",
-      "fr": "Votre zone d’intérêt, votre planification et vos limites sont conservées.",
-      "pt": "Sua área de interesse, seu agendamento e seus limites são preservados.",
-      "es": "Se conservan el área de interés, la programación y los límites.",
-      "mg": "Voatahiry ny faritra mahaliana anao, ny fandaharam-potoana ary ny fetra.",
-      "sw": "Eneo lako la kuvutiwa, ratiba na vikomo vinahifadhiwa."
     },
     {
       "_base": "en",
@@ -6982,6 +6937,330 @@
       "es": "El inicio de sesión y el uso de la API cuentan como actividad. Los administradores solo se desactivan mientras haya otro administrador activo. Reactive las cuentas desde Administrar usuarios.",
       "mg": "Ny fidirana sy ny fampiasana API dia heverina ho fampiasana. Ny kaontin’ny mpitantana dia atsahatra raha mbola misy mpitantana hafa mavitrika ihany. Avereno alefa ao amin’ny Fitantanana mpampiasa ny kaonty.",
       "sw": "Kuingia na kutumia API huhesabiwa kuwa shughuli. Akaunti za wasimamizi huzimwa tu ikiwa akaunti ya msimamizi mwingine bado ni amilifu. Washa tena akaunti kupitia Dhibiti watumiaji."
+    },
+    {
+      "_base": "en",
+      "en": "Searching the library",
+      "fr": "Recherche dans la bibliothèque",
+      "pt": "Pesquisando na biblioteca",
+      "es": "Buscando en la biblioteca",
+      "mg": "Mikaroka ao amin’ny katalaogy",
+      "sw": "Inatafuta kwenye maktaba"
+    },
+    {
+      "_base": "en",
+      "en": "Searched the library",
+      "fr": "Recherche effectuée dans la bibliothèque",
+      "pt": "Pesquisa na biblioteca concluída",
+      "es": "Biblioteca consultada",
+      "mg": "Nikaroka tao amin’ny katalaogy",
+      "sw": "Imetafuta kwenye maktaba"
+    },
+    {
+      "_base": "en",
+      "en": "Reading a source note",
+      "fr": "Lecture d’une note sur la source",
+      "pt": "Lendo uma nota da fonte",
+      "es": "Leyendo una nota de la fuente",
+      "mg": "Mamaky fanamarihana momba ny loharano",
+      "sw": "Inasoma dokezo la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Read a source note",
+      "fr": "Note sur la source lue",
+      "pt": "Nota da fonte lida",
+      "es": "Nota de la fuente leída",
+      "mg": "Namaky fanamarihana momba ny loharano",
+      "sw": "Imesoma dokezo la chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Checking stored credentials",
+      "fr": "Vérification des identifiants enregistrés",
+      "pt": "Verificando credenciais armazenadas",
+      "es": "Comprobando las credenciales guardadas",
+      "mg": "Manamarina ny angona fanamarinana voatahiry",
+      "sw": "Inakagua taarifa za ufikiaji zilizohifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Checked stored credentials",
+      "fr": "Identifiants enregistrés vérifiés",
+      "pt": "Credenciais armazenadas verificadas",
+      "es": "Credenciales guardadas comprobadas",
+      "mg": "Nanamarina ny angona fanamarinana voatahiry",
+      "sw": "Imekagua taarifa za ufikiaji zilizohifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Choosing map layers",
+      "fr": "Sélection des couches cartographiques",
+      "pt": "Selecionando camadas de mapa",
+      "es": "Eligiendo capas del mapa",
+      "mg": "Mifidy soson-tsarintany",
+      "sw": "Inachagua tabaka za ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Chose map layers",
+      "fr": "Couches cartographiques sélectionnées",
+      "pt": "Camadas de mapa selecionadas",
+      "es": "Capas del mapa elegidas",
+      "mg": "Nifidy soson-tsarintany",
+      "sw": "Imechagua tabaka za ramani"
+    },
+    {
+      "_base": "en",
+      "en": "Marking ready to save",
+      "fr": "Marquage comme prêt à enregistrer",
+      "pt": "Marcando como pronto para salvar",
+      "es": "Marcando como listo para guardar",
+      "mg": "Manamarika ho vonona hotehirizina",
+      "sw": "Inaweka alama ya kuwa tayari kuhifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Marked ready to save",
+      "fr": "Marqué comme prêt à enregistrer",
+      "pt": "Marcado como pronto para salvar",
+      "es": "Marcado como listo para guardar",
+      "mg": "Nanamarika ho vonona hotehirizina",
+      "sw": "Imeweka alama ya kuwa tayari kuhifadhi"
+    },
+    {
+      "_base": "en",
+      "en": "Describe the data you want, e.g.:\nrainfall and groundwater levels for the northern districts over the last 6 months\n\nName the place, the period, and the measurements you care about.",
+      "fr": "Décrivez les données souhaitées, par exemple :\nprécipitations et niveaux des eaux souterraines dans les districts du nord au cours des 6 derniers mois\n\nIndiquez le lieu, la période et les mesures qui vous intéressent.",
+      "pt": "Descreva os dados que deseja, por exemplo:\nchuvas e níveis de água subterrânea nos distritos do norte nos últimos 6 meses\n\nInforme o local, o período e as medições de interesse.",
+      "es": "Describa los datos que desea, por ejemplo:\nprecipitaciones y niveles de agua subterránea de los distritos del norte durante los últimos 6 meses\n\nIndique el lugar, el período y las mediciones que le interesan.",
+      "mg": "Farito ny angona ilainao, ohatra:\nrotsak’orana sy haavon’ny rano ambanin’ny tany any amin’ireo distrika avaratra nandritra ny 6 volana farany\n\nLazao ny toerana, ny vanim-potoana ary ny zavatra refesina ilainao.",
+      "sw": "Eleza data unayotaka, k.m.:\nkiwango cha mvua na maji ya chini ya ardhi katika wilaya za kaskazini kwa miezi 6 iliyopita\n\nTaja eneo, kipindi na vipimo unavyohitaji."
+    },
+    {
+      "_base": "en",
+      "en": "The country or bounding box the deployment cares about. Integrations clip their data to it unless they declare an area of their own, so a country deployment stores that country, not the world.",
+      "fr": "Le pays ou le cadre englobant concerné par le déploiement. Les intégrations limitent leurs données à cette zone, sauf si elles déclarent leur propre zone. Ainsi, un déploiement national stocke les données de ce pays, et non du monde entier.",
+      "pt": "O país ou retângulo delimitador relevante para a implantação. As integrações recortam os dados para essa área, a menos que declarem uma área própria; assim, uma implantação nacional armazena dados desse país, não do mundo inteiro.",
+      "es": "El país o el cuadro delimitador de interés para la implementación. Las integraciones recortan sus datos a esta área, salvo que declaren una propia, de modo que una implementación nacional almacena los datos de ese país, no los del mundo entero.",
+      "mg": "Ny firenena na faritra mahitsizoro iantefan’ny fametrahana. Feran’ireo fampidirana amin’io ny angonany, raha tsy milaza faritra manokana izy, ka ilay firenena no tehirizin’ny fametrahana ho an’ny firenena iray, fa tsy izao tontolo izao.",
+      "sw": "Nchi au kisanduku cha mipaka kinacholengwa na usakinishaji. Miunganisho hukata data kulingana na eneo hilo isipokuwa ikiwa imetaja eneo lake yenyewe, kwa hivyo usakinishaji wa nchi huhifadhi nchi hiyo, si dunia nzima."
+    },
+    {
+      "_base": "en",
+      "en": "Yes",
+      "fr": "Oui",
+      "pt": "Sim",
+      "es": "Sí",
+      "mg": "Eny",
+      "sw": "Ndiyo"
+    },
+    {
+      "_base": "en",
+      "en": "No",
+      "fr": "Non",
+      "pt": "Não",
+      "es": "No",
+      "mg": "Tsia",
+      "sw": "Hapana"
+    },
+    {
+      "_base": "en",
+      "en": "(blank)",
+      "fr": "(vide)",
+      "pt": "(em branco)",
+      "es": "(en blanco)",
+      "mg": "(banga)",
+      "sw": "(tupu)"
+    },
+    {
+      "_base": "en",
+      "en": "Saved as version {0}. Some of these settings take effect when the integration is rebuilt.",
+      "fr": "Enregistré comme version {0}. Certains de ces paramètres prennent effet lors de la reconstruction de l’intégration.",
+      "pt": "Salvo como versão {0}. Algumas dessas configurações entram em vigor quando a integração é reconstruída.",
+      "es": "Guardado como versión {0}. Algunos de estos ajustes se aplicarán cuando se reconstruya la integración.",
+      "mg": "Voatahiry ho dika {0}. Hihatra rehefa amboarina indray ny fampidirana ny sasany amin’ireo fikirana ireo.",
+      "sw": "Imehifadhiwa kama toleo la {0}. Baadhi ya mipangilio hii huanza kutumika muunganisho unapojengwa upya."
+    },
+    {
+      "_base": "en",
+      "en": "Options this integration offers. Changes are saved as a new version.",
+      "fr": "Options proposées par cette intégration. Les modifications sont enregistrées dans une nouvelle version.",
+      "pt": "Opções oferecidas por esta integração. As alterações são salvas como uma nova versão.",
+      "es": "Opciones que ofrece esta integración. Los cambios se guardan como una versión nueva.",
+      "mg": "Safidy atolotr’ity fampidirana ity. Tehirizina ho dika vaovao ny fanovana.",
+      "sw": "Chaguo zinazotolewa na muunganisho huu. Mabadiliko huhifadhiwa kama toleo jipya."
+    },
+    {
+      "_base": "en",
+      "en": "Default: {0}.",
+      "fr": "Par défaut : {0}.",
+      "pt": "Padrão: {0}.",
+      "es": "Predeterminado: {0}.",
+      "mg": "Sanda mahazatra: {0}.",
+      "sw": "Chaguo-msingi: {0}."
+    },
+    {
+      "_base": "en",
+      "en": "Rebuild from Source",
+      "fr": "Reconstruire depuis la source",
+      "pt": "Reconstruir a partir da fonte",
+      "es": "Reconstruir desde la fuente",
+      "mg": "Avereno amboarina avy amin’ny loharano",
+      "sw": "Jenga upya kutoka chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Rebuild “{0}” from source",
+      "fr": "Reconstruire « {0} » depuis la source",
+      "pt": "Reconstruir “{0}” a partir da fonte",
+      "es": "Reconstruir “{0}” desde la fuente",
+      "mg": "Avereno amboarina avy amin’ny loharano ny “{0}”",
+      "sw": "Jenga upya “{0}” kutoka chanzo"
+    },
+    {
+      "_base": "en",
+      "en": "Rebuild “{0}” from source?",
+      "fr": "Reconstruire « {0} » depuis la source ?",
+      "pt": "Reconstruir “{0}” a partir da fonte?",
+      "es": "¿Reconstruir “{0}” desde la fuente?",
+      "mg": "Haverina amboarina avy amin’ny loharano ve ny “{0}”?",
+      "sw": "Jenga upya “{0}” kutoka chanzo?"
+    },
+    {
+      "_base": "en",
+      "en": "A rebuild runs the integration as if for the first time: it forgets what earlier runs recorded and clears its working cache, so everything in its area and history is fetched and produced again.",
+      "fr": "Une reconstruction exécute l’intégration comme si c’était la première fois : elle oublie les données enregistrées lors des exécutions précédentes et vide son cache de travail. Toutes les données de sa zone et de son historique sont donc à nouveau récupérées et produites.",
+      "pt": "Uma reconstrução executa a integração como se fosse a primeira vez: ignora o que as execuções anteriores registraram e limpa o cache de trabalho, fazendo com que todos os dados de sua área e de todo o histórico sejam obtidos e gerados novamente.",
+      "es": "Una reconstrucción ejecuta la integración como si fuera la primera vez: olvida lo registrado en ejecuciones anteriores y borra su caché de trabajo, por lo que vuelve a obtener y generar todo lo correspondiente a su área y período histórico.",
+      "mg": "Ny fanamboarana indray dia mampandeha ny fampidirana toy ny tamin’ny voalohany: hadinoiny izay voarakitry ny fampandehanana teo aloha ary fafany ny tahiry vonjimaika ampiasainy, ka alaina sy vokarina indray ny zava-drehetra ao anatin’ny faritra sy ny tantara rakofany.",
+      "sw": "Ujenzi upya huendesha muunganisho kana kwamba ni mara ya kwanza: husahau rekodi za uendeshaji wa awali na kufuta akiba yake ya muda ya kazi, hivyo kila kitu katika eneo na historia yake huchotwa na kuzalishwa tena."
+    },
+    {
+      "_base": "en",
+      "en": "Existing data is replaced as the rebuild reproduces it; nothing is deleted first. Large sources can take a long time to download again.",
+      "fr": "Les données existantes sont remplacées à mesure que la reconstruction les reproduit ; rien n’est supprimé au préalable. Le nouveau téléchargement des sources volumineuses peut prendre beaucoup de temps.",
+      "pt": "Os dados existentes são substituídos à medida que a reconstrução os reproduz; nada é excluído antes. Fontes grandes podem levar muito tempo para serem baixadas novamente.",
+      "es": "Los datos existentes se sustituyen a medida que la reconstrucción los vuelve a generar; no se elimina nada de antemano. Volver a descargar fuentes grandes puede llevar mucho tiempo.",
+      "mg": "Soloina ny angona efa misy rehefa averina vokarina mandritra ny fanamboarana indray; tsy misy fafana mialoha. Mety haharitra ela ny fampidinana indray ny loharano lehibe.",
+      "sw": "Data iliyopo hubadilishwa kadiri ujenzi upya unavyoizalisha tena; hakuna kinachofutwa kwanza. Vyanzo vikubwa vinaweza kuchukua muda mrefu kupakuliwa tena."
+    },
+    {
+      "_base": "en",
+      "en": "This integration appends rows to a table, so a rebuild adds the reproduced rows again.",
+      "fr": "Cette intégration ajoute des lignes à une table. Une reconstruction ajoutera donc à nouveau les lignes reproduites.",
+      "pt": "Esta integração acrescenta linhas a uma tabela, portanto uma reconstrução acrescenta novamente as linhas reproduzidas.",
+      "es": "Esta integración añade filas a una tabla, por lo que una reconstrucción vuelve a añadir las filas generadas.",
+      "mg": "Manampy andalana amin’ny tabilao ity fampidirana ity, ka hanampy indray ireo andalana naverina novokarina ny fanamboarana indray.",
+      "sw": "Muunganisho huu huongeza safu mlalo kwenye jedwali, kwa hivyo ujenzi upya huongeza tena safu mlalo zilizozalishwa upya."
+    },
+    {
+      "_base": "en",
+      "en": "Rebuild",
+      "fr": "Reconstruire",
+      "pt": "Reconstruir",
+      "es": "Reconstruir",
+      "mg": "Avereno amboarina",
+      "sw": "Jenga upya"
+    },
+    {
+      "_base": "en",
+      "en": "schedule",
+      "fr": "planification",
+      "pt": "agendamento",
+      "es": "programación",
+      "mg": "fandaharam-potoana",
+      "sw": "ratiba"
+    },
+    {
+      "_base": "en",
+      "en": "rebuild",
+      "fr": "reconstruction",
+      "pt": "reconstrução",
+      "es": "reconstrucción",
+      "mg": "fanamboarana indray",
+      "sw": "ujenzi upya"
+    },
+    {
+      "_base": "en",
+      "en": "design session",
+      "fr": "session de conception",
+      "pt": "sessão de criação",
+      "es": "sesión de diseño",
+      "mg": "fotoam-pandrafetana",
+      "sw": "kikao cha usanifu"
+    },
+    {
+      "_base": "en",
+      "en": "running",
+      "fr": "en cours",
+      "pt": "em execução",
+      "es": "en ejecución",
+      "mg": "mandeha",
+      "sw": "inaendeshwa"
+    },
+    {
+      "_base": "en",
+      "en": "succeeded",
+      "fr": "réussie",
+      "pt": "concluído com sucesso",
+      "es": "completada correctamente",
+      "mg": "nahomby",
+      "sw": "imefaulu"
+    },
+    {
+      "_base": "en",
+      "en": "Run again from nothing: forget earlier progress and fetch everything in scope",
+      "fr": "Réexécuter à partir de zéro : oublier la progression précédente et récupérer toutes les données concernées",
+      "pt": "Executar novamente do zero: ignorar o progresso anterior e buscar tudo no escopo",
+      "es": "Volver a ejecutar desde cero: olvidar el progreso anterior y obtener todo lo incluido en el alcance",
+      "mg": "Alefaso indray manomboka amin’ny tsy misy: hadinoina ny fandrosoana teo aloha ary alaina ny zava-drehetra ao anatin’ny sehatra voafaritra",
+      "sw": "Endesha tena kutoka mwanzo: sahau maendeleo ya awali na uchote kila kitu kilicho katika upeo"
+    },
+    {
+      "_base": "en",
+      "en": "Applies to future runs. To fill a larger region for periods already loaded, rebuild from source.",
+      "fr": "S’applique aux prochaines exécutions. Pour couvrir une zone plus vaste sur des périodes déjà chargées, reconstruisez depuis la source.",
+      "pt": "Aplica-se às execuções futuras. Para preencher uma região maior em períodos já carregados, reconstrua a partir da fonte.",
+      "es": "Se aplica a futuras ejecuciones. Para completar una región más amplia en períodos ya cargados, reconstruya desde la fuente.",
+      "mg": "Mihatra amin’ny fampandehanana ho avy. Raha hameno faritra lehibe kokoa ho an’ny vanim-potoana efa nampidirina, avereno amboarina avy amin’ny loharano.",
+      "sw": "Hutumika kwa uendeshaji wa baadaye. Ili kupata data ya eneo kubwa zaidi kwa vipindi vilivyopakiwa tayari, jenga upya kutoka chanzo."
+    },
+    {
+      "_base": "en",
+      "en": "Source details of the current snapshot",
+      "fr": "Détails de la source de l’instantané actuel",
+      "pt": "Detalhes da fonte do instantâneo atual",
+      "es": "Detalles de la fuente de la instantánea actual",
+      "mg": "Antsipirian’ny loharano ho an’ny dika ankehitriny",
+      "sw": "Maelezo ya chanzo cha nakala ya sasa"
+    },
+    {
+      "_base": "en",
+      "en": "Your area of interest, schedule, limits, and settings are preserved.",
+      "fr": "Votre zone d’intérêt, votre planification, vos limites et vos paramètres sont conservés.",
+      "pt": "Sua área de interesse, agendamento, limites e configurações são preservados.",
+      "es": "Se conservan el área de interés, la programación, los límites y los ajustes.",
+      "mg": "Tazonina ny faritra mahaliana anao, ny fandaharam-potoana, ny fetra ary ny fikirana.",
+      "sw": "Mfumo huhifadhi eneo lako linalolengwa, ratiba, vikomo na mipangilio."
+    },
+    {
+      "_base": "en",
+      "en": "No design sessions yet. Start one with New Integration on the Integrations page or New Dashboard on the Dashboards page.",
+      "fr": "Aucune session de conception pour le moment. Démarrez-en une avec Nouvelle intégration sur la page Intégrations ou Nouveau tableau de bord sur la page Tableaux de bord.",
+      "pt": "Ainda não há sessões de criação. Inicie uma com Nova integração na página Integrações ou Novo painel na página Painéis.",
+      "es": "Aún no hay sesiones de diseño. Inicie una con Nueva integración en la página Integraciones o con Nuevo panel en la página Paneles.",
+      "mg": "Tsy mbola misy fotoam-pandrafetana. Manomboha iray amin’ny Fampidirana vaovao ao amin’ny pejy Fampidirana, na Tabilao fanaraha-maso vaovao ao amin’ny pejy Tabilao fanaraha-maso.",
+      "sw": "Bado hakuna vikao vya usanifu. Anzisha kimoja kwa kutumia Muunganisho mpya kwenye ukurasa wa Miunganisho au Dashibodi mpya kwenye ukurasa wa Dashibodi."
+    },
+    {
+      "_base": "en",
+      "en": "What",
+      "fr": "Quoi",
+      "pt": "O quê",
+      "es": "Qué",
+      "mg": "Inona",
+      "sw": "Nini"
     }
   ],
   "unused": []

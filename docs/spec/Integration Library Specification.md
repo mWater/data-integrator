@@ -566,7 +566,9 @@ nothing.
   matches the destination's `bands` and whose nodata matches the declared
   sentinel; the platform reads only footprint, CRS, and cell size from them,
   so meeting this is the job's responsibility. When `crs` is absent and the
-  file's CRS has no EPSG code, it is recorded as `unknown`. Omitting a layer
+  file's CRS has no EPSG code, it is recorded as `unknown`. An
+  implementation that registers rasters for SQL cannot register such a
+  snapshot; the reference implementation fails the run. Omitting a layer
   from `rasters` means no update to it.
 - **`state`**: the next incremental state, persisted and delivered as
   `previousState` to the next run. This is the only authoritative
@@ -585,8 +587,8 @@ Two runtime images are specified: `node`, a JavaScript runtime, and
 array, and vector libraries, and the command-line raster tools the library's
 integrations rely on). An implementation MUST provide both and MAY add
 further runtimes as additional images implementing the same harness
-contract; shared contract tests verify a harness against sections 3.1 to
-3.5.
+contract. Each harness SHOULD have tests verifying it against sections 3.1
+to 3.5; the reference implementation keeps one suite per runtime image.
 
 ## 4. Lifecycle semantics
 

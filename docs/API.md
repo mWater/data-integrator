@@ -13,7 +13,11 @@ Examples use `$BASE` for the server origin (e.g. `http://127.0.0.1:8080`) and
 Two interchangeable credentials, both tied to a user and their role:
 
 - Session cookie: `POST /api/login` with `{email, password}` sets the
-  `di_session` cookie (what the UI uses). `POST /api/logout` ends it.
+  `di_session` cookie (what the UI uses). `POST /api/logout` ends it. When the
+  account policy has expired the password, sign-in returns 401 with
+  `{code: "password_expired"}`; send `newPassword` with the same body to set a
+  new password and sign in. A new password shorter than 8 characters or equal
+  to the old one returns 400.
 - Personal access token: mint with `POST /api/tokens {name, expiresDays?}` (or
   `cli.js user token <email> [name]`), then send `Authorization: Bearer dit_...`.
   The secret is returned once and stored hashed. `GET /api/tokens` lists your
@@ -333,6 +337,14 @@ curl -X POST -H "Content-Type: application/json" \
 - `PUT /api/settings/ai_limits` (admin) - `{userDailyTokens,
   deploymentDailyTokens}`, each a positive integer or null for no cap (an
   omitted field counts as null). Returns the same shape as GET.
+- `GET /api/settings/account_policy` (admin) - `{policy: {passwordMaxAgeDays,
+  inactiveDisableDays}}`: optional password expiry (checked at sign-in) and
+  disabling of accounts with no sign-in or API use for that many days (daily
+  sweep). Both null (off) by default.
+- `PUT /api/settings/account_policy` (admin) - `{passwordMaxAgeDays,
+  inactiveDisableDays}`, each a whole number of days from 1 to 3650 or null to
+  turn the rule off (an omitted field counts as null). Returns the same shape
+  as GET.
 
 ## Limits
 

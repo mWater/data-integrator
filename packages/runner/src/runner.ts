@@ -531,7 +531,8 @@ export class Runner {
   /**
    * Kills every job container carrying the label, or the label with the given
    * value. Called at startup to remove containers a previous process left
-   * running, since a job whose owner is gone can only ever commit twice.
+   * running: a job whose owner is gone has no one to commit its result and
+   * would only race the run that replaces it.
    * Returns the number of containers removed.
    */
   async killLabelled(key: string, value?: string): Promise<number> {

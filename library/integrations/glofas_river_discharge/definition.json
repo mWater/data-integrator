@@ -153,6 +153,7 @@
     }
   },
   "validation": {
+    "expectedCadence": "P1D",
     "ranges": [
       {
         "destinationId": "river_discharge",

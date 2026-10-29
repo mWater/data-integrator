@@ -45,7 +45,7 @@ export function HowItWorks() {
           {T`One point in time of a raster layer, for example rainfall for one day or population for one year. Time-series layers are stacks of snapshots.`}
         </Term>
         <Term name={T`Area of interest`}>
-          {T`The country or bounding box the deployment cares about. Integrations clip their data to it unless they declare an area of their own, so a Madagascar deployment stores Madagascar, not the world.`}
+          {T`The country or bounding box the deployment cares about. Integrations clip their data to it unless they declare an area of their own, so a country deployment stores that country, not the world.`}
         </Term>
         <Term name={T`Library`}>
           {T`Ready-made integrations shipped with the platform, installable in one click: WorldPop population, Copernicus flood and drought products, HydroSHEDS rivers and basins, and more.`}

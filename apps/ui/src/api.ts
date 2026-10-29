@@ -519,7 +519,7 @@ export function styleToken(rendering: unknown): string {
   return hash.toString(36)
 }
 
-/** One catalog layer as /layers reports it. */
+/** One catalog layer as /api/layers reports it. */
 export interface MapLayer {
   /** Layer id */
   id: string
@@ -545,7 +545,7 @@ export interface MapLayer {
 
 /** Lists catalog layers with their snapshots. */
 export function listLayers(sessionId?: string): Promise<{ layers: MapLayer[] }> {
-  return request(sessionId ? `/layers?session=${encodeURIComponent(sessionId)}` : "/layers")
+  return request(sessionId ? `/api/layers?session=${encodeURIComponent(sessionId)}` : "/api/layers")
 }
 
 /** One value-to-color stop of a band's color map. */

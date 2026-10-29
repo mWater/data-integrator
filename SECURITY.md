@@ -30,16 +30,18 @@ in particular:
 - **Agent-driven code execution outside the sandbox.** The designer agent
   writes and runs integration code. Any path where agent output executes in the
   server process rather than in a job container.
-- **SQL execution boundaries.** Dashboards and the query assistant run frozen
-  SQL under the read-only `sql_engine` role. Escapes from that role, or from
-  the parameterization, are in scope.
+- **SQL execution boundaries.** Dashboards run frozen, parameterized SQL;
+  Explore (the query assistant) runs SQL the model writes for each question.
+  Both run as the read-only `sql_engine` role with statement timeouts and row
+  caps. Escapes from that role, the parameterization, or those limits are in
+  scope.
 - **Authentication and authorization.** Session handling, personal access
   tokens, and the admin/editor/viewer role checks.
 - **Secret handling.** Integration secrets are AES-256-GCM encrypted at rest
   under `INTEGRATOR_SECRET_KEY`, and their values are masked in stored run
   output. Disclosure of plaintext secrets to logs, the API, job containers
   that did not declare them, or the agent transcript.
-- **Tenant data exposure** through the query API, raster tiles, or COG
+- **Unauthorized data exposure** through the query API, raster tiles, or COG
   downloads.
 
 Out of scope:

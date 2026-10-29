@@ -26,9 +26,11 @@ pnpm build
 pnpm test
 ```
 
-The suites are real: they build runtime images, start containers, and talk to
-Postgres. They are not fast, and they will fail on a machine without the
-prerequisites above.
+The suites are real: they run jobs in containers and talk to Postgres, so they are
+not fast. Server tests need a PostGIS database: an ephemeral podman container, or
+`TEST_DATABASE_URL`. Tests that need podman, gVisor, or a runtime image skip themselves
+when it is missing, so build the images first (`pnpm build:image` in `runtimes/node`
+and `runtimes/python`, as CI does in `.github/workflows/ci.yml`) for a full run.
 
 ## Where things live
 

@@ -183,8 +183,9 @@ export async function saveAiConfig(pool: pg.Pool, secretKey: Buffer | null, conf
 }
 
 /**
- * The AI variables earlier releases read from the environment. They now only
- * seed the stored settings, once, so existing hosts keep their provider.
+ * The AI provider from the environment (OPENROUTER_API_KEY, ANTHROPIC_API_KEY,
+ * or LLM_BASE_URL with LLM_API_KEY; AGENT_MODEL), which seeds the stored
+ * settings once, when none are stored: deploy/setup.sh passes a key this way.
  */
 export function aiConfigFromEnv(env: NodeJS.ProcessEnv): AiConfig | null {
   const baseUrl = env.LLM_BASE_URL?.trim().replace(/\/+$/, "") || null
@@ -248,9 +249,9 @@ export class AiRuntime {
   }
 
   /**
-   * Loads the stored settings. When none are stored and the environment still
-   * carries the AI variables earlier releases read, they are saved as the
-   * settings first. A key that cannot be decrypted leaves AI off and logs why.
+   * Loads the stored settings. When none are stored and the environment
+   * names a provider (aiConfigFromEnv), it is saved as the settings first. A
+   * key that cannot be decrypted leaves AI off and logs why.
    */
   static async load(
     pool: pg.Pool,

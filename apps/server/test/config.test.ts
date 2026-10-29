@@ -44,12 +44,21 @@ test("loadConfig: rejects a malformed secret key", () => {
   assert.throws(() => loadConfig({ DATABASE_URL: DB, INTEGRATOR_SECRET_KEY: "tooshort" }), /32 bytes/)
 })
 
+test("loadConfig: JOB_BLOCKED_ADDRESSES takes addresses and CIDRs, and rejects anything else", () => {
+  assert.deepEqual(loadConfig({ DATABASE_URL: DB }).jobBlockedAddresses, [])
+  const config = loadConfig({ DATABASE_URL: DB, JOB_BLOCKED_ADDRESSES: "203.0.113.7, 198.51.100.0/24,2001:db8::1" })
+  assert.deepEqual(config.jobBlockedAddresses, ["203.0.113.7", "198.51.100.0/24", "2001:db8::1"])
+  for (const bad of ["example.org", "203.0.113.7/33", "10.0.0.0/8/1", "1.2.3.4; drop"]) {
+    assert.throws(() => loadConfig({ DATABASE_URL: DB, JOB_BLOCKED_ADDRESSES: bad }), /JOB_BLOCKED_ADDRESSES/)
+  }
+})
+
 test("loadConfig: basemap off disables the proxy", () => {
   const config = loadConfig({ DATABASE_URL: DB, BASEMAP_UPSTREAM: "off" })
   assert.equal(config.basemap.upstream, null)
 })
 
-test("countries: plausible list with the pilot countries", () => {
+test("countries: a plausible list with sound boxes", () => {
   assert.ok(COUNTRIES.length > 200)
   const mdg = COUNTRIES.find(c => c.iso3 === "MDG")
   const ago = COUNTRIES.find(c => c.iso3 === "AGO")

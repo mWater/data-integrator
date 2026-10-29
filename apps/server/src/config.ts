@@ -1,13 +1,15 @@
 /**
- * Central environment configuration. Every environment variable the server
- * reads is resolved and validated here, once, at startup; the rest of the
- * code takes typed AppConfig pieces. loadConfig throws a single error listing
+ * Central environment configuration. The environment variables the server
+ * reads are resolved and validated here, once, at startup, except the AI
+ * provider variables, which only seed the stored AI settings (aiSettings.ts);
+ * the rest of the code takes typed AppConfig pieces. loadConfig throws a single error listing
  * every problem, so a misconfigured deployment fails fast and completely.
  * The variables are documented in .env.example at the repository root.
  */
 
 import { loadSecretKey } from "./secrets.js"
 import { availableParallelism, totalmem } from "node:os"
+import { isIP } from "node:net"
 import { DEFAULT_RENDER_CONCURRENCY } from "./tiles.js"
 
 /** Reasoning efforts OpenRouter accepts for AGENT_EFFORT. */
@@ -61,6 +63,8 @@ export interface AppConfig {
     /** JOB_MAX_TIMEOUT_MIN: wall-clock timeout in minutes */
     timeoutMin: number
   }
+  /** JOB_BLOCKED_ADDRESSES: addresses or CIDRs jobs may not reach, beyond the private ranges always blocked */
+  jobBlockedAddresses: string[]
   /** Agent tuning; the provider, key and model are set in Settings (aiSettings.ts) */
   agent: {
     /** AGENT_EFFORT; null uses the model default */
@@ -131,6 +135,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     timeoutMin: quota("JOB_MAX_TIMEOUT_MIN", 360, "minutes")
   }
 
+  const jobBlockedAddresses = (env.JOB_BLOCKED_ADDRESSES ?? "")
+    .split(",")
+    .map(entry => entry.trim())
+    .filter(Boolean)
+  for (const entry of jobBlockedAddresses) {
+    const [address, prefix, extra] = entry.split("/")
+    const family = isIP(address)
+    const maxPrefix = family === 6 ? 128 : 32
+    const prefixOk = prefix === undefined || (/^\d{1,3}$/.test(prefix) && Number(prefix) <= maxPrefix)
+    if (family === 0 || !prefixOk || extra !== undefined) {
+      problems.push(`JOB_BLOCKED_ADDRESSES: "${entry}" is not an IPv4/IPv6 address or CIDR`)
+    }
+  }
   const uploadRaw = env.FILE_UPLOAD_MAX_MB ?? "100"
   const fileUploadMaxMb = Number(uploadRaw)
   if (!Number.isInteger(fileUploadMaxMb) || fileUploadMaxMb < 1) {
@@ -179,6 +196,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tileRenderConcurrency,
     sandboxMemoryMb,
     jobMax,
+    jobBlockedAddresses,
     runtimeImages: {
       python: env.RUNTIME_IMAGE_PYTHON ?? "localhost/integrator-runtime-python:dev",
       node: env.RUNTIME_IMAGE_NODE ?? "localhost/integrator-runtime-node:dev"

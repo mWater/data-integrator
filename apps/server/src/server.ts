@@ -409,7 +409,7 @@ async function route(
 
   // Everything below is either the static shell (public) or data (auth required)
   if (!user) {
-    if (req.method === "GET" && !pathname.startsWith("/api") && pathname !== "/layers" && !TILE_PATH.test(pathname)) {
+    if (req.method === "GET" && !pathname.startsWith("/api") && !TILE_PATH.test(pathname)) {
       if (await serveUi(req, res, uiDist, viteDevUrl)) return
     }
     json(res, 401, { error: "authentication required" })
@@ -929,7 +929,7 @@ async function route(
     return
   }
 
-  if (pathname === "/layers" || pathname === "/api/layers") {
+  if (pathname === "/api/layers") {
     // Default: installed layers only. ?session=<id> instead lists that design
     // session's scratch preview layers.
     const session = searchParams.get("session")

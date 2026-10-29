@@ -6,8 +6,8 @@
 > which is derived from Sentinel-1 SAR, for the deployment's area of
 > interest. Store each observation as a snapshot on a time-series raster
 > layer named "Observed flood extent" so we can see the history of
-> flooding. Check for new observations daily. Credentials are in the
-> secret named gfm_credentials.
+> flooding. Check for new observations daily. The catalogue is public; no
+> credentials are needed.
 
 ## Scope
 

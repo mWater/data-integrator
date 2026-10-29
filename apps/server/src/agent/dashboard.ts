@@ -109,6 +109,7 @@ One TypeScript React file. Default export is the root component, receiving
 - <Page title subtitle? controls?>: page scaffold; put a <FilterBar> in controls.
 - <Grid columns={2|3|4}>: responsive card grid. <Card title? wide?>: content surface.
 - <StatTile label value detail? status?>: one headline number (use for single values).
+  status is "good"|"warning"|"serious"|"critical", drawn as a dot beside detail.
 - <Chart type="line|area|bar|pie|scatter" data x series labels? stacked? height? format?
   xType? zoom? label?>: data is rows; x names the category column; series names value columns
   (colors follow series order automatically; max ~8). One value axis by design - for

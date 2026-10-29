@@ -72,7 +72,7 @@ fi
 
 echo "==> PostgreSQL database"
 systemctl enable --now postgresql
-# A host provisioned under an earlier name keeps its database; refuse rather
+# An env file that already points at another database keeps it; refuse rather
 # than create an empty second one beside it and switch the env to that
 if [ -f "$ENV_FILE" ]; then
   current_db=$(sed -n 's|^DATABASE_URL=.*/\([^/?]*\).*|\1|p' "$ENV_FILE")

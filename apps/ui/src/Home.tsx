@@ -215,7 +215,7 @@ function SourceRow({ source }: { source: HomeSource }) {
   const href = source.kind === "raster" ? `#/layer/${source.id}` : `#/table/${source.id}`
   return (
     <a className="panel-row" href={href}>
-      <span className={`chip chip-${source.kind}`}>{source.kind}</span>
+      <span className={`chip chip-${source.kind}`}>{source.kind === "table" ? T`table` : T`raster`}</span>
       <span className="grow">{localizeData(source.name)}</span>
       <span className="panel-fact">{contents(source)}</span>
       <span className="panel-when">{since(source.updatedAt) ?? T`never`}</span>

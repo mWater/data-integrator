@@ -74,7 +74,8 @@ nor count against memory; without it `/tmp` is a `tmpfsMb` tmpfs (default 256 MB
 the job's memory. `workDiskMb` and `tmpDiskMb` are polled (every `diskMonitorMs`, default
 30 s) and the job is aborted when `/work` or a disk-backed `/tmp` exceeds its quota. `labels` let a restarted application find containers its previous
 process left running: `runner.killLabelled("myapp.run")` removes them all, since a job
-whose owner is gone can only ever commit twice.
+whose owner is gone has no one to commit its result and would only race the job that
+replaces it.
 
 ## Images
 
@@ -129,8 +130,9 @@ Rootless podman with gVisor shapes the setup in four ways:
   runner passes `--dns` resolvers to every networked job (`dns` option, default
   `1.1.1.1` and `9.9.9.9`).
 
-Job containers also run with a read-only root filesystem, a writable 256 MB `/tmp`
-tmpfs (`limits.tmpfsMb`), all capabilities dropped and `no-new-privileges`.
+Job containers also run with a read-only root filesystem, a writable `/tmp` (the
+`mounts.tmpDir` directory, or without it a `limits.tmpfsMb` tmpfs), all capabilities
+dropped and `no-new-privileges`.
 
 Tests: `pnpm test`. The integration suite skips itself if podman/runsc are absent, skips
 network tests under `SKIP_NET_TESTS=1`, and skips the GDAL test unless

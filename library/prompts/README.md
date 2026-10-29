@@ -41,10 +41,13 @@ state, and derived analytics enter one at a time.
 | 9 | `fapar_anomaly_gdo` | ten-daily time-series, full-cadence snapshots | hand-authored from the GDO skill |
 | 10 | `drought_risk_gdo` | categorical raster | RDrI-Agri stands in for the Europe-only CDI |
 | 11 | `worldpop_population` | annual time-series raster, country-keyed files mosaicked per snapshot | |
+| 12 | (none) | ten-daily time-series raster on a daily poll | entry `gdo_soil_moisture_anomaly`, no prompt |
+| 13 | (none) | monthly forecast issues, categorical plus continuous bands | entry `gdo_spi3_forecast`, no prompt |
+| 14 | (none) | five-year epoch time-series raster, tiled source, whole-world mode | entry `ghs_population`, no prompt |
+| 15 | (none) | vector tables, versioned release, per-country files | entry `mwater_admin_regions`, no prompt |
 
-Parked: UNICEF data sources (add prompts when named). FABDEM (CC BY-NC-SA, a non-commercial
-license: needs a licensing decision before it can ship in this library; GLO-30
-carries terrain until then).
+FABDEM is not in the library: its CC BY-NC-SA license is non-commercial.
+GLO-30 carries terrain.
 
 ## Prompt file format
 

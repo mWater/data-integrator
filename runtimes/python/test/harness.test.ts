@@ -213,15 +213,15 @@ print("grib vars", sorted(ds.data_vars), dict(ds.sizes))`
   assert.match(result.stdout, /grib vars/)
 }, { timeout: 120_000 })
 
-test("Horizon libraries import", { skip: !AVAILABLE }, async () => {
+test("forecast and array libraries import (cdsapi, scipy, ecmwf-opendata)", { skip: !AVAILABLE }, async () => {
   const result = await runner.run({
     image: IMAGE,
     network: false,
     payload: {
       mode: "snippet",
-      code: `import cdsapi, scipy.ndimage, ecmwf.opendata\nprint("horizon libs ok")`
+      code: `import cdsapi, scipy.ndimage, ecmwf.opendata\nprint("forecast libs ok")`
     }
   })
   assert.equal(result.status, "succeeded", result.stderrTail)
-  assert.match(result.stdout, /horizon libs ok/)
+  assert.match(result.stdout, /forecast libs ok/)
 }, { timeout: 120_000 })

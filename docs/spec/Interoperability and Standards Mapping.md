@@ -71,7 +71,9 @@ Consequences:
 - Each snapshot records its CRS as an authority code and keeps its native
   grid; nothing is resampled at ingest. The job may declare the code (for
   example `EPSG:32737`); when it does not, the platform derives an EPSG code
-  from the file, or records `unknown` when the file's CRS has none.
+  from the file, or records `unknown` when the file's CRS has none. An
+  implementation that registers rasters for SQL cannot register such a
+  snapshot; the reference implementation fails the run.
 
 Source-side, integrations commonly consume NetCDF (including CF-convention
 files), GRIB2, HDF, GeoPackage, shapefile archives, and plain GeoTIFF; the
@@ -267,10 +269,11 @@ Public Goods Standard. The mapping onto the DPG Standard's indicators:
 | Standards and best practices | This document; dependency licensing verified with SPDX identifiers and an SBOM in CI |
 | Do no harm by design | Role-gated access, sandboxed untrusted code, encrypted secrets, no default credentials |
 
-Dependency hygiene is continuous: the build verifies that every runtime
-dependency carries an OSI-approved license (recorded by SPDX identifier) and
-produces a software bill of materials, so a procuring institution can audit
-the supply chain of any release.
+Dependency hygiene is continuous: the build verifies that every Node.js
+production dependency and every Python package in the runtime image carries
+an OSI-approved license (recorded by SPDX identifier) and produces a software
+bill of materials, so a procuring institution can audit the supply chain of
+any release.
 
 ## 9. Conformance for alternative implementations
 

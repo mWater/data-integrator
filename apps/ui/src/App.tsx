@@ -78,9 +78,7 @@ function parseHash(): Route {
     tableId: table ? table[1] : null,
     sessions: hash === "#/sessions",
     data: hash === "#/data",
-    // #/assistant is the page's old address; links to it still work
-    // #/ask and #/assistant are the page's old addresses; links to them still work
-    ask: hash === "#/explore" || hash === "#/ask" || hash === "#/assistant",
+    ask: hash === "#/explore",
     integrations: hash === "#/integrations",
     dashboards: hash === "#/dashboards",
     dashboardId: dashboard ? dashboard[1] : null,

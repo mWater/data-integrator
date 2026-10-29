@@ -55,7 +55,7 @@ const BATCH_SIZE = 40
 /** Requests in flight at once. */
 const CONCURRENCY = 4
 
-/** Default translation model, mirroring the agent default in apps/server/src/cli.ts. */
+/** Default translation model; keep equal to DEFAULT_MODELS.openrouter in apps/server/src/aiSettings.ts. */
 const DEFAULT_MODEL = "openai/gpt-5.6-sol"
 
 /**

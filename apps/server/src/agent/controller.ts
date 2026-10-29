@@ -78,12 +78,6 @@ export class AgentSessionController<S> {
     return result.rows[0].id
   }
 
-  /** The UI locale recorded at session creation, or null for CLI sessions. */
-  async getLocale(sessionId: string): Promise<string | null> {
-    const result = await this.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])
-    return result.rows[0]?.locale ?? null
-  }
-
   /**
    * Appends a user message and persists the session as active, so the
    * transcript shows the message before the first (slow) model step lands.

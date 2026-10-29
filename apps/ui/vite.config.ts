@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => {
       hmr: { host: "localhost", port: 5173, clientPort: 5173 },
       proxy: {
         "/api": api,
-        "/layers": api,
         "/tiles": api,
         "/kit": api,
         "/basemap": api

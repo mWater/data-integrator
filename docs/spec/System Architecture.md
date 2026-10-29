@@ -245,7 +245,8 @@ platform-specific imports. Two runtime images are specified, one for
 JavaScript and one for Python, the latter carrying an open geospatial stack
 (raster, array, and vector libraries) that the library's integrations rely
 on; further languages are additional images implementing the same harness
-contract, verified by shared contract tests.
+contract. Each harness is verified against that contract by its own tests;
+the reference implementation keeps one suite per runtime image.
 
 Jobs never touch the database or the raster store. The engine validates
 tabular output against the declared destination schema and applies it
@@ -342,8 +343,11 @@ snapshots, and bands with footprints, timestamps, units, and rendering hints.
 - Promoted snapshots are additionally registered as out-of-database rasters
   in the analytical SQL surface, so SQL can sample raster values under
   vector features and compute zonal statistics without pixels entering the
-  database. This registration is best-effort: every other function works
-  without it.
+  database. An implementation that offers this SHOULD fail a run whose
+  snapshot it cannot register rather than promote it unregistered; the
+  reference implementation registers inside the run's commit transaction and
+  fails the run on any registration error (for example a CRS the database
+  does not know).
 - The area-of-interest shape is a row of the same surface, with a function
   returning area-weighted statistics of any layer over it (mean, share
   meeting a condition, coverage, cell size, snapshot used, boundary
@@ -528,8 +532,10 @@ flowchart LR
   configured server; the application never fetches URLs supplied in requests.
 - **Job egress.** Integration code runs only in the sandbox, which reaches the
   public internet and nothing else: private, link-local, carrier-grade NAT
-  and cloud-metadata ranges are dropped in the job's network namespace, and
-  deployers can add their own addresses (for example the host's public IPs).
+  and cloud-metadata ranges are dropped in the job's network namespace.
+  Deployers can block further addresses (for example the host's public
+  IPs); the reference implementation takes them from
+  `JOB_BLOCKED_ADDRESSES` (see `docs/Deployment.md`).
   Jobs hold no database credentials; they exchange data with the engine
   through files.
 
@@ -660,7 +666,7 @@ normative: it records one set of choices that satisfies the contracts.
 
 | Architecture component | Reference implementation |
 |---|---|
-| Application server | Node.js (TypeScript), single process serving API, dashboard, scheduler, and agents |
+| Application server | Node.js (TypeScript); one process by default serving API, dashboard, scheduler, and agents, with more processes able to share the database queue |
 | Relational database | PostgreSQL with PostGIS |
 | Raster store | Local filesystem; cloud-optimized GeoTIFF |
 | Sandbox | podman (rootless) with gVisor syscall isolation; nftables egress policy |

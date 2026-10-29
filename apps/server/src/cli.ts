@@ -240,7 +240,7 @@ async function main(): Promise<number> {
           console.error(`Unknown integration ${integrationId}`)
           return 1
         }
-        const runner = new Runner()
+        const runner = new Runner({ blockedAddresses: config.jobBlockedAddresses })
         await runner.ensureReady()
         // A run of exactly this integration, never whatever else is queued
         let run
@@ -386,7 +386,7 @@ async function main(): Promise<number> {
           return 1
         }
         const model = ai.model
-        const runner = new Runner()
+        const runner = new Runner({ blockedAddresses: config.jobBlockedAddresses })
         await runner.ensureReady()
         const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath), libraryPath: config.libraryPath }
         const controller = new AgentSessionController(pool, new DesignerImplementation(deps), aiTokenBudget(pool))
@@ -506,7 +506,7 @@ async function main(): Promise<number> {
             return 1
           }
           try {
-            const purged = await purgeVersion(pool, buildDeps(pool, new Runner(), config).files!, process.argv[4], by)
+            const purged = await purgeVersion(pool, buildDeps(pool, new Runner({ blockedAddresses: config.jobBlockedAddresses }), config).files!, process.argv[4], by)
             console.log(`Purged v${purged.version} of ${purged.integrationId ?? "(session upload)"} slot ${purged.slotId}`)
             return 0
           } catch (err) {
@@ -563,7 +563,7 @@ async function main(): Promise<number> {
         await refreshAoi(pool, await getDefaultAoi(pool)).catch(err =>
           console.warn(`Area of interest shape not rebuilt: ${err instanceof Error ? err.message : err}`)
         )
-        const deps = buildDeps(pool, new Runner(), config)
+        const deps = buildDeps(pool, new Runner({ blockedAddresses: config.jobBlockedAddresses }), config)
         // Leftovers of crashed uploads and jobs; young ones may belong to
         // another process sharing the store, so only old entries go
         await cleanupFileStore(pool, deps.files!)

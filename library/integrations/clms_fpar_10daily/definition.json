@@ -131,6 +131,7 @@
     }
   ],
   "validation": {
+    "expectedCadence": "P10D",
     "ranges": [
       {
         "destinationId": "vegetation_productivity_fpar",

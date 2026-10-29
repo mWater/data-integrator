@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "mWater Data Integrator API",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Programmatic interface to the harmonized dataset: tabular destinations, the raster catalog (with a read-only STAC API), webhooks, integration files, and integration export/import. Authenticate with a session cookie (POST /api/login) or a personal access token (Authorization: Bearer dit_...). Routes not listed here serve the web UI and are not a stable interface. Data access works with no AI configured."
   },
   "components": {
@@ -63,6 +63,23 @@
           }
         }
       },
+      "AccountPolicy": {
+        "type": "object",
+        "properties": {
+          "passwordMaxAgeDays": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 3650,
+            "description": "Days after which a password must be changed at next sign-in; null for no expiry"
+          },
+          "inactiveDisableDays": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 3650,
+            "description": "Days without sign-in or API use after which an account is disabled; null for never"
+          }
+        }
+      },
       "StacError": {
         "type": "object",
         "properties": { "code": { "type": "string", "enum": ["InvalidParameterValue", "NotFound"] }, "description": { "type": "string" } }
@@ -81,14 +98,19 @@
               "schema": {
                 "type": "object",
                 "required": ["email", "password"],
-                "properties": { "email": { "type": "string" }, "password": { "type": "string" } }
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "newPassword": { "type": "string", "description": "Replacement for an expired password; sets it and signs in" }
+                }
               }
             }
           }
         },
         "responses": {
           "200": { "description": "{ user: { email, role } }; sets the di_session cookie" },
-          "401": { "description": "Bad credentials or locked" }
+          "400": { "description": "newPassword is shorter than 8 characters or equals the old password" },
+          "401": { "description": "Bad credentials or locked; { error, code: \"password_expired\" } when the password has expired and no newPassword was sent" }
         }
       }
     },
@@ -751,6 +773,21 @@
         "responses": {
           "200": { "description": "{ limits: AiLimits, usedToday: integer }" },
           "400": { "description": "A cap is not a positive integer or null" },
+          "403": { "description": "Not an admin" }
+        }
+      }
+    },
+    "/api/settings/account_policy": {
+      "get": {
+        "summary": "Password expiry and inactive-account disabling policy (admin); both off by default",
+        "responses": { "200": { "description": "{ policy: AccountPolicy }" }, "403": { "description": "Not an admin" } }
+      },
+      "put": {
+        "summary": "Set the account policy (admin); an omitted rule counts as null (off)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccountPolicy" } } } },
+        "responses": {
+          "200": { "description": "{ policy: AccountPolicy }" },
+          "400": { "description": "A rule is not a whole number of days from 1 to 3650 or null" },
           "403": { "description": "Not an admin" }
         }
       }

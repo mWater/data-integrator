@@ -11,7 +11,7 @@
 
 ## Scope
 
-- HydroBASINS level 7 (adjust in steering if the AOI suggests otherwise)
+- HydroBASINS level 8 (adjust in steering if the AOI suggests otherwise)
   and HydroRIVERS, from the public HydroSHEDS downloads (registration-free
   license v1; record attribution).
 - First vector-heavy entry: exercises table destinations via file

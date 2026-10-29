@@ -194,6 +194,7 @@
     }
   },
   "validation": {
+    "expectedCadence": "P1Y",
     "ranges": [
       {
         "destinationId": "population",

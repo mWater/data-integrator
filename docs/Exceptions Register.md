@@ -5,9 +5,11 @@ its justification, as the contract requires (Statement of Work, Deliverable 4:
 "declare and justify any proprietary dependency in the inception exceptions
 register"; UAT case OS-3).
 
-All code in this repository is Apache 2.0. Every runtime dependency carries an
-OSI-approved license, checked in CI against an allowlist of SPDX identifiers,
-with a CycloneDX software bill of materials produced on every build. The
+All code in this repository is Apache 2.0. Every Node.js production dependency
+and every Python package in the runtime image carries an OSI-approved license,
+checked in CI against an allowlist of SPDX identifiers, with a CycloneDX
+software bill of materials produced on every build. The base images (Ubuntu
+with GDAL, and Node.js) are open-source distributions. The
 platform builds, installs and runs with no vendor account, licence or hosted
 service.
 

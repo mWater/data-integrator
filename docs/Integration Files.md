@@ -221,8 +221,9 @@ KML, CSV, and zip access via `/vsizip/`.
 
 - The host never parses uploaded content: hash, store, materialize. All parsing
   happens in the sandbox, from a read-only `/in`.
-- Decompression bombs are bounded by job limits: `/tmp` is a 256 MB tmpfs,
-  memory is capped, `/work` is polled against `workDiskMb`, and `/vsizip/`
-  avoids extraction.
+- Decompression bombs are bounded by job limits: `/tmp` is a per-job directory
+  on disk under the work root, removed after the job and held to its quota
+  (`limits.tmpDiskMb`, capped by `TMP_QUOTA_MB`, default 20480 MB); memory is capped,
+  `/work` is polled against `workDiskMb`, and `/vsizip/` avoids extraction.
 - When the designer uses a cloud model, whatever snippets print leaves the
   deployment.

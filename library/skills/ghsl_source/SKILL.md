@@ -63,7 +63,7 @@ metadata). Find the single `.tif` member rather than assuming the zip's
 only file, and validate what you extracted by opening it: expect Mollweide
 CRS and tiles **up to** 10000x10000 pixels at 100 m. **Edge tiles are
 smaller than 10000x10000** - a strict size check rejects legitimate coastal
-tiles (this bit the first integration built from this source).
+tiles.
 
 ## Values
 
@@ -88,7 +88,6 @@ source, manual trigger, current-only layer. Cache tile zips in /work
 (atomic download to `.part`, rename), extract, `gdalbuildvrt` the tiles,
 one `gdalwarp` with the AOI as a cutline staying in Mollweide
 (`-t_srs ESRI:54009 -tr 100 100 -tap`), then `gdal_translate -of COG`.
-Keep GDAL subprocess output out of the job's stdout.
 
 For a global 4326 product (`library/integrations/ghs_population`), do not
 mosaic: one COG per published tile per epoch, cached under /work so an

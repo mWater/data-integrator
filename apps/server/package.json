@@ -1,12 +1,10 @@
 {
   "name": "@data-integrator/server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "mWater Data Integrator server: API, scheduler, pipeline engine, agent service",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "engines": {
     "node": ">=22"
   },

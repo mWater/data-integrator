@@ -12,6 +12,12 @@ function statusLabels(): Record<string, string> {
   }
 }
 
+/** What a session is building: the integration id or dashboard name, else its opening message. */
+function sessionTitle(s: SessionSummary): string {
+  if (s.kind === "dashboard") return s.label || s.firstMessage || T`New dashboard`
+  return s.integrationId ?? s.firstMessage ?? T`(new)`
+}
+
 /** Agent activity page: past and in-progress design sessions, newest first. */
 export function SessionList() {
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null)
@@ -31,16 +37,17 @@ export function SessionList() {
       {sessions === null ? (
         <LoadState error={error} onRetry={() => setRetry(n => n + 1)} />
       ) : sessions.length === 0 ? (
-        <p>{T`No design sessions yet. Start one with New Integration on the Integrations page.`}</p>
+        <p>{T`No design sessions yet. Start one with New Integration on the Integrations page or New Dashboard on the Dashboards page.`}</p>
       ) : (
         <table className="sessions">
           <thead>
-            <tr><th>{T`Integration`}</th><th>{T`Status`}</th><th>{T`Steps`}</th><th>{T`Updated`}</th></tr>
+            <tr><th>{T`What`}</th><th>{T`Kind`}</th><th>{T`Status`}</th><th>{T`Steps`}</th><th>{T`Updated`}</th></tr>
           </thead>
           <tbody>
             {sessions.map(s => (
               <tr key={s.id} onClick={() => (window.location.hash = `#/session/${s.id}`)}>
-                <td><a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{s.integrationId ?? s.firstMessage ?? T`(new)`}</a></td>
+                <td><a href={`#/session/${s.id}`} onClick={e => e.stopPropagation()}>{sessionTitle(s)}</a></td>
+                <td><span className="chip">{s.kind === "dashboard" ? T`dashboard` : T`integration`}</span></td>
                 <td><span className={`chip chip-${s.status}`}>{statusLabels()[s.status] ?? s.status}</span></td>
                 <td>{s.steps}</td>
                 <td>{formatDateTime(s.updatedAt)}</td>

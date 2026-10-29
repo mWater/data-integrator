@@ -47,6 +47,9 @@ jobs:
           podman build -q -t localhost/integrator-runtime-python:dev runtimes/python
           podman build -q -t localhost/integrator-runtime-node:dev runtimes/node
 
+      - name: Python image license allowlist (OSI-approved only)
+        run: podman run --rm --entrypoint python3 -v ./scripts:/scripts:ro localhost/integrator-runtime-python:dev -I /scripts/check-python-licenses.py
+
       - name: Pull test images
         run: |
           podman pull -q docker.io/library/alpine:3.20

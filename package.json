@@ -1,5 +1,6 @@
 {
   "name": "data-integrator",
+  "version": "1.0.0",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@12.15.0",

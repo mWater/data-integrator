@@ -131,7 +131,7 @@ test("saveAiConfig: the key is stored encrypted and reads back", async () => {
   await saveAiConfig(pool, key, null)
 })
 
-test("AiRuntime.load copies the old environment variables into Settings once", async () => {
+test("AiRuntime.load seeds Settings from the environment once", async () => {
   const logs: string[] = []
   const env = { OPENROUTER_API_KEY: "sk-or-from-env", AGENT_MODEL: "anthropic/claude-sonnet-5" }
   const first = await AiRuntime.load(pool, key, null, env, m => logs.push(m))

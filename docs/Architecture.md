@@ -449,8 +449,10 @@ encodings of it.
 
 ## Testing
 
-- Every package has a `node:test` suite, run together by `pnpm test` and in CI on
-  every push and pull request (`.github/workflows/ci.yml`).
+- The server, the runner, the kit and both runtime images have `node:test` suites, run
+  together by `pnpm test` and in CI on every push and pull request
+  (`.github/workflows/ci.yml`). `packages/definitions` (types only) and `apps/ui` have
+  none.
 - Server tests (`apps/server/test`) are integration tests against a real database: each
   file starts an ephemeral PostGIS container (or uses `TEST_DATABASE_URL`), applies the
   migrations, and drives the HTTP API, the scheduler and the executor. Executor tests

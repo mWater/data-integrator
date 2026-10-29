@@ -6,17 +6,20 @@
 > from the Copernicus Land Monitoring Service as a 10-daily time-series
 > raster layer named "Vegetation productivity (FPAR)", dimensionless 0-1,
 > for the deployment's area of interest. Backfill six months and keep it
-> current. Credentials are in the secret named clms_credentials.
+> current. Copernicus Data Space Ecosystem S3 keys are in the secret named
+> cdse_s3_credentials.
 
 ## Scope
 
-- CLMS 300 m FPAR, 10-daily (dekadal) cadence. Requires a (free) account:
-  second secrets-using entry, different auth flow than CDS.
+- CLMS 300 m FPAR, 10-daily (dekadal) cadence. Requires a free Copernicus
+  Data Space Ecosystem account with S3 keys (access key, secret key,
+  endpoint): second secrets-using entry, different auth flow than the ECMWF
+  datastores.
 - Vegetation stress for drought early warning: anomalies against a
   baseline are a later derived integration; this entry lands the raw
   index.
-- NetCDF delivery is likely, exercising the non-GDAL read path in the
-  Python runtime.
+- Delivered as COGs on the CDSE eodata S3 bucket, read with range requests
+  through GDAL's /vsis3/ so only the AOI window is fetched.
 
 ## Acceptance checks
 
