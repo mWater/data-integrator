@@ -328,6 +328,8 @@ dashboards and design sessions; viewer reads data and dashboards and uses Explor
 | failed_logins | int | lockout counter |
 | locked_until | timestamptz null | |
 | ai_acknowledged_at | timestamptz null | one-time acceptance that AI features send data to a hosted model provider |
+| password_changed_at | timestamptz | age clock for the optional password expiry (setting `account_policy`) |
+| last_active_at | timestamptz | last sign-in, session or API token use (refreshed at most hourly); clock for the optional inactivity disabling |
 | created_at, updated_at | timestamptz | |
 
 ### auth_sessions

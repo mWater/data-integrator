@@ -306,10 +306,13 @@ async function main(): Promise<number> {
           return 0
         }
         if ((sub === "disable" || sub === "enable") && email) {
-          const result = await pool.query("UPDATE app.users SET disabled = $2, updated_at = now() WHERE email = $1", [
-            email,
-            sub === "disable"
-          ])
+          // Enabling restarts the inactivity clock (see setDisabled in users.ts)
+          const result = await pool.query(
+            `UPDATE app.users SET disabled = $2, updated_at = now(),
+               last_active_at = CASE WHEN $2 THEN last_active_at ELSE now() END
+             WHERE email = $1`,
+            [email, sub === "disable"]
+          )
           if ((result.rowCount ?? 0) === 0) {
             console.error(`No user ${email}`)
             return 1

@@ -12,6 +12,9 @@ import {
   setDefaultAoi,
   setSiteTitle,
   AiInfo,
+  AccountPolicy,
+  getAccountPolicy,
+  saveAccountPolicy,
   User
 } from "./api.js"
 import { ThemePreference, useAppTheme } from "./theme.js"
@@ -306,6 +309,7 @@ export function Settings({ user, ai, onAiChanged }: {
             }}
           />
         )}
+        {isAdmin && <AccountPolicySection />}
         <AiSettingsSection ai={ai} isAdmin={isAdmin} onChanged={onAiChanged} />
       </div>
       <div className="settings-group-heading">
@@ -443,6 +447,86 @@ function LanguagesSection({ isAdmin, locales, supportedLocales, translation, onC
       <p className="dim">{T`Adding a language starts a background translation of the data catalog.`}</p>
       {notice && <p className="dim" role="status">{notice}</p>}
       {isAdmin && jobLine() && <details className="settings-details"><summary>{T`Translation details`}</summary><p>{jobLine()}</p></details>}
+    </SettingsRow>
+  )
+}
+
+/** A days field's text for a policy value; blank when the rule is off. */
+function daysText(value: number | null): string {
+  return value === null ? "" : String(value)
+}
+
+/** Parses a days field: null when blank, undefined when invalid. */
+function parseDays(text: string): number | null | undefined {
+  if (text.trim() === "") return null
+  const days = Number(text)
+  return Number.isInteger(days) && days >= 1 && days <= 3650 ? days : undefined
+}
+
+/** Admin form: optional password expiry and inactivity disabling, both off by default. */
+function AccountPolicySection() {
+  const [saved, setSaved] = useState<AccountPolicy | null>(null)
+  const [maxAge, setMaxAge] = useState("")
+  const [inactive, setInactive] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState(false)
+
+  function reset(policy: AccountPolicy) {
+    setSaved(policy)
+    setMaxAge(daysText(policy.passwordMaxAgeDays))
+    setInactive(daysText(policy.inactiveDisableDays))
+  }
+
+  useEffect(() => {
+    getAccountPolicy().then(reset, err => setError(err instanceof Error ? err.message : String(err)))
+  }, [])
+
+  const maxAgeDays = parseDays(maxAge)
+  const inactiveDays = parseDays(inactive)
+  const valid = maxAgeDays !== undefined && inactiveDays !== undefined
+  const dirty = saved !== null && (maxAge !== daysText(saved.passwordMaxAgeDays) || inactive !== daysText(saved.inactiveDisableDays))
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!valid) return
+    setBusy(true)
+    setError(null)
+    setNotice(false)
+    try {
+      reset(await saveAccountPolicy({ passwordMaxAgeDays: maxAgeDays, inactiveDisableDays: inactiveDays }))
+      setNotice(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SettingsRow
+      id="settings-account-policy"
+      title={T`Account policy`}
+      description={T`Optional rules for deployments whose security policy requires them. Both are off by default; leave a field blank to keep it off.`}
+    >
+      {error && <div className="error" role="alert">{error}</div>}
+      {saved && (
+        <form className="password-form" onSubmit={submit}>
+          <label>
+            {T`Require a new password after (days)`}
+            <input type="number" min="1" max="3650" step="1" value={maxAge} onChange={e => { setMaxAge(e.target.value); setNotice(false) }} aria-invalid={maxAgeDays === undefined} />
+          </label>
+          <label>
+            {T`Disable accounts inactive for (days)`}
+            <input type="number" min="1" max="3650" step="1" value={inactive} onChange={e => { setInactive(e.target.value); setNotice(false) }} aria-invalid={inactiveDays === undefined} />
+          </label>
+          <p className="dim">{T`Signing in and API use count as activity. Administrators are disabled only while another administrator remains active. Re-enable accounts from Manage Users.`}</p>
+          <div className="settings-actions">
+            <button disabled={busy || !dirty || !valid}>{busy ? T`Saving…` : T`Save Changes`}</button>
+            {notice && <span className="dim" role="status">{T`Saved.`}</span>}
+          </div>
+        </form>
+      )}
     </SettingsRow>
   )
 }

@@ -362,6 +362,24 @@ export function saveAiLimits(limits: AiLimits): Promise<AiLimitsView> {
   })
 }
 
+/** Optional password expiry and inactivity disabling; null turns a rule off. */
+export interface AccountPolicy {
+  /** Days after which a password must be changed at next sign-in */
+  passwordMaxAgeDays: number | null
+  /** Days without sign-in or API use after which an account is disabled */
+  inactiveDisableDays: number | null
+}
+
+/** Reads the account policy (admins). */
+export async function getAccountPolicy(): Promise<AccountPolicy> {
+  return (await request<{ policy: AccountPolicy }>("/api/settings/account_policy")).policy
+}
+
+/** Saves the account policy (admins). */
+export async function saveAccountPolicy(policy: AccountPolicy): Promise<AccountPolicy> {
+  return (await request<{ policy: AccountPolicy }>("/api/settings/account_policy", jsonBody("PUT", policy))).policy
+}
+
 /** The /api/me payload: the signed-in user plus the AI wiring. */
 export interface Me {
   /** The signed-in user */
@@ -398,18 +416,26 @@ export function acknowledgeAi(): Promise<{ ok: boolean }> {
   return request("/api/me/ai-acknowledge", { method: "POST" })
 }
 
-/** Signs in; the session rides an httpOnly cookie afterwards. */
-export async function login(email: string, password: string): Promise<User> {
-  const result = await request<{ user: User }>(
-    "/api/login",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password })
-    },
-    true
-  )
-  return result.user
+/** Thrown by login when the password is past the deployment's maximum age. */
+export class PasswordExpiredError extends Error {}
+
+/**
+ * Signs in; the session rides an httpOnly cookie afterwards. An expired
+ * password throws PasswordExpiredError; retry with its replacement as
+ * newPassword.
+ */
+export async function login(email: string, password: string, newPassword?: string): Promise<User> {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password, ...(newPassword !== undefined ? { newPassword } : {}) })
+  })
+  const body = (await res.json().catch(() => ({}))) as { user?: User; error?: string; code?: string }
+  if (!res.ok) {
+    if (body.code === "password_expired") throw new PasswordExpiredError(body.error)
+    throw new Error(body.error ?? `HTTP ${res.status}`)
+  }
+  return body.user!
 }
 
 /** Signs out and revokes the session. */

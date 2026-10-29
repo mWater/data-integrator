@@ -423,6 +423,10 @@ encodings of it.
 
 - Local accounts with roles (admin, editor, viewer), scrypt password hashes, lockout
   after repeated failures, no default credentials.
+- Optional account policy (Settings, admins): password expiry, enforced at sign-in
+  with a forced change, and disabling of accounts inactive for N days, by the daily
+  housekeeping sweep. Both are off by default, following NIST SP 800-63B; the sweep
+  never disables the last active admin.
 - Credentials as above. Jobs run under gVisor with the egress policy above.
 - The `app`/`data` schema split is the query boundary: user-facing SQL (dashboards,
   Explore) runs as `sql_engine`, which has SELECT on `data` only.

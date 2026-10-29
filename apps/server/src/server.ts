@@ -77,6 +77,7 @@ import { AiProvider } from "./config.js"
 import { LanguageModel } from "ai"
 import { parseItemQuery, STAC_CONFORMANCE, stacCollection, stacCollections, stacItem, stacItems, stacLanding } from "./stac.js"
 import { aiUsageToday, getAiLimits, parseAiLimits, saveAiLimits } from "./aiLimits.js"
+import { ACCOUNT_POLICY_KEY, getAccountPolicy, parseAccountPolicy, saveAccountPolicy } from "./accountPolicy.js"
 import { AiRuntime, aiSettingsView, buildModel, parseAiConfig, saveAiConfig, testModel } from "./aiSettings.js"
 import { SUPPORTED_LOCALES } from "@data-integrator/definitions"
 import { catalogTranslationStatus, startCatalogTranslation, translateDefinition, wrapDefinitionStrings } from "./localizeCatalog.js"
@@ -304,7 +305,23 @@ async function route(
 
   if (pathname === "/api/login" && req.method === "POST") {
     const body = await readJsonBody(req)
-    const result = await authenticate(pool, String(body.email ?? ""), String(body.password ?? ""))
+    const email = String(body.email ?? "")
+    const password = String(body.password ?? "")
+    let result = await authenticate(pool, email, password)
+    // An expired password signs in only together with its replacement
+    if (!result.ok && result.reason === "password-expired") {
+      if (body.newPassword === undefined) {
+        json(res, 401, { error: "Password expired; choose a new one", code: "password_expired" })
+        return
+      }
+      const newPassword = String(body.newPassword)
+      if (newPassword.length < 8 || newPassword === password) {
+        json(res, 400, { error: "The new password must have at least 8 characters and differ from the old one" })
+        return
+      }
+      await setPassword(pool, email, newPassword)
+      result = await authenticate(pool, email, newPassword)
+    }
     if (!result.ok) {
       json(res, 401, { error: result.reason === "locked" ? "Account locked; try again later" : "Invalid email or password" })
       return
@@ -615,6 +632,27 @@ async function route(
       return
     }
     json(res, 200, { limits: await getAiLimits(pool), usedToday: (await aiUsageToday(pool, null)).deployment })
+    return
+  }
+
+  // Optional password expiry and inactivity disabling: admins only
+  if (pathname === `/api/settings/${ACCOUNT_POLICY_KEY}`) {
+    if (user.role !== "admin") {
+      json(res, 403, { error: "Only admins can change the account policy" })
+      return
+    }
+    if (req.method === "PUT") {
+      try {
+        await saveAccountPolicy(pool, parseAccountPolicy(await readJsonBody(req)))
+      } catch (err) {
+        json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+        return
+      }
+    } else if (req.method !== "GET") {
+      json(res, 405, { error: "method not allowed" })
+      return
+    }
+    json(res, 200, { policy: await getAccountPolicy(pool) })
     return
   }
 

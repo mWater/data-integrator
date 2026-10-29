@@ -1,6 +1,9 @@
 /**
- * Daily housekeeping for tables and directories that otherwise only grow:
+ * Daily housekeeping for tables and directories that otherwise only grow, plus
+ * the account policy's inactivity rule:
  *
+ * - accounts inactive past the account policy's limit, disabled
+ *   (accountPolicy.ts; off by default);
  * - expired sign-in sessions;
  * - webhook events a run has consumed, after WEBHOOK_EVENT_DAYS;
  * - run logs after RUN_LOG_DAYS (the run rows stay: they carry lineage,
@@ -20,6 +23,7 @@ import pg from "pg"
 import { RasterStore } from "./rasterStore.js"
 import { cleanupScratch, draftSchema } from "./scratch.js"
 import { sweepJobTmp } from "./jobTmp.js"
+import { disableInactiveAccounts } from "./accountPolicy.js"
 
 /** Consumed webhook events are kept this long for debugging deliveries. */
 export const WEBHOOK_EVENT_DAYS = 30
@@ -33,8 +37,10 @@ const ORPHAN_MIN_AGE_MS = 24 * 60 * 60 * 1000
 /** Snapshot directory names: snapshot ids. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
-/** What one sweep removed. */
+/** What one sweep removed or disabled. */
 export interface HousekeepingResult {
+  /** Accounts disabled for inactivity */
+  inactiveAccounts: number
   /** Expired sign-in sessions deleted */
   authSessions: number
   /** Consumed webhook events deleted */
@@ -51,6 +57,7 @@ export interface HousekeepingResult {
 
 /** Runs every housekeeping step; each is independent and idempotent. */
 export async function sweepHousekeeping(pool: pg.Pool, store: RasterStore, workRoot: string): Promise<HousekeepingResult> {
+  const inactiveAccounts = await disableInactiveAccounts(pool)
   const authSessions = (await pool.query("DELETE FROM app.auth_sessions WHERE expires_at < now()")).rowCount ?? 0
   const webhookEvents =
     (await pool.query(
@@ -63,6 +70,7 @@ export async function sweepHousekeeping(pool: pg.Pool, store: RasterStore, workR
       [RUN_LOG_DAYS]
     )).rowCount ?? 0
   return {
+    inactiveAccounts,
     authSessions,
     webhookEvents,
     runLogs,

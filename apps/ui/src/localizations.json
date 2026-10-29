@@ -6910,6 +6910,78 @@
       "es": "Función de {0}",
       "mg": "Anjara asan'ny {0}",
       "sw": "Jukumu la {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Choose a password different from the old one",
+      "fr": "Choisissez un mot de passe différent de l’ancien",
+      "pt": "Escolha uma senha diferente da anterior",
+      "es": "Elija una contraseña distinta de la anterior",
+      "mg": "Misafidiana tenimiafina tsy mitovy amin’ilay taloha",
+      "sw": "Chagua nenosiri tofauti na la zamani"
+    },
+    {
+      "_base": "en",
+      "en": "Your password has expired. Choose a new one to sign in.",
+      "fr": "Votre mot de passe a expiré. Choisissez-en un nouveau pour vous connecter.",
+      "pt": "Sua senha expirou. Escolha uma nova para entrar.",
+      "es": "Su contraseña ha caducado. Elija una nueva para iniciar sesión.",
+      "mg": "Lany daty ny tenimiafinao. Misafidiana tenimiafina vaovao hidirana.",
+      "sw": "Muda wa matumizi ya nenosiri lako umeisha. Chagua jipya ili uingie."
+    },
+    {
+      "_base": "en",
+      "en": "Change Password and Sign In",
+      "fr": "Modifier le mot de passe et se connecter",
+      "pt": "Alterar senha e entrar",
+      "es": "Cambiar contraseña e iniciar sesión",
+      "mg": "Ovay ny tenimiafina ary midira",
+      "sw": "Badilisha nenosiri na uingie"
+    },
+    {
+      "_base": "en",
+      "en": "Account policy",
+      "fr": "Politique des comptes",
+      "pt": "Política de contas",
+      "es": "Política de cuentas",
+      "mg": "Politikan’ny kaonty",
+      "sw": "Sera ya akaunti"
+    },
+    {
+      "_base": "en",
+      "en": "Optional rules for deployments whose security policy requires them. Both are off by default; leave a field blank to keep it off.",
+      "fr": "Règles facultatives pour les déploiements dont la politique de sécurité les exige. Les deux sont désactivées par défaut ; laissez un champ vide pour qu’elles le restent.",
+      "pt": "Regras opcionais para implantações cuja política de segurança as exija. Ambas ficam desativadas por padrão; deixe um campo em branco para mantê-la desativada.",
+      "es": "Reglas opcionales para implementaciones cuya política de seguridad las requiera. Ambas están desactivadas de forma predeterminada; deje un campo en blanco para mantenerla desactivada.",
+      "mg": "Fitsipika tsy voatery ho an’ny fametrahana izay mitaky izany ny politikan’ny fiarovana. Tsy mandeha izy roa raha tsy ovaina; avelao ho banga ny saha mba tsy hampandeha azy.",
+      "sw": "Kanuni za hiari kwa mifumo iliyosakinishwa ambayo sera yake ya usalama inazihitaji. Zote mbili zimezimwa kwa chaguo-msingi; acha sehemu wazi ili ibaki imezimwa."
+    },
+    {
+      "_base": "en",
+      "en": "Require a new password after (days)",
+      "fr": "Exiger un nouveau mot de passe après (jours)",
+      "pt": "Exigir uma nova senha após (dias)",
+      "es": "Exigir una nueva contraseña después de (días)",
+      "mg": "Mitaky tenimiafina vaovao rehefa afaka (andro)",
+      "sw": "Hitaji nenosiri jipya baada ya (siku)"
+    },
+    {
+      "_base": "en",
+      "en": "Disable accounts inactive for (days)",
+      "fr": "Désactiver les comptes inactifs depuis (jours)",
+      "pt": "Desativar contas inativas por (dias)",
+      "es": "Desactivar cuentas inactivas durante (días)",
+      "mg": "Atsaharo ny kaonty tsy niasa nandritra ny (andro)",
+      "sw": "Zima akaunti ambazo hazijatumika kwa (siku)"
+    },
+    {
+      "_base": "en",
+      "en": "Signing in and API use count as activity. Administrators are disabled only while another administrator remains active. Re-enable accounts from Manage Users.",
+      "fr": "La connexion et l’utilisation de l’API sont considérées comme une activité. Un administrateur n’est désactivé que si un autre administrateur reste actif. Réactivez les comptes dans Gérer les utilisateurs.",
+      "pt": "Entrar e usar a API contam como atividade. Administradores só são desativados enquanto houver outro administrador ativo. Reative as contas em Gerenciar usuários.",
+      "es": "El inicio de sesión y el uso de la API cuentan como actividad. Los administradores solo se desactivan mientras haya otro administrador activo. Reactive las cuentas desde Administrar usuarios.",
+      "mg": "Ny fidirana sy ny fampiasana API dia heverina ho fampiasana. Ny kaontin’ny mpitantana dia atsahatra raha mbola misy mpitantana hafa mavitrika ihany. Avereno alefa ao amin’ny Fitantanana mpampiasa ny kaonty.",
+      "sw": "Kuingia na kutumia API huhesabiwa kuwa shughuli. Akaunti za wasimamizi huzimwa tu ikiwa akaunti ya msimamizi mwingine bado ni amilifu. Washa tena akaunti kupitia Dhibiti watumiaji."
     }
   ],
   "unused": []

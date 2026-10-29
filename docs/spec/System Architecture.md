@@ -463,7 +463,7 @@ the data and the host against untrusted inputs, misbehaving integration code
 
 | Boundary | Mechanism |
 |---|---|
-| Accounts | Local accounts, salted memory-hard password hashing, lockout on repeated failure, no default credentials |
+| Accounts | Local accounts, salted memory-hard password hashing, lockout on repeated failure, no default credentials; optional password expiry and disabling of inactive accounts, off by default |
 | Sessions and tokens | Cookie sessions for the dashboard; personal access tokens for the API; both revocable |
 | Authorization | Admin, editor, and viewer roles enforced server-side on every route |
 | Integration code | Rootless containers plus a syscall-isolation layer, read-only rootfs, no capabilities, resource limits |
