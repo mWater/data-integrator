@@ -537,8 +537,8 @@ flowchart LR
 
 | Capability | viewer | editor | admin |
 |---|---|---|---|
-| Read data, layers, tiles, catalog; view dashboards; Explore | yes | yes | yes |
-| Design, install, run, schedule, import and export integrations; build dashboards | | yes | yes |
+| Read data, layers, tiles, catalog; view dashboards; Explore; export integrations | yes | yes | yes |
+| Design, install, run, schedule and import integrations; build dashboards | | yes | yes |
 | Set credential values; rotate webhook URLs; publish dashboards publicly | | | yes |
 | Manage users and roles; deployment settings, account policy, AI provider and limits | | | yes |
 
