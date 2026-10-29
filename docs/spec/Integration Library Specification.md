@@ -38,6 +38,28 @@ library/
   `limits` are starting values the deployment may change (section 4).
 - Secret values MUST NOT appear anywhere in a library.
 
+### 1.1 Publishing and provenance
+
+Any party MAY publish a library: mWater, UNICEF, a national agency, a
+programme or another vendor. A library is identified by its source-control
+repository, and that repository is its provenance record:
+
+- **Authorship and change history** are the repository's commit history: who
+  changed which entry, when, and why.
+- **Releases** SHOULD be tagged, and publishers SHOULD sign their tags so a
+  deployer can verify the source before installing (for example
+  `git tag -v <tag>`).
+- **Curation** is the publisher's review process for changes to its
+  repository.
+
+A deployment installs from the library at its configured location (in the
+reference implementation, `LIBRARY_PATH`, a checkout of the chosen
+repository at a chosen tag). Entries from several libraries are combined by
+the deployer in a checkout of their own. Each installed integration then
+carries its own version history in the deployment (section 4), and single
+integrations move between deployments by export and import without any
+library.
+
 ## 2. Integration definition
 
 A definition is one JSON document (RFC 8259, UTF-8) describing everything

@@ -441,6 +441,54 @@ encodings of it.
 - Apache 2.0 throughout. CI checks every production dependency's license against an
   OSI-approved SPDX allowlist and publishes a CycloneDX SBOM.
 - Builds and tests from a clean checkout with an open toolchain, verified in CI.
+- Proprietary dependencies, all optional, are declared in the
+  [Exceptions Register](Exceptions%20Register.md).
+
+## Testing
+
+- Every package has a `node:test` suite, run together by `pnpm test` and in CI on
+  every push and pull request (`.github/workflows/ci.yml`).
+- Server tests (`apps/server/test`) are integration tests against a real database: each
+  file starts an ephemeral PostGIS container (or uses `TEST_DATABASE_URL`), applies the
+  migrations, and drives the HTTP API, the scheduler and the executor. Executor tests
+  run real jobs in the sandbox under gVisor.
+- The runner (`packages/runner`), the dashboard kit (`packages/kit`) and the two
+  runtime images (`runtimes/*`) have their own suites; the runtime suites exercise the
+  job contract inside the built images.
+- Refusals are tested alongside successes: role checks, lockout, sandbox limits,
+  blocked egress, invalid definitions.
+- The compliance job checks dependency licenses and produces the SBOM on the same
+  triggers.
+
+## Localization
+
+- The interface ships in English, French, Portuguese, Spanish, Malagasy and Swahili.
+  An admin chooses which are offered (Settings, Languages); each user picks one.
+- Strings use `ez-localize` tagged templates (`` T`Save` ``) and live in one catalog,
+  `apps/ui/src/localizations.json`.
+- `pnpm localize` in `apps/ui` extracts new strings; `--translate <locales>` fills
+  them by machine translation with the glossary in `apps/ui/scripts/translation-context.md`;
+  `--export <locale>` and `--import <locale> --file <xlsx>` round-trip a spreadsheet
+  for human translators. Adding a language is a new locale in the catalog, translated
+  this way.
+- Library entries carry localized names and descriptions (Integration Library
+  Specification, section 2.2). When an admin adds a language and an AI model is
+  configured, the deployment translates its installed catalog in the background.
+- Server-generated messages and AI replies are in English, or in the language the user
+  writes in for the AI features.
+
+## Accessibility
+
+The interface follows established web accessibility conventions at a level suited to
+a proof of concept; it has not had a formal WCAG conformance audit.
+
+- Semantic structure: landmarks (`main`, `nav`, `header`), native buttons, links and
+  form controls, with labels or `aria-label` where a control has no visible text.
+- Keyboard: controls are reachable and operable by keyboard, with a visible focus
+  outline, and dialogs close with Escape; panning and zooming maps needs a pointer.
+- Status and errors are announced (`role="status"`, `role="alert"`).
+- Light and dark themes, following the system preference by default; animation is
+  reduced when the system asks for it.
 
 ## Repository layout
 

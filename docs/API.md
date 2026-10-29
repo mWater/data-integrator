@@ -23,6 +23,28 @@ Two interchangeable credentials, both tied to a user and their role:
 A bearer token takes precedence over a cookie and carries its user's full
 role. Every route below needs one of the two unless it says otherwise.
 
+### Credential lifecycle and abuse protection
+
+- **Issuance.** Each user mints tokens for their own account; an admin can mint
+  one for any account from the host (`cli.js user token`). A token is a 256-bit
+  random value, shown once and stored only as a SHA-256 hash.
+- **Expiry.** Optional per token (`expiresDays`); sessions last 30 days. A
+  deployment can also expire passwords and disable idle accounts (Settings,
+  Account policy; both off by default).
+- **Scope.** A token acts as its owner with the owner's current role; a role
+  change applies to existing tokens at once. There are no narrower scopes: give
+  an external system its own viewer account.
+- **Revocation.** `DELETE /api/tokens/:id`; disabling a user stops all of that
+  user's tokens and sessions immediately.
+- **Abuse protection.** Ten failed sign-ins lock an account for 15 minutes,
+  and unknown and known emails take the same time to reject. Request bodies are
+  capped at 1 MB (uploads have their own limit), table reads run read-only with
+  a 30 s statement timeout and a 10,000-row cap. Request rate limiting and WAF
+  rules belong at the reverse proxy.
+- **Logging.** Sign-ins and every write, including token creation and
+  revocation, are written to the security event log
+  ([Deployment](Deployment.md#security-event-log)).
+
 - `GET /api/me` - `{user: {id, email, role}, ai: {provider, model, ackRequired}}`;
   401 when not signed in.
 - `POST /api/me/password {currentPassword, newPassword}` - change your own

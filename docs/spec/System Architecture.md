@@ -303,6 +303,26 @@ is the job's responsibility.
   expected cadence is reported overdue when it has had no successful run
   within twice that cadence.
 
+**Worked example: a district drought table.** Four sources with different
+shapes land in the same stores:
+
+| Source | Arrives as | After harmonization |
+|---|---|---|
+| Administrative regions | Polygons with national codes | Table of district polygons in WGS 84 with ISO 3166 country codes |
+| WorldPop population | 100 m GeoTIFF per year, people per cell | Raster layer, band `population` in people, nodata declared |
+| Standardized Precipitation Index (SPI-3) | Global grid per dekad, dimensionless index | Raster layer with a time series of snapshots, band `spi3`, timestamps in UTC |
+| In-situ rain gauges | JSON pushed by a webhook, station-local times | Readings table with UTC timestamps and each value's declared unit; stations table with point locations in WGS 84 |
+
+A dashboard query or a derived integration (section 4.3) then combines them
+through the read-only analytical SQL surface: for each
+district, the population inside it (the sum of WorldPop cells, weighted by
+the share of each cell inside the boundary), the area-weighted mean of the
+latest SPI-3 snapshot, and the number of gauges and their 30-day rainfall
+total. The result is one row per district, every value in declared units,
+ready for a dashboard, the API or a national system. None of the four
+integrations knows about the others; harmonization at ingest is what makes
+the join possible.
+
 ### 3.5 Storage layers
 
 **Tabular plane.** One relational table per declared tabular destination,
@@ -481,6 +501,99 @@ personal data is limited to account emails and the uploader and original
 filename of uploaded files; what an operator chooses to ingest is the
 operator's responsibility.
 
+### 5.1 Trust boundaries
+
+```mermaid
+flowchart LR
+  internet((Internet)) -->|HTTPS 443| proxy[Reverse proxy<br/>TLS, optional SSO and MFA]
+  subgraph host[Deployment host or network]
+    proxy -->|HTTP, local| app[Application server<br/>API, dashboard, scheduler, agents]
+    app --> db[(Database)]
+    app --> stores[(Raster and file stores)]
+    db -.reads rasters.-> stores
+    app -->|job payload, mounts| sandbox[Sandboxed jobs]
+  end
+  sandbox -->|public internet only| sources((Data sources))
+  app -->|optional| model((AI model provider))
+```
+
+- **Ingress.** Only the reverse proxy is reachable from outside; the host
+  firewall closes every other port except administrative SSH. The
+  application port, the database and the stores are reachable only on the
+  host (or the deployment's private network when components are split).
+  Webhook senders, API clients and browsers all arrive through the proxy.
+- **Application egress.** The application server connects to two places only:
+  the configured AI model provider, when one is set, and the basemap tile
+  server (configurable, or off). Basemap requests are resolved against that
+  configured server; the application never fetches URLs supplied in requests.
+- **Job egress.** Integration code runs only in the sandbox, which reaches the
+  public internet and nothing else: private, link-local, carrier-grade NAT
+  and cloud-metadata ranges are dropped in the job's network namespace, and
+  deployers can add their own addresses (for example the host's public IPs).
+  Jobs hold no database credentials; they exchange data with the engine
+  through files.
+
+### 5.2 Authorization
+
+| Capability | viewer | editor | admin |
+|---|---|---|---|
+| Read data, layers, tiles, catalog; view dashboards; Explore | yes | yes | yes |
+| Design, install, run, schedule, import and export integrations; build dashboards | | yes | yes |
+| Set credential values; rotate webhook URLs; publish dashboards publicly | | | yes |
+| Manage users and roles; deployment settings, account policy, AI provider and limits | | | yes |
+
+Each user has a unique identifier and exactly one role; an admin assigns
+roles, and the last active admin cannot be demoted or disabled. Every API
+token acts with its owner's current role. On the database side, privileges
+follow the same split: the application connects with a role that owns its
+schemas but is not a superuser, all user-authored SQL (dashboards, Explore,
+the assistant, the designer's table queries) runs under a read-only role that
+can see integrated data and nothing else, and integration jobs have no
+database access at all. One deployment serves one institution; separation
+between institutions is by separate deployments.
+
+### 5.3 Cryptography and keys
+
+- **In transit:** HTTPS with TLS 1.2 or higher, terminated at the reverse
+  proxy with a publicly trusted certificate.
+- **Credentials at rest:** integration credentials and the AI provider key are
+  encrypted with AES-256-GCM (random 96-bit nonce per value, authenticated)
+  under a 256-bit deployment key. The key is supplied to the service through
+  its environment and never stored in the database, images, definitions or
+  backups of the database; where it is kept (a protected file, a secrets
+  manager, a key vault) is the deploying organization's choice, and it must be
+  backed up separately (losing it makes stored credentials unrecoverable).
+- **Passwords:** scrypt, a memory-hard hash, with a random salt per password;
+  session and API tokens are 256-bit random values stored only as SHA-256
+  hashes.
+- **Data at rest:** disk and database encryption are deploying-organization
+  controls, compatible with the platform unchanged.
+
+### 5.4 Webhooks
+
+Each webhook integration has its own capability URL ending in a random
+122-bit token; possession of the URL is the sender's credential, so it is
+shown only to editors and admins. An admin revokes a URL by rotating it,
+after which the old one answers as unknown. Requests must be JSON and at most
+1 MB; malformed ones are rejected individually and never reach a run. Events
+are stored, then consumed by the integration's next run, which validates
+them like any other source data. Every received request is written to the
+security log with the token redacted. Rate limiting is a control at the
+reverse proxy.
+
+### 5.5 AI providers and data
+
+The AI designer, Explore and the dashboard builder send context to the
+configured model provider: the user's messages, table and column names and
+the area of interest, SQL and samples of query results, and integration code
+and run logs. Passwords, API keys and stored credential values are never
+sent. With a self-hosted model nothing leaves the deployment; with a hosted
+provider, each user accepts a notice listing what is sent before first use,
+and the provider is declared in the exceptions register. Code the designer
+writes runs only in the sandbox (section 3.3) and becomes a running
+integration only after a successful cold run and the operator's acceptance.
+Daily token caps per user and per deployment bound spend.
+
 ## 6. Deployment architecture
 
 A deployment is one application server process (or several, sharing the
@@ -499,6 +612,43 @@ Low-connectivity operation is a design constraint, not an afterthought:
   networks beyond reaching its data sources.
 - AI features degrade gracefully to absent when no model (or no
   connectivity to one) is available.
+
+What this means in practice:
+
+- **Without internet,** the platform keeps working on the local network: the
+  interface, API, stored data, dashboards and data tiles are all served by
+  the deployment, with no external scripts or fonts.
+- **After an outage,** ingestion resumes from each integration's recorded
+  state and backfills what it missed.
+- **AI features** need a reachable model endpoint, which may be a model
+  server on the local network.
+- **The basemap** is fetched from an upstream tile server and cached, so
+  areas not yet cached are blank while disconnected; a local tile server can
+  be configured instead. Data sources are fetched when connectivity returns.
+
+### 6.1 Operating without an AI model
+
+AI is optional. Without a configured model, every library and imported
+integration installs and runs on schedule, webhooks are received, and the
+API, dashboards and tiles are fully available; only the AI designer, Explore
+and the dashboard builder are unavailable. An admin sets the provider, model
+and key at runtime in Settings: a hosted provider, or any OpenAI-compatible
+endpoint, including a self-hosted open-weights model server. The model must
+meet the minimum capability profile in section 3.7.
+
+### 6.2 Failure handling and observability
+
+| Concern | Mechanism |
+|---|---|
+| Runaway jobs | A wall-clock timeout per run, declared in the definition and capped by the deployment |
+| Dead workers | Running jobs heart-beat; a reaper fails runs whose worker stopped, releasing the integration for its next run |
+| Outages at the source | Incremental state lets the next run resume and backfill; a failed run is retried at its next scheduled time |
+| Stale data | Freshness against the declared cadence: an integration with no successful run within twice its cadence is reported overdue |
+| Suspect data | Validation findings flag the run without rejecting data |
+| Monitoring | Run status, failures, overdue and flagged integrations on the home page; a health report script suited to cron alerting; structured JSON-lines security and run-outcome events on the service log, for the deployer's monitoring and SIEM |
+
+Alerting thresholds and on-call routing belong to the deployer's monitoring
+stack.
 
 ## 7. Technology neutrality and the reference implementation
 

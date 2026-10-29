@@ -20,6 +20,32 @@ install on your own machine, use [Quickstart](Quickstart.md) instead.
 - For HTTPS, a DNS name with an A (and AAAA, if any) record pointing at the
   host, and ports 80 and 443 reachable from the internet.
 
+### Reference profile and scaling
+
+Reference profile for one country (the proof-of-concept scope: the country's
+library integrations and a handful of concurrent operators): a single host
+with 4 vCPUs, 8 GB of memory (16 GB to run several large jobs at once) and
+100 GB of disk. Size disk to the raster layers installed and memory to the
+number of jobs that should run at once.
+
+The design scales in these ways:
+
+- **Jobs.** Runs queue in the database and are claimed under a lease, so any
+  number of server processes can drain one queue. Capacity grows by running
+  more server processes, on this host or on others pointed at the same
+  database and the same raster and file stores. `SANDBOX_MEMORY_MB` and the
+  `JOB_MAX_*` ceilings bound what one host commits.
+- **Storage.** The raster store is a directory, so it can be a larger disk, a
+  network filesystem or an object-storage mount, provided Postgres can read
+  the same path.
+- **Database.** Standard Postgres: vertical scaling, read replicas and managed
+  high-availability offerings apply unchanged.
+- **Requests.** The web process holds no session state of its own (sessions
+  live in the database), so several can sit behind one load balancer.
+
+Performance targets and sizing criteria for procurement are set in UNICEF's
+technical specifications (Deliverable 2), not here.
+
 ## Install
 
 ```sh
@@ -101,7 +127,36 @@ proxy to:
 - not buffer responses on `/api/sessions/*/events`, which are server-sent
   event streams.
 
+### Single sign-on and multi-factor authentication
+
+The application signs users in with local accounts. To meet enterprise
+sign-on and multi-factor requirements, place it behind an identity-aware
+proxy (for example oauth2-proxy, Pomerium, or a cloud identity gateway) that
+authenticates users against the organization's identity provider over OIDC
+or OAuth 2.0, with MFA enforced there. Users then pass the proxy, then sign
+in to their local account. No application change is needed, but the proxy
+must:
+
+- serve the application at the root of its hostname (the interface uses
+  absolute paths such as `/api` and `/tiles`);
+- let `/hooks/*` through without sign-in: webhook senders cannot complete
+  an interactive login, and the secret token in the URL is their credential;
+- let `/kit/*` through without sign-in: dashboards run in a sandboxed frame
+  that loads these public runtime files without cookies;
+- let API requests carrying `Authorization: Bearer dit_...` through, or route
+  them separately: external systems use personal access tokens and cannot
+  sign in interactively. Where policy requires MFA for access from outside the
+  trusted network, accept bearer requests only from inside it.
+
+Public dashboards reach only people who pass the proxy. The session cookie
+(`di_session`, host-only, `HttpOnly`, `SameSite=Lax`) does not clash with the
+proxy's own cookie.
+
 ## Updates
+
+Each release is a semantic-version tag with release notes on the repository's
+Releases page; the notes say when a release changes the database or
+`runtimes/`. Back up first (see [Backups](#backups)), then:
 
 ```sh
 REF=v1.1.0 bash /opt/data-integrator/deploy/update.sh
@@ -113,6 +168,12 @@ migrations, re-applies the host guards and restarts the service. Without
 changes `runtimes/` (its release notes say so); rebuilding the images is
 slow. Runs in progress when the service restarts are failed by the reaper and
 retried on their next schedule.
+
+Migrations are forward-only. To roll back a release, restore the backup taken
+before the update (below) and run `update.sh` with the previous release's tag.
+`update.sh` stops at the first failing step; until its migrate step has run
+the database is unchanged, so fixing the cause and re-running it, or running
+it with the previous tag, recovers.
 
 ## Backups
 
