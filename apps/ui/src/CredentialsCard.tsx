@@ -183,7 +183,7 @@ export function CredentialsCard({ sessionId, integrationId, items, isAdmin, onRe
                   </button>
                 )}
                 {!isSet && !preferred && sources.length > 0 && (
-                  <select defaultValue="" disabled={busy !== null} onChange={e => e.target.value && void copy(item, e.target.value)}>
+                  <select defaultValue="" disabled={busy !== null} aria-label={T`Copy ${item.name} from another integration`} onChange={e => e.target.value && void copy(item, e.target.value)}>
                     <option value="" disabled>{T`Copy from…`}</option>
                     {sources.map(s => (
                       <option key={s.integrationId} value={s.integrationId}>{s.integrationId}</option>

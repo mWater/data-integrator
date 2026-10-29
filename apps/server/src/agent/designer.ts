@@ -13,7 +13,9 @@ import {
   SessionDeleteRefusedError,
   ToolOutcome
 } from "./types.js"
-import { ExecutorDeps, executeRun } from "../executor.js"
+import { RunFlag } from "../validation.js"
+import { effectiveJobLimits, effectiveTmpQuotaMb, ExecutorDeps, executeRun, jobFailureReason } from "../executor.js"
+import { createJobTmp } from "../jobTmp.js"
 import {
   adoptSessionFiles,
   AwaitingFileError,
@@ -28,7 +30,7 @@ import { COUNTRIES, lookupCountry } from "../countries.js"
 import { materializeInputs } from "../materialize.js"
 import { startPinnedRun, startProductionRun } from "../runService.js"
 import { cleanupScratch, draftSchema, scratchWorkDir } from "../scratch.js"
-import { getSecrets, listAllSecrets, listSecrets, SECRET_NAME_PATTERN } from "../secrets.js"
+import { getSecrets, listAllSecrets, listSecrets, SECRET_NAME_PATTERN, secretRedactor } from "../secrets.js"
 import { getLocales } from "../settings.js"
 import { detectBaseLocale, refreshChangedStrings, translateDefinition, wrapDefinitionStrings } from "../localizeCatalog.js"
 import { loadSkillsIndex, readSkill, SkillSummary } from "../skills.js"
@@ -42,7 +44,7 @@ export interface DesignerState {
   coldRun: { definitionHash: string; runId: string; files?: Record<string, string> } | null
   /** Most recent test run, for status display */
   lastRun: { runId: string; status: string; cold: boolean } | null
-  /** Consecutive failed runs sharing one error signature (thrash guard); absent on older sessions */
+  /** Consecutive failed runs sharing one error signature (thrash guard); absent until a run fails */
   failStreak?: { signature: string; count: number } | null
   /** True when finish started the fresh install's first production load; absent before finish */
   firstLoadStarted?: boolean
@@ -188,7 +190,11 @@ manual only), secrets? [names only], aoi? {bbox: [west, south, east, north], cou
 when writing an explicit aoi, take coordinates from lookup_country — never from memory, so agent-authored
 boxes match the UI pickers exactly),
 runtime ("python" | "node"), limits? {timeoutMs?, memoryMb?, cpus?},
-destinations [below], validation?, code (via edit_code, not write_definition), contract: 2.
+destinations [below], validation? {expectedCadence? [ISO 8601 duration such as "P1D": the home page
+flags the integration when no run succeeds within twice it], ranges? [{destinationId, field, min?, max?}:
+physical bounds a numeric column or band can never cross, such as population >= 0 or a fraction 0..1;
+violations flag the run, never reject it, so do not use them for plausible-but-unusual values]},
+code (via edit_code, not write_definition), contract: 2.
 
 Destinations:
 - {kind: "table", tableId, name? [human-readable display name], action:
@@ -222,9 +228,9 @@ sentences.
 # Code contract
 One file, entrypoint run(ctx).
 Python: def run(ctx); ctx.definition, ctx.secrets, ctx.previous_state, ctx.webhook_data,
-ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir.
+ctx.params, ctx.catalog, ctx.in_dir, ctx.work_dir, ctx.out_dir, ctx.tmp_dir.
 Node: export default async function run({definition, secrets, previousState, webhookData,
-params, catalog, inDir, workDir, outDir}).
+params, catalog, inDir, workDir, outDir, tmpDir}).
 catalog maps each declared raster layerId to {snapshots: [{timestamp, timestampEnd?,
 sources}]} already promoted, ascending. Use it to skip periods already published unless
 params.force is set; return no artifact for a period that needs no update.
@@ -250,7 +256,10 @@ fields are matched to declared columns by name and cast; the file's geometry col
 the declared geometry column whatever it is named, and is reprojected to 4326 if needed.
 One layer per file. A table is either inline or a file, never both in one run.
 /work persists between runs of this integration; treat it as a cache, never as the source
-of truth. previousState is the state returned by the last successful run (null on the
+of truth, and keep in it only what a later run reuses (raw downloads worth not fetching
+again). /tmp (ctx.tmp_dir) is this run's own disk, empty at the start and deleted after:
+put unpacked archives, VRTs, intermediate GeoTIFFs and one-off downloads there, and run
+GDAL subprocesses with cwd there. Both have disk quotas. previousState is the state returned by the last successful run (null on the
 first run); use it for incremental ingestion. print/console.log output goes to the run log.
 
 Python image: gdal CLI tools, rasterio, geopandas, pandas, numpy, xarray, netCDF4,
@@ -305,7 +314,7 @@ the code must cope with the next version on its own:
   removed from the file would persist.
 - Do file work in Python. Read zipped shapefiles in place with geopandas or
   ogr via /vsizip/ (e.g. "/vsizip//in/files/districts.zip"), never by unzipping
-  to /work, and reproject geometry to EPSG:4326.
+  them, and reproject geometry to EPSG:4326.
 
 # Workflow
 0. If the draft id is empty, choose one (short snake_case derived from the request)
@@ -336,7 +345,7 @@ the code must cope with the next version on its own:
    code passed a cold run unchanged.
 
 Rules: never fabricate data. Credentials: reference secrets by name only (lowercase
-snake_case, e.g. tatirano_api_key); values are stored per integration, encrypted, and
+snake_case, e.g. weather_api_key); values are stored per integration, encrypted, and
 never pass through this conversation. Before declaring a new name call list_secrets:
 when the deployment already holds a credential for the same service, request that
 name and set copyFrom so the operator can reuse it. To obtain a value call
@@ -498,7 +507,7 @@ ${index}`
             .array(
               z.object({
                 name: z.string().describe("Secret name the code reads via ctx.secrets; lowercase snake_case"),
-                purpose: z.string().describe("One line: what it is and what it unlocks, e.g. 'API key for app.tatirano.org'"),
+                purpose: z.string().describe("One line: what it is and what it unlocks, e.g. 'API key for api.weather.example.org'"),
                 help: z.string().optional().describe("Where to obtain it: a URL or a short hint"),
                 copyFrom: z
                   .string()
@@ -796,10 +805,12 @@ ${index}`
     if (!image) return { result: `No image configured for runtime ${effectiveRuntime}` }
     const secrets = await this.loadSecrets(state)
     if (typeof secrets === "string") return { result: secrets }
+    const redact = secretRedactor(secrets)
 
     const workDir = scratchWorkDir(this.deps.workRoot, sessionId)
     await mkdir(workDir, { recursive: true })
     const outDir = await mkdtemp(path.join(tmpdir(), "snippet-out-"))
+    const tmpDir = await createJobTmp(this.deps.workRoot, "snippet")
     let inDir: string | undefined
     try {
       const files = await this.sessionFiles(state, sessionId, "snippet")
@@ -810,6 +821,11 @@ ${index}`
         inDir = readsFiles ? await this.deps.files!.jobDir() : await mkdtemp(path.join(tmpdir(), "snippet-in-"))
         await materializeInputs(this.deps, state.definition, inDir, files)
       }
+      // Snippets count against the host's sandbox memory and the deployment ceilings like runs
+      const limits = effectiveJobLimits(SNIPPET_LIMITS, this.deps)
+      const release = this.deps.sandboxes
+        ? await this.deps.sandboxes.acquire(limits.memoryMb, reason => events({ type: "job_log", line: reason }))
+        : () => {}
       const result = await this.deps.runner.run(
         {
           image,
@@ -821,17 +837,27 @@ ${index}`
             previousState: null,
             params: {}
           },
-          mounts: { workDir, outDir, inDir },
-          limits: SNIPPET_LIMITS
+          mounts: { workDir, outDir, inDir, tmpDir },
+          limits: {
+            cpus: limits.cpus,
+            memoryMb: limits.memoryMb,
+            timeoutMs: limits.timeoutMs,
+            tmpDiskMb: effectiveTmpQuotaMb(state.definition.limits, this.deps) ?? undefined
+          }
         },
-        { onStderrLine: line => events({ type: "job_log", line }) }
-      )
-      const parts = [`Snippet ${result.status} (exit ${result.exitCode})`]
-      if (result.stdout) parts.push(`stdout:\n${result.stdout}`)
-      if (result.status !== "succeeded" && result.stderrTail) parts.push(`stderr:\n${result.stderrTail}`)
+        { onStderrLine: line => events({ type: "job_log", line: redact(line) }) }
+      ).finally(release)
+      const parts = [
+        result.status === "failed" && result.abortedReason === undefined
+          ? `Snippet failed: ${jobFailureReason(result, limits.memoryMb)}`
+          : `Snippet ${result.status} (exit ${result.exitCode})`
+      ]
+      if (result.stdout) parts.push(`stdout:\n${redact(result.stdout)}`)
+      if (result.status !== "succeeded" && result.stderrTail) parts.push(`stderr:\n${redact(result.stderrTail)}`)
       return { result: parts.join("\n") }
     } finally {
       await rm(outDir, { recursive: true, force: true })
+      await rm(tmpDir, { recursive: true, force: true })
       if (inDir) await rm(inDir, { recursive: true, force: true })
     }
   }
@@ -895,10 +921,15 @@ ${index}`
       onLogLine: line => events({ type: "job_log", line })
     })
 
-    const final = await this.deps.pool.query("SELECT status, error, stats, log FROM app.runs WHERE id = $1", [runId])
-    const { status, error, stats, log } = final.rows[0]
+    const final = await this.deps.pool.query("SELECT status, error, stats, log, flags FROM app.runs WHERE id = $1", [runId])
+    const { status, error, stats, log, flags } = final.rows[0]
     const parts = [`${cold ? "Cold" : "Warm"} run ${status}.`]
     if (stats) parts.push(`stats: ${JSON.stringify(stats)}`)
+    if (flags) {
+      parts.push(
+        `validation flags (data committed, but check whether the data or the rule is wrong):\n${(flags as RunFlag[]).map(f => `- ${f.message}`).join("\n")}`
+      )
+    }
     if (error) parts.push(`error: ${error}`)
     if (log) parts.push(`log tail:\n${String(log).slice(-4000)}`)
 
@@ -946,6 +977,9 @@ ${index}`
     const client = await this.deps.pool.connect()
     try {
       await client.query("BEGIN TRANSACTION READ ONLY")
+      // The read-only query role: the agent's SQL never reaches app (users,
+      // tokens, secrets), and results go to the model provider
+      await client.query("SET LOCAL ROLE sql_engine")
       await client.query("SET LOCAL statement_timeout = '15s'")
       // public carries the PostGIS functions (ST_Value etc. for the rasters table)
       await client.query(`SET LOCAL search_path = ${draftSchema(sessionId)}, data, public`)

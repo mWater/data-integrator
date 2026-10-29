@@ -10,8 +10,8 @@ const MIGRATION_FILE = /^\d+.*\.sql$/
 
 /**
  * Applies pending migrations from a directory in filename order, each in its
- * own transaction, recording them in app.migrations. Forward-only. Safe to run
- * from every server process at boot: an advisory lock serializes runners.
+ * own transaction, recording them in app.migrations. Forward-only. Run by
+ * `cli.js migrate`; an advisory lock serializes concurrent runners.
  *
  * @returns Names of the migrations applied by this call.
  */

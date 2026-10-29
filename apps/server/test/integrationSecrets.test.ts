@@ -117,15 +117,15 @@ test("routes: admin sets and deletes, names listed without values, viewers denie
   const del = await call("/api/integrations/owner_a/secrets/token_two", adminBearer, { method: "DELETE" })
   assert.equal(del.status, 200)
 
-  // Designer-declared names are environment-variable style; the route must take them
-  const upper = await call("/api/integrations/owner_a/secrets/TATIRANO_API_KEY", adminBearer, {
+  // Environment-variable style names are accepted alongside the lowercase convention
+  const upper = await call("/api/integrations/owner_a/secrets/WEATHER_API_KEY", adminBearer, {
     method: "PUT",
     body: JSON.stringify({ value: "k" })
   })
   assert.equal(upper.status, 200)
-  assert.deepEqual(await getSecrets(pool, key, "owner_a", ["TATIRANO_API_KEY"]), { TATIRANO_API_KEY: "k" })
+  assert.deepEqual(await getSecrets(pool, key, "owner_a", ["WEATHER_API_KEY"]), { WEATHER_API_KEY: "k" })
   assert.equal(
-    (await call("/api/integrations/owner_a/secrets/TATIRANO_API_KEY", adminBearer, { method: "DELETE" })).status,
+    (await call("/api/integrations/owner_a/secrets/WEATHER_API_KEY", adminBearer, { method: "DELETE" })).status,
     200
   )
 })

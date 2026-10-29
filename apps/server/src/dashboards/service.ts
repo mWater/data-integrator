@@ -65,7 +65,7 @@ export interface RenameDashboardResult {
 
 /**
  * Renames a dashboard's slug and/or display name. The id is the natural key;
- * migration 0013 makes its references ON UPDATE CASCADE, so one UPDATE moves
+ * its references are ON UPDATE CASCADE, so one UPDATE moves
  * versions and session bindings with it; the slug inside dashboard sessions'
  * state is rewritten alongside. Existing links (public ones included)
  * point at the old slug and break - the caller warns the user.

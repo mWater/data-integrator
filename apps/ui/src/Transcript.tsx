@@ -152,7 +152,19 @@ function ToolBlock({ label, items }: ToolBlockProps) {
   const [expanded, setExpanded] = useState(false)
   return (
     <div className="activity-block">
-      <div className="activity" onClick={() => setExpanded(v => !v)}>
+      <div
+        className="activity"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(v => !v)}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setExpanded(v => !v)
+          }
+        }}
+      >
         {label}
         {items.length > 1 && <span className="activity-count">×{items.length}</span>}
       </div>

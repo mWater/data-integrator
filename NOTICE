@@ -18,3 +18,7 @@ the License.
 This repository vendors no third-party source. Third-party dependencies are
 resolved at build time and retain their own licenses; see pnpm-lock.yaml for
 the JavaScript tree and runtimes/*/Dockerfile for the container images.
+
+apps/server/static/boundaries/ contains country boundaries derived from
+Natural Earth (https://www.naturalearthdata.com), which is in the public
+domain.

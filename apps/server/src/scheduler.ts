@@ -8,7 +8,7 @@
  *   servers cannot double-enqueue. A minute missed while the process is down
  *   is skipped by design: incremental integrations catch up from previousState
  *   on their next run.
- * - Workers: claim queued runs (FOR UPDATE SKIP LOCKED inside claimNextRun)
+ * - Workers: claim queued runs (claimNextRun: a conditional UPDATE per candidate)
  *   and execute them; per-integration serialization is the partial unique
  *   indexes' job, not the workers'.
  * - Reaper: periodically fails runs with stale heartbeats, releasing the
@@ -25,6 +25,7 @@ import { advanceCurrentPointers } from "./catalog.js"
 import { dropOrphanStagedTables } from "./destinations.js"
 import { claimNextRun, executeRun, ExecutorDeps, reapStaleRuns, RUN_LABEL } from "./executor.js"
 import { pruneSnapshots } from "./retention.js"
+import { sweepHousekeeping } from "./housekeeping.js"
 import { TileRenderer } from "./tiles.js"
 import { cronMatches, parseCron } from "./cron.js"
 import { missingFileSlot } from "./files.js"
@@ -32,6 +33,9 @@ import { IntegrationDefinition } from "@data-integrator/definitions"
 
 /** How often the reaper runs the retention sweep when no run has triggered one. */
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000
+
+/** How often the reaper runs housekeeping (housekeeping.ts). */
+const HOUSEKEEPING_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 /** Scheduler tuning; defaults suit a single-server deployment. */
 export interface SchedulerOptions {
@@ -55,8 +59,8 @@ export interface Scheduler {
 /**
  * Enqueues a cron run for every enabled, ready integration whose cron
  * matches the given instant. Exported for tests; the loop calls it once per
- * minute. Invalid crons are skipped (validateDefinition rejects them at
- * install, so they can only predate that check), and so are integrations
+ * minute. Invalid crons are skipped defensively (validateDefinition
+ * rejects them at install), and so are integrations
  * with a file slot that has never been filled: a run would only fail.
  */
 export async function enqueueDueRuns(deps: Pick<ExecutorDeps, "pool">, now: Date): Promise<number> {
@@ -117,6 +121,8 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
   // One retention sweep at a time; workers finishing together share it
   let pruning: Promise<void> | null = null
   let lastPrune = 0
+  // Housekeeping first runs one reap interval after start, then daily
+  let lastHousekeeping = 0
   const prune = () => {
     pruning ??= pruneSnapshots(deps.pool, deps.store, options.tiles)
       .then(r => {
@@ -173,6 +179,15 @@ export function startScheduler(deps: ExecutorDeps, options: SchedulerOptions = {
       await dropOrphanStagedTables(deps.pool).catch(err => console.error("staging cleanup failed:", err))
       await advanceCurrentPointers(deps.pool).catch(err => console.error("current snapshot sweep failed:", err))
       if (Date.now() - lastPrune >= PRUNE_INTERVAL_MS) await prune()
+      if (Date.now() - lastHousekeeping >= HOUSEKEEPING_INTERVAL_MS) {
+        lastHousekeeping = Date.now()
+        await sweepHousekeeping(deps.pool, deps.store, deps.workRoot)
+          .then(r => {
+            const removed = Object.entries(r).filter(([, n]) => n > 0)
+            if (removed.length > 0) console.log(`housekeeping: ${removed.map(([k, n]) => `${k} ${n}`).join(", ")}`)
+          })
+          .catch(err => console.error("housekeeping failed:", err))
+      }
       if (options.tiles && options.tileCacheMb) {
         await options.tiles
           .evictToBudget(options.tileCacheMb)

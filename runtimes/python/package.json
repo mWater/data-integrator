@@ -15,5 +15,15 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "runtimes/python"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/runtimes/python",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

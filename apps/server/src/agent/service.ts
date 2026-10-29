@@ -6,6 +6,7 @@ export type { SessionAttachment } from "./types.js"
 import { DesignerDeps, DesignerImplementation, DesignerState, initialDesignerState, pinsMatchColdRun } from "./designer.js"
 import { DashboardAgentState, DashboardDeps, DashboardImplementation, initialDashboardState } from "./dashboard.js"
 import { AssistantDeps, AssistantImplementation, AssistantState, initialAssistantState } from "./assistant.js"
+import { aiTokenBudget } from "../aiLimits.js"
 import { ID_PATTERN, definitionHash } from "../install.js"
 
 /** One event delivered to SSE subscribers; AgentEvents plus lifecycle. */
@@ -131,7 +132,7 @@ export class AgentService<S = unknown> {
   private constructor(pool: pg.Pool, adapter: KindAdapter<S>) {
     this.pool = pool
     this.adapter = adapter
-    this.controller = new AgentSessionController(pool, adapter.implementation)
+    this.controller = new AgentSessionController(pool, adapter.implementation, aiTokenBudget(pool))
   }
 
   /** The designer service: sessions design integrations through the job runner. */
@@ -196,10 +197,7 @@ export class AgentService<S = unknown> {
       kind: "dashboard",
       implementation: new DashboardImplementation(deps),
       bindIdSql: "NULLIF(client_state->>'dashboardId', '')",
-      // Sessions from before saving was the user's have no dirty flag: a built,
-      // never-saved draft is unsaved
-      unsavedSql:
-        "COALESCE((client_state->>'dirty')::boolean, client_state->'saved' = 'null'::jsonb AND client_state->'build' <> 'null'::jsonb)",
+      unsavedSql: "(client_state->>'dirty')::boolean",
       labelSql: "NULLIF(client_state->>'name', '')",
       initialState: (dashboardId?: string, locale?: string) => initialDashboardState(pool, dashboardId ?? "", locale),
       bindId: state => state.dashboardId || null,

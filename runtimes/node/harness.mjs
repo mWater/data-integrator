@@ -48,7 +48,8 @@ function buildCtx(payload) {
     catalog: payload.catalog ?? {},
     inDir: "/in",
     workDir: "/work",
-    outDir: "/out"
+    outDir: "/out",
+    tmpDir: "/tmp"
   }
 }
 

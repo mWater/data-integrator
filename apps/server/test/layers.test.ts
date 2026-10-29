@@ -106,6 +106,43 @@ test("layer detail carries bands, snapshots and provenance", async () => {
   assert.ok(layer.footprint)
 })
 
+test("STAC: landing, collection and items describe the catalog with absolute links", async () => {
+  const get = async (pathname: string) => {
+    const res = await fetch(`${base}${pathname}`, { headers: { cookie } })
+    return { status: res.status, type: res.headers.get("content-type"), body: await res.json() }
+  }
+  const stac = `${base}/api/stac`
+
+  const landing = await get("/api/stac")
+  assert.equal(landing.body.type, "Catalog")
+  assert.ok(landing.body.conformsTo.includes("https://api.stacspec.org/v1.0.0/core"))
+  assert.ok(landing.body.links.some((l: { rel: string; href: string }) => l.rel === "child" && l.href === `${stac}/collections/drought`))
+
+  const collection = (await get("/api/stac/collections/drought")).body
+  assert.equal(collection.type, "Collection")
+  assert.equal(collection.title, "Drought indices")
+  assert.deepEqual(collection.extent.spatial.bbox, [[0, 0, 1, 1]])
+  assert.deepEqual(collection.summaries.bands.map((b: { name: string }) => b.name), ["spei3", "spei6"])
+  assert.equal((await get("/api/stac/collections")).body.collections.length, 1)
+
+  const items = await get("/api/stac/collections/drought/items")
+  assert.equal(items.type, "application/geo+json")
+  assert.equal(items.body.numberReturned, 1)
+  const feature = items.body.features[0]
+  assert.equal(feature.id, snapshotId)
+  assert.deepEqual(feature.bbox, [0, 0, 1, 1])
+  assert.equal(feature.assets.data.href, `${base}/api/snapshots/${snapshotId}/download`)
+  assert.deepEqual((await get(`/api/stac/collections/drought/items/${snapshotId}`)).body.id, snapshotId)
+
+  // Filters exclude, bad parameters are 400, unknown ids 404
+  assert.equal((await get("/api/stac/collections/drought/items?datetime=2000-01-01T00:00:00Z/2000-12-31T00:00:00Z")).body.numberReturned, 0)
+  assert.equal((await get("/api/stac/collections/drought/items?bbox=10,10,11,11")).body.numberReturned, 0)
+  assert.equal((await get("/api/stac/collections/drought/items?bbox=0.5,0.5,2,2")).body.numberReturned, 1)
+  assert.equal((await get("/api/stac/collections/drought/items?datetime=yesterday")).status, 400)
+  assert.equal((await get("/api/stac/collections/nope")).status, 404)
+  assert.equal((await fetch(`${stac}`)).status, 401)
+})
+
 test("current snapshot is the newest whose time has arrived, not the furthest projection", async () => {
   const run = await pool.query(
     "INSERT INTO app.runs (integration_id, trigger, status) VALUES ('layer_src', 'manual', 'succeeded') RETURNING id"

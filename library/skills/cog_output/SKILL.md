@@ -15,12 +15,12 @@ produce them, with two sandbox-specific traps.
 process working directory**, and the container rootfs is read-only, so
 `gdalwarp -of COG` (and sometimes `gdal_translate -of COG` on large inputs)
 fails with an unhelpful nonzero exit when cwd is not writable. Run GDAL
-subprocesses with `cwd` set beside the destination (or in /work):
+subprocesses with `cwd` set beside the destination (or in ctx.tmp_dir):
 
     subprocess.run(args, cwd=os.path.dirname(output_path), ...)
 
-The alternative that also works: write a plain tiled GTiff first, then
-`gdal_translate -of COG` from /work to /out.
+The alternative that also works: write a plain tiled GTiff to ctx.tmp_dir
+first, then `gdal_translate -of COG` from there to /out.
 
 ## Command shapes that work
 

@@ -12,6 +12,7 @@ import {
   getHome,
   HomeIntegration,
   HomeCredentialNeed,
+  HomeQualityIssue,
   HomeProblem,
   HomeSource,
   HomeSummary,
@@ -287,6 +288,29 @@ function CredentialsNeeded({ needs }: { needs: HomeCredentialNeed[] }) {
   )
 }
 
+/** Data-quality alerts: flagged latest runs and overdue integrations, one line each. */
+function QualityIssues({ issues }: { issues: HomeQualityIssue[] }) {
+  if (issues.length === 0) return null
+  return (
+    <div className="home-alerts">
+      {issues.slice(0, PROBLEM_LIMIT).map(issue => (
+        <a className="home-alert attention" key={issue.id} href={`#/integration/${issue.id}`}>
+          <span className="chip chip-paused">{issue.kind === "stale" ? T`overdue` : T`flagged`}</span>
+          <span className="grow">
+            <b>{localizeData(issue.name)}</b>{" "}
+            {issue.kind === "stale"
+              ? issue.lastSuccessAt
+                ? T`last loaded data ${since(issue.lastSuccessAt) ?? ""}, later than expected`
+                : T`has never loaded data`
+              : issue.messages.join("; ")}
+          </span>
+          <span className="home-alert-action">{T`Look at the runs`}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
 /** Welcome state: no data has landed yet. */
 function Welcome({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) {
   const [busy, setBusy] = useState(false)
@@ -445,6 +469,7 @@ function Active({ home, canDesign }: { home: HomeSummary; canDesign: boolean }) 
 
       <Problems problems={home.problems} />
       <CredentialsNeeded needs={home.credentialsNeeded} />
+      <QualityIssues issues={home.quality} />
 
       <div className="home-columns">
         <Panel title={T`Your data`} link={T`All ${sources} sources`} href="#/data">

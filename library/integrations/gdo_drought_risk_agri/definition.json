@@ -118,5 +118,15 @@
         }
       ]
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "drought_risk_agri",
+        "field": "risk_class",
+        "min": 0,
+        "max": 3
+      }
+    ]
+  }
 }

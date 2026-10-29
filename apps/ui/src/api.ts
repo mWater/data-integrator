@@ -94,8 +94,8 @@ export interface DashboardAgentState {
   build: DashboardBuild | null
   /** Saved version once the user saved */
   saved: { version: number } | null
-  /** True when the draft has edits the saved version lacks; absent in sessions from before saving was the user's */
-  dirty?: boolean
+  /** True when the draft has changes the saved version (if any) lacks */
+  dirty: boolean
   /** Slug and name the agent proposed for the first save; null until it is ready */
   proposed?: { id: string; name: string } | null
 }
@@ -224,6 +224,20 @@ export interface RunSummary {
   stats: { rows?: Record<string, number>; snapshots?: number; durationMs?: number } | null
   /** Error message on failure */
   error: string | null
+  /** Validation flags the run raised; null when none */
+  flags: RunFlag[] | null
+}
+
+/** One data-quality finding on a run: values outside a range rule or a column's codes. */
+export interface RunFlag {
+  /** tableId or layerId */
+  destinationId: string
+  /** Column id or band id */
+  field: string
+  /** Which rule raised it */
+  rule: "range" | "enum"
+  /** One-line description */
+  message: string
 }
 
 /** Per-destination stored-data stats. */
@@ -318,6 +332,54 @@ export function clearAiSettings(): Promise<AiSettings> {
   return request("/api/settings/ai", { method: "DELETE" })
 }
 
+/** Daily AI token caps; null means no cap. */
+export interface AiLimits {
+  /** Tokens one user's sessions may use per UTC day */
+  userDailyTokens: number | null
+  /** Tokens all sessions together may use per UTC day */
+  deploymentDailyTokens: number | null
+}
+
+/** The caps plus the deployment's usage so far today. */
+export interface AiLimitsView {
+  /** Caps in force */
+  limits: AiLimits
+  /** Tokens used by everyone since midnight UTC */
+  usedToday: number
+}
+
+/** Reads the daily AI token caps (admins). */
+export function getAiLimits(): Promise<AiLimitsView> {
+  return request("/api/settings/ai_limits")
+}
+
+/** Saves the daily AI token caps (admins). */
+export function saveAiLimits(limits: AiLimits): Promise<AiLimitsView> {
+  return request("/api/settings/ai_limits", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(limits)
+  })
+}
+
+/** Optional password expiry and inactivity disabling; null turns a rule off. */
+export interface AccountPolicy {
+  /** Days after which a password must be changed at next sign-in */
+  passwordMaxAgeDays: number | null
+  /** Days without sign-in or API use after which an account is disabled */
+  inactiveDisableDays: number | null
+}
+
+/** Reads the account policy (admins). */
+export async function getAccountPolicy(): Promise<AccountPolicy> {
+  return (await request<{ policy: AccountPolicy }>("/api/settings/account_policy")).policy
+}
+
+/** Saves the account policy (admins). */
+export async function saveAccountPolicy(policy: AccountPolicy): Promise<AccountPolicy> {
+  return (await request<{ policy: AccountPolicy }>("/api/settings/account_policy", jsonBody("PUT", policy))).policy
+}
+
 /** The /api/me payload: the signed-in user plus the AI wiring. */
 export interface Me {
   /** The signed-in user */
@@ -354,18 +416,26 @@ export function acknowledgeAi(): Promise<{ ok: boolean }> {
   return request("/api/me/ai-acknowledge", { method: "POST" })
 }
 
-/** Signs in; the session rides an httpOnly cookie afterwards. */
-export async function login(email: string, password: string): Promise<User> {
-  const result = await request<{ user: User }>(
-    "/api/login",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password })
-    },
-    true
-  )
-  return result.user
+/** Thrown by login when the password is past the deployment's maximum age. */
+export class PasswordExpiredError extends Error {}
+
+/**
+ * Signs in; the session rides an httpOnly cookie afterwards. An expired
+ * password throws PasswordExpiredError; retry with its replacement as
+ * newPassword.
+ */
+export async function login(email: string, password: string, newPassword?: string): Promise<User> {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password, ...(newPassword !== undefined ? { newPassword } : {}) })
+  })
+  const body = (await res.json().catch(() => ({}))) as { user?: User; error?: string; code?: string }
+  if (!res.ok) {
+    if (body.code === "password_expired") throw new PasswordExpiredError(body.error)
+    throw new Error(body.error ?? `HTTP ${res.status}`)
+  }
+  return body.user!
 }
 
 /** Signs out and revokes the session. */
@@ -656,7 +726,20 @@ export interface HomeIntegration {
   lastRunAt: string | null
 }
 
-/** An enabled integration whose most recent run failed. */
+/** An enabled integration whose data needs a look: its latest run raised flags, or it is overdue. */
+export interface HomeQualityIssue {
+  /** Integration id */
+  id: string
+  /** Display name */
+  name: LocalizedString
+  /** flagged: the latest successful run raised validation flags; stale: no success within twice its expected cadence */
+  kind: "flagged" | "stale"
+  /** Flag messages (flagged only) */
+  messages: string[]
+  /** Latest successful run's finish time (ISO), or null when it never succeeded */
+  lastSuccessAt: string | null
+}
+
 /** An integration waiting for credentials before it can run. */
 export interface HomeCredentialNeed {
   /** Integration id */
@@ -671,6 +754,7 @@ export interface HomeCredentialNeed {
   sessionId: string | null
 }
 
+/** An enabled integration whose most recent run failed. */
 export interface HomeProblem {
   /** Integration id */
   id: string
@@ -724,6 +808,8 @@ export interface HomeSummary {
   problems: HomeProblem[]
   /** Integrations whose declared credentials are not all stored */
   credentialsNeeded: HomeCredentialNeed[]
+  /** Integrations whose latest data raised validation flags or is overdue */
+  quality: HomeQualityIssue[]
   /** Agent-backed features available here */
   ai: HomeAi
 }

@@ -299,6 +299,11 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
                       : run.stats
                         ? runStatsText(run.stats)
                         : ""}
+                    {run.flags && (
+                      <ul className="run-flags">
+                        {run.flags.map(flag => <li key={`${flag.destinationId}.${flag.field}.${flag.rule}`}>{flag.message}</li>)}
+                      </ul>
+                    )}
                   </td>
                 </tr>
               ))}

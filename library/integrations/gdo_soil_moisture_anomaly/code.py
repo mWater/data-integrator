@@ -129,9 +129,9 @@ def clean_values(raw):
     return values, int(extreme.sum())
 
 
-def write_cog(values, transform, dekad, work_dir, out_dir):
+def write_cog(values, transform, dekad, tmp_dir, out_dir):
     stem = f"{LAYER_ID}_{dekad.replace('-', '')}"
-    temporary = os.path.join(work_dir, stem + "_source.tif")
+    temporary = os.path.join(tmp_dir, stem + "_source.tif")
     destination = os.path.join(out_dir, stem + ".tif")
     profile = {
         "driver": "GTiff",
@@ -157,7 +157,7 @@ def write_cog(values, transform, dekad, work_dir, out_dir):
             "-co", "COMPRESS=DEFLATE", "-co", "PREDICTOR=NO", "-co", "BLOCKSIZE=512",
             "-co", "OVERVIEW_RESAMPLING=AVERAGE", temporary, destination,
         ],
-        cwd=work_dir,
+        cwd=tmp_dir,
         check=True,
     )
     os.remove(temporary)
@@ -257,7 +257,7 @@ def run(ctx):
                 if flip:
                     raw = raw[::-1, :]
                 values, masked = clean_values(raw[window])
-                relative_path = write_cog(values, transform, dekad, ctx.work_dir, ctx.out_dir)
+                relative_path = write_cog(values, transform, dekad, ctx.tmp_dir, ctx.out_dir)
                 valid = values[values != NODATA]
                 start = date.fromisoformat(dekad)
                 metadata = {

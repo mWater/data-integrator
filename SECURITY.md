@@ -14,8 +14,8 @@ repository.
 
 ## Supported versions
 
-The project is in active development and has not cut a release. Security fixes
-land on `main`. Deployments should track `main` until versioned releases begin.
+Security fixes land on `main` and in the latest release. Deployments should
+run the latest release and update with `deploy/update.sh`.
 
 ## Scope
 
@@ -36,8 +36,9 @@ in particular:
 - **Authentication and authorization.** Session handling, personal access
   tokens, and the admin/editor/viewer role checks.
 - **Secret handling.** Integration secrets are AES-256-GCM encrypted at rest
-  under `INTEGRATOR_SECRET_KEY`. Disclosure of plaintext secrets to logs, the
-  API, job containers that did not declare them, or the agent transcript.
+  under `INTEGRATOR_SECRET_KEY`, and their values are masked in stored run
+  output. Disclosure of plaintext secrets to logs, the API, job containers
+  that did not declare them, or the agent transcript.
 - **Tenant data exposure** through the query API, raster tiles, or COG
   downloads.
 

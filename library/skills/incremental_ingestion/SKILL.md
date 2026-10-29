@@ -36,7 +36,10 @@ broken fetches (network failures, 500s, malformed files).
 Cache raw downloads in `ctx.work_dir` keyed by period; write via a `.part`
 temp name and rename (atomic, so a killed run never leaves a truncated file
 that a later run trusts). Cold runs wipe /work — code must work from
-nothing, and the cache only makes it faster.
+nothing, and the cache only makes it faster. Only what a later run reuses
+belongs in /work: intermediates (unpacked archives, VRTs, GeoTIFFs before COG
+conversion) go in `ctx.tmp_dir`, which is this run's own disk and is removed
+afterwards, so they never pile up against the /work quota.
 
 Atomic rename is not enough for artifacts **built in stages** (a COG that
 gets overviews attached after creation, an archive assembled from parts):

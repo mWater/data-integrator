@@ -27,6 +27,11 @@ MAX_DAYS_PER_RUN = 7
 # used nearest-neighbour overviews, which erased sparse flood pixels.
 STATE_VERSION = 3
 TARGET_CRS = "EPSG:3857"
+# Rows merged at once per frame: a multiple of the 512-row output block.
+STRIP_ROWS = 2048
+# GDAL block cache in MB. GDAL's default is a share of the host's RAM, not of
+# the job's memory limit.
+GDAL_CACHE_MB = "512"
 
 
 def _iso(value):
@@ -110,6 +115,18 @@ def _source_window(bounds, left, top, width, height):
     return Window(col0, row0, col1 - col0, row1 - row0)
 
 
+def _strips(window):
+    """Splits a frame's window into strips of whole 512-row output blocks. A frame
+    spans hundreds of millions of pixels; merging it in one piece, its arrays and
+    temporaries together exceed the job memory limit."""
+    row = int(window.row_off)
+    end = row + int(window.height)
+    while row < end:
+        strip_end = min(end, (row // STRIP_ROWS + 1) * STRIP_ROWS)
+        yield Window(window.col_off, row, window.width, strip_end - row)
+        row = strip_end
+
+
 def _count_values(dataset, out_width=None, out_height=None, level_label="full resolution"):
     """Count values at full resolution or at one exact internal-overview shape."""
     out_width = out_width or dataset.width
@@ -157,7 +174,7 @@ def _build_max_pooled_overviews(intermediate, base, profile, ctx):
             child_width = (parent.width + 1) // 2
             child_height = (parent.height + 1) // 2
             factor *= 2
-            child_path = os.path.join(ctx.work_dir, f"{base}_overview_{factor}.tif")
+            child_path = os.path.join(ctx.tmp_dir, f"{base}_overview_{factor}.tif")
             partial_path = child_path + ".partial"
             # A killed worker can leave either name behind. Never let a digest/cache
             # hit make an incomplete level appear usable on the resumed run.
@@ -221,7 +238,7 @@ def _build_max_pooled_overviews(intermediate, base, profile, ctx):
 
 
 def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, base, ctx):
-    vrt_path = os.path.join(ctx.work_dir, base + ".vrt")
+    vrt_path = os.path.join(ctx.tmp_dir, base + ".vrt")
     partial_output = output + ".partial.tif"
     for stale_path in (vrt_path, partial_output):
         try:
@@ -241,7 +258,7 @@ def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, bas
 
     subprocess.run(
         ["gdal_translate", "-of", "VRT", intermediate, vrt_path],
-        cwd=ctx.work_dir,
+        cwd=ctx.tmp_dir,
         check=True,
     )
     tree = ET.parse(vrt_path)
@@ -263,7 +280,7 @@ def _write_cog_with_explicit_overviews(intermediate, overview_paths, output, bas
         "-co", "BLOCKSIZE=512", "-co", "BIGTIFF=IF_SAFER",
         "-co", "OVERVIEWS=FORCE_USE_EXISTING", vrt_path, partial_output,
     ]
-    subprocess.run(command, cwd=ctx.work_dir, check=True)
+    subprocess.run(command, cwd=ctx.tmp_dir, check=True)
     os.replace(partial_output, output)
     os.remove(vrt_path)
 
@@ -300,7 +317,7 @@ def _write_daily_composite(items, day, bbox, ctx):
         transform = rasterio.transform.from_origin(left, top, PIXEL_SIZE, PIXEL_SIZE)
 
         base = f"observed_flood_extent_{day.strftime('%Y%m%d')}"
-        intermediate = os.path.join(ctx.work_dir, base + "_daily.tif")
+        intermediate = os.path.join(ctx.tmp_dir, base + "_daily.tif")
         output_name = base + ".tif"
         output = os.path.join(ctx.out_dir, output_name)
         profile = {
@@ -322,18 +339,21 @@ def _write_daily_composite(items, day, bbox, ctx):
                     source, crs=TARGET_CRS, transform=transform, width=width, height=height,
                     src_nodata=NODATA, nodata=NODATA, resampling=Resampling.nearest,
                 ) as warped:
-                    incoming = warped.read(1, window=window)
-                valid = incoming != NODATA
-                if not valid.any():
-                    continue
-                unexpected = np.unique(incoming[valid][~np.isin(incoming[valid], (0, 1))])
-                if unexpected.size:
-                    raise RuntimeError(f"Unexpected GFM values in {item['id']}: {unexpected.tolist()}")
-                current = destination.read(1, window=window)
-                # Flood wins over no-flood in overlaps; an observation wins over nodata.
-                replace = valid & ((current == NODATA) | (incoming > current))
-                current[replace] = incoming[replace]
-                destination.write(current, 1, window=window)
+                    for strip in _strips(window):
+                        incoming = warped.read(1, window=strip)
+                        valid = incoming != NODATA
+                        if not valid.any():
+                            continue
+                        unexpected = np.unique(incoming[valid][~np.isin(incoming[valid], (0, 1))])
+                        if unexpected.size:
+                            raise RuntimeError(
+                                f"Unexpected GFM values in {item['id']}: {unexpected.tolist()}"
+                            )
+                        current = destination.read(1, window=strip)
+                        # Flood wins over no-flood in overlaps; an observation wins over nodata.
+                        replace = valid & ((current == NODATA) | (incoming > current))
+                        current[replace] = incoming[replace]
+                        destination.write(current, 1, window=strip)
             destination.update_tags(
                 source="Copernicus Global Flood Monitoring STAC",
                 source_asset=ASSET,
@@ -431,6 +451,8 @@ def _write_daily_composite(items, day, bbox, ctx):
 
 
 def run(ctx):
+    # Before GDAL first sizes its cache; gdal_translate inherits it too.
+    os.environ["GDAL_CACHEMAX"] = GDAL_CACHE_MB
     bbox = _aoi_bbox(ctx.definition)
     today = dt.datetime.now(dt.timezone.utc).date()
     end_day = today - dt.timedelta(days=1)

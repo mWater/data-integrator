@@ -18,6 +18,8 @@ import { AgentService, SessionEvent } from "../src/agent/service.js"
 import { AgentImplementation, ToolOutcome } from "../src/agent/types.js"
 import { randomBytes } from "node:crypto"
 import { setSecret } from "../src/secrets.js"
+import { createDraftSchema, draftSchema } from "../src/scratch.js"
+import { aiTokenBudget, aiUsageToday, saveAiLimits } from "../src/aiLimits.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 /** Secret key for credential tests. */
@@ -105,6 +107,28 @@ test("controller: tool call round-trip, persistence, and pause on plain text", a
   assert.equal(row.messages.length, 4)
   assert.equal(row.messages[2].role, "tool")
   assert.equal(row.messages[2].content[0].output.value, "echo:hello")
+})
+
+test("controller: daily token caps record usage and refuse model calls once reached", async () => {
+  const text = { content: [{ type: "text" as const, text: "ok" }], finishReason: "stop" as const, usage: USAGE, warnings: [] }
+  const model = new MockLanguageModelV4({ doGenerate: [text, text] })
+  const controller = new AgentSessionController(pool, echoImplementation(model), aiTokenBudget(pool))
+  const before = await aiUsageToday(pool, null)
+  await saveAiLimits(pool, { userDailyTokens: null, deploymentDailyTokens: before.deployment + 15 })
+
+  const sessionId = await controller.createSession({ count: 0 })
+  await controller.sendMessage(sessionId, "first")
+  assert.equal((await aiUsageToday(pool, null)).deployment, before.deployment + 15)
+
+  // The cap is reached: the next call is refused before reaching the model, and the session stays resumable
+  await assert.rejects(controller.sendMessage(sessionId, "second"), /daily AI allowance/)
+  assert.equal(model.doGenerateCalls.length, 1)
+  const row = (await pool.query("SELECT status, error FROM app.agent_sessions WHERE id = $1", [sessionId])).rows[0]
+  assert.equal(row.status, "paused")
+  assert.match(row.error, /daily AI allowance/)
+
+  await saveAiLimits(pool, { userDailyTokens: null, deploymentDailyTokens: null })
+  assert.equal((await controller.sendMessage(sessionId, "third")).reason, "awaiting_user")
 })
 
 test("controller: a finishing tool marks the session finished but it stays continuable", async () => {
@@ -642,6 +666,15 @@ test("designer: query_table rejects non-SELECT and runs read-only", async () => 
   assert.match(stacked.result, /SELECT/)
   const good = await designer.execute("query_table", { sql: "SELECT 1 AS one" }, initialDesignerState("demo"), noEvents, SID)
   assert.match(good.result, /"one":1/)
+
+  // Scratch tables read by plain name; the app schema stays out of reach
+  await createDraftSchema(pool, SID)
+  await pool.query(`CREATE TABLE ${draftSchema(SID)}.readings AS SELECT 7 AS level`)
+  const scratch = await designer.execute("query_table", { sql: "SELECT level FROM readings" }, initialDesignerState("demo"), noEvents, SID)
+  assert.match(scratch.result, /"level":7/)
+  const users = await designer.execute("query_table", { sql: "SELECT password_hash FROM app.users" }, initialDesignerState("demo"), noEvents, SID)
+  assert.match(users.result, /Query error: permission denied/)
+  await pool.query(`DROP SCHEMA ${draftSchema(SID)} CASCADE`)
 })
 
 /** Designer with a real secret key, for tools that read or write credentials. */

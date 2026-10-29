@@ -387,7 +387,7 @@ def run(ctx):
             session, ctx.work_dir, bbox, product, year, month, [d.day for d in dates]
         )
         digest = hashlib.sha256((download + product).encode()).hexdigest()[:16]
-        extract_dir = os.path.join(ctx.work_dir, f"extract_{digest}")
+        extract_dir = os.path.join(ctx.tmp_dir, f"extract_{digest}")
         netcdfs = _netcdf_files(download, extract_dir)
         for day, values, x, y in _daily_arrays(netcdfs, dates):
             basename, footprint = _write_cog(ctx.out_dir, day, values, x, y)

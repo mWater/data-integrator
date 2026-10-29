@@ -15,6 +15,9 @@ test("loadConfig: minimal valid environment applies defaults", () => {
   assert.equal(config.agent.effort, null)
   assert.equal(config.viteDevUrl, null)
   assert.ok(config.basemap.upstream)
+  assert.ok(config.jobMax.cpus >= 1)
+  assert.equal(config.jobMax.memoryMb, config.sandboxMemoryMb)
+  assert.equal(config.jobMax.timeoutMin, 360)
 })
 
 test("loadConfig: VITE_DEV_URL must be a local origin", () => {

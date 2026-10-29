@@ -1,5 +1,5 @@
 /**
- * Integration files (Integration Files.md): versions per declared slot, which
+ * Integration files (docs/Integration Files.md): versions per declared slot, which
  * version a run reads, and the current pointer a successful production run
  * moves. A run reads, per declared slot, its pin, else the slot's current
  * version, else nothing, in which case it is refused before it starts. There

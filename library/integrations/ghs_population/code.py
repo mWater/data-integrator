@@ -236,7 +236,7 @@ def _place_in_out(cached, out_dir, name):
     return name
 
 
-def _box_epoch(session, epoch, bbox, published, cache_root, work_dir, out_dir):
+def _box_epoch(session, epoch, bbox, published, cache_root, tmp_dir, out_dir):
     """Box mode: mosaic the tiles the box touches and clip to it into one COG."""
     names = _tile_names_for_box(epoch, bbox, published)
     if not names:
@@ -249,8 +249,8 @@ def _box_epoch(session, epoch, bbox, published, cache_root, work_dir, out_dir):
     if len(tile_paths) == 1:
         source_path = tile_paths[0]
     else:
-        source_path = os.path.join(work_dir, f"population_{epoch}.vrt")
-        _run_command(["gdalbuildvrt", "-overwrite", source_path] + tile_paths, work_dir)
+        source_path = os.path.join(tmp_dir, f"population_{epoch}.vrt")
+        _run_command(["gdalbuildvrt", "-overwrite", source_path] + tile_paths, tmp_dir)
 
     output_name = f"population_{epoch}.tif"
     output_path = os.path.join(out_dir, output_name)
@@ -260,13 +260,13 @@ def _box_epoch(session, epoch, bbox, published, cache_root, work_dir, out_dir):
         ["gdalwarp", "-of", "COG", "-te_srs", "EPSG:4326", "-te", *[str(v) for v in bbox], "-tap",
          "-tr", str(PIXEL_DEGREES), str(PIXEL_DEGREES), "-r", "near", "-ot", "Float32",
          "-dstnodata", str(NODATA), *COG_OPTIONS, source_path, output_path],
-        work_dir,
+        tmp_dir,
     )
     footprint = _check_output(output_path)
     return {"path": output_name, "footprint": footprint, "tiles": len(names)}
 
 
-def _world_epoch(session, epoch, published, cache_root, work_dir, out_dir):
+def _world_epoch(session, epoch, published, cache_root, tmp_dir, out_dir):
     """World mode: one COG per published tile, cached across runs so an interrupted epoch
     resumes. The extracted source is dropped once its COG exists."""
     cog_dir = os.path.join(cache_root, "cog", str(epoch))
@@ -281,7 +281,7 @@ def _world_epoch(session, epoch, published, cache_root, work_dir, out_dir):
             _run_command(
                 ["gdal_translate", "-q", "-of", "COG", "-ot", "Float32", "-a_nodata", str(NODATA),
                  *COG_OPTIONS, tile_path, partial],
-                work_dir,
+                tmp_dir,
             )
             os.replace(partial, cached)
             os.remove(tile_path)
@@ -341,13 +341,13 @@ def run(ctx):
             "native_crs": "ESRI:54009 (World Mollweide) at 100 m, resampled by the JRC to 3 arc-seconds",
         }
         if mode == "box":
-            artifact = _box_epoch(session, epoch, bbox, published, cache_root, ctx.work_dir, ctx.out_dir)
+            artifact = _box_epoch(session, epoch, bbox, published, cache_root, ctx.tmp_dir, ctx.out_dir)
             metadata["tiles"] = artifact.pop("tiles")
-            raster = {"layerId": "population", **artifact}
+            raster = {"layerId": "ghs_population", **artifact}
         else:
-            sources = _world_epoch(session, epoch, published, cache_root, ctx.work_dir, ctx.out_dir)
+            sources = _world_epoch(session, epoch, published, cache_root, ctx.tmp_dir, ctx.out_dir)
             metadata["tiles"] = len(sources)
-            raster = {"layerId": "population", "sources": sources, "footprint": WORLD_BBOX}
+            raster = {"layerId": "ghs_population", "sources": sources, "footprint": WORLD_BBOX}
         raster.update({
             "timestamp": f"{epoch}-01-01T00:00:00Z",
             "timestampEnd": f"{epoch + 1}-01-01T00:00:00Z",

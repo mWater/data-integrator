@@ -56,12 +56,12 @@
       "kind": "raster",
       "name": {
         "_base": "en",
-        "en": "Population",
-        "fr": "Population",
-        "pt": "População",
-        "es": "Población",
-        "mg": "Mponina",
-        "sw": "Idadi ya watu"
+        "en": "Population (GHS-POP)",
+        "fr": "Population (GHS-POP)",
+        "pt": "População (GHS-POP)",
+        "es": "Población (GHS-POP)",
+        "mg": "Mponina (GHS-POP)",
+        "sw": "Idadi ya watu (GHS-POP)"
       },
       "bands": [
         {
@@ -120,7 +120,7 @@
           }
         }
       ],
-      "layerId": "population",
+      "layerId": "ghs_population",
       "description": {
         "_base": "en",
         "en": "GHSL GHS-POP estimates of people per approximately 100 m grid cell for the deployment area of interest, one snapshot per five-year epoch.",
@@ -132,5 +132,14 @@
       },
       "temporality": "time-series"
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "ghs_population",
+        "field": "population",
+        "min": 0
+      }
+    ]
+  }
 }

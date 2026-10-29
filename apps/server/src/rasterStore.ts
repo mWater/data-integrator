@@ -3,8 +3,9 @@ import path from "node:path"
 
 /**
  * File-backed raster store: COG bytes on a local directory root, addressed by
- * paths relative to it (`<layerId>/<snapshotId>.tif`). S3-compatible backends
- * arrive later behind this same interface.
+ * paths relative to it (`<layerId>/<snapshotId>/<ordinal>.tif`). Postgres
+ * reads the same files for out-db SQL, so the store must be a filesystem the
+ * database server can see.
  */
 export class RasterStore {
   /** Absolute root directory of the store */

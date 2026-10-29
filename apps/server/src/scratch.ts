@@ -15,6 +15,18 @@ export function draftSchema(sessionId: string): string {
   return `draft_${sessionToken(sessionId)}`
 }
 
+/**
+ * Creates a session's draft schema, readable by sql_engine: the designer's
+ * query_table reads scratch tables under that role, never as the app.
+ */
+export async function createDraftSchema(client: pg.ClientBase | pg.Pool, sessionId: string): Promise<void> {
+  const schema = draftSchema(sessionId)
+  await client.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`)
+  await client.query(`GRANT USAGE ON SCHEMA ${schema} TO sql_engine`)
+  await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} GRANT SELECT ON TABLES TO sql_engine`)
+  await client.query(`GRANT SELECT ON ALL TABLES IN SCHEMA ${schema} TO sql_engine`)
+}
+
 /** raster_layers row id for a session's preview of a declared layer. */
 export function scratchLayerId(sessionId: string, layerId: string): string {
   return `draft_${sessionToken(sessionId)}_${layerId}`

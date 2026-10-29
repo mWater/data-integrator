@@ -47,6 +47,12 @@ before(async () => {
   editorBearer = await createApiToken(pool, editor.id, "editor-token")
 
   await installIntegration(pool, SHARED)
+  await installIntegration(pool, {
+    ...SHARED,
+    id: "global_demo",
+    aoi: null,
+    destinations: [{ ...SHARED.destinations[0], tableId: "global_rows" } as IntegrationDefinition["destinations"][number]]
+  })
 
   server = createApiServer(pool, new TileRenderer(new RasterStore("/nonexistent"), "/nonexistent"))
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve))
@@ -66,7 +72,7 @@ function call(pathname: string, bearer: string, init?: RequestInit): Promise<Res
   })
 }
 
-test("export is a downloadable definition with the AOI stripped", async () => {
+test("export is a downloadable definition with a concrete AOI stripped", async () => {
   const res = await call("/api/integrations/shared_demo/export", viewerBearer)
   assert.equal(res.status, 200)
   assert.match(res.headers.get("content-disposition") ?? "", /shared_demo\.integration\.json/)
@@ -74,6 +80,10 @@ test("export is a downloadable definition with the AOI stripped", async () => {
   assert.equal(exported.id, "shared_demo")
   assert.equal(exported.code, SHARED.code)
   assert.equal("aoi" in exported, false)
+
+  // Full extent is a property of the source, so it travels
+  const global = await (await call("/api/integrations/global_demo/export", viewerBearer)).json()
+  assert.equal(global.aoi, null)
 
   assert.equal((await call("/api/integrations/nope/export", viewerBearer)).status, 404)
 })

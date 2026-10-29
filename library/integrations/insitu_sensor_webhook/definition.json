@@ -42,24 +42,6 @@
     "webhookDelaySeconds": 900
   },
   "contract": 2,
-  "validation": {
-    "sensor_readings": {
-      "requiredColumns": [
-        "station_id",
-        "variable",
-        "timestamp",
-        "value",
-        "unit"
-      ]
-    },
-    "sensor_stations": {
-      "requiredColumns": [
-        "station_id",
-        "location",
-        "location_observed_at"
-      ]
-    }
-  },
   "description": {
     "_base": "en",
     "en": "Receives webhook-pushed groundwater-level and rainfall-gauge readings, upserts readings without duplication, and maintains each station's latest timestamped location. Malformed events are skipped and reported in the run log and run state.",

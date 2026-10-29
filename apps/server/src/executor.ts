@@ -4,8 +4,8 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 import pg from "pg"
-import { CatalogLayerState, JobHandle, JobPayload, Runner, parseJobOutput } from "@mwater/integration-runner"
-import { IntegrationDefinition, RunResult } from "@data-integrator/definitions"
+import { CatalogLayerState, JobHandle, JobPayload, JobResult, JOB_LIMIT_DEFAULTS, Runner, parseJobOutput } from "@mwater/integration-runner"
+import { IntegrationDefinition, JobLimitsSpec, RunResult } from "@data-integrator/definitions"
 import {
   applyRows,
   applyStagedTable,
@@ -20,11 +20,14 @@ import { materializeInputs } from "./materialize.js"
 import { FileStore } from "./fileStore.js"
 import { ResolvedFiles, resolveFiles, setCurrentVersions } from "./files.js"
 import { RasterStore } from "./rasterStore.js"
-import { draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
-import { getSecrets } from "./secrets.js"
+import { createDraftSchema, draftSchema, scratchLayerId, scratchWorkDir } from "./scratch.js"
+import { createJobTmp } from "./jobTmp.js"
+import { getSecrets, secretRedactor } from "./secrets.js"
+import { evaluateRasterRules, evaluateTableRules, RunFlag } from "./validation.js"
 import { getDefaultAoi } from "./settings.js"
 import { SandboxBudget } from "./sandboxBudget.js"
 import { enableOutDbSession, pruneRasterSql, registerRasterSqlInTx, validateRasterSqlRef } from "./rasterSql.js"
+import { logSecurityEvent } from "./securityLog.js"
 
 const execFileP = promisify(execFile)
 
@@ -45,8 +48,12 @@ export interface ExecutorDeps {
   databaseUrl: string
   /** /work ceiling and default in MB; absent or 0 leaves only workDiskMb */
   workQuotaMb?: number
+  /** Per-run /tmp ceiling and default in MB; absent or 0 leaves only tmpDiskMb */
+  tmpQuotaMb?: number
   /** Free-space floor in MB on the work root and raster store; absent or 0 disables */
   minFreeDiskMb?: number
+  /** Ceilings on a definition's cpus, memoryMb and timeoutMs; absent or 0 leaves each uncapped */
+  jobMax?: { cpus?: number; memoryMb?: number; timeoutMs?: number }
   /** Host-wide sandbox memory budget; absent admits every job immediately */
   sandboxes?: SandboxBudget
   /** Disk monitor poll interval; tests shorten it (default 30s) */
@@ -95,6 +102,75 @@ export function effectiveWorkQuotaMb(
   const ceiling = deps.workQuotaMb || null
   if (ceiling === null) return declared
   return declared === null ? ceiling : Math.min(declared, ceiling)
+}
+
+/**
+ * The /tmp quota a run executes under: the definition's tmpDiskMb capped by
+ * the deployment ceiling, or the ceiling itself when the definition declares
+ * nothing. Null means unlimited (the free-space floor still applies).
+ */
+export function effectiveTmpQuotaMb(
+  limits: IntegrationDefinition["limits"],
+  deps: Pick<ExecutorDeps, "tmpQuotaMb">
+): number | null {
+  const declared = limits?.tmpDiskMb ?? null
+  const ceiling = deps.tmpQuotaMb || null
+  if (ceiling === null) return declared
+  return declared === null ? ceiling : Math.min(declared, ceiling)
+}
+
+/** Job limits after the deployment ceilings, plus a log line per value they lowered. */
+export interface EffectiveJobLimits {
+  /** CPU cores */
+  cpus: number
+  /** Memory in MB */
+  memoryMb: number
+  /** Wall-clock timeout in ms */
+  timeoutMs: number
+  /** Run-log lines naming each requested limit a ceiling lowered */
+  notes: string[]
+}
+
+/**
+ * The cpus, memory and timeout a job executes under: the requested limits
+ * (runner defaults where none are given), each lowered to the deployment
+ * ceiling. Definitions are authored by editors and the agent, so the
+ * deployment, not the definition, decides how much of the host one job may hold.
+ */
+export function effectiveJobLimits(
+  requested: JobLimitsSpec | undefined,
+  deps: Pick<ExecutorDeps, "jobMax">
+): EffectiveJobLimits {
+  const notes: string[] = []
+  const cap = (name: string, asked: number | undefined, fallback: number, ceiling: number | undefined, env: string): number => {
+    const value = asked ?? fallback
+    if (!ceiling || value <= ceiling) return value
+    if (asked !== undefined) notes.push(`limits.${name} ${asked} lowered to the deployment maximum ${ceiling} (${env})`)
+    return ceiling
+  }
+  const max = deps.jobMax ?? {}
+  return {
+    cpus: cap("cpus", requested?.cpus, JOB_LIMIT_DEFAULTS.cpus, max.cpus, "JOB_MAX_CPUS"),
+    memoryMb: cap("memoryMb", requested?.memoryMb, DEFAULT_JOB_MEMORY_MB, max.memoryMb, "JOB_MAX_MEMORY_MB"),
+    timeoutMs: cap("timeoutMs", requested?.timeoutMs, JOB_LIMIT_DEFAULTS.timeoutMs, max.timeoutMs, "JOB_MAX_TIMEOUT_MIN"),
+    notes
+  }
+}
+
+/** Exit code of a container whose process was SIGKILLed, which is how the kernel ends a job over its memory limit. */
+const KILLED_EXIT_CODE = 137
+
+/**
+ * Why a job that was not aborted through its handle failed, in one line. A
+ * job killed for memory prints nothing of its own, so without this line its
+ * error would be whatever progress it last wrote.
+ */
+export function jobFailureReason(result: Pick<JobResult, "exitCode" | "memoryPeakBytes">, memoryMb: number): string {
+  if (result.exitCode === KILLED_EXIT_CODE) {
+    const peak = result.memoryPeakBytes !== undefined ? `; peak ${Math.round(result.memoryPeakBytes / (1024 * 1024))} MB including the sandbox` : ""
+    return `killed (exit code ${KILLED_EXIT_CODE}), most likely for exceeding its ${memoryMb} MB memory limit${peak}`
+  }
+  return result.exitCode === null ? "the job process could not be observed" : `exit code ${result.exitCode}`
 }
 
 /** One row of app.runs the executor cares about. */
@@ -148,9 +224,15 @@ export async function claimNextRun(pool: pg.Pool, workerId: string): Promise<Run
 export async function reapStaleRuns(pool: pg.Pool, staleMs = LEASE_STALE_MS): Promise<number> {
   const result = await pool.query(
     `UPDATE app.runs SET status = 'failed', finished_at = now(), error = 'worker lease expired'
-     WHERE status = 'running' AND heartbeat_at < now() - make_interval(secs => $1)`,
+     WHERE status = 'running' AND heartbeat_at < now() - make_interval(secs => $1)
+     RETURNING id, integration_id`,
     [staleMs / 1000]
   )
+  for (const row of result.rows) {
+    if (row.integration_id) {
+      logSecurityEvent("run.finished", { runId: row.id, integrationId: row.integration_id, status: "failed", error: "worker lease expired" })
+    }
+  }
   return result.rowCount ?? 0
 }
 
@@ -235,6 +317,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
   const scratch = opts?.scratch ?? null
   let outDir: string | null = null
   let inDir: string | null = null
+  let jobTmpDir: string | null = null
+  // Masks the run's secret values in everything job output feeds
+  let redact = (text: string) => text
   const stagedTables: StagedTable[] = []
   try {
     let definition: IntegrationDefinition
@@ -301,6 +386,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     const secrets = definition.secrets?.length
       ? await getSecrets(deps.pool, requireKey(deps), definition.id, definition.secrets)
       : {}
+    redact = secretRedactor(secrets)
     let previousState: unknown = null
     if (!opts?.cold) {
       const stateResult = scratch
@@ -353,6 +439,9 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     }
     outDir = await mkdtemp(path.join(tmpdir(), "job-out-"))
     const jobOutDir = outDir
+    jobTmpDir = await createJobTmp(deps.workRoot, "run")
+    const tmpDir = jobTmpDir
+    const tmpQuotaMb = effectiveTmpQuotaMb(definition.limits, deps)
 
     const logParts: string[] = []
     const started = Date.now()
@@ -370,7 +459,12 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     }
     // The lease heartbeat is already running, so queueing here for host
     // memory cannot get the run reaped as stale
-    const memoryMb = definition.limits?.memoryMb ?? DEFAULT_JOB_MEMORY_MB
+    const limits = effectiveJobLimits(definition.limits, deps)
+    for (const note of limits.notes) {
+      logParts.push(note)
+      opts?.onLogLine?.(note)
+    }
+    const memoryMb = limits.memoryMb
     const releaseMemory = deps.sandboxes
       ? await deps.sandboxes.acquire(memoryMb, reason => {
           logParts.push(reason)
@@ -382,17 +476,19 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       {
         image,
         payload,
-        mounts: { workDir, outDir: jobOutDir, inDir: inDir ?? undefined },
+        mounts: { workDir, outDir: jobOutDir, inDir: inDir ?? undefined, tmpDir },
         limits: {
-          cpus: definition.limits?.cpus,
-          memoryMb: definition.limits?.memoryMb,
-          timeoutMs: definition.limits?.timeoutMs,
-          workDiskMb: workQuotaMb ?? undefined
+          cpus: limits.cpus,
+          memoryMb: limits.memoryMb,
+          timeoutMs: limits.timeoutMs,
+          workDiskMb: workQuotaMb ?? undefined,
+          tmpDiskMb: tmpQuotaMb ?? undefined
         },
         labels: { [RUN_LABEL]: run.id }
       },
       {
-        onStderrLine: line => {
+        onStderrLine: raw => {
+          const line = redact(raw)
           logParts.push(line)
           opts?.onLogLine?.(line)
         },
@@ -436,11 +532,18 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
         )
       }
     }
+    if (jobResult.status === "failed" && jobResult.abortedReason === undefined) {
+      logParts.push(jobFailureReason(jobResult, memoryMb))
+    }
     const log = logParts.join("\n").slice(-256 * 1024)
 
     if (jobResult.status !== "succeeded") {
-      await finishRun(deps.pool, run, jobResult.status === "timeout" ? "timeout" : "failed", {
-        error: jobResult.abortedReason ?? (jobResult.stderrTail.slice(-2000) || `exit code ${jobResult.exitCode}`),
+      const stderr = redact(jobResult.stderrTail).slice(-2000)
+      const timedOut = jobResult.status === "timeout"
+      await finishRun(deps.pool, run, timedOut ? "timeout" : "failed", {
+        error:
+          jobResult.abortedReason ??
+          (timedOut ? stderr || `exit code ${jobResult.exitCode}` : [jobFailureReason(jobResult, memoryMb), stderr].filter(Boolean).join("\n")),
         log
       })
       return
@@ -454,7 +557,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     if (scratch) {
       const client = await deps.pool.connect()
       try {
-        await client.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`)
+        await createDraftSchema(client, scratch.sessionId)
         for (const dest of definition.destinations) {
           if (dest.kind === "table") await ensureTable(client, dest, schema)
           else await ensureScratchLayer(client, scratch.sessionId, layerRowFor(dest.layerId), dest)
@@ -483,6 +586,13 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
           layerRowFor(artifact.layerId)
         )
       })
+    }
+
+    // Range rules on bands read the stored files, so they run outside the transaction
+    const flags: RunFlag[] = []
+    for (const { artifact, layer, stored } of storedArtifacts) {
+      const files = stored.sources.map(source => path.resolve(deps.store.absolute(source.relPath)))
+      flags.push(...(await evaluateRasterRules(definition, artifact.layerId, layer.bands.map(b => b.id), files)))
     }
 
     const tableSpecs = new Map(
@@ -523,6 +633,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       for (const staged of stagedTables) {
         rowCounts[staged.spec.tableId] = await applyStagedTable(client, staged, run.id, schema)
       }
+      flags.push(...(await evaluateTableRules(client, definition, schema, run.id, Object.keys(rowCounts))))
       for (const { artifact, layer, stored } of storedArtifacts) {
         await registerSnapshot(client, run.id, artifact, stored, layer.temporality, layerRowFor(artifact.layerId))
         // SQL is a first-class consumer of raster data: a snapshot the
@@ -559,7 +670,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
       // everything above rolls back instead of landing twice
       const committed = await client.query(
         `UPDATE app.runs SET status = 'succeeded', finished_at = now(), state_out = $2,
-           definition_version = $3, stats = $4, log = $5, inputs = $6
+           definition_version = $3, stats = $4, log = $5, inputs = $6, flags = $8
          WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $7`,
         [
           run.id,
@@ -571,9 +682,10 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
             durationMs: Date.now() - started,
             ...(workUsedMb !== null ? { workMb: workUsedMb } : {})
           }),
-          log,
+          flags.length > 0 ? [log, ...flags.map(f => `flag: ${f.message}`)].join("\n") : log,
           inputs,
-          run.attempt
+          run.attempt,
+          flags.length > 0 ? JSON.stringify(flags) : null
         ]
       )
       if (committed.rowCount === 0) throw new Error("lease lost: the run was reclaimed by another worker")
@@ -586,6 +698,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     } finally {
       client.release()
     }
+    if (!scratch) logSecurityEvent("run.finished", { runId: run.id, integrationId: run.integration_id, status: "succeeded" })
 
     // Post-commit, best-effort: drop registrations of snapshots this run
     // superseded; the next run prunes again if this misses
@@ -594,7 +707,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     }
   } catch (err) {
     await finishRun(deps.pool, run, "failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: redact(err instanceof Error ? err.message : String(err)),
       log: null
     })
   } finally {
@@ -602,6 +715,7 @@ export async function executeRun(deps: ExecutorDeps, run: RunRow, opts?: RunOpti
     for (const staged of stagedTables) await dropStagedTable(deps.pool, staged)
     if (outDir) await rm(outDir, { recursive: true, force: true })
     if (inDir) await rm(inDir, { recursive: true, force: true })
+    if (jobTmpDir) await rm(jobTmpDir, { recursive: true, force: true })
   }
 }
 
@@ -623,11 +737,14 @@ async function finishRun(
   status: "failed" | "timeout",
   fields: { error: string; log: string | null }
 ): Promise<void> {
-  await pool.query(
+  const result = await pool.query(
     `UPDATE app.runs SET status = $2, finished_at = now(), error = $3, log = COALESCE($4, log)
      WHERE id = $1 AND status = 'running' AND attempt IS NOT DISTINCT FROM $5`,
     [run.id, status, fields.error, fields.log, run.attempt]
   )
+  if ((result.rowCount ?? 0) > 0 && run.integration_id) {
+    logSecurityEvent("run.finished", { runId: run.id, integrationId: run.integration_id, status, error: fields.error })
+  }
 }
 
 /**

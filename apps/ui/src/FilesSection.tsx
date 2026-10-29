@@ -50,7 +50,7 @@ interface FilesSectionProps {
 }
 
 /**
- * The integration's uploaded files (Integration Files.md): per slot, the
+ * The integration's uploaded files (docs/Integration Files.md): per slot, the
  * current version and its history. Replacing a file uploads a new version
  * and runs the integration against it; an older version can be run again
  * (a revert, which succeeds only if today's code still reads that format);

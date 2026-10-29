@@ -8,10 +8,12 @@ export interface JobLimits {
   timeoutMs?: number
   /** Maximum number of processes/threads */
   pidsMax?: number
-  /** Size of the writable /tmp tmpfs in MB (rootfs is read-only) */
+  /** Size of the writable /tmp tmpfs in MB (rootfs is read-only), when mounts.tmpDir is absent */
   tmpfsMb?: number
   /** Ceiling on /work usage in MB; the job is aborted when a poll finds it exceeded */
   workDiskMb?: number
+  /** Ceiling on /tmp usage in MB when mounts.tmpDir is given; the job is aborted when a poll finds it exceeded */
+  tmpDiskMb?: number
   /**
    * Ceiling on network traffic in MB, both directions combined. Packets past it
    * are dropped, and the job is aborted when a poll finds it exceeded. Only
@@ -28,6 +30,12 @@ export interface JobMounts {
   workDir?: string
   /** Artifact output, mounted at /out */
   outDir?: string
+  /**
+   * Per-job temporary space on disk, mounted at /tmp in place of the tmpfs, so
+   * large intermediates neither count against memory nor persist in /work. The
+   * caller creates it empty and removes it after the job.
+   */
+  tmpDir?: string
   /** Additional host paths mounted read-only, e.g. a shared raster store */
   readOnly?: ReadOnlyMount[]
 }

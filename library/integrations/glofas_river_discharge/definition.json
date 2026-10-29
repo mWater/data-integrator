@@ -129,5 +129,14 @@
       },
       "temporality": "time-series"
     }
-  ]
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "river_discharge",
+        "field": "discharge",
+        "min": 0
+      }
+    ]
+  }
 }

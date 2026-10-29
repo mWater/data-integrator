@@ -24,7 +24,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y podman nftables gdal-bin
 
-      # Pinned to the release deploy/upcloud/setup.sh installs: later releases
+      # Pinned to the release deploy/setup.sh installs: later releases
       # publish a tarball instead of the bare runsc binary
       - name: Install gVisor (runsc)
         env:

@@ -33,8 +33,18 @@ export interface SessionStop {
   text: string | null
 }
 
+/** Spending guard around model calls: checked before each call, fed after it. */
+export interface TokenBudget {
+  /** Throws, with a message for the user, when the session's owner may not call the model now */
+  check(userId: string | null): Promise<void>
+  /** Records one call's input plus output tokens against the owner */
+  record(userId: string | null, tokens: number): Promise<void>
+}
+
 /** In-memory view of one session row. */
 interface SessionData<S> {
+  /** Owning user; null for CLI sessions */
+  userId: string | null
   status: string
   messages: ModelMessage[]
   state: S
@@ -49,11 +59,13 @@ interface SessionData<S> {
 export class AgentSessionController<S> {
   private pool: pg.Pool
   private impl: AgentImplementation<S>
+  private budget: TokenBudget | null
 
-  /** Creates a controller for one agent implementation. */
-  constructor(pool: pg.Pool, impl: AgentImplementation<S>) {
+  /** Creates a controller for one agent implementation, optionally under a token budget. */
+  constructor(pool: pg.Pool, impl: AgentImplementation<S>, budget?: TokenBudget) {
     this.pool = pool
     this.impl = impl
+    this.budget = budget ?? null
   }
 
   /** Creates a new paused session with the given initial client state. */
@@ -66,7 +78,7 @@ export class AgentSessionController<S> {
     return result.rows[0].id
   }
 
-  /** The UI locale recorded at session creation, or null (older sessions, CLI). */
+  /** The UI locale recorded at session creation, or null for CLI sessions. */
   async getLocale(sessionId: string): Promise<string | null> {
     const result = await this.pool.query("SELECT locale FROM app.agent_sessions WHERE id = $1", [sessionId])
     return result.rows[0]?.locale ?? null
@@ -160,6 +172,7 @@ export class AgentSessionController<S> {
         return { sessionId, reason: "step_limit", text: null }
       }
 
+      await this.budget?.check(session.userId)
       const result = await generateText({
         model: this.impl.model,
         system: this.impl.system(session.state),
@@ -171,6 +184,7 @@ export class AgentSessionController<S> {
       stepsThisRun++
       session.usage.inputTokens += result.usage.inputTokens ?? 0
       session.usage.outputTokens += result.usage.outputTokens ?? 0
+      await this.budget?.record(session.userId, (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0))
       session.messages.push(...(result.response.messages as ModelMessage[]))
       if (result.text) emit({ type: "assistant_text", text: result.text })
 
@@ -229,12 +243,13 @@ export class AgentSessionController<S> {
   /** Loads one session row. */
   private async load(sessionId: string): Promise<SessionData<S>> {
     const result = await this.pool.query(
-      "SELECT status, messages, client_state, usage FROM app.agent_sessions WHERE id = $1 AND kind = $2",
+      "SELECT user_id, status, messages, client_state, usage FROM app.agent_sessions WHERE id = $1 AND kind = $2",
       [sessionId, this.impl.kind]
     )
     if (result.rows.length === 0) throw new Error(`No ${this.impl.kind} session ${sessionId}`)
     const row = result.rows[0]
     return {
+      userId: row.user_id ?? null,
       status: row.status,
       messages: row.messages as ModelMessage[],
       state: row.client_state as S,

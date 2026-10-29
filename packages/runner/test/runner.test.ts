@@ -2,7 +2,7 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { mkdtemp, writeFile, readFile, readdir, access, rm } from "node:fs/promises"
+import { mkdtemp, writeFile, readFile, readdir, access, rm, stat } from "node:fs/promises"
 import { createServer, Server } from "node:http"
 import { networkInterfaces, tmpdir } from "node:os"
 import path from "node:path"
@@ -157,6 +157,34 @@ test("workDiskMb: a job filling /work past its quota is killed", { skip: !AVAILA
   })
   assert.equal(result.status, "failed")
   assert.match(result.abortedReason ?? "", /\/work reached \d+ MB, over the 5 MB quota/)
+  assert.ok(result.durationMs < 30_000)
+})
+
+test("mounts: a tmpDir replaces the tmpfs at /tmp, beyond its size", { skip: !AVAILABLE }, async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "job-tmp-"))
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    mounts: { tmpDir },
+    limits: { tmpfsMb: 4, tmpDiskMb: 64 },
+    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/blob bs=1M count=16 2>/dev/null && echo WROTE"]
+  })
+  assert.equal(result.status, "succeeded")
+  assert.match(result.stdout, /WROTE/)
+  assert.equal((await stat(path.join(tmpDir, "blob"))).size, 16 * 1024 * 1024)
+})
+
+test("tmpDiskMb: a job filling a disk-backed /tmp past its quota is killed", { skip: !AVAILABLE }, async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "job-tmp-"))
+  const result = await runner.run({
+    image: ALPINE,
+    payload: null,
+    mounts: { tmpDir },
+    limits: { tmpDiskMb: 5, timeoutMs: 60_000 },
+    command: ["sh", "-c", "dd if=/dev/zero of=/tmp/blob bs=1M count=20 2>/dev/null; sleep 30"]
+  })
+  assert.equal(result.status, "failed")
+  assert.match(result.abortedReason ?? "", /\/tmp reached \d+ MB, over the 5 MB quota/)
   assert.ok(result.durationMs < 30_000)
 })
 

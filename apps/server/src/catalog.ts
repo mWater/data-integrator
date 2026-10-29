@@ -346,42 +346,6 @@ export async function advanceCurrentPointers(client: pg.ClientBase | pg.Pool, la
   return result.rowCount ?? 0
 }
 
-/**
- * One-off after migration 0020 (`cli.js backfill-cell-sizes`): fills
- * cell_size_m for promoted snapshots stored before the column existed,
- * reading each snapshot's first file. Reports files it could not describe.
- */
-export async function backfillCellSizes(
-  pool: pg.Pool,
-  absolutePath: (relPath: string) => string
-): Promise<{ filled: number; failures: string[] }> {
-  const missing = await pool.query(
-    `SELECT DISTINCT ON (s.id) s.id, src.path
-     FROM app.raster_snapshots s
-     JOIN app.raster_sources src ON src.snapshot_id = s.id
-     WHERE s.status = 'promoted' AND s.cell_size_m IS NULL
-     ORDER BY s.id, src.ordinal`
-  )
-  let filled = 0
-  const failures: string[] = []
-  for (const row of missing.rows) {
-    let cellSizeM: number | null
-    try {
-      cellSizeM = cellSizeFromInfo(await gdalInfo(absolutePath(row.path)))
-    } catch (err) {
-      failures.push(`${row.id} (${row.path}): ${err instanceof Error ? err.message : err}`)
-      continue
-    }
-    if (cellSizeM === null) {
-      failures.push(`${row.id} (${row.path}): no geotransform`)
-      continue
-    }
-    await pool.query("UPDATE app.raster_snapshots SET cell_size_m = $2 WHERE id = $1", [row.id, cellSizeM])
-    filled++
-  }
-  return { filled, failures }
-}
-
 /** Store-relative paths and footprint envelopes of a snapshot's files, in ordinal order. */
 export async function snapshotSources(client: pg.ClientBase | pg.Pool, snapshotId: string): Promise<SourceRef[]> {
   const result = await client.query(

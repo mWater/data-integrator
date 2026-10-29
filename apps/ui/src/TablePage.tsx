@@ -125,7 +125,7 @@ export function DataTab({ integrationId, tableIds, running, columnSpecs }: DataT
   return (
     <div>
       {tableIds.length > 1 && (
-        <select value={tableId} onChange={e => setTableId(e.target.value)}>
+        <select value={tableId} onChange={e => setTableId(e.target.value)} aria-label={T`Table`}>
           {tableIds.map(id => (
             <option key={id}>{id}</option>
           ))}

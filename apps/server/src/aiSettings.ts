@@ -275,7 +275,7 @@ export class AiRuntime {
       try {
         await saveAiConfig(pool, secretKey, fromEnv)
         config = fromEnv
-        log(`AI provider ${fromEnv.provider} copied from the environment into Settings; the AI variables in .env are no longer read and can be removed`)
+        log(`AI provider ${fromEnv.provider} copied from the environment into Settings; Settings is authoritative from now on and the AI variables in .env can be removed`)
       } catch (err) {
         log(`AI variables in the environment were not copied into Settings (${err instanceof Error ? err.message : err})`)
       }

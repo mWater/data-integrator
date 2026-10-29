@@ -126,10 +126,10 @@ def subset_grid(data_array, bbox):
     return values, transform, footprint
 
 
-def write_cog(values, transform, selected_dekad, work_dir, out_dir):
+def write_cog(values, transform, selected_dekad, tmp_dir, out_dir):
     month = selected_dekad[:7]
     stem = f"spi3_{month.replace('-', '')}"
-    temporary = os.path.join(work_dir, stem + "_source.tif")
+    temporary = os.path.join(tmp_dir, stem + "_source.tif")
     destination = os.path.join(out_dir, stem + ".tif")
 
     profile = {
@@ -172,7 +172,7 @@ def write_cog(values, transform, selected_dekad, work_dir, out_dir):
         temporary,
         destination,
     ]
-    subprocess.run(command, cwd=work_dir, check=True)
+    subprocess.run(command, cwd=tmp_dir, check=True)
     os.remove(temporary)
     return os.path.basename(destination)
 
@@ -256,7 +256,7 @@ def run(ctx):
     for selected_dekad, filename, grid in observations:
         values, transform, footprint = subset_grid(grid, bbox)
         relative_path = write_cog(
-            values, transform, selected_dekad, ctx.work_dir, ctx.out_dir
+            values, transform, selected_dekad, ctx.tmp_dir, ctx.out_dir
         )
         valid = values[values != NODATA]
         metadata = {

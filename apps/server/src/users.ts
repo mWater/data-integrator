@@ -124,7 +124,8 @@ export async function setRole(pool: pg.Pool, id: string, role: AuthUser["role"])
 /**
  * Disables or enables a user; refuses to disable the last active admin.
  * Disabling also revokes the user's sessions so re-enabling requires a fresh
- * sign-in.
+ * sign-in. Enabling restarts the inactivity clock, so the account policy's
+ * sweep does not disable it again before the user can sign in.
  */
 export async function setDisabled(pool: pg.Pool, id: string, disabled: boolean): Promise<UserUpdateResult> {
   return guardedUpdate(
@@ -134,7 +135,8 @@ export async function setDisabled(pool: pg.Pool, id: string, disabled: boolean):
     async client => {
       if (disabled) await client.query("DELETE FROM app.auth_sessions WHERE user_id = $1", [id])
       return client.query(
-        `UPDATE app.users SET disabled = $2, updated_at = now()
+        `UPDATE app.users SET disabled = $2, updated_at = now(),
+           last_active_at = CASE WHEN $2 THEN last_active_at ELSE now() END
          WHERE id = $1 RETURNING id, email, role, disabled, created_at`,
         [id, disabled]
       )
@@ -149,7 +151,8 @@ export async function setDisabled(pool: pg.Pool, id: string, disabled: boolean):
 export async function resetPassword(pool: pg.Pool, id: string): Promise<string | null> {
   const password = generatePassword()
   const result = await pool.query(
-    `UPDATE app.users SET password_hash = $2, failed_logins = 0, locked_until = NULL, updated_at = now()
+    `UPDATE app.users SET password_hash = $2, password_changed_at = now(), failed_logins = 0, locked_until = NULL,
+       updated_at = now()
      WHERE id = $1`,
     [id, await hashPassword(password)]
   )

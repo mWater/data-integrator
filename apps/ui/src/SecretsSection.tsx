@@ -139,6 +139,7 @@ export function SecretsSection({ integrationId, declared, isAdmin }: SecretsSect
                         {!info && sources.length > 0 && (
                           <select
                             defaultValue=""
+                            aria-label={T`Copy ${name} from another integration`}
                             onChange={e => e.target.value && copyFrom(name, e.target.value)}
                           >
                             <option value="" disabled>

@@ -36,5 +36,15 @@
     "@types/pg": "^8.11.0",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "apps/server"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/apps/server",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

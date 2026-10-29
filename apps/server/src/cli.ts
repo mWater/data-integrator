@@ -12,23 +12,25 @@
  *   agent [target]          Interactive designer session. No target starts a new
  *                           integration; an integration id edits it; a session
  *                           uuid resumes.
+ *   user add|passwd|list|token|disable|enable
+ *                           Local accounts and personal access tokens; `cli.js user`
+ *                           prints each subcommand's arguments.
  *   secret list|set|export|import
  *                           Integration secrets. `set <integration> <name>` reads
  *                           the value from stdin; export/import move every value
  *                           as JSON ({integration: {name: value}}) between
  *                           deployments, plaintext on stdout/stdin.
  *   files list <integrationId>
- *                           Uploaded file versions per slot (Integration Files.md).
+ *                           Uploaded file versions per slot (docs/Integration Files.md).
  *   files purge <versionId> --by <adminEmail>
  *                           Delete one version's bytes, keeping its row for lineage;
  *                           refuses a slot's current version and versions in use.
  *   register-rasters [--all]
- *                           Backfill the out-db SQL mirror of promoted snapshots;
- *                           --all re-registers every snapshot (after a tile size change).
+ *                           Register promoted snapshots missing from the out-db SQL
+ *                           mirror; --all re-registers every snapshot (after a store
+ *                           move or a tile size change).
  *   prune-snapshots         Delete superseded raster snapshots and those older than
  *                           their layer's retention, with files and cached tiles.
- *   backfill-cell-sizes     One-off after migration 0020: record cell_size_m for
- *                           snapshots stored before the column existed.
  *   localize-library        Wrap and translate library entry text into every
  *                           supported locale (library authoring; needs a model).
  *   serve                   HTTP API and map page.
@@ -40,6 +42,7 @@ import { createInterface } from "node:readline/promises"
 import { fileURLToPath } from "node:url"
 import { Runner } from "@mwater/integration-runner"
 import { IntegrationDefinition } from "@data-integrator/definitions"
+import { aiTokenBudget } from "./aiLimits.js"
 import { createPool } from "./db.js"
 import { migrate } from "./migrations.js"
 import { refreshAoi } from "./aoi.js"
@@ -54,7 +57,6 @@ import { basemapConfigFrom, BasemapProxy } from "./basemap.js"
 import { AppConfig, describeConfig, loadConfig } from "./config.js"
 import { AiRuntime } from "./aiSettings.js"
 import { startScheduler } from "./scheduler.js"
-import { backfillCellSizes } from "./catalog.js"
 import { registerMissingRasters } from "./rasterSql.js"
 import { installLibraryEntry } from "./library.js"
 import { pruneSnapshots } from "./retention.js"
@@ -117,7 +119,13 @@ function buildDeps(pool: ReturnType<typeof createPool>, runner: Runner, config: 
       node: config.runtimeImages.node
     },
     workQuotaMb: config.workQuotaMb,
+    tmpQuotaMb: config.tmpQuotaMb,
     minFreeDiskMb: config.minFreeDiskMb,
+    jobMax: {
+      cpus: config.jobMax.cpus,
+      memoryMb: config.jobMax.memoryMb,
+      timeoutMs: config.jobMax.timeoutMin * 60_000
+    },
     sandboxes: config.sandboxMemoryMb > 0 ? new SandboxBudget(config.sandboxMemoryMb) : undefined
   }
 }
@@ -298,10 +306,13 @@ async function main(): Promise<number> {
           return 0
         }
         if ((sub === "disable" || sub === "enable") && email) {
-          const result = await pool.query("UPDATE app.users SET disabled = $2, updated_at = now() WHERE email = $1", [
-            email,
-            sub === "disable"
-          ])
+          // Enabling restarts the inactivity clock (see setDisabled in users.ts)
+          const result = await pool.query(
+            `UPDATE app.users SET disabled = $2, updated_at = now(),
+               last_active_at = CASE WHEN $2 THEN last_active_at ELSE now() END
+             WHERE email = $1`,
+            [email, sub === "disable"]
+          )
           if ((result.rowCount ?? 0) === 0) {
             console.error(`No user ${email}`)
             return 1
@@ -375,7 +386,7 @@ async function main(): Promise<number> {
         const runner = new Runner()
         await runner.ensureReady()
         const deps = { ...buildDeps(pool, runner, config), model, skillsDir: skillsDir(config.libraryPath), libraryPath: config.libraryPath }
-        const controller = new AgentSessionController(pool, new DesignerImplementation(deps))
+        const controller = new AgentSessionController(pool, new DesignerImplementation(deps), aiTokenBudget(pool))
         const service = AgentService.forDesigner(pool, deps)
 
         // Dispatch on the target's shape: session uuid resumes, integration id
@@ -520,14 +531,6 @@ async function main(): Promise<number> {
         console.log(`Deleted ${result.snapshots} snapshot(s), ${result.superseded} of them superseded`)
         return 0
       }
-      case "backfill-cell-sizes": {
-        // One-off after migration 0020; reads each promoted snapshot's first file
-        const store = new RasterStore(config.rasterStorePath)
-        const result = await backfillCellSizes(pool, rel => store.absolute(rel))
-        console.log(`Filled ${result.filled}, ${result.failures.length} unreadable`)
-        for (const failure of result.failures) console.error(`  failed: ${failure}`)
-        return result.failures.length > 0 ? 1 : 0
-      }
       case "localize-library": {
         // Library authoring: entries ship fully localized at the release
         // ceiling, so subset deployments find their languages present and
@@ -552,8 +555,8 @@ async function main(): Promise<number> {
       }
       case "serve": {
         // The area-of-interest shape is derived state; rebuilding it at boot
-        // covers databases migrated before this release and bundled-boundary
-        // updates alike. A missing boundary is logged, never fatal
+        // picks up updated bundled boundaries. A missing boundary is logged,
+        // never fatal
         await refreshAoi(pool, await getDefaultAoi(pool)).catch(err =>
           console.warn(`Area of interest shape not rebuilt: ${err instanceof Error ? err.message : err}`)
         )
@@ -615,7 +618,7 @@ async function main(): Promise<number> {
       }
       default:
         console.error(
-          "Usage: cli.js migrate | install <file|dir> | run <integrationId> | agent [integrationId|sessionId] | files list|purge | register-rasters | backfill-cell-sizes | serve"
+          "Usage: cli.js migrate | install <file|dir> | library-install <id>... | run <integrationId> | user add|passwd|list|token|disable|enable | secret list|set|export|import | agent [integrationId|sessionId] | files list|purge | register-rasters [--all] | prune-snapshots | localize-library | serve"
         )
         return 1
     }

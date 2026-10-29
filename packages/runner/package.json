@@ -1,6 +1,6 @@
 {
   "name": "@mwater/integration-runner",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Sandboxed job runner: podman + gVisor execution of integration jobs, with the job contract types and the runtime image tags released alongside",
   "license": "Apache-2.0",
   "type": "module",
@@ -24,10 +24,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mWater/data-integrator.git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
     "directory": "packages/runner"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/runner",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
   }
 }

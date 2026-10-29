@@ -677,8 +677,11 @@ test("staging a body whose client already left settles at once and leaves nothin
   const body = new PassThrough()
   body.destroy()
   await new Promise(resolve => setImmediate(resolve))
+  // Earlier tests share the store, so compare against what was already there
+  const before = await readdir(path.join(fileRoot, ".tmp")).catch(() => [] as string[])
   await assert.rejects(files.stage(body, 1024), /aborted by the client/)
-  assert.deepEqual(await readdir(path.join(fileRoot, ".tmp")), [])
+  const after = await readdir(path.join(fileRoot, ".tmp"))
+  assert.deepEqual(after.filter(name => !before.includes(name)), [])
 })
 
 test("a long filename is shortened without losing its extension", async () => {

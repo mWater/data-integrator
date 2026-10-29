@@ -15,11 +15,11 @@ requests
 netCDF4
 h5netcdf
 h5py
-# Copernicus CDS/EWDS and ECMWF open data downloads, and scientific routines (Horizon)
+# Copernicus CDS/EWDS and ECMWF open data downloads, and scientific routines
 cdsapi
 ecmwf-opendata
 scipy
-# Uploaded spreadsheets (Integration Files.md): xlsx, legacy xls, LibreOffice ods
+# Uploaded spreadsheets (docs/Integration Files.md): xlsx, legacy xls, LibreOffice ods
 openpyxl
 xlrd
 odfpy

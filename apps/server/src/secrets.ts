@@ -37,6 +37,29 @@ export function decryptSecret(key: Buffer, stored: Buffer): string {
 /** Shape of a secret name: what definitions may declare and routes accept. */
 export const SECRET_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/
 
+/** Shortest secret value masked in job output; shorter values would mask ordinary text. */
+export const MIN_REDACTED_SECRET_LENGTH = 6
+
+/**
+ * Builds a function that masks every secret value in text as
+ * `[secret:<name>]`. Integration code can print a credential by accident, so
+ * job output is masked on the host before it reaches stored logs, run
+ * errors, live log streams, or the agent's context. Covers the literal value
+ * only, not encodings of it.
+ */
+export function secretRedactor(secrets: Record<string, string>): (text: string) => string {
+  // Longest first, so a value containing another is masked whole
+  const entries = Object.entries(secrets)
+    .filter(([, value]) => value.length >= MIN_REDACTED_SECRET_LENGTH)
+    .sort((a, b) => b[1].length - a[1].length)
+  if (entries.length === 0) return text => text
+  return text => {
+    let masked = text
+    for (const [name, value] of entries) masked = masked.split(value).join(`[secret:${name}]`)
+    return masked
+  }
+}
+
 /** Stores (upserts) one integration's secret value under a name. */
 export async function setSecret(
   pool: pg.Pool,
