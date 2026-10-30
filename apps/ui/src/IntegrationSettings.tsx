@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { IntegrationDetail, SettingSpec, SettingValue, setIntegrationSettings, startRebuild } from "./api.js"
 import { localizeData } from "./localization.js"
 
@@ -69,6 +69,13 @@ export function SettingsSection({ detail, canDesign, onChanged, onRebuild }: Set
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; rebuild: boolean } | null>(null)
+
+  // A new version (this save, or an edit elsewhere) resets the form to what is stored;
+  // the notice of the save that made it stays
+  useEffect(() => {
+    setDraft(Object.fromEntries(Object.entries(specs).map(([id, spec]) => [id, toDraft(spec, current[id])])))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail.version])
 
   const ids = Object.keys(specs)
   if (ids.length === 0) return null

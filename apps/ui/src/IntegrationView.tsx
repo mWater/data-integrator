@@ -370,7 +370,6 @@ export function IntegrationView({ integrationId, canDesign, isAdmin }: Integrati
           )}
           <AoiSection detail={detail} canDesign={canDesign} onChanged={refresh} />
           <SettingsSection
-            key={detail.version}
             detail={detail}
             canDesign={canDesign}
             onChanged={refresh}
