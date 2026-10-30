@@ -26,7 +26,8 @@ the UNICEF WASH Innovation Hub.
   Optimized GeoTIFF snapshots registered for SQL; validation flags, freshness
   monitoring, per-run lineage and per-snapshot source metadata.
 - Access: REST API with an OpenAPI description, STAC catalog, map tiles,
-  agent-designed dashboards (optionally public) and Explore.
+  agent-designed dashboards (optionally public, with version history and
+  restore) and Explore.
 - AI: optional and swappable (OpenRouter, Anthropic, or any OpenAI-compatible
   endpoint including a self-hosted model), with a per-user data notice and
   daily token caps.
@@ -54,6 +55,7 @@ the UNICEF WASH Innovation Hub.
 
 **Database and images**
 
-The schema is `0001_app_schema.sql` and `0002_account_policy.sql`, applied by
-`deploy/setup.sh` on install. The runtime images are built by `setup.sh` from
-`runtimes/` at runner version 0.3.0.
+The schema is `0001_app_schema.sql`, `0002_account_policy.sql` and
+`0003_dashboard_version_authors.sql`, applied by `deploy/setup.sh` on install.
+The runtime images are built by `setup.sh` from `runtimes/` at runner version
+0.3.0.

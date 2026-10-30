@@ -278,6 +278,8 @@ commit.
 | layers | jsonb | raster layers the version may draw; the scoped tile route serves only these |
 | kit_version | text | |
 | bundle_js, bundle_css | text | compiled output, immutable |
+| created_by | uuid fk null | who saved the version |
+| restored_from | int null | the version a restore copied |
 | created_at | timestamptz | |
 
 ### agent_sessions

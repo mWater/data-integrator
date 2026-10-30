@@ -1183,6 +1183,28 @@ export function renameDashboard(id: string, newId: string, name: string): Promis
   })
 }
 
+/** One stored version in a dashboard's history. */
+export interface DashboardVersionSummary {
+  /** Version number, counting up from 1 */
+  version: number
+  /** When it was saved (ISO) */
+  createdAt: string
+  /** Email of the user who saved it; null when not recorded */
+  createdBy: string | null
+  /** The version this one copied, when it was made by a restore */
+  restoredFrom: number | null
+}
+
+/** A dashboard's version history, newest first. */
+export function getDashboardVersions(id: string): Promise<{ versions: DashboardVersionSummary[] }> {
+  return request(`/api/dashboards/${id}/versions`)
+}
+
+/** Restores an earlier version by saving a copy of it as the new current version. */
+export function restoreDashboardVersion(id: string, version: number): Promise<{ version: number }> {
+  return request(`/api/dashboards/${id}/versions/${version}/restore`, { method: "POST" })
+}
+
 /** Opens or closes a dashboard's view surface to unauthenticated viewers. */
 export function setDashboardPublic(id: string, isPublic: boolean): Promise<{ public: boolean }> {
   return request(`/api/dashboards/${id}/public`, {

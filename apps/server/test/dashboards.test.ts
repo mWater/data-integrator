@@ -6,7 +6,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { migrate } from "../src/migrations.js"
-import { deleteDashboard, listDashboards } from "../src/dashboards/service.js"
+import { deleteDashboard, listDashboards, listDashboardVersions, restoreDashboardVersion } from "../src/dashboards/service.js"
 import { startTestDb, TestDb } from "./helpers/pg.js"
 
 const execFileP = promisify(execFile)
@@ -38,8 +38,8 @@ async function seed(id: string): Promise<string> {
     await pool.query(
       `INSERT INTO app.dashboard_versions
          (dashboard_id, version, source, queries, kit_version, bundle_js, bundle_css)
-       VALUES ($1, $2, 'export default () => null', '[]', '2', 'js', 'css')`,
-      [id, version]
+       VALUES ($1, $2, 'export default () => null', '[]', '2', $3, 'css')`,
+      [id, version, `js${version}`]
     )
   }
   await pool.query("UPDATE app.dashboards SET current_version = 2 WHERE id = $1", [id])
@@ -75,5 +75,47 @@ test("deleteDashboard reports an unknown id without touching others", { skip: !A
   assert.deepEqual(await deleteDashboard(pool, "no_such_dash"), { ok: false, versions: 0, sessions: 0 })
 
   const kept = await pool.query("SELECT current_version FROM app.dashboards WHERE id = $1", ["keep_dash"])
+  assert.equal(kept.rows[0].current_version, 2)
+})
+
+test("restoreDashboardVersion copies the version as the new current one", { skip: !AVAILABLE }, async () => {
+  const sessionId = await seed("restore_dash")
+  const user = await pool.query(
+    "INSERT INTO app.users (email, password_hash, role) VALUES ('restorer@example.org', 'x', 'editor') RETURNING id"
+  )
+
+  assert.deepEqual(await restoreDashboardVersion(pool, "restore_dash", 1, user.rows[0].id), { ok: true, version: 3 })
+
+  const current = await pool.query(
+    `SELECT v.bundle_js FROM app.dashboards d
+     JOIN app.dashboard_versions v ON v.dashboard_id = d.id AND v.version = d.current_version
+     WHERE d.id = $1`,
+    ["restore_dash"]
+  )
+  assert.equal(current.rows[0].bundle_js, "js1")
+  const versions = await listDashboardVersions(pool, "restore_dash")
+  assert.deepEqual(
+    versions?.map(v => [v.version, v.createdBy, v.restoredFrom]),
+    [[3, "restorer@example.org", 1], [2, null, null], [1, null, null]]
+  )
+
+  // An open design session keeps its draft, now unsaved against the restored version
+  const session = await pool.query("SELECT client_state FROM app.agent_sessions WHERE id = $1", [sessionId])
+  assert.deepEqual([session.rows[0].client_state.saved, session.rows[0].client_state.dirty], [{ version: 3 }, true])
+})
+
+test("restoreDashboardVersion refuses the current version and unknown ones", { skip: !AVAILABLE }, async () => {
+  await seed("restore_refused")
+  const user = await pool.query(
+    "INSERT INTO app.users (email, password_hash, role) VALUES ('refused@example.org', 'x', 'editor') RETURNING id"
+  )
+  const userId = user.rows[0].id
+
+  assert.equal((await restoreDashboardVersion(pool, "restore_refused", 2, userId)).ok, false)
+  assert.equal((await restoreDashboardVersion(pool, "restore_refused", 9, userId)).notFound, true)
+  assert.equal((await restoreDashboardVersion(pool, "no_such_dash", 1, userId)).notFound, true)
+  assert.equal(await listDashboardVersions(pool, "no_such_dash"), null)
+
+  const kept = await pool.query("SELECT current_version FROM app.dashboards WHERE id = $1", ["restore_refused"])
   assert.equal(kept.rows[0].current_version, 2)
 })

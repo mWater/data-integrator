@@ -84,9 +84,16 @@ test("first save takes the agent's proposal, binds the session and clears unsave
     "UPDATE app.agent_sessions SET client_state = jsonb_set(client_state, '{dirty}', 'true') WHERE id = $1",
     [id]
   )
-  const again = await saveDashboardSession(pool, id, { id: "ignored_once_bound" })
+  const user = await pool.query(
+    "INSERT INTO app.users (email, password_hash, role) VALUES ('saver@example.org', 'x', 'editor') RETURNING id"
+  )
+  const again = await saveDashboardSession(pool, id, { id: "ignored_once_bound" }, user.rows[0].id)
   assert.ok(again.ok)
   assert.deepEqual([again.dashboardId, again.version], ["water_points", 2])
+  const author = await pool.query(
+    "SELECT created_by FROM app.dashboard_versions WHERE dashboard_id = 'water_points' AND version = 2"
+  )
+  assert.equal(author.rows[0].created_by, user.rows[0].id)
 })
 
 test("a new draft cannot take an address another dashboard already has", { skip: !AVAILABLE }, async () => {

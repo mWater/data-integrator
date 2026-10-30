@@ -7261,6 +7261,96 @@
       "es": "Qué",
       "mg": "Inona",
       "sw": "Nini"
+    },
+    {
+      "_base": "en",
+      "en": "Saved versions of this dashboard",
+      "fr": "Versions enregistrées de ce tableau de bord",
+      "pt": "Versões salvas deste painel",
+      "es": "Versiones guardadas de este panel",
+      "mg": "Kinova voatahiry amin’ity tabilao fanaraha-maso ity",
+      "sw": "Matoleo yaliyohifadhiwa ya dashibodi hii"
+    },
+    {
+      "_base": "en",
+      "en": "Saved versions",
+      "fr": "Versions enregistrées",
+      "pt": "Versões salvas",
+      "es": "Versiones guardadas",
+      "mg": "Kinova voatahiry",
+      "sw": "Matoleo yaliyohifadhiwa"
+    },
+    {
+      "_base": "en",
+      "en": "Restored from v{0}",
+      "fr": "Restauré à partir de la v{0}",
+      "pt": "Restaurado a partir da v{0}",
+      "es": "Restaurado desde v{0}",
+      "mg": "Naverina avy amin’ny v{0}",
+      "sw": "Imerejeshwa kutoka v{0}"
+    },
+    {
+      "_base": "en",
+      "en": "Restore",
+      "fr": "Restaurer",
+      "pt": "Restaurar",
+      "es": "Restaurar",
+      "mg": "Avereno",
+      "sw": "Rejesha"
+    },
+    {
+      "_base": "en",
+      "en": "Restore version {0}",
+      "fr": "Restaurer la version {0}",
+      "pt": "Restaurar versão {0}",
+      "es": "Restaurar versión {0}",
+      "mg": "Avereno ny kinova {0}",
+      "sw": "Rejesha toleo {0}"
+    },
+    {
+      "_base": "en",
+      "en": "Restore version {0}?",
+      "fr": "Restaurer la version {0} ?",
+      "pt": "Restaurar versão {0}?",
+      "es": "¿Restaurar versión {0}?",
+      "mg": "Avereno ny kinova {0}?",
+      "sw": "Rejesha toleo {0}?"
+    },
+    {
+      "_base": "en",
+      "en": "This saves a copy of version {0} as the new current version, which everyone signed in sees right away. Version {1} stays in the history, so you can restore it later.",
+      "fr": "Une copie de la version {0} devient la version actuelle, immédiatement visible par toutes les personnes connectées. La version {1} reste dans l’historique et peut être restaurée plus tard.",
+      "pt": "Isso salva uma cópia da versão {0} como a nova versão atual, que todos os usuários conectados veem imediatamente. A versão {1} permanece no histórico, para que você possa restaurá-la depois.",
+      "es": "Se guarda una copia de la versión {0} como nueva versión actual, que todas las personas con sesión iniciada ven de inmediato. La versión {1} permanece en el historial, por lo que puedes restaurarla más adelante.",
+      "mg": "Mitahiry dika mitovy amin’ny kinova {0} ho kinova ampiasaina ankehitriny ity, ka hitan’ny rehetra tafiditra amin’ny kaontiny avy hatrany. Mijanona ao amin’ny tantara ny kinova {1}, ka azonao averina any aoriana.",
+      "sw": "Hii huhifadhi nakala ya toleo {0} kama toleo jipya la sasa, ambalo kila mtu aliyeingia huliona mara moja. Toleo {1} linabaki kwenye historia, ili uweze kulirejesha baadaye."
+    },
+    {
+      "_base": "en",
+      "en": "This dashboard is public: anyone with its link sees the restored version.",
+      "fr": "Ce tableau de bord est public : toute personne disposant de son lien voit la version restaurée.",
+      "pt": "Este painel é público: qualquer pessoa com o link vê a versão restaurada.",
+      "es": "Este panel es público: cualquier persona con el enlace ve la versión restaurada.",
+      "mg": "Azon’ny rehetra jerena ity tabilao fanaraha-maso ity: izay manana ny rohiny dia mahita ny kinova naverina.",
+      "sw": "Dashibodi hii ni ya umma: yeyote mwenye kiungo chake huona toleo lililorejeshwa."
+    },
+    {
+      "_base": "en",
+      "en": "Design sessions open on this dashboard keep their drafts, which then count as unsaved changes.",
+      "fr": "Les sessions de conception ouvertes sur ce tableau de bord conservent leurs brouillons, qui sont alors considérés comme des modifications non enregistrées.",
+      "pt": "As sessões de criação abertas neste painel mantêm seus rascunhos, que passam a contar como alterações não salvas.",
+      "es": "Las sesiones de diseño abiertas en este panel conservan sus borradores, que pasan a contar como cambios sin guardar.",
+      "mg": "Mitazona ny volavolany ireo fotoam-pamolavolana misokatra amin’ity tabilao fanaraha-maso ity, ka raisina ho fanovana tsy voatahiry ireo avy eo.",
+      "sw": "Vipindi vya usanifu vilivyo wazi kwenye dashibodi hii hubaki na rasimu zake, ambazo kisha huhesabiwa kama mabadiliko ambayo hayajahifadhiwa."
+    },
+    {
+      "_base": "en",
+      "en": "Restoring…",
+      "fr": "Restauration…",
+      "pt": "Restaurando…",
+      "es": "Restaurando…",
+      "mg": "Mamerina…",
+      "sw": "Inarejesha…"
     }
   ],
   "unused": []

@@ -540,12 +540,13 @@ export type SaveSessionResult =
  * request (else the agent's proposal) and refuses a slug another dashboard
  * already has; later saves keep the bound slug. Refuses while the latest
  * build has errors. The caller must not run this while the session's agent
- * loop is running.
+ * loop is running. `savedBy` is recorded as the version's author.
  */
 export async function saveDashboardSession(
   pool: pg.Pool,
   sessionId: string,
-  request: { id?: string; name?: string }
+  request: { id?: string; name?: string },
+  savedBy?: string
 ): Promise<SaveSessionResult> {
   const row = await pool.query("SELECT client_state FROM app.agent_sessions WHERE id = $1 AND kind = 'dashboard'", [sessionId])
   if (row.rows.length === 0) return { ok: false, error: "Unknown dashboard session" }
@@ -559,7 +560,14 @@ export async function saveDashboardSession(
   if (!bound && (await pool.query("SELECT 1 FROM app.dashboards WHERE id = $1", [id])).rows.length > 0) {
     return { ok: false, error: `Another dashboard already uses the address #/dashboard/${id}; choose a different one` }
   }
-  const saved = await saveDashboard(pool, { id, name, source: state.source, queries: state.queries, layers: state.layers })
+  const saved = await saveDashboard(pool, {
+    id,
+    name,
+    source: state.source,
+    queries: state.queries,
+    layers: state.layers,
+    createdBy: savedBy
+  })
   if (!saved.ok) return { ok: false, error: saved.errors.join("\n") }
   const next: DashboardAgentState = { ...state, dashboardId: id, name, saved: { version: saved.version! }, dirty: false }
   await pool.query(

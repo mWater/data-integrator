@@ -298,6 +298,8 @@ tr:hover .row-delete, .row-delete:focus-visible { opacity: 1 }
 .sources-popover ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px }
 .sources-popover li a { font-weight: 600 }
 .sources-popover li .chip { margin-left: 8px }
+.version-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.version-list button { flex: 0 0 auto; font-size: 12.5px; padding: 4px 10px }
 .session-page.preview-full .conversation, .session-page.preview-full .split-handle { display: none }
 .session-page.preview-full .preview-panel { border-left: 0; position: relative }
 .preview-exit {

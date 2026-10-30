@@ -1,6 +1,6 @@
 /**
- * Dashboard persistence and access: versioned save (build included), reads,
- * and the per-dashboard authorization seam.
+ * Dashboard persistence and access: versioned save (build included), version
+ * history and restore, reads, and the per-dashboard authorization seam.
  */
 
 import pg from "pg"
@@ -175,6 +175,8 @@ export interface SaveDashboardInput {
   queries: DashboardQuery[]
   /** Raster catalog layer ids the version declares. */
   layers: string[]
+  /** User saving the version; omitted for saves no account made. */
+  createdBy?: string
 }
 
 /** Result of a save: the new version, or the build/validation errors. */
@@ -225,8 +227,8 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
     const version = versionResult.rows[0].next as number
     await client.query(
       `INSERT INTO app.dashboard_versions
-         (dashboard_id, version, source, queries, layers, kit_version, bundle_js, bundle_css)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         (dashboard_id, version, source, queries, layers, kit_version, bundle_js, bundle_css, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         input.id,
         version,
@@ -235,7 +237,8 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
         JSON.stringify(input.layers),
         KIT_VERSION,
         built.bundleJs,
-        built.bundleCss
+        built.bundleCss,
+        input.createdBy ?? null
       ]
     )
     await client.query("UPDATE app.dashboards SET current_version = $2, updated_at = now() WHERE id = $1", [
@@ -244,6 +247,109 @@ export async function saveDashboard(pool: pg.Pool, input: SaveDashboardInput): P
     ])
     await client.query("COMMIT")
     return { ok: true, version, errors: [] }
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {})
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
+/** One stored version in a dashboard's history. */
+export interface DashboardVersionSummary {
+  /** Version number, counting up from 1. */
+  version: number
+  /** When it was saved (ISO 8601). */
+  createdAt: string
+  /** Email of the user who saved it; null when not recorded. */
+  createdBy: string | null
+  /** The version this one copied, when it was made by a restore. */
+  restoredFrom: number | null
+}
+
+/** A dashboard's versions, newest first; null when no such dashboard exists. */
+export async function listDashboardVersions(pool: pg.Pool, id: string): Promise<DashboardVersionSummary[] | null> {
+  const exists = await pool.query("SELECT 1 FROM app.dashboards WHERE id = $1", [id])
+  if (exists.rows.length === 0) return null
+  const result = await pool.query(
+    `SELECT v.version, v.created_at, u.email AS created_by, v.restored_from
+     FROM app.dashboard_versions v LEFT JOIN app.users u ON u.id = v.created_by
+     WHERE v.dashboard_id = $1
+     ORDER BY v.version DESC`,
+    [id]
+  )
+  return result.rows.map((row) => ({
+    version: row.version,
+    createdAt: row.created_at.toISOString(),
+    createdBy: row.created_by ?? null,
+    restoredFrom: row.restored_from ?? null
+  }))
+}
+
+/** Outcome of a restore: the new version, or why it was refused. */
+export interface RestoreDashboardResult {
+  /** True when the restored copy is the current version. */
+  ok: boolean
+  /** The new version number when ok. */
+  version?: number
+  /** Refusal reason when not ok. */
+  error?: string
+  /** True when the refusal is a missing dashboard or version. */
+  notFound?: boolean
+}
+
+/**
+ * Restores an earlier version by copying it as a new current version, so
+ * history stays linear and the restore can itself be undone. The stored
+ * bundle is reused: kit exports are append-only, so a bundle built against an
+ * earlier kit runs on the current one. Design sessions on the dashboard keep
+ * their drafts but become unsaved against the new version, so saving one
+ * again is a deliberate step.
+ */
+export async function restoreDashboardVersion(
+  pool: pg.Pool,
+  id: string,
+  version: number,
+  userId: string
+): Promise<RestoreDashboardResult> {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const dashboard = await client.query("SELECT current_version FROM app.dashboards WHERE id = $1 FOR UPDATE", [id])
+    if (dashboard.rows.length === 0) {
+      await client.query("ROLLBACK")
+      return { ok: false, error: "unknown dashboard", notFound: true }
+    }
+    if (dashboard.rows[0].current_version === version) {
+      await client.query("ROLLBACK")
+      return { ok: false, error: `version ${version} is already the current version` }
+    }
+    const next = (
+      await client.query(
+        "SELECT COALESCE(MAX(version), 0) + 1 AS next FROM app.dashboard_versions WHERE dashboard_id = $1",
+        [id]
+      )
+    ).rows[0].next as number
+    const copied = await client.query(
+      `INSERT INTO app.dashboard_versions
+         (dashboard_id, version, source, queries, layers, kit_version, bundle_js, bundle_css, created_by, restored_from)
+       SELECT dashboard_id, $3, source, queries, layers, kit_version, bundle_js, bundle_css, $4, version
+       FROM app.dashboard_versions WHERE dashboard_id = $1 AND version = $2`,
+      [id, version, next, userId]
+    )
+    if ((copied.rowCount ?? 0) === 0) {
+      await client.query("ROLLBACK")
+      return { ok: false, error: `dashboard has no version ${version}`, notFound: true }
+    }
+    await client.query("UPDATE app.dashboards SET current_version = $2, updated_at = now() WHERE id = $1", [id, next])
+    await client.query(
+      `UPDATE app.agent_sessions
+       SET client_state = client_state || jsonb_build_object('saved', jsonb_build_object('version', $2::int), 'dirty', true)
+       WHERE kind = 'dashboard' AND client_state->>'dashboardId' = $1`,
+      [id, next]
+    )
+    await client.query("COMMIT")
+    return { ok: true, version: next }
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})
     throw err

@@ -68,7 +68,7 @@ role. Every route below needs one of the two unless it says otherwise.
 | Design, install, run, schedule, pause, rename, import integrations | | yes | yes |
 | Upload, download, and run integration files; open design sessions | | yes | yes |
 | Read webhook URLs; see credential names | | yes | yes |
-| Build, save, rename, delete dashboards | | yes | yes |
+| Build, save, restore, rename, delete dashboards | | yes | yes |
 | Make a dashboard public or private (opens its data to the internet) | | | yes |
 | Set or delete credential values; rotate webhook tokens | | | yes |
 | Deployment settings, AI limits, users, other people's Explore chats | | | yes |
@@ -367,7 +367,7 @@ without notice and are not documented here:
   (`/api/settings/translate-catalog`), the data-processing acknowledgement
   (`/api/me/ai-acknowledge`), and agent sessions (`/api/sessions/...`:
   designer, dashboard builder, Explore).
-- Dashboards: `/api/dashboards/...` (list, save, rename, publish, and the
-  view surface public dashboards use without a session).
+- Dashboards: `/api/dashboards/...` (list, save, version history and restore,
+  rename, publish, and the view surface public dashboards use without a session).
 - Static assets: `/basemap/...` (basemap proxy), `/kit/...` (dashboard
   runtime), and the single-page app.

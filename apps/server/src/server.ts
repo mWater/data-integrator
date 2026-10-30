@@ -40,7 +40,9 @@ import {
   executeDashboardTileQuery,
   getDashboard,
   listDashboards,
+  listDashboardVersions,
   renameDashboard,
+  restoreDashboardVersion,
   saveDashboard,
   setDashboardPublic
 } from "./dashboards/service.js"
@@ -1499,7 +1501,8 @@ async function route(
         name: String(body.name ?? ""),
         source: String(body.source ?? ""),
         queries: (body.queries ?? []) as never,
-        layers: (body.layers ?? []) as never
+        layers: (body.layers ?? []) as never,
+        createdBy: user.id
       })
       if (result.ok) json(res, 201, { version: result.version })
       else json(res, 400, { errors: result.errors })
@@ -1518,6 +1521,29 @@ async function route(
     const result = await deleteDashboard(pool, dashboardMatch[1])
     if (!result.ok) json(res, 404, { error: "unknown dashboard" })
     else json(res, 200, { versions: result.versions, sessions: result.sessions })
+    return
+  }
+
+  const dashboardVersionsMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/versions$/)
+  if (dashboardVersionsMatch && req.method === "GET") {
+    const versions = await listDashboardVersions(pool, dashboardVersionsMatch[1])
+    if (!versions) json(res, 404, { error: "unknown dashboard" })
+    else json(res, 200, { versions })
+    return
+  }
+
+  // Restore: copies an earlier version as the new current one. It changes what
+  // everyone sees (the public too, for a public dashboard), so it takes the
+  // same role as saving
+  const dashboardRestoreMatch = pathname.match(/^\/api\/dashboards\/([a-z][a-z0-9_-]*)\/versions\/(\d+)\/restore$/)
+  if (dashboardRestoreMatch && req.method === "POST") {
+    if (user.role === "viewer") {
+      json(res, 403, { error: "Viewers cannot restore dashboard versions" })
+      return
+    }
+    const result = await restoreDashboardVersion(pool, dashboardRestoreMatch[1], Number(dashboardRestoreMatch[2]), user.id)
+    if (result.ok) json(res, 201, { version: result.version })
+    else json(res, result.notFound ? 404 : 400, { error: result.error })
     return
   }
 
@@ -1935,10 +1961,15 @@ async function routeSessions(
       return
     }
     const body = await readJsonBody(req)
-    const result = await saveDashboardSession(pool, sessionId, {
-      id: typeof body.id === "string" ? body.id : undefined,
-      name: typeof body.name === "string" ? body.name : undefined
-    })
+    const result = await saveDashboardSession(
+      pool,
+      sessionId,
+      {
+        id: typeof body.id === "string" ? body.id : undefined,
+        name: typeof body.name === "string" ? body.name : undefined
+      },
+      user.id
+    )
     if (result.ok) json(res, 200, { dashboardId: result.dashboardId, version: result.version })
     else json(res, 400, { error: result.error })
     return

@@ -46,7 +46,16 @@ Dashboard {
 - `layers` declares the raster catalog layers the version may draw, like its queries;
   the dashboard's raster tile route serves only those.
 - Editing creates a new version with a new bundle; superseded bundles stay valid for
-  in-flight viewers (immutable, like raster snapshots).
+  in-flight viewers (immutable, like raster snapshots). Each version records who saved
+  it.
+- **History and restore.** The dashboard page's History menu lists the saved versions
+  (`GET /api/dashboards/:id/versions`). Restoring one
+  (`POST /api/dashboards/:id/versions/:version/restore`, editors and admins) saves a
+  copy of it as a new current version, recording the version it copied, so history
+  stays linear and a restore can itself be undone. The copy reuses the stored bundle,
+  which runs on the current kit because kit exports are append-only. Design sessions
+  open on the dashboard keep their drafts, which become unsaved changes against the
+  restored version.
 
 ## Component kit
 
@@ -200,7 +209,7 @@ One more AgentImplementation on the harness (`agent_sessions.kind = 'dashboard'`
 ## Access control
 
 - Viewers, editors and admins read every dashboard; editors and admins design, save,
-  rename and delete them.
+  restore, rename and delete them.
 - Dashboard endpoints authorize per dashboard ("may this principal view dashboard X"),
   never via a blanket data-read check: any signed-in user passes, an anonymous one only
   when the dashboard is public.
@@ -251,4 +260,6 @@ through `POST /api/dashboards`, which runs the same build and gate.
 | bundle_js | text | compiled ESM, immutable |
 | bundle_css | text | Tailwind output, immutable |
 | layers | jsonb | raster layer ids the version may draw |
+| created_by | uuid fk users | who saved it; null when not recorded |
+| restored_from | int | the version a restore copied; null for ordinary saves |
 | created_at | timestamptz | |
