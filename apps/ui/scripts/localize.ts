@@ -56,7 +56,7 @@ const BATCH_SIZE = 40
 const CONCURRENCY = 4
 
 /** Default translation model; keep equal to DEFAULT_MODELS.openrouter in apps/server/src/aiSettings.ts. */
-const DEFAULT_MODEL = "openai/gpt-5.6-sol"
+const DEFAULT_MODEL = "openai/gpt-6.1-sol"
 
 /**
  * Fills process.env from the repository-root .env for keys it does not already
@@ -108,7 +108,7 @@ function buildModel(): LanguageModel {
   }
   const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (anthropicKey) {
-    return createAnthropic({ apiKey: anthropicKey })(process.env.AGENT_MODEL ?? "claude-sonnet-5")
+    return createAnthropic({ apiKey: anthropicKey })(process.env.AGENT_MODEL ?? "claude-opus-5-5")
   }
   throw new Error("Translation needs OPENROUTER_API_KEY or ANTHROPIC_API_KEY")
 }

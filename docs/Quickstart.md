@@ -90,27 +90,21 @@ per deployment per UTC day.
 ### Choosing a model
 
 The Model field depends on the provider: an OpenRouter model id (default
-`openai/gpt-5.6-sol`), an Anthropic model id (default `claude-sonnet-5`), or,
-for a custom endpoint, the model name it serves (required). Guidance from
-running the same design task across OpenRouter models:
+`openai/gpt-6.1-sol`), an Anthropic model id (default `claude-opus-5-5`), or,
+for a custom endpoint, the model name it serves (required). Recommended:
 
-- `openai/gpt-5.6-sol` (default, at medium effort): wrote the strongest code in
-  our tests (retry policies, sentinel handling, debugged a live 503) at about
-  half the cost of cached Sonnet, twice as fast. `AGENT_EFFORT=high` cost 6x
-  medium for no visible gain.
-- `anthropic/claude-sonnet-5`: equally careful engineering and the most tested
-  on long sessions. Prompt caching is applied automatically, cutting
-  long-session cost roughly 4x.
-- `openai/gpt-5.6-terra`: the value pick. Near-parity agentic quality at a
-  fraction of the cost; fast.
-- `z-ai/glm-5.2`: the open-weights route when self-hosting the model matters.
-  Fully workflow-compliant and thorough in our test, but billed well above its
-  list price (hidden reasoning tokens), landing near Sonnet cost with twice the
-  steps.
-- `openai/gpt-5.6-luna`: fine for simple table integrations at trivial cost,
-  but weak long-context recall makes it risky for long raster sessions.
-- `google/gemini-3.6-flash`: not recommended; costs more than Terra, uses
-  about twice the tokens per task, and produced weaker code in our tests.
+- `openai/gpt-6.1-sol`, the OpenRouter default. Runs at medium reasoning
+  effort; `AGENT_EFFORT` raises or lowers it, and higher effort costs more.
+- `anthropic/claude-opus-5.5` on OpenRouter, or `claude-opus-5-5` with the
+  Anthropic provider (its default). On OpenRouter, Anthropic models get prompt
+  caching automatically, which cuts the cost of long sessions.
+- `openai/gpt-6.1-terra`, the cheaper option, for routine integrations and
+  Explore questions.
+
+For a self-hosted model, use a custom endpoint: any OpenAI-compatible server
+works. The designer's work is long, tool-heavy sessions, so a model needs
+reliable tool calling and long-context recall; try one design session and
+check its cold run before relying on it.
 
 ## Initialize and create the first user
 

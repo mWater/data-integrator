@@ -19,7 +19,7 @@ import { getSetting, setSetting } from "./settings.js"
 export const AI_KEY = "ai"
 
 /** Default model per hosted provider; see Quickstart "Choosing a model". */
-export const DEFAULT_MODELS = { openrouter: "openai/gpt-5.6-sol", anthropic: "claude-sonnet-5" } as const
+export const DEFAULT_MODELS = { openrouter: "openai/gpt-6.1-sol", anthropic: "claude-opus-5-5" } as const
 
 /** Longest model id or base URL accepted. */
 const MAX_FIELD = 500
@@ -78,7 +78,7 @@ export function buildModel(config: AiConfig, effort: AgentEffort | null): Langua
   }
   if (config.provider === "openrouter") {
     const modelId = config.model ?? DEFAULT_MODELS.openrouter
-    // The default model runs at medium effort: high cost 6x for no visible gain
+    // The default model runs at medium effort unless AGENT_EFFORT says otherwise
     const resolvedEffort = effort ?? (modelId === DEFAULT_MODELS.openrouter ? "medium" : undefined)
     // Anthropic only caches prompts on an explicit directive (OpenAI and Gemini
     // cache automatically); 1h TTL because sandbox jobs and user think-time

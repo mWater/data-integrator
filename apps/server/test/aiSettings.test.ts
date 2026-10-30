@@ -133,10 +133,10 @@ test("saveAiConfig: the key is stored encrypted and reads back", async () => {
 
 test("AiRuntime.load seeds Settings from the environment once", async () => {
   const logs: string[] = []
-  const env = { OPENROUTER_API_KEY: "sk-or-from-env", AGENT_MODEL: "anthropic/claude-sonnet-5" }
+  const env = { OPENROUTER_API_KEY: "sk-or-from-env", AGENT_MODEL: "anthropic/claude-opus-5.5" }
   const first = await AiRuntime.load(pool, key, null, env, m => logs.push(m))
   assert.equal(first.provider, "openrouter")
-  assert.equal(first.modelId, "anthropic/claude-sonnet-5")
+  assert.equal(first.modelId, "anthropic/claude-opus-5.5")
   assert.equal((await loadAiConfig(pool, key))?.apiKey, "sk-or-from-env")
   // Settings win from then on; the environment is reported as ignored
   await saveAiConfig(pool, key, { provider: "anthropic", model: null, baseUrl: null, apiKey: "sk-ant" })
