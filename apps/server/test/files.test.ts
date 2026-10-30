@@ -75,6 +75,15 @@ class ScriptedRunner {
     }
   }
 
+  /** Resolves once a job is waiting in a hold; a job starts after the request that queued it returns. */
+  async held(): Promise<void> {
+    const deadline = Date.now() + 10_000
+    while (this.holds.length === 0) {
+      if (Date.now() > deadline) throw new Error("no job reached its hold within 10s")
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+  }
+
   /** Lets held jobs finish. */
   release(): void {
     for (const resolve of this.holds.splice(0)) resolve()
@@ -323,6 +332,7 @@ test("pinned runs queue behind a running one and merge into the queued run", asy
   // A plain manual run keeps its 409 while busy
   assert.equal((await call("/api/integrations/inv/run", editor, { method: "POST" })).status, 409)
 
+  await runner.held()
   runner.release()
   assert.equal(await settled(first.body.run.id), "succeeded")
   // No scheduler in this test: drain the queue by hand, as a worker would
@@ -341,6 +351,7 @@ test("a queued run ignores pins for a slot the definition dropped before it star
   assert.equal(second.body.run.status, "queued")
   await pool.query("UPDATE app.integrations SET definition = definition - 'files' WHERE id = 'dropped_slot'")
 
+  await runner.held()
   runner.release()
   assert.equal(await settled(first.body.run.id), "succeeded")
   const claimed = await claimNextRun(pool, "test-worker")
