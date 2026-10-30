@@ -679,19 +679,21 @@ export function SessionView({ sessionId, canDesign, isAdmin = false, userId }: S
                 </>
               )}
             </span>
-            {(isAdmin || detail.userId === userId) && (
-              <button className="quiet" onClick={() => setDiscardOpen(true)} disabled={saving}>
-                {T`Discard Changes`}
+            <span className="save-actions">
+              {(isAdmin || detail.userId === userId) && (
+                <button className="quiet" onClick={() => setDiscardOpen(true)} disabled={saving}>
+                  {T`Discard Changes`}
+                </button>
+              )}
+              <button
+                className="compact"
+                onClick={startSave}
+                disabled={busy || saving || !build}
+                title={busy ? T`Wait for the agent to finish its turn` : !build ? T`The latest build has errors` : undefined}
+              >
+                {saving ? T`Saving…` : T`Save Dashboard`}
               </button>
-            )}
-            <button
-              className="compact"
-              onClick={startSave}
-              disabled={busy || saving || !build}
-              title={busy ? T`Wait for the agent to finish its turn` : !build ? T`The latest build has errors` : undefined}
-            >
-              {saving ? T`Saving…` : T`Save Dashboard`}
-            </button>
+            </span>
           </div>
         )}
         <form className="composer" onSubmit={onSend}>

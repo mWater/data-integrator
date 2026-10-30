@@ -1203,11 +1203,14 @@ table.users tbody tr:hover { background: none }
   width: 100%; max-width: min(920px, 100% - 40px); margin: 0 auto 8px;
 }
 .save-bar {
-  display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 6px 6px 12px;
   background: var(--tint); border: 1px solid var(--tint-border); border-radius: 8px; font-size: 13px;
 }
 .save-dot { width: 8px; height: 8px; border-radius: 50%; background: #d29922; flex: none }
-.save-text { flex: 1; min-width: 0; color: var(--ink-dim) }
+/* In a narrow panel the message takes its own line and the buttons wrap below it, right-aligned */
+.save-text { flex: 1 1 200px; min-width: 0; color: var(--ink-dim) }
+.save-actions { display: flex; align-items: center; gap: 10px; margin-left: auto }
+.save-actions button { white-space: nowrap }
 .save-text b { color: var(--ink); font-weight: 600 }
 button.compact { padding: 5px 12px; font-size: 13px }
 /* A low-emphasis text action beside a primary button */
