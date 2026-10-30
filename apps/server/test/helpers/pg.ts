@@ -13,7 +13,7 @@ export const POSTGIS_IMAGE = "docker.io/postgis/postgis:16-3.4"
 export interface TestDb {
   /** Connection URL */
   url: string
-  /** Stops and removes the container (no-op for TEST_DATABASE_URL) */
+  /** Stops and removes the container and its data volume (no-op for TEST_DATABASE_URL) */
   stop: () => Promise<void>
 }
 
@@ -52,7 +52,7 @@ export async function startTestDb(): Promise<TestDb> {
       break
     } catch {
       if (Date.now() > deadline) {
-        await execFileP("podman", ["rm", "-f", name]).catch(() => {})
+        await execFileP("podman", ["rm", "-f", "-v", name]).catch(() => {})
         throw new Error("Test Postgres did not become ready in 60s")
       }
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -62,7 +62,7 @@ export async function startTestDb(): Promise<TestDb> {
   return {
     url,
     stop: async () => {
-      await execFileP("podman", ["rm", "-f", name]).catch(() => {})
+      await execFileP("podman", ["rm", "-f", "-v", name]).catch(() => {})
     }
   }
 }

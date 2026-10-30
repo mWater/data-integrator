@@ -116,6 +116,9 @@ export class FileStore {
         body.pipe(out)
       })
     } catch (err) {
+      // The file opens asynchronously, so a destroyed stream may create it
+      // after the failure; remove it once the stream has closed
+      if (!out.closed) await new Promise<void>(resolve => out.once("close", () => resolve()))
       await rm(tmpPath, { force: true })
       throw err
     }
