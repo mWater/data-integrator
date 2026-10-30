@@ -1,0 +1,30 @@
+{
+  "name": "data-integrator",
+  "version": "1.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "test": "pnpm -r test",
+    "docs:pdf": "node docs/build-pdf.mjs"
+  },
+  "devDependencies": {
+    "markdown-it": "^15.0.1",
+    "mermaid": "^11.17.2",
+    "playwright-core": "^1.63.0"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git"
+  },
+  "homepage": "https://github.com/mWater/data-integrator#readme",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
+  }
+}

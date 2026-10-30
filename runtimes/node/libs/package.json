@@ -1,0 +1,21 @@
+{
+  "name": "integrator-runtime-node-libs",
+  "private": true,
+  "description": "Curated libraries baked into the node runtime image. Exact versions; the lock pins the rest.",
+  "dependencies": {
+    "csv-parse": "7.0.2",
+    "date-fns": "4.4.0",
+    "fast-xml-parser": "5.11.1"
+  },
+  "license": "Apache-2.0",
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "runtimes/node/libs"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/runtimes/node/libs",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
+  }
+}

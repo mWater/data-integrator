@@ -1,0 +1,203 @@
+{
+  "id": "ghs_population",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "GHSL Population",
+    "fr": "Population GHSL",
+    "pt": "População GHSL",
+    "es": "Población GHSL",
+    "mg": "Mponina GHSL",
+    "sw": "Idadi ya watu ya GHSL"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 10800000
+  },
+  "source": {
+    "url": "https://human-settlement.emergency.copernicus.eu/download.php?ds=pop",
+    "name": {
+      "_base": "en",
+      "en": "GHS-POP R2023A",
+      "fr": "GHS-POP R2023A",
+      "pt": "GHS-POP R2023A",
+      "es": "GHS-POP R2023A",
+      "mg": "GHS-POP R2023A",
+      "sw": "GHS-POP R2023A"
+    },
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": {
+      "_base": "en",
+      "en": "Census populations spread over the GHS-BUILT-S built-up surface seen in satellite imagery: a cell where no built-up surface was detected holds zero people, so scattered rural dwellings the classifier missed are counted nowhere. The grid is 3 arc-seconds (about 100 m at the equator), resampled by the JRC from the native 100 m Mollweide product. Epochs after 2020 are model projections, not observations. Sea and empty land are both zero; the source marks no cell as nodata.",
+      "fr": "Populations des recensements réparties sur la surface bâtie GHS-BUILT-S observée par satellite : une cellule sans surface bâtie détectée contient zéro habitant, de sorte que les habitations rurales dispersées non repérées par le classificateur ne sont comptées nulle part. La grille est de 3 secondes d’arc (environ 100 m à l’équateur), rééchantillonnée par le JRC à partir du produit natif Mollweide à 100 m. Les époques postérieures à 2020 sont des projections modélisées, et non des observations. La mer et les terres inhabitées valent toutes deux zéro ; la source ne marque aucune cellule comme nodata.",
+      "pt": "Populações dos censos distribuídas pela superfície construída GHS-BUILT-S observada em imagens de satélite: uma célula sem superfície construída detetada contém zero pessoas, pelo que habitações rurais dispersas não detetadas pelo classificador não são contadas em lado nenhum. A grelha tem 3 segundos de arco (cerca de 100 m no equador), reamostrada pelo JRC a partir do produto nativo Mollweide de 100 m. As épocas posteriores a 2020 são projeções modeladas, não observações. O mar e as terras desabitadas valem ambos zero; a fonte não marca nenhuma célula como nodata.",
+      "es": "Poblaciones censales repartidas sobre la superficie construida GHS-BUILT-S observada en imágenes satelitales: una celda sin superficie construida detectada contiene cero personas, por lo que las viviendas rurales dispersas que el clasificador no detectó no se cuentan en ninguna parte. La cuadrícula es de 3 segundos de arco (unos 100 m en el ecuador), remuestreada por el JRC a partir del producto nativo Mollweide de 100 m. Las épocas posteriores a 2020 son proyecciones modelizadas, no observaciones. El mar y las tierras deshabitadas valen ambos cero; la fuente no marca ninguna celda como nodata.",
+      "mg": "Isan’ny mponina avy amin’ny fanisam-bahoaka nozaraina eo amin’ny velarana voaorina GHS-BUILT-S hita amin’ny sary zanabolana: ny sela tsy nahitana velarana voaorina dia misy olona aotra, ka tsy voaisa na aiza na aiza ny trano ambanivohitra miparitaka tsy hitan’ny mpanasokajy. Mirefy 3 segondra zoro ny harato (manodidina ny 100 m eo amin’ny ekoatera), naverin’ny JRC namboarina avy amin’ny vokatra Mollweide 100 m. Ny vanim-potoana aorian’ny 2020 dia vinavina avy amin’ny maodely fa tsy fandinihana. Aotra avokoa ny ranomasina sy ny tany tsy misy mponina; tsy misy sela marihin’ny loharano ho nodata.",
+      "sw": "Idadi za watu za sensa zilizosambazwa juu ya eneo lililojengwa la GHS-BUILT-S linaloonekana kwenye picha za setilaiti: seli ambayo hakuna eneo lililojengwa lililogunduliwa ina watu sifuri, hivyo makazi ya vijijini yaliyotawanyika ambayo kiainishi hakikuyaona hayahesabiwi popote. Gridi ni sekunde 3 za tao (takriban m 100 kwenye ikweta), iliyosampuliwa upya na JRC kutoka bidhaa asilia ya Mollweide ya m 100. Vipindi baada ya 2020 ni makadirio ya modeli, si uchunguzi. Bahari na ardhi isiyo na watu zote ni sifuri; chanzo hakiweki alama ya nodata kwenye seli yoyote."
+    },
+    "documentation": "https://human-settlement.emergency.copernicus.eu/ghs_pop2023.php"
+  },
+  "runtime": "python",
+  "trigger": {},
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Ingests the EC JRC GHS-POP R2023A population count grids on the 3 arc-second WGS84 grid, one snapshot per five-year epoch. With an area of interest, the tiles it touches are mosaicked and clipped to the box into one COG per epoch, every published epoch included. Without an area of interest the whole world is ingested: each of the published 10-degree tiles becomes one source of the epoch's snapshot, and only the newest epoch not after the current year is taken by default, since a global epoch is about 30 GB of source. The Years setting overrides this: every published epoch, or only the newest one.",
+    "fr": "Intègre les grilles d’effectifs de population EC JRC GHS-POP R2023A sur la grille WGS84 à 3 secondes d’arc, avec un instantané par époque de cinq ans. Avec une zone d’intérêt, les tuiles qu’elle touche sont assemblées en mosaïque et découpées selon l’emprise en un COG par époque, toutes les époques publiées incluses. Sans zone d’intérêt, le monde entier est ingéré : chaque tuile publiée de 10 degrés devient une source de l’instantané de l’époque et, par défaut, seule l’époque la plus récente n’étant pas postérieure à l’année en cours est retenue, car une époque mondiale représente environ 30 Go de données source. Le paramètre Années permet de choisir autrement : toutes les époques publiées, ou seulement la plus récente.",
+    "pt": "Ingere as grelhas de contagem populacional EC JRC GHS-POP R2023A na grelha WGS84 de 3 segundos de arco, com um instantâneo por época de cinco anos. Com uma área de interesse, os mosaicos que ela toca são unidos e recortados pela caixa num COG por época, incluindo todas as épocas publicadas. Sem uma área de interesse, o mundo inteiro é ingerido: cada mosaico publicado de 10 graus torna-se uma fonte do instantâneo da época e, por predefinição, apenas a época mais recente não posterior ao ano atual é obtida, pois uma época global corresponde a cerca de 30 GB de dados de origem. A definição Anos permite escolher de outra forma: todas as épocas publicadas, ou apenas a mais recente.",
+    "es": "Ingiere las cuadrículas de recuento de población EC JRC GHS-POP R2023A en la cuadrícula WGS84 de 3 segundos de arco, con una instantánea por época de cinco años. Con un área de interés, las teselas que toca se unen en mosaico y se recortan según el recuadro en un COG por época, incluyendo todas las épocas publicadas. Sin un área de interés, se ingiere el mundo entero: cada tesela publicada de 10 grados pasa a ser una fuente de la instantánea de la época y, de forma predeterminada, solo se toma la época más reciente no posterior al año en curso, ya que una época global ocupa unos 30 GB en origen. El ajuste Años permite elegir otra cosa: todas las épocas publicadas, o solo la más reciente.",
+    "mg": "Mampiditra ny haraton’ny isan’ny mponina EC JRC GHS-POP R2023A eo amin’ny harato WGS84 3 segondra zoro, ka sarin’antontan-kevitra iray isaky ny vanim-potoana dimy taona. Raha misy faritra mahaliana, dia atambatra ho mosaika sy tapahina araka ilay efajoro ho COG iray isaky ny vanim-potoana ireo taila kasihiny, ary ampidirina ny vanim-potoana rehetra navoaka. Raha tsy misy faritra mahaliana dia ampidirina izao tontolo izao: ny taila 10 degre navoaka tsirairay no lasa loharano iray ho an’ny sarin’antontan-kevitra amin’ilay vanim-potoana, ary ny vanim-potoana farany tsy aorian’ny taona ankehitriny ihany no raisina ho default, satria manodidina ny 30 GB ny angona loharano ho an’ny vanim-potoana iray maneran-tany. Ny fandrindrana Taona no ahafahana misafidy hafa: ny vanim-potoana rehetra navoaka, na ny farany indrindra ihany.",
+    "sw": "Huingiza gridi za hesabu ya idadi ya watu za EC JRC GHS-POP R2023A kwenye gridi ya WGS84 ya sekunde 3 za tao, picha moja kwa kila kipindi cha miaka mitano. Eneo linalolengwa likiwepo, vigae linavyogusa huunganishwa kuwa mosaiki na kukatwa kulingana na kisanduku kuwa COG moja kwa kila kipindi, huku kila kipindi kilichochapishwa kikijumuishwa. Bila eneo linalolengwa, dunia nzima huingizwa: kila kigae kilichochapishwa cha digrii 10 huwa chanzo kimoja cha picha ya kipindi hicho, na kwa chaguo-msingi ni kipindi kipya zaidi kisichozidi mwaka wa sasa pekee kinachochukuliwa, kwa kuwa kipindi kimoja cha dunia ni takriban GB 30 za chanzo. Mpangilio wa Miaka huruhusu kuchagua vinginevyo: kila kipindi kilichochapishwa, au kipya zaidi pekee."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Population (GHS-POP)",
+        "fr": "Population (GHS-POP)",
+        "pt": "População (GHS-POP)",
+        "es": "Población (GHS-POP)",
+        "mg": "Mponina (GHS-POP)",
+        "sw": "Idadi ya watu (GHS-POP)"
+      },
+      "bands": [
+        {
+          "id": "population",
+          "name": {
+            "_base": "en",
+            "en": "Population count",
+            "fr": "Nombre d’habitants",
+            "pt": "Contagem da população",
+            "es": "Recuento de población",
+            "mg": "Isan’ny mponina",
+            "sw": "Hesabu ya idadi ya watu"
+          },
+          "units": "people per grid cell",
+          "nodata": -200,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#ffffe5",
+                "value": 0
+              },
+              {
+                "color": "#f7fcb9",
+                "value": 1
+              },
+              {
+                "color": "#d9f0a3",
+                "value": 3
+              },
+              {
+                "color": "#addd8e",
+                "value": 8
+              },
+              {
+                "color": "#78c679",
+                "value": 13
+              },
+              {
+                "color": "#41ab5d",
+                "value": 43
+              },
+              {
+                "color": "#238443",
+                "value": 170
+              },
+              {
+                "color": "#005a32",
+                "value": 280
+              }
+            ],
+            "resampling": "nearest"
+          }
+        }
+      ],
+      "layerId": "ghs_population",
+      "description": {
+        "_base": "en",
+        "en": "GHSL GHS-POP estimates of people per approximately 100 m grid cell for the deployment area of interest, one snapshot per five-year epoch.",
+        "fr": "Estimations GHSL GHS-POP du nombre de personnes par cellule de grille d’environ 100 m pour la zone de déploiement ciblée, avec un instantané par époque de cinq ans.",
+        "pt": "Estimativas GHSL GHS-POP do número de pessoas por célula de grelha de aproximadamente 100 m para a área de interesse da implementação, com um instantâneo por época de cinco anos.",
+        "es": "Estimaciones GHSL GHS-POP del número de personas por celda de cuadrícula de aproximadamente 100 m para el área de interés del despliegue, con una instantánea por época de cinco años.",
+        "mg": "Tombana GHSL GHS-POP momba ny isan’ny olona isaky ny sela harato manodidina ny 100 m ho an’ny faritra kendrena amin’ny fametrahana, ka sarin’antontan-kevitra iray isaky ny vanim-potoana dimy taona.",
+        "sw": "Makadirio ya GHSL GHS-POP ya watu kwa kila seli ya gridi ya takriban m 100 katika eneo lengwa la utekelezaji, picha moja kwa kila kipindi cha miaka mitano."
+      },
+      "temporality": "time-series"
+    }
+  ],
+  "settings": {
+    "years": {
+      "label": {
+        "_base": "en",
+        "en": "Years",
+        "fr": "Années",
+        "pt": "Anos",
+        "es": "Años",
+        "mg": "Taona",
+        "sw": "Miaka"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Which five-year epochs to load. Automatic takes every published epoch for an area of interest and only the newest for the whole world.",
+        "fr": "Époques quinquennales à charger. Automatique prend toutes les époques publiées pour une zone d’intérêt et seulement la plus récente pour le monde entier.",
+        "pt": "Épocas quinquenais a carregar. Automático obtém todas as épocas publicadas para uma área de interesse e apenas a mais recente para o mundo inteiro.",
+        "es": "Épocas quinquenales que se cargan. Automático toma todas las épocas publicadas para un área de interés y solo la más reciente para el mundo entero.",
+        "mg": "Ireo vanim-potoana dimy taona halaina. Ny Ho azy dia maka ny vanim-potoana rehetra navoaka ho an’ny faritra mahaliana, ary ny farany indrindra ihany ho an’izao tontolo izao.",
+        "sw": "Vipindi vya miaka mitano vya kupakia. Otomatiki huchukua kila kipindi kilichochapishwa kwa eneo linalolengwa na kipya zaidi pekee kwa dunia nzima."
+      },
+      "type": "choice",
+      "default": "auto",
+      "choices": [
+        {
+          "value": "auto",
+          "label": {
+            "_base": "en",
+            "en": "Automatic",
+            "fr": "Automatique",
+            "pt": "Automático",
+            "es": "Automático",
+            "mg": "Ho azy",
+            "sw": "Otomatiki"
+          }
+        },
+        {
+          "value": "all",
+          "label": {
+            "_base": "en",
+            "en": "Every published epoch",
+            "fr": "Toutes les époques publiées",
+            "pt": "Todas as épocas publicadas",
+            "es": "Todas las épocas publicadas",
+            "mg": "Ny vanim-potoana rehetra navoaka",
+            "sw": "Kila kipindi kilichochapishwa"
+          }
+        },
+        {
+          "value": "current",
+          "label": {
+            "_base": "en",
+            "en": "Newest epoch only",
+            "fr": "Époque la plus récente seulement",
+            "pt": "Apenas a época mais recente",
+            "es": "Solo la época más reciente",
+            "mg": "Ny vanim-potoana farany indrindra ihany",
+            "sw": "Kipindi kipya zaidi pekee"
+          }
+        }
+      ]
+    }
+  },
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "ghs_population",
+        "field": "population",
+        "min": 0
+      }
+    ]
+  }
+}

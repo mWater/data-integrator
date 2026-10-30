@@ -1,0 +1,160 @@
+{
+  "id": "copernicus_spi3",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO SPI-3 drought index",
+    "fr": "Indice de sécheresse SPI-3 du GDO Copernicus",
+    "pt": "Índice de seca SPI-3 do GDO Copernicus",
+    "es": "Índice de sequía SPI-3 del GDO de Copernicus",
+    "mg": "Tondro haintany SPI-3 an'ny Copernicus GDO",
+    "sw": "Kielezo cha ukame cha Copernicus GDO SPI-3"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 2048,
+    "timeoutMs": 900000
+  },
+  "source": {
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_ERA5_Standardized_Precipitation_Index_SPI3/",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory ERA5 Standardized Precipitation Index (SPI-3)",
+      "fr": "Indice standardisé de précipitations ERA5 de l’Observatoire mondial de la sécheresse Copernicus (SPI-3)",
+      "pt": "Índice Padronizado de Precipitação ERA5 do Observatório Global da Seca do Copernicus (SPI-3)",
+      "es": "Índice Estandarizado de Precipitación ERA5 del Observatorio Mundial de la Sequía de Copernicus (SPI-3)",
+      "mg": "Tondro rotsak’orana manara-penitra ERA5 an’ny Copernicus Global Drought Observatory (SPI-3)",
+      "sw": "Kielezo Sanifu cha Mvua cha ERA5 cha Copernicus Global Drought Observatory (SPI-3)"
+    },
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": {
+      "_base": "en",
+      "en": "ERA5-derived SPI on a 0.25° (~28 km) grid: cells span large areas and are computed over ocean as well as land. Each month is represented by its final dekad, and magnitudes beyond ±3 are statistical extremes best read qualitatively.",
+      "fr": "SPI dérivé d’ERA5 sur une grille de 0,25° (~28 km) : les cellules couvrent de vastes zones et sont calculées aussi bien sur l’océan que sur les terres. Chaque mois est représenté par sa dernière décade, et les amplitudes au-delà de ±3 sont des extrêmes statistiques qu’il vaut mieux interpréter qualitativement.",
+      "pt": "SPI derivado do ERA5 numa grelha de 0,25° (~28 km): as células abrangem grandes áreas e são calculadas tanto sobre o oceano como sobre a terra. Cada mês é representado pelo seu decêndio final, e magnitudes além de ±3 são extremos estatísticos que devem ser interpretados qualitativamente.",
+      "es": "SPI derivado de ERA5 en una cuadrícula de 0,25° (~28 km): las celdas abarcan grandes áreas y se calculan tanto sobre el océano como sobre tierra. Cada mes está representado por su última decena, y las magnitudes superiores a ±3 son extremos estadísticos que conviene interpretar cualitativamente.",
+      "mg": "SPI nalaina avy amin’ny ERA5 amin’ny harato 0,25° (~28 km): mandrakotra faritra midadasika ny sela ary kajiana na ambonin’ny ranomasina na an-tanety. Ny volana tsirairay dia asehon’ny dekada farany, ary ny sanda mihoatra ny ±3 dia tranga faran’izay tsy fahita ara-statistika ka tsara kokoa raha adika amin’ny fomba kalitatifa.",
+      "sw": "SPI inayotokana na ERA5 kwenye gridi ya 0.25° (~28 km): seli hufunika maeneo makubwa na huhesabiwa baharini na nchi kavu. Kila mwezi huwakilishwa na dekadi yake ya mwisho, na thamani zinazozidi ±3 ni viwango vya mwisho vya kitakwimu vinavyofaa kufasiriwa kwa namna ya kimaelezo."
+    },
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_spi.pdf"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 10 * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Monthly 3-month Standardized Precipitation Index from the Copernicus Global Drought Observatory ERA5 dekadal product, clipped to the deployment area of interest. Each month is represented by the final dekad starting on the 21st. Backfills the latest 24 months and then ingests new monthly observations incrementally.",
+    "fr": "Indice standardisé de précipitations mensuel sur 3 mois, issu du produit ERA5 décadaire de l’Observatoire mondial de la sécheresse Copernicus et découpé selon la zone d’intérêt du déploiement. Chaque mois est représenté par la dernière décade, qui commence le 21. Les 24 derniers mois sont rétroalimentés, puis les nouvelles observations mensuelles sont intégrées progressivement.",
+    "pt": "Índice Padronizado de Precipitação mensal de 3 meses, proveniente do produto decendial ERA5 do Observatório Global da Seca do Copernicus e recortado para a área de interesse da implantação. Cada mês é representado pelo decêndio final, iniciado no dia 21. Os últimos 24 meses são preenchidos retroativamente e, depois, novas observações mensais são incorporadas de forma incremental.",
+    "es": "Índice Estandarizado de Precipitación mensual de 3 meses, procedente del producto decádico ERA5 del Observatorio Mundial de la Sequía de Copernicus y recortado al área de interés de la implementación. Cada mes está representado por la última decena, que comienza el día 21. Se rellenan retrospectivamente los últimos 24 meses y después se incorporan nuevas observaciones mensuales de forma incremental.",
+    "mg": "Tondro rotsak’orana manara-penitra 3 volana isam-bolana, avy amin’ny vokatra ERA5 isaky ny dekada an’ny Copernicus Global Drought Observatory, ary noferana amin’ny faritra kendren’ny fampiharana. Ny volana tsirairay dia asehon’ny dekada farany manomboka ny 21. Fenoiny ny angona ho an’ny 24 volana farany, avy eo ampidiriny tsikelikely ny fandrefesana vaovao isam-bolana.",
+    "sw": "Kielezo Sanifu cha Mvua cha miezi 3 cha kila mwezi, kutoka katika bidhaa ya ERA5 ya kila dekadi ya Copernicus Global Drought Observatory, kilichopunguzwa hadi eneo lengwa la utekelezaji. Kila mwezi huwakilishwa na dekadi ya mwisho inayoanza tarehe 21. Data ya miezi 24 iliyopita hujazwa, kisha vipimo vipya vya kila mwezi huingizwa hatua kwa hatua."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "SPI-3 drought index",
+        "fr": "Indice de sécheresse SPI-3",
+        "pt": "Índice de seca SPI-3",
+        "es": "Índice de sequía SPI-3",
+        "mg": "Tondro haintany SPI-3",
+        "sw": "Kielezo cha ukame SPI-3"
+      },
+      "bands": [
+        {
+          "id": "spi3",
+          "name": {
+            "_base": "en",
+            "en": "SPI-3",
+            "fr": "SPI-3",
+            "pt": "SPI-3",
+            "es": "SPI-3",
+            "mg": "SPI-3",
+            "sw": "SPI-3"
+          },
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#67000d",
+                "value": -7
+              },
+              {
+                "color": "#b2182b",
+                "value": -2
+              },
+              {
+                "color": "#ef8a62",
+                "value": -1
+              },
+              {
+                "color": "#f7f7f7",
+                "value": 0
+              },
+              {
+                "color": "#92c5de",
+                "value": 1
+              },
+              {
+                "color": "#2166ac",
+                "value": 2
+              },
+              {
+                "color": "#053061",
+                "value": 2.31
+              }
+            ],
+            "resampling": "average"
+          }
+        }
+      ],
+      "layerId": "spi3",
+      "description": {
+        "_base": "en",
+        "en": "Monthly 3-month Standardized Precipitation Index: negative values are drier than normal, positive wetter.",
+        "fr": "Indice standardisé de précipitations mensuel sur 3 mois : les valeurs négatives indiquent des conditions plus sèches que la normale, les positives des conditions plus humides.",
+        "pt": "Índice Padronizado de Precipitação mensal de 3 meses: valores negativos indicam condições mais secas que o normal; valores positivos, mais húmidas.",
+        "es": "Índice Estandarizado de Precipitación mensual de 3 meses: los valores negativos indican condiciones más secas de lo normal y los positivos, más húmedas.",
+        "mg": "Tondro rotsak’orana manara-penitra 3 volana isam-bolana: ny sanda miiba dia maina kokoa noho ny mahazatra, ary ny sanda miabo dia mando kokoa.",
+        "sw": "Kielezo Sanifu cha Mvua cha miezi 3 cha kila mwezi: thamani hasi humaanisha hali kavu kuliko kawaida, na chanya hali yenye unyevunyevu zaidi."
+      },
+      "temporality": "time-series"
+    }
+  ],
+  "settings": {
+    "months_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (months)",
+        "fr": "Historique à charger (mois)",
+        "pt": "Histórico a carregar (meses)",
+        "es": "Historial a cargar (meses)",
+        "mg": "Tantara halaina (volana)",
+        "sw": "Historia ya kupakia (miezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many months of past data the first run or a rebuild loads. Later runs add only new data.",
+        "fr": "Nombre de mois de données passées que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles données.",
+        "pt": "Quantos meses de dados anteriores a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam dados novos.",
+        "es": "Cuántos meses de datos anteriores carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden datos nuevos.",
+        "mg": "Isan’ny volana amin’ny angona taloha alain’ny fandefasana voalohany na ny fanamboarana indray. Ny fandefasana manaraka dia manampy angona vaovao ihany.",
+        "sw": "Idadi ya miezi ya data ya zamani ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza data mpya tu."
+      },
+      "type": "integer",
+      "default": 24,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P1M"
+  }
+}

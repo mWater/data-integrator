@@ -1,0 +1,426 @@
+{
+  "id": "hydrosheds_hydrography",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "HydroSHEDS HydroBASINS and HydroRIVERS",
+    "fr": "HydroSHEDS HydroBASINS et HydroRIVERS",
+    "pt": "HydroSHEDS HydroBASINS e HydroRIVERS",
+    "es": "HydroSHEDS HydroBASINS y HydroRIVERS",
+    "mg": "HydroSHEDS HydroBASINS sy HydroRIVERS",
+    "sw": "HydroSHEDS HydroBASINS na HydroRIVERS"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 1200000
+  },
+  "source": {
+    "url": "https://www.hydrosheds.org/",
+    "name": {
+      "_base": "en",
+      "en": "HydroSHEDS HydroBASINS v1c and HydroRIVERS v1.0",
+      "fr": "HydroSHEDS HydroBASINS v1c et HydroRIVERS v1.0",
+      "pt": "HydroSHEDS HydroBASINS v1c e HydroRIVERS v1.0",
+      "es": "HydroSHEDS HydroBASINS v1c y HydroRIVERS v1.0",
+      "mg": "HydroSHEDS HydroBASINS v1c sy HydroRIVERS v1.0",
+      "sw": "HydroSHEDS HydroBASINS v1c na HydroRIVERS v1.0"
+    },
+    "license": "HydroSHEDS license agreement; freely available for scientific, educational, and commercial use subject to attribution and redistribution terms",
+    "provider": "WWF HydroSHEDS",
+    "limitations": {
+      "_base": "en",
+      "en": "Derived from SRTM elevation data collected in 2000: the network is static, does not reflect later channel migration or new works, and positional accuracy declines in flat or densely vegetated terrain.",
+      "fr": "Dérivé de données d’altitude SRTM acquises en 2000 : le réseau est statique, ne reflète ni les migrations ultérieures des chenaux ni les nouveaux ouvrages, et sa précision de positionnement diminue en terrain plat ou densément végétalisé.",
+      "pt": "Derivada de dados de elevação SRTM coletados em 2000: a rede é estática, não reflete migrações posteriores dos canais nem novas obras, e a precisão posicional diminui em terrenos planos ou densamente vegetados.",
+      "es": "Derivada de datos de elevación SRTM recopilados en 2000: la red es estática, no refleja migraciones posteriores de los cauces ni nuevas obras, y la precisión posicional disminuye en terrenos llanos o con vegetación densa.",
+      "mg": "Nalaina avy amin’ny angona haavo SRTM nangonina tamin’ny 2000: tsy miova ny tambajotra, ka tsy ahitana ny fifindran’ny lalan-drano na ny fotodrafitrasa vaovao tatỳ aoriana, ary mihena ny fahamarinan-toerana amin’ny tany fisaka na rakotra zavamaniry matevina.",
+      "sw": "Imetolewa kutoka data za mwinuko za SRTM zilizokusanywa mwaka 2000: mtandao ni tuli, hauonyeshi uhamaji wa baadaye wa mikondo wala miundombinu mipya, na usahihi wa mahali hupungua katika ardhi tambarare au yenye uoto mnene."
+    },
+    "documentation": "https://www.hydrosheds.org/products/hydrobasins"
+  },
+  "runtime": "python",
+  "trigger": {},
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Static level-8 HydroBASINS catchments and HydroRIVERS reaches intersecting the deployment area of interest, preserving complete source geometries.",
+    "fr": "Bassins versants HydroBASINS statiques de niveau 8 et tronçons HydroRIVERS intersectant la zone de déploiement, avec conservation intégrale des géométries sources.",
+    "pt": "Bacias HydroBASINS estáticas de nível 8 e trechos HydroRIVERS que intersectam a área de implementação, preservando integralmente as geometrias de origem.",
+    "es": "Cuencas HydroBASINS estáticas de nivel 8 y tramos HydroRIVERS que intersectan el área de despliegue, conservando íntegras las geometrías de origen.",
+    "mg": "Faritra fandraisan-drano HydroBASINS tsy miova ambaratonga 8 sy ampahan-renirano HydroRIVERS mifanapaka amin’ny faritra ampiasana, ka voatahiry manontolo ny jeometria loharano.",
+    "sw": "Mabonde tuli ya HydroBASINS ya kiwango cha 8 na vipande vya HydroRIVERS vinavyokatiza eneo la utekelezaji, huku jiometria kamili za chanzo zikihifadhiwa."
+  },
+  "destinations": [
+    {
+      "kind": "table",
+      "name": {
+        "_base": "en",
+        "en": "Watersheds",
+        "fr": "Bassins versants",
+        "pt": "Bacias hidrográficas",
+        "es": "Cuencas hidrográficas",
+        "mg": "Faritra fandraisan-drano",
+        "sw": "Mabonde ya maji"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "hybas_id",
+          "name": {
+            "_base": "en",
+            "en": "HydroBASINS ID",
+            "fr": "ID HydroBASINS",
+            "pt": "ID HydroBASINS",
+            "es": "ID de HydroBASINS",
+            "mg": "ID HydroBASINS",
+            "sw": "ID ya HydroBASINS"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "next_down_id",
+          "name": {
+            "_base": "en",
+            "en": "Next downstream basin ID",
+            "fr": "ID du bassin aval suivant",
+            "pt": "ID da próxima bacia a jusante",
+            "es": "ID de la siguiente cuenca aguas abajo",
+            "mg": "ID an’ny lemaka manaraka any ambany rano",
+            "sw": "ID ya bonde linalofuata upande wa chini"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "next_sink_id",
+          "name": {
+            "_base": "en",
+            "en": "Terminal sink basin ID",
+            "fr": "ID du bassin de dépression terminale",
+            "pt": "ID da bacia do sumidouro terminal",
+            "es": "ID de la cuenca del sumidero terminal",
+            "mg": "ID an’ny lemaka fiafaran-drano",
+            "sw": "ID ya bonde la mwisho la maji"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "main_basin_id",
+          "name": {
+            "_base": "en",
+            "en": "Main basin ID",
+            "fr": "ID du bassin principal",
+            "pt": "ID da bacia principal",
+            "es": "ID de la cuenca principal",
+            "mg": "ID an’ny lemaka lehibe",
+            "sw": "ID ya bonde kuu"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "pfaf_id",
+          "name": {
+            "_base": "en",
+            "en": "Pfafstetter code",
+            "fr": "Code de Pfafstetter",
+            "pt": "Código Pfafstetter",
+            "es": "Código Pfafstetter",
+            "mg": "Kaody Pfafstetter",
+            "sw": "Msimbo wa Pfafstetter"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "subbasin_area_sq_km",
+          "name": {
+            "_base": "en",
+            "en": "Sub-basin area",
+            "fr": "Superficie du sous-bassin",
+            "pt": "Área da sub-bacia",
+            "es": "Área de la subcuenca",
+            "mg": "Velaran’ny lemaka zana-paritra",
+            "sw": "Eneo la bonde dogo"
+          },
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "upstream_area_sq_km",
+          "name": {
+            "_base": "en",
+            "en": "Upstream area",
+            "fr": "Superficie en amont",
+            "pt": "Área a montante",
+            "es": "Área aguas arriba",
+            "mg": "Velaran’ny faritra ambony rano",
+            "sw": "Eneo la upande wa juu"
+          },
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "distance_to_sink_km",
+          "name": {
+            "_base": "en",
+            "en": "Distance to sink",
+            "fr": "Distance à la dépression terminale",
+            "pt": "Distância até o sumidouro",
+            "es": "Distancia al sumidero",
+            "mg": "Halavirana mankany amin’ny fiafaran-drano",
+            "sw": "Umbali hadi mahali pa mwisho wa maji"
+          },
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "endorheic",
+          "name": {
+            "_base": "en",
+            "en": "Endorheic basin",
+            "fr": "Bassin endoréique",
+            "pt": "Bacia endorreica",
+            "es": "Cuenca endorreica",
+            "mg": "Lemaka endoreika",
+            "sw": "Bonde endoreiki"
+          },
+          "type": "boolean"
+        },
+        {
+          "id": "coastal",
+          "name": {
+            "_base": "en",
+            "en": "Coastal basin",
+            "fr": "Bassin côtier",
+            "pt": "Bacia costeira",
+            "es": "Cuenca costera",
+            "mg": "Lemaka amorontsiraka",
+            "sw": "Bonde la pwani"
+          },
+          "type": "boolean"
+        },
+        {
+          "id": "basin_order",
+          "name": {
+            "_base": "en",
+            "en": "Basin order",
+            "fr": "Ordre du bassin",
+            "pt": "Ordem da bacia",
+            "es": "Orden de la cuenca",
+            "mg": "Laharan’ny lemaka",
+            "sw": "Daraja la bonde"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "geometry",
+          "name": {
+            "_base": "en",
+            "en": "Basin geometry",
+            "fr": "Géométrie du bassin",
+            "pt": "Geometria da bacia",
+            "es": "Geometría de la cuenca",
+            "mg": "Jeometrian’ny lemaka",
+            "sw": "Jiometria ya bonde"
+          },
+          "type": "geometry"
+        }
+      ],
+      "tableId": "hydrobasins",
+      "description": {
+        "_base": "en",
+        "en": "Level-8 HydroBASINS watershed polygons intersecting the deployment area.",
+        "fr": "Polygones de bassins versants HydroBASINS de niveau 8 intersectant la zone de déploiement.",
+        "pt": "Polígonos de bacias HydroBASINS de nível 8 que intersectam a área de implementação.",
+        "es": "Polígonos de cuencas HydroBASINS de nivel 8 que intersectan el área de despliegue.",
+        "mg": "Poligônan’ny faritra fandraisan-drano HydroBASINS ambaratonga 8 mifanapaka amin’ny faritra ampiasana.",
+        "sw": "Poligoni za mabonde ya HydroBASINS ya kiwango cha 8 zinazokatiza eneo la utekelezaji."
+      }
+    },
+    {
+      "kind": "table",
+      "name": {
+        "_base": "en",
+        "en": "River reaches",
+        "fr": "Tronçons de rivière",
+        "pt": "Trechos de rio",
+        "es": "Tramos de río",
+        "mg": "Ampahan-renirano",
+        "sw": "Vipande vya mto"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "hyriv_id",
+          "name": {
+            "_base": "en",
+            "en": "HydroRIVERS reach ID",
+            "fr": "ID du tronçon HydroRIVERS",
+            "pt": "ID do trecho HydroRIVERS",
+            "es": "ID del tramo HydroRIVERS",
+            "mg": "ID an’ny ampahan-renirano HydroRIVERS",
+            "sw": "ID ya kipande cha HydroRIVERS"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "next_down_id",
+          "name": {
+            "_base": "en",
+            "en": "Next downstream reach ID",
+            "fr": "ID du tronçon aval suivant",
+            "pt": "ID do próximo trecho a jusante",
+            "es": "ID del siguiente tramo aguas abajo",
+            "mg": "ID an’ny ampahan-renirano manaraka any ambany rano",
+            "sw": "ID ya kipande kinachofuata upande wa chini"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "main_river_id",
+          "name": {
+            "_base": "en",
+            "en": "Main river ID",
+            "fr": "ID de la rivière principale",
+            "pt": "ID do rio principal",
+            "es": "ID del río principal",
+            "mg": "ID an’ny renirano lehibe",
+            "sw": "ID ya mto mkuu"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "hydrobasins_level12_id",
+          "name": {
+            "_base": "en",
+            "en": "HydroBASINS level-12 ID",
+            "fr": "ID HydroBASINS de niveau 12",
+            "pt": "ID HydroBASINS de nível 12",
+            "es": "ID de HydroBASINS de nivel 12",
+            "mg": "ID HydroBASINS ambaratonga 12",
+            "sw": "ID ya HydroBASINS ya kiwango cha 12"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "length_km",
+          "name": {
+            "_base": "en",
+            "en": "Reach length",
+            "fr": "Longueur du tronçon",
+            "pt": "Comprimento do trecho",
+            "es": "Longitud del tramo",
+            "mg": "Halavan’ny ampahan-renirano",
+            "sw": "Urefu wa kipande"
+          },
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "distance_downstream_km",
+          "name": {
+            "_base": "en",
+            "en": "Distance to river outlet",
+            "fr": "Distance à l’exutoire de la rivière",
+            "pt": "Distância até a foz do rio",
+            "es": "Distancia a la desembocadura del río",
+            "mg": "Halavirana mankany amin’ny vavan’ny renirano",
+            "sw": "Umbali hadi mdomo wa mto"
+          },
+          "type": "number",
+          "units": "km"
+        },
+        {
+          "id": "local_catchment_sq_km",
+          "name": {
+            "_base": "en",
+            "en": "Local catchment area",
+            "fr": "Superficie du bassin versant local",
+            "pt": "Área da bacia de contribuição local",
+            "es": "Área de la cuenca de captación local",
+            "mg": "Velaran’ny faritra fandraisan-drano eo an-toerana",
+            "sw": "Eneo la bonde la maji la karibu"
+          },
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "upstream_drainage_area_sq_km",
+          "name": {
+            "_base": "en",
+            "en": "Upstream drainage area",
+            "fr": "Superficie drainée en amont",
+            "pt": "Área de drenagem a montante",
+            "es": "Área de drenaje aguas arriba",
+            "mg": "Velaran’ny faritra tatatra any ambony rano",
+            "sw": "Eneo la mtiririko wa maji upande wa juu"
+          },
+          "type": "number",
+          "units": "km²"
+        },
+        {
+          "id": "average_discharge_cms",
+          "name": {
+            "_base": "en",
+            "en": "Long-term average discharge",
+            "fr": "Débit moyen à long terme",
+            "pt": "Vazão média de longo prazo",
+            "es": "Caudal medio a largo plazo",
+            "mg": "Salan’ny tahan’ny fikorianan-drano maharitra",
+            "sw": "Wastani wa mtiririko wa muda mrefu"
+          },
+          "type": "number",
+          "units": "m³/s"
+        },
+        {
+          "id": "endorheic",
+          "name": {
+            "_base": "en",
+            "en": "Endorheic reach",
+            "fr": "Tronçon endoréique",
+            "pt": "Trecho endorreico",
+            "es": "Tramo endorreico",
+            "mg": "Ampahan-renirano endoreika",
+            "sw": "Kipande endoreiki"
+          },
+          "type": "boolean"
+        },
+        {
+          "id": "strahler_order",
+          "name": {
+            "_base": "en",
+            "en": "Strahler stream order",
+            "fr": "Ordre de Strahler du cours d’eau",
+            "pt": "Ordem de Strahler do curso d’água",
+            "es": "Orden de Strahler del cauce",
+            "mg": "Laharan’ny lalan-drano araka an’i Strahler",
+            "sw": "Daraja la mkondo la Strahler"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "geometry",
+          "name": {
+            "_base": "en",
+            "en": "River geometry",
+            "fr": "Géométrie de la rivière",
+            "pt": "Geometria do rio",
+            "es": "Geometría del río",
+            "mg": "Jeometrian’ny renirano",
+            "sw": "Jiometria ya mto"
+          },
+          "type": "geometry"
+        }
+      ],
+      "tableId": "hydrorivers",
+      "description": {
+        "_base": "en",
+        "en": "HydroRIVERS river reach lines with flow attributes intersecting the deployment area.",
+        "fr": "Lignes des tronçons de rivière HydroRIVERS avec attributs d’écoulement intersectant la zone de déploiement.",
+        "pt": "Linhas de trechos fluviais HydroRIVERS com atributos de fluxo que intersectam a área de implementação.",
+        "es": "Líneas de tramos fluviales HydroRIVERS con atributos de flujo que intersectan el área de despliegue.",
+        "mg": "Tsipikan’ny ampahan-renirano HydroRIVERS misy toetran’ny fikorianana, mifanapaka amin’ny faritra ampiasana.",
+        "sw": "Mistari ya vipande vya mito ya HydroRIVERS yenye sifa za mtiririko inayokatiza eneo la utekelezaji."
+      }
+    }
+  ]
+}

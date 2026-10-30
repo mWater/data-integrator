@@ -1,0 +1,132 @@
+{
+  "id": "copernicus_dem_glo30",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus DEM GLO-30",
+    "fr": "Copernicus DEM GLO-30",
+    "pt": "Copernicus DEM GLO-30",
+    "es": "Copernicus DEM GLO-30",
+    "mg": "Copernicus DEM GLO-30",
+    "sw": "Copernicus DEM GLO-30"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 7200000
+  },
+  "source": {
+    "url": "https://copernicus-dem-30m.s3.amazonaws.com/",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus DEM GLO-30",
+      "fr": "Copernicus DEM GLO-30",
+      "pt": "Copernicus DEM GLO-30",
+      "es": "Copernicus DEM GLO-30",
+      "mg": "Copernicus DEM GLO-30",
+      "sw": "Copernicus DEM GLO-30"
+    },
+    "license": "Copernicus DEM licence",
+    "provider": "Copernicus Programme / European Space Agency",
+    "limitations": {
+      "_base": "en",
+      "en": "A surface model, not bare earth: elevations include tree canopy and buildings. Derived from TanDEM-X radar acquired 2011-2015, so later terrain change is absent, and water surfaces are hydrologically edited rather than measured.",
+      "fr": "Il s’agit d’un modèle de surface, et non du terrain nu : les altitudes incluent la canopée et les bâtiments. Dérivé de données radar TanDEM-X acquises entre 2011 et 2015, il ne reflète pas les changements ultérieurs du terrain, et les surfaces en eau sont corrigées hydrologiquement plutôt que mesurées.",
+      "pt": "É um modelo de superfície, não de terreno nu: as elevações incluem a copa das árvores e os edifícios. Derivado de dados de radar TanDEM-X adquiridos entre 2011 e 2015, não inclui alterações posteriores do terreno, e as superfícies de água são editadas hidrologicamente, em vez de medidas.",
+      "es": "Es un modelo de superficie, no del terreno desnudo: las elevaciones incluyen el dosel arbóreo y los edificios. Derivado de datos de radar TanDEM-X adquiridos entre 2011 y 2015, no refleja cambios posteriores del terreno, y las superficies de agua están editadas hidrológicamente en lugar de medidas.",
+      "mg": "Maodelin’ny velarana izy io, fa tsy ny tany miboridana: tafiditra amin’ny haavo ny tampon-kazo sy ny tranobe. Avy amin’ny radar TanDEM-X nalaina tamin’ny 2011–2015 izy io, ka tsy voarakitra ny fiovan’ny vohon-tany tatỳ aoriana, ary ny velaran-drano dia nasiam-panitsiana ara-hidrolojika fa tsy norefesina.",
+      "sw": "Ni muundo wa uso, si ardhi tupu: miinuko inajumuisha utando wa miti na majengo. Umetokana na rada ya TanDEM-X iliyorekodiwa mwaka 2011–2015, hivyo mabadiliko ya baadaye ya mandhari hayapo, na nyuso za maji zimehaririwa kihidrolojia badala ya kupimwa."
+    },
+    "documentation": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model"
+  },
+  "runtime": "python",
+  "trigger": {},
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Static Copernicus GLO-30 digital surface model, mosaicked from source tiles and clipped to the deployment area of interest.",
+    "fr": "Modèle numérique de surface statique Copernicus GLO-30, assemblé en mosaïque à partir des tuiles sources et découpé selon la zone d’intérêt du déploiement.",
+    "pt": "Modelo digital de superfície estático Copernicus GLO-30, reunido em mosaico a partir dos mosaicos de origem e recortado para a área de interesse da implantação.",
+    "es": "Modelo digital de superficie estático Copernicus GLO-30, ensamblado en mosaico a partir de las teselas de origen y recortado al área de interés del despliegue.",
+    "mg": "Maodelin’ny velarana nomerika tsy miova Copernicus GLO-30, natambatra ho môzaika avy amin’ireo taila loharano ary notapahina araka ny faritra mahaliana amin’ny fametrahana.",
+    "sw": "Muundo tuli wa kidijitali wa uso wa Copernicus GLO-30, uliounganishwa kuwa mosaiki kutoka vigae chanzo na kupunguzwa kulingana na eneo lengwa la utekelezaji."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Elevation",
+        "fr": "Altitude",
+        "pt": "Elevação",
+        "es": "Elevación",
+        "mg": "Haavo",
+        "sw": "Mwinuko"
+      },
+      "bands": [
+        {
+          "id": "elevation",
+          "name": {
+            "_base": "en",
+            "en": "Elevation",
+            "fr": "Altitude",
+            "pt": "Elevação",
+            "es": "Elevación",
+            "mg": "Haavo",
+            "sw": "Mwinuko"
+          },
+          "units": "m",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#1b5e20",
+                "value": 0
+              },
+              {
+                "color": "#4f8a3a",
+                "value": 250
+              },
+              {
+                "color": "#a6b94a",
+                "value": 750
+              },
+              {
+                "color": "#c8a96b",
+                "value": 1200
+              },
+              {
+                "color": "#8b5a3c",
+                "value": 1700
+              },
+              {
+                "color": "#8f8f8f",
+                "value": 2200
+              },
+              {
+                "color": "#d6d6d6",
+                "value": 2600
+              },
+              {
+                "color": "#ffffff",
+                "value": 2900
+              }
+            ],
+            "resampling": "average"
+          }
+        }
+      ],
+      "layerId": "elevation",
+      "description": {
+        "_base": "en",
+        "en": "Ground-surface elevation in meters from the Copernicus GLO-30 digital surface model.",
+        "fr": "Altitude de la surface du sol en mètres issue du modèle numérique de surface Copernicus GLO-30.",
+        "pt": "Elevação da superfície do terreno em metros, proveniente do modelo digital de superfície Copernicus GLO-30.",
+        "es": "Elevación de la superficie del terreno en metros, procedente del modelo digital de superficie Copernicus GLO-30.",
+        "mg": "Haavon’ny velaran-tany amin’ny metatra avy amin’ny maodelin’ny velarana nomerika Copernicus GLO-30.",
+        "sw": "Mwinuko wa uso wa ardhi kwa mita kutoka kwenye muundo wa kidijitali wa uso wa Copernicus GLO-30."
+      },
+      "temporality": "current-only"
+    }
+  ]
+}

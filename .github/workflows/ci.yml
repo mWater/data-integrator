@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install podman and nftables
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman nftables gdal-bin
+
+      # Pinned to the release deploy/setup.sh installs: later releases
+      # publish a tarball instead of the bare runsc binary
+      - name: Install gVisor (runsc)
+        env:
+          GVISOR_RELEASE: 20260803.0
+        run: |
+          URL=https://storage.googleapis.com/gvisor/releases/release/$GVISOR_RELEASE/x86_64
+          wget -q $URL/runsc $URL/runsc.sha512
+          sha512sum -c runsc.sha512
+          sudo mv runsc /usr/local/bin/runsc
+          sudo chmod a+rx /usr/local/bin/runsc
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # Runtime images are needed by the runtimes/* test suites.
+      # No layer caching yet; the python image build dominates (~5 min).
+      - name: Build runtime images
+        run: |
+          podman build -q -t localhost/integrator-runtime-python:dev runtimes/python
+          podman build -q -t localhost/integrator-runtime-node:dev runtimes/node
+
+      - name: Python image license allowlist (OSI-approved only)
+        run: podman run --rm --entrypoint python3 -v ./scripts:/scripts:ro localhost/integrator-runtime-python:dev -I /scripts/check-python-licenses.py
+
+      - name: Pull test images
+        run: |
+          podman pull -q docker.io/library/alpine:3.20
+          podman pull -q ghcr.io/osgeo/gdal:alpine-small-latest
+          podman pull -q docker.io/postgis/postgis:16-3.4
+
+      - run: pnpm test
+
+  compliance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: License allowlist (OSI-approved SPDX identifiers only)
+        run: pnpm licenses list --prod --json | node scripts/check-licenses.mjs
+
+      - name: Software bill of materials (CycloneDX)
+        # 12.x reads pnpm 12's two-document lockfile; 11 cannot
+        run: pnpm dlx @cyclonedx/cdxgen@12.8.6 -t pnpm -o sbom.cdx.json --no-babel .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json

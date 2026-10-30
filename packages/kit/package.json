@@ -1,0 +1,62 @@
+{
+  "name": "@data-integrator/kit",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dashboard component kit: the sanctioned UI surface for agent-designed dashboards",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./host": {
+      "types": "./dist/host.d.ts",
+      "default": "./dist/host.js"
+    },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "default": "./dist/version.js"
+    }
+  },
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build-assets.mjs",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.13",
+    "echarts": "^6.0.0",
+    "maplibre-gl": "^6.2.0",
+    "marked": "^18.0.9",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "packages/kit"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/kit",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
+  }
+}

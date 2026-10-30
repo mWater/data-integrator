@@ -1,0 +1,12 @@
+/* Kit stylesheet entry: Tailwind (preflight + utilities used by kit components).
+   Dashboard bundles compile their own utilities against the same theme; this
+   file carries the base layer so dashboards never duplicate preflight. */
+@import "tailwindcss";
+
+/* Printing (the host asks the frame to print itself): let scroll regions grow
+   to their content so nothing is clipped, and keep the page white */
+@media print {
+  body { background: #fff }
+  .overflow-auto, .overflow-y-auto, .overflow-x-auto, .overflow-hidden { overflow: visible !important }
+  .h-screen, .min-h-screen, .h-full { height: auto !important; min-height: 0 !important }
+}

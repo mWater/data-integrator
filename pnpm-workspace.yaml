@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+  - runtimes/*
+  - apps/*
+allowBuilds:
+  # tailwind CLI watch-mode dep; native build not needed for one-shot builds
+  '@parcel/watcher': false
+  esbuild: true

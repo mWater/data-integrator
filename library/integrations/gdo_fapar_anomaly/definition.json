@@ -1,0 +1,160 @@
+{
+  "id": "gdo_fapar_anomaly",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO fAPAR anomaly",
+    "fr": "Anomalie fAPAR du GDO Copernicus",
+    "pt": "Anomalia de fAPAR do GDO Copernicus",
+    "es": "Anomalía de fAPAR del GDO de Copernicus",
+    "mg": "Anômalian’ny fAPAR an’ny Copernicus GDO",
+    "sw": "Mkengeuko wa fAPAR wa Copernicus GDO"
+  },
+  "description": {
+    "_base": "en",
+    "en": "Ten-daily anomaly of the fraction of absorbed photosynthetically active radiation (fAPAR, a satellite measure of how green and active vegetation is) from the Copernicus Global Drought Observatory VIIRS product, clipped to the deployment area of interest. Negative values mean vegetation is doing worse than usual for the time of year, an early sign of agricultural drought. Backfills the latest 24 months and then ingests new ten-day periods incrementally.",
+    "fr": "Anomalie décadaire de la fraction du rayonnement photosynthétiquement actif absorbé (fAPAR, mesure satellitaire du verdissement et de l’activité de la végétation), issue du produit VIIRS du Copernicus Global Drought Observatory et découpée selon la zone d’intérêt du déploiement. Les valeurs négatives indiquent une végétation en moins bon état que d’habitude pour la saison, signe précoce de sécheresse agricole. Les 24 derniers mois sont repris, puis les nouvelles périodes de dix jours sont intégrées progressivement.",
+    "pt": "Anomalia decendial da fração da radiação fotossinteticamente ativa absorvida (fAPAR, uma medida por satélite de quão verde e ativa está a vegetação), proveniente do produto VIIRS do Copernicus Global Drought Observatory e recortada para a área de interesse da implementação. Valores negativos indicam que a vegetação está pior que o habitual para a época do ano, um sinal precoce de seca agrícola. Preenche retroativamente os últimos 24 meses e depois ingere incrementalmente novos períodos de dez dias.",
+    "es": "Anomalía decádica de la fracción de radiación fotosintéticamente activa absorbida (fAPAR, una medida satelital del verdor y la actividad de la vegetación), procedente del producto VIIRS del Copernicus Global Drought Observatory y recortada al área de interés del despliegue. Los valores negativos indican que la vegetación está peor de lo habitual para la época del año, una señal temprana de sequía agrícola. Completa retrospectivamente los últimos 24 meses y después incorpora de forma incremental nuevos períodos de diez días.",
+    "mg": "Anômalia isaky ny folo andro amin’ny ampahan’ny taratra mavitrika ara-fotosintezy voarain’ny zavamaniry (fAPAR, fandrefesana amin’ny zanabolana ny hamaitso sy fahavitrihan’ny zavamaniry), avy amin’ny vokatra VIIRS an’ny Copernicus Global Drought Observatory ary noferana amin’ny faritra kendrena amin’ny fametrahana. Ny sanda miiba dia midika fa ratsy kokoa noho ny mahazatra amin’io vanim-potoana io ny zavamaniry, famantarana mialoha ny haintany ara-pambolena. Mameno ny angona 24 volana farany izy, ary avy eo mampiditra tsikelikely ireo vanim-potoana vaovao isaky ny folo andro.",
+    "sw": "Mkengeuko wa kila siku kumi wa sehemu ya mionzi amilifu kwa usanisinuru iliyofyonzwa (fAPAR, kipimo cha setilaiti cha jinsi uoto ulivyo wa kijani na hai), kutoka bidhaa ya VIIRS ya Copernicus Global Drought Observatory, iliyokatwa kulingana na eneo lengwa la utekelezaji. Thamani hasi humaanisha uoto una hali mbaya kuliko kawaida kwa wakati huo wa mwaka, ishara ya mapema ya ukame wa kilimo. Hujaza data ya miezi 24 iliyopita, kisha huingiza vipindi vipya vya siku kumi hatua kwa hatua."
+  },
+  "source": {
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory fAPAR anomaly (VIIRS)",
+      "fr": "Anomalie fAPAR du Copernicus Global Drought Observatory (VIIRS)",
+      "pt": "Anomalia de fAPAR do Copernicus Global Drought Observatory (VIIRS)",
+      "es": "Anomalía de fAPAR del Copernicus Global Drought Observatory (VIIRS)",
+      "mg": "Anômalian’ny fAPAR an’ny Copernicus Global Drought Observatory (VIIRS)",
+      "sw": "Mkengeuko wa fAPAR wa Copernicus Global Drought Observatory (VIIRS)"
+    },
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_Fraction_of_Absorbed_Photosynthetically_Active_Radiation_Anomalies_fAPAR_VIIRS/",
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_fapar.pdf",
+    "limitations": {
+      "_base": "en",
+      "en": "Anomalies are standardized against the product's own VIIRS baseline on a 0.083° (~9 km) grid, so a cell mixes fields, forest and settlements. Cloud and aerosol contamination lowers fAPAR and can mimic drought stress in rainy seasons, and the source changed satellite (Suomi NPP to NOAA-21) in mid-2026. No data over water and where the ten-day composite had no clear observations.",
+      "fr": "Les anomalies sont standardisées par rapport à la référence VIIRS propre au produit sur une grille de 0,083° (~9 km) ; une maille mêle donc champs, forêts et zones habitées. La contamination par les nuages et les aérosols réduit le fAPAR et peut imiter un stress hydrique pendant les saisons pluvieuses. La source a par ailleurs changé de satellite (de Suomi NPP à NOAA-21) à la mi-2026. Aucune donnée sur l’eau ni là où la composition décadaire ne comportait aucune observation claire.",
+      "pt": "As anomalias são padronizadas em relação à linha de base VIIRS do próprio produto numa grade de 0,083° (~9 km), portanto uma célula combina campos, florestas e áreas povoadas. A contaminação por nuvens e aerossóis reduz o fAPAR e pode simular estresse por seca em estações chuvosas; além disso, a fonte mudou de satélite (Suomi NPP para NOAA-21) em meados de 2026. Não há dados sobre a água nem onde a composição decendial não teve observações nítidas.",
+      "es": "Las anomalías están estandarizadas respecto a la línea de base VIIRS del propio producto en una cuadrícula de 0,083° (~9 km), por lo que una celda combina campos, bosques y asentamientos. La contaminación por nubes y aerosoles reduce el fAPAR y puede simular estrés por sequía durante las estaciones lluviosas; además, la fuente cambió de satélite (de Suomi NPP a NOAA-21) a mediados de 2026. No hay datos sobre el agua ni donde la composición decádica carecía de observaciones claras.",
+      "mg": "Natao manara-penitra araka ny taha fototra VIIRS an’ilay vokatra ihany ireo anômalia, amin’ny harato 0,083° (~9 km), ka ny sela iray dia mampifangaro saha, ala ary toeram-ponenana. Mampihena ny fAPAR ny fanelingelenan’ny rahona sy aerosol ary mety hitovy amin’ny fiantraikan’ny haintany mandritra ny fotoam-p雨orana; niova zanabolana koa ny loharano (avy amin’ny Suomi NPP ho NOAA-21) tamin’ny tapaky ny 2026. Tsy misy angona ambonin’ny rano na amin’ireo toerana tsy nahitana fandinihana mazava tao anatin’ilay fitambarana folo andro.",
+      "sw": "Mikengeuko imesanifishwa dhidi ya msingi wa VIIRS wa bidhaa yenyewe kwenye gridi ya 0.083° (~9 km), hivyo seli moja huchanganya mashamba, misitu na makazi. Uchafuzi wa mawingu na erosoli hupunguza fAPAR na unaweza kuonekana kama athari ya ukame katika misimu ya mvua; pia, chanzo kilibadilisha setilaiti (kutoka Suomi NPP hadi NOAA-21) katikati ya 2026. Hakuna data juu ya maji wala mahali ambapo data iliyounganishwa ya siku kumi haikuwa na uchunguzi ulio wazi."
+    },
+    "provider": "European Commission Joint Research Centre",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 3,13,23 * *"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 1800000
+  },
+  "contract": 2,
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "fapar_anomaly",
+      "name": {
+        "_base": "en",
+        "en": "fAPAR anomaly",
+        "fr": "Anomalie fAPAR",
+        "pt": "Anomalia de fAPAR",
+        "es": "Anomalía de fAPAR",
+        "mg": "Anômalian’ny fAPAR",
+        "sw": "Mkengeuko wa fAPAR"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Ten-daily vegetation activity anomaly: negative is less green than usual for the time of year, positive is more.",
+        "fr": "Anomalie décadaire de l’activité végétale : une valeur négative indique une végétation moins verte que d’habitude pour la saison, une valeur positive une végétation plus verte.",
+        "pt": "Anomalia decendial da atividade da vegetação: negativa significa menos verde que o habitual para a época do ano; positiva, mais verde.",
+        "es": "Anomalía decádica de la actividad de la vegetación: un valor negativo indica menos verdor de lo habitual para la época del año; uno positivo, más.",
+        "mg": "Anômalia isaky ny folo andro amin’ny fahavitrihan’ny zavamaniry: ny sanda miiba dia midika fa tsy maitso toy ny mahazatra amin’io vanim-potoana io, ary ny miabo dia maitso kokoa.",
+        "sw": "Mkengeuko wa kila siku kumi wa shughuli za uoto: hasi humaanisha uoto si wa kijani kama kawaida kwa wakati huo wa mwaka, na chanya humaanisha ni wa kijani zaidi."
+      },
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "fapar_anomaly",
+          "name": {
+            "_base": "en",
+            "en": "fAPAR anomaly",
+            "fr": "Anomalie fAPAR",
+            "pt": "Anomalia de fAPAR",
+            "es": "Anomalía de fAPAR",
+            "mg": "Anômalian’ny fAPAR",
+            "sw": "Mkengeuko wa fAPAR"
+          },
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "resampling": "average",
+            "colorMap": [
+              {
+                "value": -3,
+                "color": "#8c510a"
+              },
+              {
+                "value": -2,
+                "color": "#bf812d"
+              },
+              {
+                "value": -1,
+                "color": "#dfc27d"
+              },
+              {
+                "value": 0,
+                "color": "#f5f5f5"
+              },
+              {
+                "value": 1,
+                "color": "#80cdc1"
+              },
+              {
+                "value": 2,
+                "color": "#35978f"
+              },
+              {
+                "value": 3,
+                "color": "#01665e"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "months_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (months)",
+        "fr": "Historique à charger (mois)",
+        "pt": "Histórico a carregar (meses)",
+        "es": "Historial a cargar (meses)",
+        "mg": "Tantara halaina (volana)",
+        "sw": "Historia ya kupakia (miezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many months of past data the first run or a rebuild loads. Later runs add only new data.",
+        "fr": "Nombre de mois de données passées que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles données.",
+        "pt": "Quantos meses de dados anteriores a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam dados novos.",
+        "es": "Cuántos meses de datos anteriores carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden datos nuevos.",
+        "mg": "Isan’ny volana amin’ny angona taloha alain’ny fandefasana voalohany na ny fanamboarana indray. Ny fandefasana manaraka dia manampy angona vaovao ihany.",
+        "sw": "Idadi ya miezi ya data ya zamani ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza data mpya tu."
+      },
+      "type": "integer",
+      "default": 24,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P10D"
+  }
+}

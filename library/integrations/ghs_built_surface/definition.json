@@ -1,0 +1,129 @@
+{
+  "id": "ghs_built_surface",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "GHSL Built-up Surface",
+    "fr": "Surface bâtie GHSL",
+    "pt": "Superfície construída GHSL",
+    "es": "Superficie construida GHSL",
+    "mg": "Velarana voaorina GHSL",
+    "sw": "Eneo lililojengwa la GHSL"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS",
+    "name": {
+      "_base": "en",
+      "en": "GHS-BUILT-S R2023A",
+      "fr": "GHS-BUILT-S R2023A",
+      "pt": "GHS-BUILT-S R2023A",
+      "es": "GHS-BUILT-S R2023A",
+      "mg": "GHS-BUILT-S R2023A",
+      "sw": "GHS-BUILT-S R2023A"
+    },
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": {
+      "_base": "en",
+      "en": "Model-derived estimate of built-up surface from satellite imagery for the 2020 epoch at 100 m resolution; it is not a cadastral record, small or obscured structures may be missed, and later construction is absent.",
+      "fr": "Estimation modélisée de la surface bâtie à partir d’images satellitaires pour l’époque 2020 à une résolution de 100 m ; il ne s’agit pas d’un registre cadastral, les structures petites ou masquées peuvent être omises et les constructions ultérieures sont absentes.",
+      "pt": "Estimativa da superfície construída derivada de modelo a partir de imagens de satélite para a época de 2020, com resolução de 100 m; não é um registo cadastral, estruturas pequenas ou ocultas podem não ser detetadas e construções posteriores não estão incluídas.",
+      "es": "Estimación de la superficie construida derivada de modelos a partir de imágenes satelitales para la época de 2020, con una resolución de 100 m; no es un registro catastral, pueden omitirse estructuras pequeñas u ocultas y no se incluyen construcciones posteriores.",
+      "mg": "Tombana avy amin’ny maodely momba ny velarana voaorina, nalaina tamin’ny sary zanabolana ho an’ny vanim-potoana 2020 amin’ny famaha 100 m; tsy firaketana kadasitra izy io, mety tsy ho hita ny rafitra madinika na voasaron-javatra, ary tsy tafiditra ny fanorenana tatỳ aoriana.",
+      "sw": "Makadirio ya eneo lililojengwa yaliyotokana na modeli kutoka picha za setilaiti kwa kipindi cha 2020 katika mwonekano wa 100 m; si rekodi ya kadastri, miundo midogo au iliyofichika inaweza kukosekana, na ujenzi wa baadaye haujajumuishwa."
+    },
+    "documentation": "https://human-settlement.emergency.copernicus.eu/download.php?ds=builtS"
+  },
+  "runtime": "python",
+  "trigger": {},
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Ingests the 2020 observational epoch of the EC JRC GHS-BUILT-S R2023A total built-up surface at its native 100 m resolution, clipped to the deployment area of interest.",
+    "fr": "Intègre l’époque d’observation 2020 de la surface bâtie totale EC JRC GHS-BUILT-S R2023A à sa résolution native de 100 m, découpée selon la zone d’intérêt du déploiement.",
+    "pt": "Ingere a época observacional de 2020 da superfície construída total EC JRC GHS-BUILT-S R2023A na sua resolução nativa de 100 m, recortada para a área de interesse da implementação.",
+    "es": "Ingiere la época observacional de 2020 de la superficie construida total EC JRC GHS-BUILT-S R2023A a su resolución nativa de 100 m, recortada al área de interés del despliegue.",
+    "mg": "Mampiditra ny velarana voaorina manontolo EC JRC GHS-BUILT-S R2023A tamin’ny vanim-potoana fandinihana 2020, amin’ny famaha voajanahary 100 m, izay nofintinina araka ny faritra mahaliana amin’ny fampiharana.",
+    "sw": "Huingiza eneo lote lililojengwa la EC JRC GHS-BUILT-S R2023A kwa kipindi cha uchunguzi cha 2020 katika mwonekano wake asilia wa 100 m, likiwa limekatwa kulingana na eneo lengwa la utekelezaji."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Built-up surface",
+        "fr": "Surface bâtie",
+        "pt": "Superfície construída",
+        "es": "Superficie construida",
+        "mg": "Velarana voaorina",
+        "sw": "Eneo lililojengwa"
+      },
+      "bands": [
+        {
+          "id": "built_up_area",
+          "name": {
+            "_base": "en",
+            "en": "Built-up surface",
+            "fr": "Surface bâtie",
+            "pt": "Superfície construída",
+            "es": "Superficie construida",
+            "mg": "Velarana voaorina",
+            "sw": "Eneo lililojengwa"
+          },
+          "units": "m² per cell",
+          "nodata": 65535,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#00000000",
+                "value": 0
+              },
+              {
+                "color": "#fff3d1cc",
+                "value": 1
+              },
+              {
+                "color": "#fdb863dd",
+                "value": 1000
+              },
+              {
+                "color": "#e34a33ee",
+                "value": 5000
+              },
+              {
+                "color": "#7f0000ff",
+                "value": 10000
+              }
+            ],
+            "resampling": "average"
+          }
+        }
+      ],
+      "layerId": "built_up_surface",
+      "description": {
+        "_base": "en",
+        "en": "Built-up surface in square meters per 100 m grid cell, from GHSL GHS-BUILT-S (2020 epoch).",
+        "fr": "Surface bâtie en mètres carrés par cellule de grille de 100 m, issue de GHSL GHS-BUILT-S (époque 2020).",
+        "pt": "Superfície construída em metros quadrados por célula de grelha de 100 m, proveniente do GHSL GHS-BUILT-S (época de 2020).",
+        "es": "Superficie construida en metros cuadrados por celda de cuadrícula de 100 m, procedente de GHSL GHS-BUILT-S (época de 2020).",
+        "mg": "Velarana voaorina amin’ny metatra toradroa isaky ny sela harato 100 m, avy amin’ny GHSL GHS-BUILT-S (vanim-potoana 2020).",
+        "sw": "Eneo lililojengwa katika mita za mraba kwa kila seli ya gridi ya 100 m, kutoka GHSL GHS-BUILT-S (kipindi cha 2020)."
+      },
+      "temporality": "current-only"
+    }
+  ],
+  "validation": {
+    "ranges": [
+      {
+        "destinationId": "built_up_surface",
+        "field": "built_up_area",
+        "min": 0
+      }
+    ]
+  }
+}

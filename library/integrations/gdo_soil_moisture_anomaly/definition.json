@@ -1,0 +1,160 @@
+{
+  "id": "gdo_soil_moisture_anomaly",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO soil moisture anomaly",
+    "fr": "Anomalie d’humidité du sol du GDO Copernicus",
+    "pt": "Anomalia da umidade do solo do GDO Copernicus",
+    "es": "Anomalía de la humedad del suelo del GDO de Copernicus",
+    "mg": "Fivilian’ny hamandoan’ny tany avy amin’ny GDO Copernicus",
+    "sw": "Mkengeuko wa unyevunyevu wa udongo wa GDO ya Copernicus"
+  },
+  "description": {
+    "_base": "en",
+    "en": "Ten-daily soil moisture anomaly from the Copernicus Global Drought Observatory, clipped to the deployment area of interest. The anomaly is the standardized deviation of modelled root-zone soil moisture (LISFLOOD, as run for GloFAS 4) from its 1995 to 2023 baseline on a 0.05° (~5 km) grid: negative means drier soils than usual for the time of year, the direct signal of agricultural drought and the second pillar, with SPI-3 and fAPAR anomaly, of the observatory's combined drought indicator. Backfills the latest 24 months and then ingests new ten-day periods incrementally.",
+    "fr": "Anomalie décadaire d’humidité du sol de l’Observatoire mondial de la sécheresse Copernicus, découpée selon la zone d’intérêt du déploiement. L’anomalie correspond à l’écart normalisé de l’humidité du sol modélisée dans la zone racinaire (LISFLOOD, tel qu’exécuté pour GloFAS 4) par rapport à sa référence 1995-2023, sur une grille de 0,05° (~5 km) : une valeur négative indique des sols plus secs qu’habituellement à cette période de l’année. Il s’agit du signal direct de la sécheresse agricole et du deuxième pilier, avec le SPI-3 et l’anomalie de fAPAR, de l’indicateur combiné de sécheresse de l’observatoire. Les 24 derniers mois sont complétés rétroactivement, puis les nouvelles décades sont intégrées progressivement.",
+    "pt": "Anomalia decendial da umidade do solo do Observatório Global da Seca Copernicus, recortada para a área de interesse da implantação. A anomalia é o desvio padronizado da umidade modelada do solo na zona radicular (LISFLOOD, conforme executado para o GloFAS 4) em relação à referência de 1995 a 2023, numa grade de 0,05° (~5 km): valores negativos indicam solos mais secos que o habitual para a época do ano. É o sinal direto da seca agrícola e o segundo pilar, juntamente com o SPI-3 e a anomalia de fAPAR, do indicador combinado de seca do observatório. Os últimos 24 meses são preenchidos retroativamente e, depois, novos decêndios são incorporados de forma incremental.",
+    "es": "Anomalía decádica de la humedad del suelo del Observatorio Mundial de la Sequía de Copernicus, recortada al área de interés del despliegue. La anomalía es la desviación estandarizada de la humedad modelizada del suelo en la zona radicular (LISFLOOD, según se ejecuta para GloFAS 4) respecto a su referencia de 1995 a 2023, en una cuadrícula de 0,05° (~5 km): los valores negativos indican suelos más secos de lo habitual para la época del año. Es la señal directa de la sequía agrícola y el segundo pilar, junto con el SPI-3 y la anomalía de fAPAR, del indicador combinado de sequía del observatorio. Se rellenan retrospectivamente los últimos 24 meses y, después, se incorporan de forma incremental nuevos períodos de diez días.",
+    "mg": "Fivilian’ny hamandoan’ny tany isaky ny folo andro avy amin’ny Copernicus Global Drought Observatory, voafetra amin’ny faritra kendrena amin’ny fametrahana. Ny fiviliana dia ny elanelana manara-penitra amin’ny hamandoan’ny tany novolavolain’ny maodely ao amin’ny faritry ny faka (LISFLOOD, araka ny ampiasaina amin’ny GloFAS 4), raha oharina amin’ny sanda fototra 1995–2023, amin’ny harato 0,05° (~5 km): ny sanda miiba dia manondro tany maina kokoa noho ny mahazatra amin’io vanim-potoana io. Io no famantarana mivantana ny haintany ara-pambolena ary andry faharoa, miaraka amin’ny SPI-3 sy ny fivilian’ny fAPAR, amin’ny tondro mitambatry ny haintany an’ilay observatoara. Fenoiny mihemotra ny angona ho an’ny 24 volana farany, ary avy eo ampidiriny tsikelikely ireo vanim-potoana vaovao isaky ny folo andro.",
+    "sw": "Mkengeuko wa unyevunyevu wa udongo wa kila siku kumi kutoka Copernicus Global Drought Observatory, uliokatwa kulingana na eneo lengwa la utekelezaji. Mkengeuko huu ni tofauti sanifu ya unyevunyevu wa udongo ulioigwa kwa modeli katika eneo la mizizi (LISFLOOD, jinsi inavyoendeshwa kwa GloFAS 4) dhidi ya kipindi rejea cha 1995 hadi 2023, kwenye gridi ya 0.05° (~5 km): thamani hasi humaanisha udongo mkavu kuliko kawaida kwa wakati huo wa mwaka. Hii ni ishara ya moja kwa moja ya ukame wa kilimo na nguzo ya pili, pamoja na SPI-3 na mkengeuko wa fAPAR, ya kiashiria cha pamoja cha ukame cha kituo hicho. Data za miezi 24 iliyopita hujazwa, kisha vipindi vipya vya siku kumi huingizwa hatua kwa hatua."
+  },
+  "source": {
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory Soil Moisture Index Anomaly",
+      "fr": "Anomalie de l’indice d’humidité du sol de l’Observatoire mondial de la sécheresse Copernicus",
+      "pt": "Anomalia do Índice de Umidade do Solo do Observatório Global da Seca Copernicus",
+      "es": "Anomalía del Índice de Humedad del Suelo del Observatorio Mundial de la Sequía de Copernicus",
+      "mg": "Fivilian’ny tondron’ny hamandoan’ny tany avy amin’ny Copernicus Global Drought Observatory",
+      "sw": "Mkengeuko wa Kielezo cha Unyevunyevu wa Udongo cha Copernicus Global Drought Observatory"
+    },
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_Soil_Moisture_Index_Anomaly/",
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_soilmoisture.pdf",
+    "limitations": {
+      "_base": "en",
+      "en": "Modelled, not measured: the anomaly comes from the LISFLOOD hydrological model driven by meteorological reanalysis, so it inherits errors in rainfall forcing and model calibration and does not see irrigation. Coverage is 90°N to 60°S. Standardized anomalies blow up where the baseline barely varies (ice sheets, hyper-arid deserts); cells with an absolute anomaly above 10 are treated as no data. No data over water. New dekads are published two to three weeks after they end.",
+      "fr": "Données modélisées, non mesurées : l’anomalie provient du modèle hydrologique LISFLOOD, alimenté par une réanalyse météorologique. Elle hérite donc des erreurs du forçage pluviométrique et de l’étalonnage du modèle, et ne tient pas compte de l’irrigation. La couverture s’étend de 90°N à 60°S. Les anomalies normalisées prennent des valeurs extrêmes là où la référence varie à peine (calottes glaciaires, déserts hyperarides) ; les cellules dont la valeur absolue de l’anomalie dépasse 10 sont considérées comme sans données. Aucune donnée sur l’eau. Les nouvelles décades sont publiées deux à trois semaines après leur fin.",
+      "pt": "Modelada, não medida: a anomalia provém do modelo hidrológico LISFLOOD, alimentado por reanálise meteorológica, portanto herda erros da forçante de precipitação e da calibração do modelo e não representa a irrigação. A cobertura vai de 90°N a 60°S. As anomalias padronizadas assumem valores extremos onde a referência quase não varia (mantos de gelo, desertos hiperáridos); células com valor absoluto da anomalia superior a 10 são tratadas como sem dados. Sem dados sobre a água. Novos decêndios são publicados duas a três semanas após o término.",
+      "es": "Modelizada, no medida: la anomalía procede del modelo hidrológico LISFLOOD, impulsado por un reanálisis meteorológico, por lo que hereda los errores del forzamiento de precipitación y de la calibración del modelo, y no capta el riego. La cobertura abarca de 90°N a 60°S. Las anomalías estandarizadas se disparan donde la referencia apenas varía (capas de hielo, desiertos hiperáridos); las celdas con un valor absoluto de la anomalía superior a 10 se consideran sin datos. Sin datos sobre el agua. Los nuevos períodos de diez días se publican entre dos y tres semanas después de finalizar.",
+      "mg": "Novolavolain’ny maodely fa tsy norefesina: avy amin’ny maodely hidrolojika LISFLOOD ampandehanin’ny famakafakana indray ny angona meteorolojika ilay fiviliana, ka mandova ny lesoka amin’ny angona rotsak’orana sy ny fandrindrana ny maodely ary tsy mandray ny fanondrahana. Manomboka amin’ny 90°N ka hatramin’ny 60°S ny fandrakofana. Mitombo tafahoatra ny fiviliana manara-penitra any amin’ny toerana zara raha miova ny sanda fototra (rakotra ranomandry, efitra faran’izay karankaina); raisina ho tsy misy angona ny sela manana sanda tanteraky ny fiviliana mihoatra ny 10. Tsy misy angona ambonin’ny rano. Avoaka roa na telo herinandro aorian’ny fiafarany ireo vanim-potoana vaovao isaky ny folo andro.",
+      "sw": "Imeigwa kwa modeli, si kupimwa: mkengeuko unatokana na modeli ya kihidrolojia ya LISFLOOD inayoendeshwa kwa uchanganuzi upya wa hali ya hewa, hivyo hurithi makosa katika data za mvua zinazoendesha modeli na urekebishaji wa modeli, na hauwakilishi umwagiliaji. Data inapatikana kutoka 90°N hadi 60°S. Mikengeuko sanifu huwa mikubwa kupita kiasi mahali ambapo kipindi rejea hubadilika kidogo sana (tabaka za barafu, majangwa kame kupita kiasi); seli zenye thamani kamili ya mkengeuko inayozidi 10 huchukuliwa kuwa hazina data. Hakuna data juu ya maji. Vipindi vipya vya siku kumi huchapishwa wiki mbili hadi tatu baada ya kumalizika."
+    },
+    "provider": "European Commission Joint Research Centre",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "contract": 2,
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "soil_moisture_anomaly",
+      "name": {
+        "_base": "en",
+        "en": "Soil moisture anomaly",
+        "fr": "Anomalie d’humidité du sol",
+        "pt": "Anomalia da umidade do solo",
+        "es": "Anomalía de la humedad del suelo",
+        "mg": "Fivilian’ny hamandoan’ny tany",
+        "sw": "Mkengeuko wa unyevunyevu wa udongo"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Ten-daily root-zone soil moisture anomaly: below -1 is drier than normal for the time of year, above 1 wetter, with -2 and 2 marking severe departures.",
+        "fr": "Anomalie décadaire de l’humidité du sol dans la zone racinaire : une valeur inférieure à -1 indique un sol plus sec que la normale pour cette période de l’année, et une valeur supérieure à 1 un sol plus humide ; -2 et 2 signalent des écarts sévères.",
+        "pt": "Anomalia decendial da umidade do solo na zona radicular: abaixo de -1 indica condições mais secas que o normal para a época do ano, acima de 1 indica condições mais úmidas, e -2 e 2 marcam desvios severos.",
+        "es": "Anomalía decádica de la humedad del suelo en la zona radicular: por debajo de -1 indica condiciones más secas de lo normal para la época del año, por encima de 1 más húmedas, y -2 y 2 señalan desviaciones graves.",
+        "mg": "Fivilian’ny hamandoan’ny tany ao amin’ny faritry ny faka isaky ny folo andro: ny sanda latsaky ny -1 dia maina kokoa noho ny mahazatra amin’io vanim-potoana io, ny mihoatra ny 1 kosa mando kokoa, ary ny -2 sy 2 dia manondro fiviliana mafy.",
+        "sw": "Mkengeuko wa unyevunyevu wa udongo katika eneo la mizizi wa kila siku kumi: chini ya -1 ni pakavu kuliko kawaida kwa wakati huo wa mwaka, zaidi ya 1 ni penye unyevunyevu zaidi, huku -2 na 2 zikiashiria mikengeuko mikali."
+      },
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "soil_moisture_anomaly",
+          "name": {
+            "_base": "en",
+            "en": "Soil moisture anomaly",
+            "fr": "Anomalie d’humidité du sol",
+            "pt": "Anomalia da umidade do solo",
+            "es": "Anomalía de la humedad del suelo",
+            "mg": "Fivilian’ny hamandoan’ny tany",
+            "sw": "Mkengeuko wa unyevunyevu wa udongo"
+          },
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "resampling": "average",
+            "colorMap": [
+              {
+                "value": -3,
+                "color": "#8c510a"
+              },
+              {
+                "value": -2,
+                "color": "#bf812d"
+              },
+              {
+                "value": -1,
+                "color": "#dfc27d"
+              },
+              {
+                "value": 0,
+                "color": "#f5f5f5"
+              },
+              {
+                "value": 1,
+                "color": "#92c5de"
+              },
+              {
+                "value": 2,
+                "color": "#4393c3"
+              },
+              {
+                "value": 3,
+                "color": "#2166ac"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "months_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (months)",
+        "fr": "Historique à charger (mois)",
+        "pt": "Histórico a carregar (meses)",
+        "es": "Historial a cargar (meses)",
+        "mg": "Tantara halaina (volana)",
+        "sw": "Historia ya kupakia (miezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many months of past data the first run or a rebuild loads. Later runs add only new data.",
+        "fr": "Nombre de mois de données passées que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles données.",
+        "pt": "Quantos meses de dados anteriores a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam dados novos.",
+        "es": "Cuántos meses de datos anteriores carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden datos nuevos.",
+        "mg": "Isan’ny volana amin’ny angona taloha alain’ny fandefasana voalohany na ny fanamboarana indray. Ny fandefasana manaraka dia manampy angona vaovao ihany.",
+        "sw": "Idadi ya miezi ya data ya zamani ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza data mpya tu."
+      },
+      "type": "integer",
+      "default": 24,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P10D"
+  }
+}

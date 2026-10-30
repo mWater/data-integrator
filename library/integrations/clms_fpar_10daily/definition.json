@@ -1,0 +1,144 @@
+{
+  "id": "clms_fpar_10daily",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "CLMS 10-daily FPAR",
+    "fr": "FPAR décadaire du CLMS",
+    "pt": "FPAR decendial do CLMS",
+    "es": "FPAR del CLMS cada 10 días",
+    "mg": "FPAR CLMS isaky ny 10 andro",
+    "sw": "FPAR ya CLMS ya kila siku 10"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 900000
+  },
+  "source": {
+    "url": "https://land.copernicus.eu/en/products/vegetation/fraction-of-absorbed-photosynthetically-active-radiation-v2-0-300m",
+    "name": {
+      "_base": "en",
+      "en": "CLMS Fraction of Absorbed Photosynthetically Active Radiation v2.0 (300 m, 10-daily), via CDSE",
+      "fr": "Fraction du rayonnement photosynthétiquement actif absorbé du CLMS v2.0 (300 m, décadaire), via le CDSE",
+      "pt": "Fração da radiação fotossinteticamente ativa absorvida do CLMS v2.0 (300 m, decendial), via CDSE",
+      "es": "Fracción de radiación fotosintéticamente activa absorbida del CLMS v2.0 (300 m, cada 10 días), vía CDSE",
+      "mg": "Ampahan’ny taratra mavitrika ara-fotosintezy voarain’ny zavamaniry CLMS v2.0 (300 m, isaky ny 10 andro), amin’ny alalan’ny CDSE",
+      "sw": "Sehemu ya mionzi hai kwa usanisinuru iliyofyonzwa ya CLMS v2.0 (300 m, kila siku 10), kupitia CDSE"
+    },
+    "license": "Copernicus data and information policy (free, full and open access; attribution required)",
+    "provider": "European Union, Copernicus Land Monitoring Service / Copernicus Data Space Ecosystem",
+    "limitations": {
+      "_base": "en",
+      "en": "Dekads carry nominal dates (10th, 20th, month-end). The most recent composites are near-real-time RT0 estimates that later RT1/RT2 revisions replace, so recent values can change; persistent wet-season cloud reduces the observations behind a composite.",
+      "fr": "Les décades portent des dates nominales (10, 20 et fin du mois). Les composites les plus récents sont des estimations RT0 en temps quasi réel, remplacées ultérieurement par les révisions RT1/RT2 ; les valeurs récentes peuvent donc changer. La couverture nuageuse persistante en saison humide réduit les observations servant à produire un composite.",
+      "pt": "Os decêndios usam datas nominais (dias 10, 20 e fim do mês). As composições mais recentes são estimativas RT0 quase em tempo real, posteriormente substituídas por revisões RT1/RT2; portanto, os valores recentes podem mudar. A nebulosidade persistente da estação chuvosa reduz as observações usadas numa composição.",
+      "es": "Los períodos de diez días llevan fechas nominales (días 10, 20 y fin de mes). Las composiciones más recientes son estimaciones RT0 casi en tiempo real, que posteriormente se sustituyen por revisiones RT1/RT2; por tanto, los valores recientes pueden cambiar. La nubosidad persistente de la estación húmeda reduce las observaciones usadas en una composición.",
+      "mg": "Ny vanim-potoana folo andro dia manana daty voatondro (faha-10, faha-20 ary faran’ny volana). Ny composites farany indrindra dia tombana RT0 saika ara-potoana, izay soloin’ny fanitsiana RT1/RT2 tatỳ aoriana, ka mety hiova ny sanda vao haingana. Ny rahona maharitra amin’ny fotoam-pahavaratra dia mampihena ny fandinihana ampiasaina amin’ny composite.",
+      "sw": "Vipindi vya siku kumi vina tarehe wakilishi (tarehe 10, 20 na mwisho wa mwezi). Kompositi za karibuni zaidi ni makadirio ya RT0 ya karibu na wakati halisi, ambayo baadaye hubadilishwa na marekebisho ya RT1/RT2; hivyo thamani za karibuni zinaweza kubadilika. Mawingu ya kudumu katika msimu wa mvua hupunguza uchunguzi unaotumika kuunda kompositi."
+    },
+    "documentation": "https://land.copernicus.eu/en/technical-library/product-user-manual-fraction-of-absorbed-photosynthetically-active-radiation-300m-version-2/@@download/file"
+  },
+  "runtime": "python",
+  "secrets": [
+    "cdse_s3_credentials"
+  ],
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Copernicus Land Monitoring Service version 2 global 300 m FPAR, read with range requests from Copernicus Data Space Ecosystem S3 and clipped to the deployment area. Backfills six months and checks daily for new or revised 10-daily composites.",
+    "fr": "FPAR mondial à 300 m, version 2 du Copernicus Land Monitoring Service, lu par requêtes de plages d’octets depuis le stockage S3 du Copernicus Data Space Ecosystem et découpé selon la zone de déploiement. Récupère rétroactivement six mois et vérifie chaque jour la présence de nouveaux composites décadaires ou de révisions.",
+    "pt": "FPAR global de 300 m, versão 2 do Copernicus Land Monitoring Service, lido por requisições de intervalos de bytes no S3 do Copernicus Data Space Ecosystem e recortado para a área de implementação. Preenche retroativamente seis meses e verifica diariamente a existência de composições decendiais novas ou revistas.",
+    "es": "FPAR global de 300 m, versión 2 del Copernicus Land Monitoring Service, leído mediante solicitudes de rangos de bytes desde el S3 de Copernicus Data Space Ecosystem y recortado al área de implementación. Recupera retrospectivamente seis meses y comprueba a diario si hay composiciones de 10 días nuevas o revisadas.",
+    "mg": "FPAR maneran-tany 300 m, andiany 2 an’ny Copernicus Land Monitoring Service, vakina amin’ny fangatahana elanelana byte avy amin’ny S3 an’ny Copernicus Data Space Ecosystem ary tapahina araka ny faritra ampiharana azy. Mameno ny angona enim-bolana lasa ary manamarina isan’andro raha misy composites vaovao na nohavaozina isaky ny 10 andro.",
+    "sw": "FPAR ya kimataifa ya 300 m, toleo la 2 la Copernicus Land Monitoring Service, inayosomwa kwa maombi ya masafa ya baiti kutoka S3 ya Copernicus Data Space Ecosystem na kukatwa kulingana na eneo la utekelezaji. Hujaza data za miezi sita iliyopita na kukagua kila siku kompositi mpya au zilizorekebishwa za siku 10."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Vegetation productivity (FPAR)",
+        "fr": "Productivité de la végétation (FPAR)",
+        "pt": "Produtividade da vegetação (FPAR)",
+        "es": "Productividad de la vegetación (FPAR)",
+        "mg": "Famokaran’ny zavamaniry (FPAR)",
+        "sw": "Uzalishaji wa uoto (FPAR)"
+      },
+      "bands": [
+        {
+          "id": "fpar",
+          "name": {
+            "_base": "en",
+            "en": "FPAR",
+            "fr": "FPAR",
+            "pt": "FPAR",
+            "es": "FPAR",
+            "mg": "FPAR",
+            "sw": "FPAR"
+          },
+          "units": "1",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#ffffe5",
+                "value": 0
+              },
+              {
+                "color": "#f7fcb9",
+                "value": 0.08
+              },
+              {
+                "color": "#d9f0a3",
+                "value": 0.16
+              },
+              {
+                "color": "#addd8e",
+                "value": 0.24
+              },
+              {
+                "color": "#78c679",
+                "value": 0.46
+              },
+              {
+                "color": "#31a354",
+                "value": 0.77
+              },
+              {
+                "color": "#006837",
+                "value": 0.94
+              }
+            ],
+            "resampling": "average"
+          }
+        }
+      ],
+      "layerId": "vegetation_productivity_fpar",
+      "description": {
+        "_base": "en",
+        "en": "10-daily fraction of absorbed photosynthetically active radiation (FPAR) at 300 m, a measure of vegetation productivity.",
+        "fr": "Fraction décadaire du rayonnement photosynthétiquement actif absorbé (FPAR) à 300 m, une mesure de la productivité de la végétation.",
+        "pt": "Fração decendial da radiação fotossinteticamente ativa absorvida (FPAR) a 300 m, uma medida da produtividade da vegetação.",
+        "es": "Fracción de radiación fotosintéticamente activa absorbida (FPAR) cada 10 días a 300 m, una medida de la productividad de la vegetación.",
+        "mg": "Ampahan’ny taratra mavitrika ara-fotosintezy voarain’ny zavamaniry (FPAR) isaky ny 10 andro amin’ny 300 m, fandrefesana ny famokaran’ny zavamaniry.",
+        "sw": "Sehemu ya mionzi hai kwa usanisinuru iliyofyonzwa (FPAR) ya kila siku 10 katika 300 m, kipimo cha uzalishaji wa uoto."
+      },
+      "temporality": "time-series"
+    }
+  ],
+  "validation": {
+    "expectedCadence": "P10D",
+    "ranges": [
+      {
+        "destinationId": "vegetation_productivity_fpar",
+        "field": "fpar",
+        "min": 0,
+        "max": 1
+      }
+    ]
+  }
+}

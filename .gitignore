@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.dev/
+.env
+
+# Python bytecode from compiling library entries locally
+__pycache__/
+
+# Generated PDFs of docs/spec/ (node docs/build-pdf.mjs)
+docs/pdf/
+
+# Built by packages/kit/build-assets.mjs
+packages/kit/assets/

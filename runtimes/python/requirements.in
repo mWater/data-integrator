@@ -1,0 +1,25 @@
+# Curated libraries of the python runtime image. Edit this list, then
+# regenerate the pins with `pnpm lock` in runtimes/python.
+numpy
+pandas
+xarray
+rasterio
+pyproj
+geopandas
+cfgrib
+requests
+# netCDF4 + h5netcdf give xarray real NetCDF engines (the GDAL small base has no
+# netCDF/HDF5 driver, and xarray alone can only read GRIB via cfgrib). h5py is
+# explicit: h5netcdf does not pull it in, and its engine registers but fails
+# without it. It also reads plain HDF5 products.
+netCDF4
+h5netcdf
+h5py
+# Copernicus CDS/EWDS and ECMWF open data downloads, and scientific routines
+cdsapi
+ecmwf-opendata
+scipy
+# Uploaded spreadsheets (docs/Integration Files.md): xlsx, legacy xls, LibreOffice ods
+openpyxl
+xlrd
+odfpy

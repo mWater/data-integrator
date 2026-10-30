@@ -1,0 +1,151 @@
+{
+  "id": "gfm_observed_flood_extent",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GFM Daily Observed Flood Extent",
+    "fr": "Étendue quotidienne observée des inondations Copernicus GFM",
+    "pt": "Extensão diária observada de inundações do Copernicus GFM",
+    "es": "Extensión diaria observada de inundaciones de Copernicus GFM",
+    "mg": "Velaran’ny tondra-drano voamarika isan’andro avy amin’ny Copernicus GFM",
+    "sw": "Eneo la mafuriko linaloonekana kila siku la Copernicus GFM"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://stac.eodc.eu/api/v1/collections/GFM",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Flood Monitoring (GFM) STAC catalogue",
+      "fr": "Catalogue STAC de Copernicus Global Flood Monitoring (GFM)",
+      "pt": "Catálogo STAC do Copernicus Global Flood Monitoring (GFM)",
+      "es": "Catálogo STAC de Copernicus Global Flood Monitoring (GFM)",
+      "mg": "Katalaogy STAC an’ny Copernicus Global Flood Monitoring (GFM)",
+      "sw": "Katalogi ya STAC ya Copernicus Global Flood Monitoring (GFM)"
+    },
+    "license": "Copernicus data and information policy; see GFM terms and conditions",
+    "provider": "European Commission Joint Research Centre / EODC / Copernicus Emergency Management Service",
+    "limitations": {
+      "_base": "en",
+      "en": "The source has 20 m pixels and observes locations only during Sentinel-1 overpasses; nodata means no frame covered the pixel that UTC day, not no flood, and brief floods between overpasses can be missed. SAR flood mapping under-detects in urban areas, dense vegetation, and steep terrain.",
+      "fr": "La source possède des pixels de 20 m et n’observe les lieux que lors des survols de Sentinel-1 ; nodata signifie qu’aucune scène n’a couvert le pixel ce jour UTC, et non qu’il n’y avait pas d’inondation, et les crues brèves entre deux survols peuvent ne pas être détectées. La cartographie des inondations par SAR sous-détecte celles des zones urbaines, de la végétation dense et des terrains escarpés.",
+      "pt": "A fonte tem píxeis de 20 m e observa os locais apenas durante as passagens do Sentinel-1; nodata significa que nenhuma cena cobriu o píxel nesse dia UTC, não que não houve inundação, e inundações breves entre passagens podem não ser detetadas. O mapeamento de inundações por SAR apresenta subdeteção em áreas urbanas, vegetação densa e terrenos íngremes.",
+      "es": "La fuente tiene píxeles de 20 m y solo observa los lugares durante las pasadas de Sentinel-1; nodata significa que ninguna escena cubrió el píxel ese día UTC, no que no hubiera inundación, y las inundaciones breves entre pasadas pueden no detectarse. La cartografía de inundaciones mediante SAR presenta subdetección en áreas urbanas, vegetación densa y terrenos escarpados.",
+      "mg": "Manana pikseli 20 m ny loharano ary mandinika toerana mandritra ny fandalovan’ny Sentinel-1 ihany; ny nodata dia midika fa tsy nisy sary nandrakotra ilay pikseli tamin’io andro UTC io, fa tsy hoe tsy nisy tondra-drano, ary mety tsy ho voamarika ny tondra-drano vetivety eo anelanelan’ny fandalovana. Tsy mahatsikaritra tsara ny tondra-drano any an-tanàn-dehibe, anaty zavamaniry matevina ary amin’ny tany mideza ny fanaovana sarintany amin’ny SAR.",
+      "sw": "Chanzo kina pikseli za m 20 na hutazama maeneo wakati tu Sentinel-1 inapopita; nodata humaanisha kuwa hakuna fremu iliyofunika pikseli hiyo siku hiyo ya UTC, si kwamba hakukuwa na mafuriko, na mafuriko ya muda mfupi kati ya mipito yanaweza kukosa kutambuliwa. Uchoraji wa ramani za mafuriko kwa SAR hautambui vya kutosha katika maeneo ya mijini, uoto mnene na ardhi yenye mteremko mkali."
+    },
+    "documentation": "https://extwiki.eodc.eu/en/GFM/PUM/DataAccess/STAC"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Ingests one daily UTC composite of Sentinel-1-derived observed flood extent for the deployment area, initially backfilling the most recent 12 months and then checking daily for completed observation days; COG overviews use flood-preserving max pooling.",
+    "fr": "Ingère un composite UTC quotidien de l’étendue observée des inondations dérivée de Sentinel-1 pour la zone de déploiement, avec un chargement rétroactif initial des 12 derniers mois, puis une vérification quotidienne des journées d’observation terminées ; les aperçus COG utilisent une agrégation par maximum préservant les inondations.",
+    "pt": "Ingere um compósito UTC diário da extensão observada de inundações derivada do Sentinel-1 para a área de implantação, preenchendo inicialmente os 12 meses mais recentes e depois verificando diariamente os dias de observação concluídos; as visões gerais COG usam agregação pelo máximo que preserva as inundações.",
+    "es": "Ingiere un compuesto UTC diario de la extensión observada de inundaciones derivada de Sentinel-1 para el área de despliegue, rellenando inicialmente los 12 meses más recientes y comprobando después cada día las jornadas de observación completadas; las vistas generales COG usan remuestreo por máximo que preserva las inundaciones.",
+    "mg": "Mampiditra sary mitambatra UTC iray isan’andro momba ny velaran’ny tondra-drano voamarika avy amin’ny Sentinel-1 ho an’ny faritra ampiharana azy, ka mameno aloha ny angona ho an’ny 12 volana farany ary avy eo manamarina isan’andro ireo andro nahavitan’ny fandinihana; mampiasa max pooling mitahiry ny tondra-drano ny topimaso COG.",
+    "sw": "Huingiza kompositi moja ya kila siku ya UTC ya eneo la mafuriko linaloonekana linalotokana na Sentinel-1 kwa eneo la utekelezaji, ikijaza kwanza data ya miezi 12 ya karibuni zaidi kisha ikikagua kila siku siku za uchunguzi zilizokamilika; mionekano ya jumla ya COG hutumia max pooling inayohifadhi mafuriko."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Daily observed flood extent",
+        "fr": "Étendue quotidienne observée des inondations",
+        "pt": "Extensão diária observada de inundações",
+        "es": "Extensión diaria observada de inundaciones",
+        "mg": "Velaran’ny tondra-drano voamarika isan’andro",
+        "sw": "Eneo la mafuriko linaloonekana kila siku"
+      },
+      "bands": [
+        {
+          "id": "flood_extent",
+          "name": {
+            "_base": "en",
+            "en": "Observed flood extent",
+            "fr": "Étendue observée des inondations",
+            "pt": "Extensão observada de inundações",
+            "es": "Extensión observada de inundaciones",
+            "mg": "Velaran’ny tondra-drano voamarika",
+            "sw": "Eneo la mafuriko linaloonekana"
+          },
+          "units": "binary (0=observed no flood, 1=observed flood)",
+          "nodata": 255,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#00000000",
+                "value": 0
+              },
+              {
+                "color": "#169eb0",
+                "value": 1
+              }
+            ],
+            "resampling": "nearest"
+          }
+        }
+      ],
+      "layerId": "observed_flood_extent",
+      "description": {
+        "_base": "en",
+        "en": "Daily UTC composites of Sentinel-1 flood observations, with flood taking precedence across frames and max-pooled COG overviews preserving sparse flood pixels at small scales.",
+        "fr": "Composites UTC quotidiens des observations d’inondation de Sentinel-1, où l’inondation prévaut entre les scènes et où les aperçus COG agrégés par maximum préservent les pixels d’inondation isolés aux petites échelles.",
+        "pt": "Compósitos UTC diários das observações de inundações do Sentinel-1, com as inundações a prevalecer entre cenas e visões gerais COG agregadas pelo máximo que preservam píxeis de inundação esparsos em pequenas escalas.",
+        "es": "Compuestos UTC diarios de las observaciones de inundaciones de Sentinel-1, donde las inundaciones prevalecen entre escenas y las vistas generales COG remuestreadas por máximo preservan los píxeles de inundación dispersos a escalas pequeñas.",
+        "mg": "Sary mitambatra UTC isan’andro avy amin’ny fandinihana tondra-drano Sentinel-1, ka omena laharam-pahamehana amin’ireo sary ny tondra-drano ary mitahiry ireo pikselin’ny tondra-drano vitsy miparitaka amin’ny maridrefy madinika ny topimaso COG natao max pooling.",
+        "sw": "Kompositi za kila siku za UTC za uchunguzi wa mafuriko wa Sentinel-1, huku mafuriko yakipewa kipaumbele katika fremu zote na mionekano ya jumla ya COG iliyofanyiwa max pooling ikihifadhi pikseli za mafuriko zilizotawanyika katika skeli ndogo."
+      },
+      "temporality": "time-series",
+      "retention": {
+        "days": 365
+      }
+    }
+  ],
+  "settings": {
+    "days_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (days)",
+        "fr": "Historique à charger (jours)",
+        "pt": "Histórico a carregar (dias)",
+        "es": "Historial a cargar (días)",
+        "mg": "Tantara halaina (andro)",
+        "sw": "Historia ya kupakia (siku)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many days of past flood observations the first run or a rebuild loads, a week per run. Later runs add only new days.",
+        "fr": "Nombre de jours d’observations passées des inondations que charge la première exécution ou une reconstruction, une semaine par exécution. Les exécutions suivantes n’ajoutent que les nouveaux jours.",
+        "pt": "Quantos dias de observações anteriores de cheias a primeira execução ou uma reconstrução carrega, uma semana por execução. As execuções seguintes só acrescentam dias novos.",
+        "es": "Cuántos días de observaciones anteriores de inundaciones carga la primera ejecución o una reconstrucción, una semana por ejecución. Las ejecuciones posteriores solo añaden días nuevos.",
+        "mg": "Isan’ny andro amin’ny fandinihana tondra-drano taloha alain’ny fandefasana voalohany na ny fanamboarana indray, herinandro isaky ny fandefasana. Ny fandefasana manaraka dia manampy andro vaovao ihany.",
+        "sw": "Idadi ya siku za uchunguzi wa zamani wa mafuriko ambazo uendeshaji wa kwanza au ujenzi upya hupakia, wiki moja kwa kila uendeshaji. Uendeshaji unaofuata huongeza siku mpya tu."
+      },
+      "type": "integer",
+      "default": 365,
+      "min": 1,
+      "max": 3650,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P1D",
+    "ranges": [
+      {
+        "destinationId": "observed_flood_extent",
+        "field": "flood_extent",
+        "min": 0,
+        "max": 1
+      }
+    ]
+  }
+}

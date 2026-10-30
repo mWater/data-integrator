@@ -1,0 +1,206 @@
+{
+  "id": "worldpop_population",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "WorldPop Population",
+    "fr": "Population WorldPop",
+    "pt": "População WorldPop",
+    "es": "Población WorldPop",
+    "mg": "Mponina WorldPop",
+    "sw": "Idadi ya watu ya WorldPop"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 10800000
+  },
+  "source": {
+    "url": "https://hub.worldpop.org/",
+    "name": {
+      "_base": "en",
+      "en": "WorldPop Global 2 constrained population counts",
+      "fr": "Comptages contraints de population WorldPop Global 2",
+      "pt": "Contagens restritas de população do WorldPop Global 2",
+      "es": "Recuentos de población restringidos de WorldPop Global 2",
+      "mg": "Isan’ny mponina voafetra an’ny WorldPop Global 2",
+      "sw": "Hesabu za idadi ya watu zilizowekewa vikwazo za WorldPop Global 2"
+    },
+    "license": "CC BY 4.0",
+    "provider": "WorldPop, University of Southampton",
+    "limitations": {
+      "_base": "en",
+      "en": "The source grid is 3 arc-seconds (approximately 100 m at the equator), and the current R2025A product is an alpha release that WorldPop says may be revised as methods improve. Years after the current calendar year are modeled projections, not observations; zero or nodata means no population was allocated to that grid cell, not that the location is confirmed uninhabited. Files are keyed by country, so an area of interest given only as a box cannot be served: name the countries. WorldPop assigns every cell to exactly one country, so adjacent country files do not double count along borders.",
+      "fr": "La grille source est de 3 secondes d’arc (environ 100 m à l’équateur) et le produit R2025A actuel est une version alpha qui, selon WorldPop, pourra être révisée à mesure que les méthodes s’améliorent. Les années postérieures à l’année civile en cours sont des projections modélisées, et non des observations ; une valeur nulle ou nodata signifie qu’aucune population n’a été affectée à cette cellule de grille, et non que le lieu est confirmé comme inhabité. Les fichiers étant indexés par pays, une zone d’intérêt définie uniquement par une emprise rectangulaire ne peut pas être traitée : indiquez les pays. WorldPop attribue chaque cellule à un seul pays exactement ; les fichiers de pays adjacents n’entraînent donc aucun double comptage aux frontières.",
+      "pt": "A grelha de origem tem 3 segundos de arco (aproximadamente 100 m no equador), e o produto R2025A atual é uma versão alfa que, segundo o WorldPop, poderá ser revista à medida que os métodos forem aperfeiçoados. Os anos posteriores ao ano civil atual são projeções modeladas, não observações; zero ou nodata significa que nenhuma população foi atribuída à célula da grelha, e não que o local esteja comprovadamente desabitado. Os ficheiros são organizados por país, portanto uma área de interesse fornecida apenas como uma caixa não pode ser processada: indique os países. O WorldPop atribui cada célula a exatamente um país, pelo que os ficheiros de países adjacentes não geram dupla contagem nas fronteiras.",
+      "es": "La cuadrícula de origen es de 3 segundos de arco (aproximadamente 100 m en el ecuador), y el producto R2025A actual es una versión alfa que, según WorldPop, podría revisarse a medida que mejoren los métodos. Los años posteriores al año natural en curso son proyecciones modelizadas, no observaciones; cero o nodata significa que no se asignó población a esa celda de la cuadrícula, no que se haya confirmado que el lugar está deshabitado. Los archivos se organizan por país, por lo que no se puede procesar un área de interés especificada únicamente como un recuadro: indique los países. WorldPop asigna cada celda exactamente a un país, de modo que los archivos de países adyacentes no producen un doble conteo en las fronteras.",
+      "mg": "Mirefy 3 segondra zoro ny harato loharano (manodidina ny 100 m eo amin’ny ekoatera), ary famoahana alpha ny vokatra R2025A ankehitriny, izay lazain’ny WorldPop fa mety mbola hahitsy rehefa mihatsara ny fomba fiasa. Ny taona aorian’ny taona kalandrie ankehitriny dia vinavina novolavolaina tamin’ny maodely fa tsy fandinihana; ny zero na nodata dia midika fa tsy nisy mponina natokana ho an’io selan’ny harato io, fa tsy hoe voamarina ho tsy misy mponina ilay toerana. Voalahatra araka ny firenena ny rakitra, ka tsy azo karakaraina ny faritra mahaliana omena ho efajoro fotsiny: tonony ireo firenena. Omen’ny WorldPop firenena iray monja ny sela tsirairay, ka tsy manisa indroa eny amin’ny sisintany ny rakitry ny firenena mifanila.",
+      "sw": "Gridi chanzo ina sekunde 3 za tao (takriban m 100 kwenye ikweta), na bidhaa ya sasa ya R2025A ni toleo la alpha ambalo WorldPop inasema linaweza kurekebishwa kadiri mbinu zinavyoboreshwa. Miaka inayofuata mwaka wa sasa wa kalenda ni makadirio yaliyoundwa kwa modeli, si uchunguzi; sifuri au nodata humaanisha kuwa hakuna idadi ya watu iliyotengewa seli hiyo ya gridi, si kwamba eneo hilo limethibitishwa kuwa halina wakazi. Faili hupangwa kwa nchi, kwa hiyo eneo linalolengwa lililotolewa kama kisanduku pekee haliwezi kuhudumiwa: taja nchi. WorldPop huweka kila seli katika nchi moja tu, hivyo faili za nchi zinazopakana hazihesabu watu mara mbili mipakani."
+    },
+    "documentation": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 1 * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Annual constrained, UN-adjusted WorldPop population counts at approximately 100 m, one snapshot per year from the newest release. With an area of interest naming countries, their files are mosaicked and clipped to the area, every published year included. Without an area of interest the whole world is ingested: each country's file becomes one source of the year's snapshot, and only the current year is taken by default, since a global year is about 10 GB of source and 8 GB stored. The Years setting overrides this: every published year, or only the current one.",
+    "fr": "Estimations annuelles contraintes et ajustées selon l’ONU des effectifs de population WorldPop à environ 100 m, avec un instantané par an issu de la version la plus récente. Si une zone d’intérêt désigne des pays, leurs fichiers sont assemblés en mosaïque et découpés selon cette zone, pour toutes les années publiées. Sans zone d’intérêt, le monde entier est ingéré : le fichier de chaque pays devient une source de l’instantané annuel et, par défaut, seule l’année en cours est retenue, car une année mondiale représente environ 10 Go de données source et 8 Go stockés. Le paramètre Années permet de choisir autrement : toutes les années publiées, ou seulement l’année en cours.",
+    "pt": "Contagens populacionais anuais do WorldPop, restritas e ajustadas pela ONU, com resolução aproximada de 100 m e um instantâneo por ano da versão mais recente. Quando uma área de interesse identifica países, os respetivos ficheiros são unidos em mosaico e recortados pela área, incluindo todos os anos publicados. Sem uma área de interesse, o mundo inteiro é ingerido: o ficheiro de cada país torna-se uma fonte do instantâneo desse ano e, por predefinição, apenas o ano atual é obtido, pois um ano global corresponde a cerca de 10 GB de dados de origem e 8 GB armazenados. A definição Anos permite escolher de outra forma: todos os anos publicados, ou apenas o ano atual.",
+    "es": "Conteos anuales de población de WorldPop, restringidos y ajustados según la ONU, con una resolución aproximada de 100 m y una instantánea por año de la versión más reciente. Si un área de interés identifica países, sus archivos se unen en mosaico y se recortan según el área, incluyendo todos los años publicados. Sin un área de interés, se ingiere el mundo entero: el archivo de cada país pasa a ser una fuente de la instantánea del año y, de forma predeterminada, solo se toma el año actual, ya que un año global ocupa unos 10 GB en origen y 8 GB almacenados. El ajuste Años permite elegir otra cosa: todos los años publicados, o solo el año actual.",
+    "mg": "Isan’ny mponina WorldPop isan-taona, voafehy sy nampifanarahana tamin’ny UN, amin’ny elanelana manodidina ny 100 m, ka sarin’antontan-kevitra iray isan-taona avy amin’ny famoahana farany indrindra. Raha manonona firenena ny faritra mahaliana, dia atambatra ho mosaika sy tapahina araka ilay faritra ny rakitr’izy ireo, ary ampidirina ny taona rehetra navoaka. Raha tsy misy faritra mahaliana dia ampidirina izao tontolo izao: ny rakitry ny firenena tsirairay no lasa loharano iray ho an’ny sarin’antontan-kevitra amin’ilay taona, ary ny taona ankehitriny ihany no raisina ho default, satria manodidina ny 10 GB ny angona loharano ho an’ny taona iray maneran-tany ary 8 GB rehefa voatahiry. Ny fandrindrana Taona no ahafahana misafidy hafa: ny taona rehetra navoaka, na ny taona ankehitriny ihany.",
+    "sw": "Idadi za watu za WorldPop za kila mwaka, zilizowekewa mipaka na kurekebishwa kulingana na UN, kwa takriban m 100, zikiwa na picha moja kwa kila mwaka kutoka toleo jipya zaidi. Eneo linalolengwa likitaja nchi, faili zake huunganishwa kuwa mosaiki na kukatwa kulingana na eneo hilo, huku kila mwaka uliochapishwa ukijumuishwa. Bila eneo linalolengwa, dunia nzima huingizwa: faili ya kila nchi huwa chanzo kimoja cha picha ya mwaka huo, na kwa chaguo-msingi ni mwaka wa sasa pekee unaochukuliwa, kwa kuwa mwaka mmoja wa dunia ni takriban GB 10 za chanzo na GB 8 zilizohifadhiwa. Mpangilio wa Miaka huruhusu kuchagua vinginevyo: kila mwaka uliochapishwa, au mwaka wa sasa pekee."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "Population",
+        "fr": "Population",
+        "pt": "População",
+        "es": "Población",
+        "mg": "Mponina",
+        "sw": "Idadi ya watu"
+      },
+      "bands": [
+        {
+          "id": "population",
+          "name": {
+            "_base": "en",
+            "en": "Population count",
+            "fr": "Nombre d’habitants",
+            "pt": "Contagem da população",
+            "es": "Recuento de población",
+            "mg": "Isan’ny mponina",
+            "sw": "Hesabu ya idadi ya watu"
+          },
+          "units": "people per grid cell",
+          "nodata": -99999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#ffffe5",
+                "value": 0
+              },
+              {
+                "color": "#f7fcb9",
+                "value": 1
+              },
+              {
+                "color": "#d9f0a3",
+                "value": 3
+              },
+              {
+                "color": "#addd8e",
+                "value": 8
+              },
+              {
+                "color": "#78c679",
+                "value": 13
+              },
+              {
+                "color": "#41ab5d",
+                "value": 43
+              },
+              {
+                "color": "#238443",
+                "value": 170
+              },
+              {
+                "color": "#005a32",
+                "value": 280
+              }
+            ],
+            "resampling": "nearest"
+          }
+        }
+      ],
+      "layerId": "population",
+      "description": {
+        "_base": "en",
+        "en": "Annual WorldPop constrained estimates of people per approximately 100 m grid cell for the deployment area of interest.",
+        "fr": "Estimations annuelles contraintes de WorldPop du nombre de personnes par cellule de grille d’environ 100 m pour la zone de déploiement ciblée.",
+        "pt": "Estimativas anuais restritas do WorldPop do número de pessoas por célula de grade de aproximadamente 100 m para a área de interesse da implantação.",
+        "es": "Estimaciones anuales restringidas de WorldPop del número de personas por celda de cuadrícula de aproximadamente 100 m para el área de interés del despliegue.",
+        "mg": "Tombana voafetra isan-taona avy amin’ny WorldPop momba ny isan’ny olona isaky ny sela harato manodidina ny 100 m ho an’ny faritra kendrena amin’ny fametrahana.",
+        "sw": "Makadirio ya kila mwaka ya WorldPop yaliyowekewa vikwazo ya watu kwa kila seli ya gridi ya takriban m 100 katika eneo lengwa la utekelezaji."
+      },
+      "temporality": "time-series"
+    }
+  ],
+  "settings": {
+    "years": {
+      "label": {
+        "_base": "en",
+        "en": "Years",
+        "fr": "Années",
+        "pt": "Anos",
+        "es": "Años",
+        "mg": "Taona",
+        "sw": "Miaka"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Which years to load. Automatic takes every published year for named countries and only the current year for the whole world.",
+        "fr": "Années à charger. Automatique prend toutes les années publiées pour les pays désignés et seulement l’année en cours pour le monde entier.",
+        "pt": "Anos a carregar. Automático obtém todos os anos publicados para os países indicados e apenas o ano atual para o mundo inteiro.",
+        "es": "Años que se cargan. Automático toma todos los años publicados para los países indicados y solo el año actual para el mundo entero.",
+        "mg": "Ireo taona halaina. Ny Ho azy dia maka ny taona rehetra navoaka ho an’ny firenena voatonona, ary ny taona ankehitriny ihany ho an’izao tontolo izao.",
+        "sw": "Miaka ya kupakia. Otomatiki huchukua kila mwaka uliochapishwa kwa nchi zilizotajwa na mwaka wa sasa pekee kwa dunia nzima."
+      },
+      "type": "choice",
+      "default": "auto",
+      "choices": [
+        {
+          "value": "auto",
+          "label": {
+            "_base": "en",
+            "en": "Automatic",
+            "fr": "Automatique",
+            "pt": "Automático",
+            "es": "Automático",
+            "mg": "Ho azy",
+            "sw": "Otomatiki"
+          }
+        },
+        {
+          "value": "all",
+          "label": {
+            "_base": "en",
+            "en": "Every published year",
+            "fr": "Toutes les années publiées",
+            "pt": "Todos os anos publicados",
+            "es": "Todos los años publicados",
+            "mg": "Ny taona rehetra navoaka",
+            "sw": "Kila mwaka uliochapishwa"
+          }
+        },
+        {
+          "value": "current",
+          "label": {
+            "_base": "en",
+            "en": "Current year only",
+            "fr": "Année en cours seulement",
+            "pt": "Apenas o ano atual",
+            "es": "Solo el año actual",
+            "mg": "Ny taona ankehitriny ihany",
+            "sw": "Mwaka wa sasa pekee"
+          }
+        }
+      ]
+    }
+  },
+  "validation": {
+    "expectedCadence": "P1Y",
+    "ranges": [
+      {
+        "destinationId": "population",
+        "field": "population",
+        "min": 0
+      }
+    ]
+  }
+}

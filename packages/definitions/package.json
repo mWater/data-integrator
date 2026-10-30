@@ -1,0 +1,36 @@
+{
+  "name": "@data-integrator/definitions",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Integration definition types: the machine-readable library format",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo 'types only, nothing to test yet'"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@mwater/integration-runner": "workspace:*"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "packages/definitions"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/packages/definitions",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
+  }
+}

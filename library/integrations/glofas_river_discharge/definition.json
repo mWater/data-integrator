@@ -1,0 +1,165 @@
+{
+  "id": "glofas_river_discharge",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "River discharge",
+    "fr": "Débit des cours d’eau",
+    "pt": "Vazão dos rios",
+    "es": "Caudal de los ríos",
+    "mg": "Tahan’ny fikorianan’ny renirano",
+    "sw": "Mtiririko wa mto"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus GloFAS historical hydrological data",
+      "fr": "Données hydrologiques historiques de Copernicus GloFAS",
+      "pt": "Dados hidrológicos históricos do Copernicus GloFAS",
+      "es": "Datos hidrológicos históricos de Copernicus GloFAS",
+      "mg": "Angona ara-hidrolojika ara-tantaran’ny Copernicus GloFAS",
+      "sw": "Data za kihistoria za hidrolojia za Copernicus GloFAS"
+    },
+    "license": "CEMS-FLOODS datasets licence",
+    "provider": "Copernicus Emergency Management Service / ECMWF",
+    "limitations": {
+      "_base": "en",
+      "en": "GloFAS v4 is uncalibrated in most basins of the deployment area, so absolute discharge can differ substantially from gauged values; treat readings as relative anomalies and temporal patterns. Values describe the 0.05° river-network cell, not a specific gauge, and recent days use ERA5T intermediate forcing that is revised when consolidated ERA5 arrives.",
+      "fr": "GloFAS v4 n’est pas étalonné dans la plupart des bassins de la zone de déploiement ; le débit absolu peut donc différer sensiblement des valeurs mesurées. Les relevés doivent être interprétés comme des anomalies relatives et des tendances temporelles. Les valeurs décrivent la cellule de 0,05° du réseau hydrographique, et non une station de jaugeage précise. Les jours récents utilisent le forçage intermédiaire ERA5T, révisé à l’arrivée des données ERA5 consolidées.",
+      "pt": "O GloFAS v4 não é calibrado na maioria das bacias da área de implantação; portanto, a vazão absoluta pode diferir substancialmente dos valores observados. Trate as leituras como anomalias relativas e padrões temporais. Os valores representam a célula de 0,05° da rede fluvial, não uma estação fluviométrica específica, e os dias recentes usam o forçamento intermediário ERA5T, revisado quando o ERA5 consolidado fica disponível.",
+      "es": "GloFAS v4 no está calibrado en la mayoría de las cuencas del área de despliegue, por lo que el caudal absoluto puede diferir considerablemente de los valores aforados; las lecturas deben interpretarse como anomalías relativas y patrones temporales. Los valores describen la celda de 0,05° de la red fluvial, no una estación de aforo específica, y los días recientes utilizan el forzamiento intermedio ERA5T, que se revisa cuando llega el ERA5 consolidado.",
+      "mg": "Tsy voakalibera ny GloFAS v4 amin’ny ankamaroan’ny lemaka renirano ao amin’ny faritra ampiasana azy, ka mety hiavaka be amin’ny sanda voarefy ny fikorianana tanteraka; raiso ho fiviliana relatif sy lamina ara-potoana ireo vakiteny. Ny sanda dia mamaritra ny sela 0,05° amin’ny tambajotran-drenirano, fa tsy toerana fandrefesana manokana, ary mampiasa ny angona fampandehanana vonjimaika ERA5T ny andro farany, izay havaozina rehefa tonga ny ERA5 natambatra.",
+      "sw": "GloFAS v4 haijarekebishwa katika mabonde mengi ya eneo la utekelezaji, kwa hiyo mtiririko kamili unaweza kutofautiana sana na vipimo vya vituo; chukulia visomo kama hitilafu linganishi na mifumo ya muda. Thamani zinaelezea seli ya 0.05° ya mtandao wa mito, si kituo mahususi cha kupimia, na siku za karibuni hutumia data za msukumo za muda za ERA5T, ambazo hurekebishwa ERA5 iliyounganishwa inapowasili."
+    },
+    "documentation": "https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=overview"
+  },
+  "runtime": "python",
+  "secrets": [
+    "cds_api_token"
+  ],
+  "trigger": {
+    "cron": "0 6 * * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Daily average river discharge from the Copernicus Global Flood Awareness System (GloFAS), using consolidated ERA5 reanalysis where available and ERA5T intermediate data at the recent edge.",
+    "fr": "Débit journalier moyen des cours d’eau issu du système mondial d’alerte aux inondations Copernicus (GloFAS), utilisant la réanalyse ERA5 consolidée lorsqu’elle est disponible et les données intermédiaires ERA5T pour la période la plus récente.",
+    "pt": "Vazão média diária dos rios do Sistema Global de Alerta de Inundações Copernicus (GloFAS), utilizando a reanálise consolidada ERA5 quando disponível e dados intermediários ERA5T para o período mais recente.",
+    "es": "Caudal medio diario de los ríos del Sistema Mundial de Alerta de Inundaciones de Copernicus (GloFAS), utilizando el reanálisis consolidado ERA5 cuando está disponible y datos intermedios ERA5T para el período más reciente.",
+    "mg": "Salanisan’ny tahan’ny fikorianan’ny renirano isan’andro avy amin’ny Copernicus Global Flood Awareness System (GloFAS), mampiasa ny famakafakana indray ERA5 natambatra rehefa misy ary ny angona vonjimaika ERA5T ho an’ny vanim-potoana farany indrindra.",
+    "sw": "Wastani wa kila siku wa mtiririko wa mto kutoka Mfumo wa Kimataifa wa Copernicus wa Tahadhari ya Mafuriko (GloFAS), ukitumia uchanganuzi upya uliounganishwa wa ERA5 unapopatikana na data za muda za ERA5T kwa kipindi cha karibuni zaidi."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "name": {
+        "_base": "en",
+        "en": "River discharge",
+        "fr": "Débit des cours d’eau",
+        "pt": "Vazão dos rios",
+        "es": "Caudal de los ríos",
+        "mg": "Tahan’ny fikorianan’ny renirano",
+        "sw": "Mtiririko wa mto"
+      },
+      "bands": [
+        {
+          "id": "discharge",
+          "name": {
+            "_base": "en",
+            "en": "River discharge",
+            "fr": "Débit des cours d’eau",
+            "pt": "Vazão dos rios",
+            "es": "Caudal de los ríos",
+            "mg": "Tahan’ny fikorianan’ny renirano",
+            "sw": "Mtiririko wa mto"
+          },
+          "units": "m3/s",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "color": "#f7fbff",
+                "value": 0
+              },
+              {
+                "color": "#c6dbef",
+                "value": 1
+              },
+              {
+                "color": "#6baed6",
+                "value": 5
+              },
+              {
+                "color": "#2171b5",
+                "value": 20
+              },
+              {
+                "color": "#08519c",
+                "value": 50
+              },
+              {
+                "color": "#08306b",
+                "value": 100
+              }
+            ],
+            "resampling": "average"
+          }
+        }
+      ],
+      "layerId": "river_discharge",
+      "description": {
+        "_base": "en",
+        "en": "Daily average river discharge in m³/s on the 0.05° GloFAS river network.",
+        "fr": "Débit journalier moyen des cours d’eau en m³/s sur le réseau hydrographique GloFAS à 0,05°.",
+        "pt": "Vazão média diária dos rios em m³/s na rede fluvial GloFAS de 0,05°.",
+        "es": "Caudal medio diario de los ríos en m³/s en la red fluvial GloFAS de 0,05°.",
+        "mg": "Salanisan’ny tahan’ny fikorianan’ny renirano isan’andro amin’ny m³/s ao amin’ny tambajotran-drenirano GloFAS 0,05°.",
+        "sw": "Wastani wa kila siku wa mtiririko wa mto katika m³/s kwenye mtandao wa mito wa GloFAS wa 0.05°."
+      },
+      "temporality": "time-series"
+    }
+  ],
+  "settings": {
+    "backfill_days": {
+      "label": {
+        "_base": "en",
+        "en": "Days kept current",
+        "fr": "Jours tenus à jour",
+        "pt": "Dias mantidos atualizados",
+        "es": "Días mantenidos al día",
+        "mg": "Andro havaozina",
+        "sw": "Siku zinazosasishwa"
+      },
+      "description": {
+        "_base": "en",
+        "en": "The most recent days of discharge every run fetches or upgrades, as the source replaces provisional days with consolidated ones.",
+        "fr": "Les jours de débit les plus récents que chaque exécution récupère ou met à niveau, à mesure que la source remplace les jours provisoires par des jours consolidés.",
+        "pt": "Os dias de caudal mais recentes que cada execução obtém ou atualiza, à medida que a fonte substitui os dias provisórios por consolidados.",
+        "es": "Los días de caudal más recientes que cada ejecución obtiene o actualiza, a medida que la fuente sustituye los días provisionales por consolidados.",
+        "mg": "Ireo andro farany amin’ny fikorianan’ny rano alain’ny fandefasana tsirairay na havaozina, rehefa soloin’ny loharano andro voamarina ny andro vonjimaika.",
+        "sw": "Siku za karibuni zaidi za mtiririko ambazo kila uendeshaji hupakua au kuboresha, chanzo kinapobadilisha siku za muda kwa siku zilizothibitishwa."
+      },
+      "type": "integer",
+      "default": 90,
+      "min": 1,
+      "max": 366
+    }
+  },
+  "validation": {
+    "expectedCadence": "P1D",
+    "ranges": [
+      {
+        "destinationId": "river_discharge",
+        "field": "discharge",
+        "min": 0
+      }
+    ]
+  }
+}

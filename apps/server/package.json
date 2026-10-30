@@ -1,0 +1,48 @@
+{
+  "name": "@data-integrator/server",
+  "version": "1.0.0",
+  "description": "mWater Data Integrator server: API, scheduler, pipeline engine, agent service",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "VITE_DEV_URL=http://127.0.0.1:5173 tsx watch src/cli.ts serve",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.33",
+    "@ai-sdk/openai-compatible": "^3.0.39",
+    "@data-integrator/definitions": "workspace:*",
+    "@data-integrator/kit": "workspace:*",
+    "@mwater/integration-runner": "workspace:*",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "ai": "^7.0.55",
+    "esbuild": "^0.25.12",
+    "ez-localize": "^2.15.2",
+    "pg": "^8.13.0",
+    "tailwindcss": "^4.3.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  },
+  "author": "mWater (https://www.mwater.co)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mWater/data-integrator.git",
+    "directory": "apps/server"
+  },
+  "homepage": "https://github.com/mWater/data-integrator/tree/main/apps/server",
+  "bugs": {
+    "url": "https://github.com/mWater/data-integrator/issues"
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "id": "insitu_sensor_webhook",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "In-situ Sensor Webhook",
+    "fr": "Webhook de capteurs in situ",
+    "pt": "Webhook de sensores in situ",
+    "es": "Webhook de sensores in situ",
+    "mg": "Webhook an’ny sensor in situ",
+    "sw": "Webhook ya sensa za in situ"
+  },
+  "limits": {
+    "cpus": 1,
+    "memoryMb": 512,
+    "timeoutMs": 300000
+  },
+  "source": {
+    "name": {
+      "_base": "en",
+      "en": "In-situ sensor webhook",
+      "fr": "Webhook de capteurs in situ",
+      "pt": "Webhook de sensores in situ",
+      "es": "Webhook de sensores in situ",
+      "mg": "Webhook an’ny sensor in situ",
+      "sw": "Webhook ya sensa za in situ"
+    },
+    "provider": "User-managed sensor network",
+    "limitations": {
+      "_base": "en",
+      "en": "Readings are loaded as received from the sending system, with deduplication but no independent validation or calibration; coverage and accuracy are those of the field sensors themselves.",
+      "fr": "Les mesures sont chargées telles que reçues du système émetteur, avec déduplication mais sans validation ni étalonnage indépendants ; la couverture et la précision sont celles des capteurs de terrain eux-mêmes.",
+      "pt": "As leituras são carregadas tal como recebidas do sistema emissor, com eliminação de duplicados, mas sem validação ou calibração independente; a cobertura e a precisão são as dos próprios sensores de campo.",
+      "es": "Las lecturas se cargan tal como se reciben del sistema emisor, con deduplicación, pero sin validación ni calibración independientes; la cobertura y la precisión son las de los propios sensores de campo.",
+      "mg": "Ampidirina araka ny nandraisana azy avy amin’ny rafitra mpandefa ny fandrefesana, ka esorina ny dika mitovy nefa tsy misy fanamarinana na kalibrasi mahaleo tena; ny fandrakofana sy ny fahamarinany dia an’ireo sensor eny an-toerana ihany.",
+      "sw": "Vipimo hupakiwa kama vilivyopokelewa kutoka kwenye mfumo unaotuma, huku nakala rudufu zikiondolewa lakini bila uthibitishaji au urekebishaji huru; ueneaji na usahihi ni ule wa sensa za uwandani zenyewe."
+    }
+  },
+  "runtime": "python",
+  "trigger": {
+    "webhook": true,
+    "webhookDelaySeconds": 900
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Receives webhook-pushed groundwater-level and rainfall-gauge readings, upserts readings without duplication, and maintains each station's latest timestamped location. Malformed events are skipped and reported in the run log and run state.",
+    "fr": "Reçoit les mesures de niveau des eaux souterraines et de pluviomètres envoyées par webhook, les insère ou les met à jour sans doublons et conserve la dernière position horodatée de chaque station. Les événements mal formés sont ignorés et signalés dans le journal et l’état d’exécution.",
+    "pt": "Recebe leituras do nível das águas subterrâneas e de pluviómetros enviadas por webhook, insere ou atualiza as leituras sem duplicação e mantém a localização mais recente, com data e hora, de cada estação. Eventos malformados são ignorados e registados no log e no estado da execução.",
+    "es": "Recibe lecturas del nivel de aguas subterráneas y de pluviómetros enviadas mediante webhook, inserta o actualiza las lecturas sin duplicarlas y mantiene la última ubicación con marca temporal de cada estación. Los eventos mal formados se omiten y se notifican en el registro y el estado de ejecución.",
+    "mg": "Mandray ny fandrefesana ny haavon’ny rano ambanin’ny tany sy ny mari-pandrefesan’orana alefa amin’ny webhook, mampiditra na manavao azy tsy misy dika mitovy, ary mitahiry ny toerana farany misy mari-potoana ho an’ny tobim-pandrefesana tsirairay. Dinganina ireo tranga tsy tomombana ary tatitra ao amin’ny diarin’ny fampandehanana sy ny satan’ny fampandehanana.",
+    "sw": "Hupokea vipimo vya kiwango cha maji chini ya ardhi na vya vipima mvua vinavyotumwa kwa webhook, huingiza au kusasisha vipimo bila kurudia, na huhifadhi eneo la hivi karibuni lenye muhuri wa muda la kila kituo. Matukio yenye hitilafu hurukwa na kuripotiwa katika kumbukumbu na hali ya utekelezaji."
+  },
+  "destinations": [
+    {
+      "kind": "table",
+      "name": {
+        "_base": "en",
+        "en": "Sensor readings",
+        "fr": "Mesures des capteurs",
+        "pt": "Leituras dos sensores",
+        "es": "Lecturas de sensores",
+        "mg": "Fandrefesan’ny sensor",
+        "sw": "Vipimo vya sensa"
+      },
+      "action": "merge",
+      "columns": [
+        {
+          "id": "station_id",
+          "name": {
+            "_base": "en",
+            "en": "Station ID",
+            "fr": "ID de la station",
+            "pt": "ID da estação",
+            "es": "ID de la estación",
+            "mg": "ID-n’ny tobim-pandrefesana",
+            "sw": "ID ya kituo"
+          },
+          "type": "text"
+        },
+        {
+          "id": "variable",
+          "name": {
+            "_base": "en",
+            "en": "Variable",
+            "fr": "Variable",
+            "pt": "Variável",
+            "es": "Variable",
+            "mg": "Fari-piova",
+            "sw": "Kigezo"
+          },
+          "type": "text"
+        },
+        {
+          "id": "timestamp",
+          "name": {
+            "_base": "en",
+            "en": "Observation timestamp",
+            "fr": "Horodatage de l’observation",
+            "pt": "Data e hora da observação",
+            "es": "Marca temporal de la observación",
+            "mg": "Mari-potoanan’ny fandinihana",
+            "sw": "Muhuri wa muda wa uchunguzi"
+          },
+          "type": "datetime"
+        },
+        {
+          "id": "value",
+          "name": {
+            "_base": "en",
+            "en": "Observed value",
+            "fr": "Valeur observée",
+            "pt": "Valor observado",
+            "es": "Valor observado",
+            "mg": "Sanda voamarika",
+            "sw": "Thamani iliyopimwa"
+          },
+          "type": "number"
+        },
+        {
+          "id": "unit",
+          "name": {
+            "_base": "en",
+            "en": "Unit",
+            "fr": "Unité",
+            "pt": "Unidade",
+            "es": "Unidad",
+            "mg": "Ventin-drefy",
+            "sw": "Kitengo"
+          },
+          "type": "text"
+        }
+      ],
+      "tableId": "sensor_readings",
+      "description": {
+        "_base": "en",
+        "en": "Timestamped groundwater-level and rainfall-gauge readings pushed by field sensors.",
+        "fr": "Mesures horodatées du niveau des eaux souterraines et des pluviomètres envoyées par les capteurs de terrain.",
+        "pt": "Leituras com data e hora do nível das águas subterrâneas e de pluviómetros, enviadas por sensores de campo.",
+        "es": "Lecturas con marca temporal del nivel de aguas subterráneas y de pluviómetros enviadas por sensores de campo.",
+        "mg": "Fandrefesana misy mari-potoana ny haavon’ny rano ambanin’ny tany sy ny mari-pandrefesan’orana, alefan’ny sensor eny an-toerana.",
+        "sw": "Vipimo vyenye muhuri wa muda vya kiwango cha maji chini ya ardhi na vya vipima mvua, vinavyotumwa na sensa za uwandani."
+      },
+      "mergeColumns": [
+        "station_id",
+        "variable",
+        "timestamp"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": {
+        "_base": "en",
+        "en": "Sensor stations",
+        "fr": "Stations de capteurs",
+        "pt": "Estações de sensores",
+        "es": "Estaciones de sensores",
+        "mg": "Tobim-pandrefesana",
+        "sw": "Vituo vya sensa"
+      },
+      "action": "merge",
+      "columns": [
+        {
+          "id": "station_id",
+          "name": {
+            "_base": "en",
+            "en": "Station ID",
+            "fr": "ID de la station",
+            "pt": "ID da estação",
+            "es": "ID de la estación",
+            "mg": "ID-n’ny tobim-pandrefesana",
+            "sw": "ID ya kituo"
+          },
+          "type": "text"
+        },
+        {
+          "id": "location",
+          "name": {
+            "_base": "en",
+            "en": "Latest known location",
+            "fr": "Dernière position connue",
+            "pt": "Última localização conhecida",
+            "es": "Última ubicación conocida",
+            "mg": "Toerana farany fantatra",
+            "sw": "Eneo la mwisho linalojulikana"
+          },
+          "type": "geometry"
+        },
+        {
+          "id": "location_observed_at",
+          "name": {
+            "_base": "en",
+            "en": "Location observation timestamp",
+            "fr": "Horodatage de l’observation de la position",
+            "pt": "Data e hora da observação da localização",
+            "es": "Marca temporal de la observación de la ubicación",
+            "mg": "Mari-potoanan’ny fandinihana ny toerana",
+            "sw": "Muhuri wa muda wa uchunguzi wa eneo"
+          },
+          "type": "datetime"
+        }
+      ],
+      "tableId": "sensor_stations",
+      "description": {
+        "_base": "en",
+        "en": "Latest reported location and metadata for each sensor station.",
+        "fr": "Dernière position signalée et métadonnées de chaque station de capteurs.",
+        "pt": "Localização mais recente comunicada e metadados de cada estação de sensores.",
+        "es": "Última ubicación notificada y metadatos de cada estación de sensores.",
+        "mg": "Toerana farany notaterina sy metadata ho an’ny tobim-pandrefesana tsirairay.",
+        "sw": "Eneo la mwisho lililoripotiwa na metadata za kila kituo cha sensa."
+      },
+      "mergeColumns": [
+        "station_id"
+      ]
+    }
+  ]
+}

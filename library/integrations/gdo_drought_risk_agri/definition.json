@@ -1,0 +1,156 @@
+{
+  "id": "gdo_drought_risk_agri",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO agricultural drought risk",
+    "fr": "Risque de sécheresse agricole du GDO de Copernicus",
+    "pt": "Risco de seca agrícola do GDO Copernicus",
+    "es": "Riesgo de sequía agrícola del GDO de Copernicus",
+    "mg": "Loza ateraky ny haintany ara-pambolena araka ny GDO Copernicus",
+    "sw": "Hatari ya ukame wa kilimo ya GDO ya Copernicus"
+  },
+  "description": {
+    "_base": "en",
+    "en": "Ten-daily Risk of Drought Impacts for Agriculture (RDrI-Agri) from the Copernicus Global Drought Observatory, clipped to the deployment area of interest. It is the observatory's global combined drought indicator: rainfall deficit (SPI), soil moisture anomaly and vegetation stress (fAPAR anomaly) combined with exposure and vulnerability into four classes, from no risk to high. Backfills the latest 24 months and then ingests new ten-day periods incrementally.",
+    "fr": "Risque décadaire d’impacts de la sécheresse sur l’agriculture (RDrI-Agri) de l’Observatoire mondial de la sécheresse de Copernicus, découpé selon la zone d’intérêt du déploiement. Il s’agit de l’indicateur composite mondial de sécheresse de l’observatoire : déficit pluviométrique (SPI), anomalie d’humidité du sol et stress de la végétation (anomalie du fAPAR), combinés à l’exposition et à la vulnérabilité en quatre classes, d’un risque nul à élevé. Les 24 derniers mois sont chargés rétroactivement, puis les nouvelles périodes de dix jours sont intégrées progressivement.",
+    "pt": "Risco, a cada dez dias, de impactos da seca na agricultura (RDrI-Agri) do Observatório Global da Seca Copernicus, recortado para a área de interesse da implementação. É o indicador global combinado de seca do observatório: déficit de precipitação (SPI), anomalia da humidade do solo e stress da vegetação (anomalia do fAPAR), combinados com a exposição e a vulnerabilidade em quatro classes, de risco inexistente a elevado. Os últimos 24 meses são preenchidos retroativamente e, depois, os novos períodos de dez dias são incorporados progressivamente.",
+    "es": "Riesgo decadario de impactos de la sequía en la agricultura (RDrI-Agri) del Observatorio Mundial de la Sequía de Copernicus, recortado al área de interés del despliegue. Es el indicador mundial combinado de sequía del observatorio: déficit de precipitación (SPI), anomalía de humedad del suelo y estrés de la vegetación (anomalía de fAPAR), combinados con la exposición y la vulnerabilidad en cuatro clases, desde riesgo nulo hasta alto. Los últimos 24 meses se cargan retrospectivamente y, después, los nuevos periodos de diez días se incorporan progresivamente.",
+    "mg": "Loza isaky ny folo andro ateraky ny fiantraikan’ny haintany amin’ny fambolena (RDrI-Agri) avy amin’ny Foibe Fanaraha-maso Maneran-tany ny Haintany an’i Copernicus, voakapa hifanaraka amin’ny faritra kendren’ny fampiharana. Izy io no tondro mitambatra maneran-tany momba ny haintany an’ilay foibe: tsy fahampian’ny rotsak’orana (SPI), fivilian’ny hamandoan’ny tany ary fahasahiranan’ny zavamaniry (fivilian’ny fAPAR), ampiarahina amin’ny fiharihariana sy ny faharefoana ho sokajy efatra, manomboka amin’ny tsy misy loza ka hatramin’ny loza avo. Fenoiny ny angona ho an’ny 24 volana farany, ary avy eo ampidiriny tsikelikely ireo vanim-potoana vaovao isaky ny folo andro.",
+    "sw": "Hatari ya kila siku kumi ya athari za ukame kwa kilimo (RDrI-Agri) kutoka Kituo cha Kimataifa cha Ufuatiliaji wa Ukame cha Copernicus, iliyokatwa kulingana na eneo lengwa la utekelezaji. Hiki ni kiashiria jumuishi cha kimataifa cha ukame cha kituo hicho: upungufu wa mvua (SPI), mkengeuko wa unyevunyevu wa udongo na msongo wa mimea (mkengeuko wa fAPAR), vikijumuishwa na mfiduo na uwezekano wa kuathirika katika madaraja manne, kutoka hakuna hatari hadi hatari kubwa. Data za miezi 24 iliyopita hujazwa, kisha vipindi vipya vya siku kumi huingizwa hatua kwa hatua."
+  },
+  "source": {
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory Risk of Drought Impacts for Agriculture (RDrI-Agri)",
+      "fr": "Risque d’impacts de la sécheresse sur l’agriculture (RDrI-Agri) de l’Observatoire mondial de la sécheresse de Copernicus",
+      "pt": "Risco de Impactos da Seca na Agricultura (RDrI-Agri) do Observatório Global da Seca Copernicus",
+      "es": "Riesgo de Impactos de la Sequía en la Agricultura (RDrI-Agri) del Observatorio Mundial de la Sequía de Copernicus",
+      "mg": "Loza ateraky ny Fiantraikan’ny Haintany amin’ny Fambolena (RDrI-Agri) avy amin’ny Foibe Fanaraha-maso Maneran-tany ny Haintany an’i Copernicus",
+      "sw": "Hatari ya Athari za Ukame kwa Kilimo (RDrI-Agri) kutoka Kituo cha Kimataifa cha Ufuatiliaji wa Ukame cha Copernicus"
+    },
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_Risk_of_Drought_Impacts_for_Agriculture/",
+    "documentation": "https://www.sciencedirect.com/science/article/pii/S0959378016300565",
+    "limitations": {
+      "_base": "en",
+      "en": "A 1° (~110 km) grid: a country is only a handful of cells and local conditions vary within each. Classes are a modelled probability of drought impacts on vegetation, not observed damage, and combine three indicators that each carry their own lag; a cell reads no risk when the hazard indicators are not in drought, not when impacts are absent.",
+      "fr": "Une grille de 1° (~110 km) : un pays ne couvre que quelques cellules, et les conditions locales varient au sein de chacune. Les classes représentent une probabilité modélisée d’impacts de la sécheresse sur la végétation, et non des dommages observés, et combinent trois indicateurs ayant chacun leur propre décalage ; une cellule indique un risque nul lorsque les indicateurs d’aléa ne signalent pas de sécheresse, et non lorsque les impacts sont absents.",
+      "pt": "Uma grelha de 1° (~110 km): um país abrange apenas algumas células e as condições locais variam dentro de cada uma. As classes representam uma probabilidade modelada de impactos da seca na vegetação, não danos observados, e combinam três indicadores, cada um com a sua própria defasagem; uma célula indica risco inexistente quando os indicadores de perigo não apontam seca, e não quando não há impactos.",
+      "es": "Una cuadrícula de 1° (~110 km): un país abarca apenas unas pocas celdas y las condiciones locales varían dentro de cada una. Las clases representan una probabilidad modelizada de impactos de la sequía en la vegetación, no daños observados, y combinan tres indicadores, cada uno con su propio desfase; una celda indica riesgo nulo cuando los indicadores de peligro no muestran sequía, no cuando los impactos están ausentes.",
+      "mg": "Grid 1° (~110 km): sela vitsivitsy monja no mandrakotra firenena iray, ary miovaova ao anatin’ny sela tsirairay ny toe-javatra eny an-toerana. Ny sokajy dia maneho ny mety hisian’ny fiantraikan’ny haintany amin’ny zavamaniry araka ny modely, fa tsy fahasimbana voamarika, ary mampitambatra tondro telo samy manana ny fahatarany; milaza tsy misy loza ny sela iray rehefa tsy manondro haintany ireo tondron-doza, fa tsy rehefa tsy misy fiantraikany.",
+      "sw": "Gridi ya 1° (~110 km): nchi moja ina seli chache tu, na hali za maeneo husika hutofautiana ndani ya kila seli. Madaraja yanaonyesha uwezekano uliokokotolewa kwa modeli wa athari za ukame kwa mimea, si uharibifu ulioonekana, na yanajumuisha viashiria vitatu ambavyo kila kimoja kina ucheleweshaji wake; seli huonyesha hakuna hatari wakati viashiria vya hali hatarishi havionyeshi ukame, si wakati athari hazipo."
+    },
+    "provider": "European Commission Joint Research Centre",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 6 3,13,23 * *"
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 2048,
+    "timeoutMs": 900000
+  },
+  "contract": 2,
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "drought_risk_agri",
+      "name": {
+        "_base": "en",
+        "en": "Agricultural drought risk",
+        "fr": "Risque de sécheresse agricole",
+        "pt": "Risco de seca agrícola",
+        "es": "Riesgo de sequía agrícola",
+        "mg": "Loza ateraky ny haintany ara-pambolena",
+        "sw": "Hatari ya ukame wa kilimo"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Ten-daily risk of drought impacts on agriculture in four classes: 0 none, 1 low, 2 medium, 3 high.",
+        "fr": "Risque décadaire d’impacts de la sécheresse sur l’agriculture en quatre classes : 0 nul, 1 faible, 2 moyen, 3 élevé.",
+        "pt": "Risco, a cada dez dias, de impactos da seca na agricultura em quatro classes: 0 inexistente, 1 baixo, 2 médio, 3 elevado.",
+        "es": "Riesgo decadario de impactos de la sequía en la agricultura en cuatro clases: 0 nulo, 1 bajo, 2 medio, 3 alto.",
+        "mg": "Loza isaky ny folo andro ateraky ny fiantraikan’ny haintany amin’ny fambolena, mizara ho sokajy efatra: 0 tsy misy, 1 ambany, 2 antonony, 3 avo.",
+        "sw": "Hatari ya kila siku kumi ya athari za ukame kwa kilimo katika madaraja manne: 0 hakuna, 1 ndogo, 2 wastani, 3 kubwa."
+      },
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "risk_class",
+          "name": {
+            "_base": "en",
+            "en": "Risk class",
+            "fr": "Classe de risque",
+            "pt": "Classe de risco",
+            "es": "Clase de riesgo",
+            "mg": "Sokajin’ny loza",
+            "sw": "Daraja la hatari"
+          },
+          "units": "class",
+          "nodata": -9999,
+          "rendering": {
+            "resampling": "nearest",
+            "colorMap": [
+              {
+                "value": 0,
+                "color": "#e8e8e866"
+              },
+              {
+                "value": 1,
+                "color": "#fee391"
+              },
+              {
+                "value": 2,
+                "color": "#fe9929"
+              },
+              {
+                "value": 3,
+                "color": "#cc4c02"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "months_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (months)",
+        "fr": "Historique à charger (mois)",
+        "pt": "Histórico a carregar (meses)",
+        "es": "Historial a cargar (meses)",
+        "mg": "Tantara halaina (volana)",
+        "sw": "Historia ya kupakia (miezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many months of past data the first run or a rebuild loads. Later runs add only new data.",
+        "fr": "Nombre de mois de données passées que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles données.",
+        "pt": "Quantos meses de dados anteriores a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam dados novos.",
+        "es": "Cuántos meses de datos anteriores carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden datos nuevos.",
+        "mg": "Isan’ny volana amin’ny angona taloha alain’ny fandefasana voalohany na ny fanamboarana indray. Ny fandefasana manaraka dia manampy angona vaovao ihany.",
+        "sw": "Idadi ya miezi ya data ya zamani ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza data mpya tu."
+      },
+      "type": "integer",
+      "default": 24,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P10D",
+    "ranges": [
+      {
+        "destinationId": "drought_risk_agri",
+        "field": "risk_class",
+        "min": 0,
+        "max": 3
+      }
+    ]
+  }
+}

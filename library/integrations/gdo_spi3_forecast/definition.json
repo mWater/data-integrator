@@ -1,0 +1,211 @@
+{
+  "id": "gdo_spi3_forecast",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "Copernicus GDO SPI-3 drought and wet forecast",
+    "fr": "Prévisions Copernicus GDO SPI-3 de sécheresse et de conditions humides",
+    "pt": "Previsão Copernicus GDO SPI-3 de seca e condições húmidas",
+    "es": "Pronóstico Copernicus GDO SPI-3 de sequía y condiciones húmedas",
+    "mg": "Vinavina Copernicus GDO SPI-3 momba ny haintany sy ny toe-javatra mando",
+    "sw": "Utabiri wa Copernicus GDO SPI-3 wa ukame na hali ya unyevunyevu"
+  },
+  "limits": {
+    "cpus": 1,
+    "memoryMb": 1024,
+    "timeoutMs": 600000
+  },
+  "source": {
+    "url": "https://drought.emergency.copernicus.eu/data/Drought_Observatories_datasets/GDO_Indicator_for_Forecasting_Unusually_Wet_and_Dry_Conditions_SPI3_multi-system/",
+    "name": {
+      "_base": "en",
+      "en": "Copernicus Global Drought Observatory Indicator for Forecasting Unusually Wet and Dry Conditions (SPI-3, multi-system)",
+      "fr": "Indicateur de l’Observatoire mondial de la sécheresse Copernicus pour la prévision de conditions anormalement humides et sèches (SPI-3, multi-systèmes)",
+      "pt": "Indicador do Observatório Global da Seca Copernicus para a previsão de condições anormalmente húmidas e secas (SPI-3, multi-sistema)",
+      "es": "Indicador del Observatorio Mundial de la Sequía de Copernicus para pronosticar condiciones inusualmente húmedas y secas (SPI-3, multisistema)",
+      "mg": "Tondron’ny Copernicus Global Drought Observatory ho an’ny vinavina toe-javatra mando sy maina tsy mahazatra (SPI-3, rafitra maro)",
+      "sw": "Kiashiria cha Copernicus Global Drought Observatory cha Kutabiri Hali ya Unyevunyevu na Ukavu Isiyo ya Kawaida (SPI-3, mifumo mingi)"
+    },
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "provider": "European Commission Joint Research Centre",
+    "limitations": {
+      "_base": "en",
+      "en": "A 1° (~110 km) grid from the C3S multi-system seasonal forecast ensemble: a country is a handful of cells. An alarm is drawn only where at least 40% of ensemble members agree on an extreme, so most cells carry no warning most months; a blank cell means no robust signal, not a forecast of normal conditions. Seasonal precipitation forecasts have limited skill outside the tropics and in some seasons. Reference period 1993 to 2016.",
+      "fr": "Grille de 1° (~110 km) issue de l’ensemble de prévisions saisonnières multi-systèmes du C3S : un pays ne couvre qu’une poignée de cellules. Une alerte n’est émise que si au moins 40 % des membres de l’ensemble s’accordent sur un phénomène extrême ; la plupart des cellules ne présentent donc aucun avertissement la plupart des mois. Une cellule vide signifie qu’il n’existe aucun signal robuste, et non que des conditions normales sont prévues. La fiabilité des prévisions saisonnières de précipitations est limitée hors des tropiques et pendant certaines saisons. Période de référence : 1993 à 2016.",
+      "pt": "Uma grelha de 1° (~110 km) do conjunto de previsões sazonais multi-sistema do C3S: um país corresponde apenas a algumas células. Só é emitido um alerta quando pelo menos 40% dos membros do conjunto concordam quanto a um extremo; por isso, na maioria dos meses, a maior parte das células não contém qualquer aviso. Uma célula vazia significa que não há um sinal robusto, e não uma previsão de condições normais. As previsões sazonais de precipitação têm capacidade limitada fora dos trópicos e em algumas estações. Período de referência: 1993 a 2016.",
+      "es": "Una cuadrícula de 1° (~110 km) del conjunto de pronósticos estacionales multisistema de C3S: un país abarca apenas unas pocas celdas. Solo se emite una alerta cuando al menos el 40 % de los miembros del conjunto coinciden en un fenómeno extremo, por lo que la mayoría de las celdas no presentan ningún aviso durante la mayoría de los meses. Una celda vacía significa que no hay una señal robusta, no que se pronostiquen condiciones normales. Los pronósticos estacionales de precipitación tienen una capacidad limitada fuera de los trópicos y en algunas estaciones. Período de referencia: 1993-2016.",
+      "mg": "Makarakara 1° (~110 km) avy amin’ny fitambaran’ny vinavina ara-potoana misy rafitra maro an’ny C3S: sela vitsivitsy monja no mandrakotra firenena iray. Tsy avoaka ny fanairana raha tsy farafahakeliny 40% amin’ireo singa ao amin’ny fitambarana no miombon-kevitra momba ny tranga tafahoatra, ka tsy misy fampitandremana ny ankamaroan’ny sela amin’ny ankamaroan’ny volana. Ny sela banga dia midika fa tsy misy famantarana azo antoka, fa tsy vinavina toe-javatra ara-dalàna. Voafetra ny fahamarinan’ny vinavinan’orana ara-potoana ivelan’ny faritra tropikaly sy mandritra ny vanim-potoana sasany. Vanim-potoana fanovozan-kevitra: 1993 hatramin’ny 2016.",
+      "sw": "Gridi ya 1° (~110 km) kutoka kwenye mkusanyiko wa utabiri wa msimu wa mifumo mingi wa C3S: nchi moja hufunikwa na visanduku vichache tu. Tahadhari hutolewa tu pale ambapo angalau 40% ya wanachama wa mkusanyiko wanakubaliana kuhusu hali iliyokithiri, hivyo visanduku vingi havina tahadhari katika miezi mingi. Kisanduku tupu humaanisha hakuna ishara thabiti, si utabiri wa hali za kawaida. Utabiri wa mvua wa msimu una uwezo mdogo nje ya maeneo ya tropiki na katika baadhi ya misimu. Kipindi cha marejeleo: 1993 hadi 2016."
+    },
+    "documentation": "https://drought.emergency.copernicus.eu/data/factsheets/factsheet_spi_forecast.pdf"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 8 * * *"
+  },
+  "contract": 2,
+  "description": {
+    "_base": "en",
+    "en": "Monthly early warning of unusually dry and wet conditions over the coming three months, from the Copernicus Global Drought Observatory's SPI-3 forecast built on the C3S multi-system seasonal ensemble, clipped to the deployment area of interest. Each issue carries a warning class (dry alarms in three severities, wet alarms in three severities, no warning) and the forecast SPI-3 value where the ensemble is robust. Backfills the latest 12 issues and then ingests each new monthly issue; the daily schedule catches the issue whenever the observatory publishes it.",
+    "fr": "Alerte précoce mensuelle sur des conditions anormalement sèches ou humides au cours des trois prochains mois, issue des prévisions SPI-3 de l’Observatoire mondial de la sécheresse Copernicus, fondées sur l’ensemble saisonnier multi-systèmes du C3S et découpées selon la zone d’intérêt du déploiement. Chaque bulletin comprend une classe d’avertissement (alertes de sécheresse à trois niveaux de gravité, alertes d’humidité à trois niveaux, aucun avertissement) et la valeur SPI-3 prévue lorsque l’ensemble est robuste. Les 12 derniers bulletins sont chargés rétrospectivement, puis chaque nouveau bulletin mensuel est ingéré ; la programmation quotidienne le récupère dès sa publication par l’observatoire.",
+    "pt": "Alerta precoce mensal para condições anormalmente secas ou húmidas nos três meses seguintes, proveniente da previsão SPI-3 do Observatório Global da Seca Copernicus, baseada no conjunto sazonal multi-sistema do C3S e recortada para a área de interesse da implementação. Cada edição inclui uma classe de aviso (alertas de seca com três níveis de gravidade, alertas de condições húmidas com três níveis, sem aviso) e o valor SPI-3 previsto onde o conjunto é robusto. As 12 edições mais recentes são carregadas retroativamente e, em seguida, cada nova edição mensal é ingerida; a execução diária deteta a edição assim que o observatório a publica.",
+    "es": "Alerta temprana mensual de condiciones inusualmente secas o húmedas durante los próximos tres meses, procedente del pronóstico SPI-3 del Observatorio Mundial de la Sequía de Copernicus, basado en el conjunto estacional multisistema de C3S y recortado al área de interés del despliegue. Cada boletín incluye una clase de aviso (alertas de sequía con tres niveles de gravedad, alertas de humedad con tres niveles, sin aviso) y el valor SPI-3 previsto donde el conjunto es robusto. Se cargan retrospectivamente los 12 últimos boletines y después se ingiere cada nuevo boletín mensual; la ejecución diaria lo detecta en cuanto el observatorio lo publica.",
+    "mg": "Fampitandremana mialoha isam-bolana momba ny toe-javatra maina na mando tsy mahazatra mandritra ny telo volana ho avy, avy amin’ny vinavina SPI-3 an’ny Copernicus Global Drought Observatory, mifototra amin’ny fitambaran’ny vinavina ara-potoana misy rafitra maro an’ny C3S ary notapahina hifanaraka amin’ny faritra kendren’ny fampiharana. Ny famoahana tsirairay dia ahitana sokajy fampitandremana (fanairana haintany amin’ny hamafin-toetra telo, fanairana hamandoana amin’ny hamafin-toetra telo, tsy misy fampitandremana) sy ny sanda SPI-3 vinavinaina rehefa azo itokisana ny fitambarana. Fenoiny miverina ireo famoahana 12 farany, ary ampidiriny avy eo ny famoahana vaovao isam-bolana; ny fandaharam-piasana isan’andro dia maka izany raha vantany vao avoakan’ny observatory.",
+    "sw": "Tahadhari ya mapema ya kila mwezi kuhusu hali kavu au yenye unyevunyevu isiyo ya kawaida katika miezi mitatu ijayo, kutoka kwenye utabiri wa SPI-3 wa Copernicus Global Drought Observatory unaotegemea mkusanyiko wa utabiri wa msimu wa mifumo mingi wa C3S, uliopunguzwa kulingana na eneo lengwa la utekelezaji. Kila toleo lina daraja la tahadhari (tahadhari za ukame katika viwango vitatu vya ukali, tahadhari za unyevunyevu katika viwango vitatu, hakuna tahadhari) na thamani ya SPI-3 iliyotabiriwa pale ambapo mkusanyiko ni thabiti. Matoleo 12 ya karibuni hujazwa kwa kurejea nyuma, kisha kila toleo jipya la kila mwezi huingizwa; ratiba ya kila siku hulipata mara tu linapochapishwa na observatory."
+  },
+  "destinations": [
+    {
+      "kind": "raster",
+      "layerId": "spi3_forecast",
+      "name": {
+        "_base": "en",
+        "en": "SPI-3 forecast: dry and wet warnings",
+        "fr": "Prévisions SPI-3 : avertissements de sécheresse et d’humidité",
+        "pt": "Previsão SPI-3: avisos de seca e condições húmidas",
+        "es": "Pronóstico SPI-3: avisos de sequía y condiciones húmedas",
+        "mg": "Vinavina SPI-3: fampitandremana haintany sy hamandoana",
+        "sw": "Utabiri wa SPI-3: tahadhari za ukame na unyevunyevu"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Three-month outlook of unusually dry or wet conditions from the C3S seasonal forecast ensemble. Dry alarms are red (severity 1 is the most severe), wet alarms blue (severity 7 the most severe); cells without a robust signal carry no warning.",
+        "fr": "Prévisions à trois mois de conditions anormalement sèches ou humides issues de l’ensemble de prévisions saisonnières du C3S. Les alertes de sécheresse sont rouges (le niveau 1 est le plus grave) et les alertes d’humidité bleues (le niveau 7 est le plus grave) ; les cellules sans signal robuste ne comportent aucun avertissement.",
+        "pt": "Perspetiva a três meses de condições anormalmente secas ou húmidas, baseada no conjunto de previsões sazonais do C3S. Os alertas de seca são vermelhos (o nível 1 é o mais grave) e os alertas de condições húmidas são azuis (o nível 7 é o mais grave); as células sem um sinal robusto não contêm qualquer aviso.",
+        "es": "Perspectiva a tres meses de condiciones inusualmente secas o húmedas a partir del conjunto de pronósticos estacionales de C3S. Las alertas de sequía son rojas (el nivel 1 es el más grave) y las alertas de humedad, azules (el nivel 7 es el más grave); las celdas sin una señal robusta no presentan ningún aviso.",
+        "mg": "Vinavina telo volana momba ny toe-javatra maina na mando tsy mahazatra avy amin’ny fitambaran’ny vinavina ara-potoana an’ny C3S. Mena ny fanairana haintany (ny hamafin-toetra 1 no mafy indrindra), ary manga ny fanairana hamandoana (ny hamafin-toetra 7 no mafy indrindra); tsy misy fampitandremana ny sela tsy ahitana famantarana azo antoka.",
+        "sw": "Mtazamo wa miezi mitatu wa hali kavu au yenye unyevunyevu isiyo ya kawaida kutoka kwenye mkusanyiko wa utabiri wa msimu wa C3S. Tahadhari za ukame ni nyekundu (kiwango cha 1 ndicho kikali zaidi), na tahadhari za unyevunyevu ni bluu (kiwango cha 7 ndicho kikali zaidi); visanduku visivyo na ishara thabiti havina tahadhari."
+      },
+      "temporality": "time-series",
+      "bands": [
+        {
+          "id": "warning",
+          "name": {
+            "_base": "en",
+            "en": "Warning class",
+            "fr": "Classe d’avertissement",
+            "pt": "Classe de aviso",
+            "es": "Clase de aviso",
+            "mg": "Sokajy fampitandremana",
+            "sw": "Daraja la tahadhari"
+          },
+          "units": "class",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "value": 0,
+                "color": "#7b3294"
+              },
+              {
+                "value": 1,
+                "color": "#67000d"
+              },
+              {
+                "value": 2,
+                "color": "#cb181d"
+              },
+              {
+                "value": 3,
+                "color": "#fb6a4a"
+              },
+              {
+                "value": 4,
+                "color": "#e5e7eb80"
+              },
+              {
+                "value": 5,
+                "color": "#6baed6"
+              },
+              {
+                "value": 6,
+                "color": "#2171b5"
+              },
+              {
+                "value": 7,
+                "color": "#08306b"
+              }
+            ],
+            "resampling": "nearest"
+          }
+        },
+        {
+          "id": "spi3",
+          "name": {
+            "_base": "en",
+            "en": "Forecast SPI-3",
+            "fr": "SPI-3 prévu",
+            "pt": "SPI-3 previsto",
+            "es": "SPI-3 previsto",
+            "mg": "SPI-3 vinavinaina",
+            "sw": "SPI-3 iliyotabiriwa"
+          },
+          "units": "dimensionless",
+          "nodata": -9999,
+          "rendering": {
+            "colorMap": [
+              {
+                "value": -3,
+                "color": "#67000d"
+              },
+              {
+                "value": -2,
+                "color": "#b2182b"
+              },
+              {
+                "value": -1,
+                "color": "#ef8a62"
+              },
+              {
+                "value": 0,
+                "color": "#f7f7f7"
+              },
+              {
+                "value": 1,
+                "color": "#92c5de"
+              },
+              {
+                "value": 2,
+                "color": "#2166ac"
+              },
+              {
+                "value": 3,
+                "color": "#053061"
+              }
+            ],
+            "resampling": "nearest"
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "issues_back": {
+      "label": {
+        "_base": "en",
+        "en": "History to load (monthly issues)",
+        "fr": "Historique à charger (éditions mensuelles)",
+        "pt": "Histórico a carregar (edições mensais)",
+        "es": "Historial a cargar (ediciones mensuales)",
+        "mg": "Tantara halaina (famoahana isam-bolana)",
+        "sw": "Historia ya kupakia (matoleo ya kila mwezi)"
+      },
+      "description": {
+        "_base": "en",
+        "en": "How many past monthly forecast issues the first run or a rebuild loads. Later runs add only new issues.",
+        "fr": "Nombre d’éditions mensuelles passées de la prévision que charge la première exécution ou une reconstruction. Les exécutions suivantes n’ajoutent que les nouvelles éditions.",
+        "pt": "Quantas edições mensais anteriores da previsão a primeira execução ou uma reconstrução carrega. As execuções seguintes só acrescentam edições novas.",
+        "es": "Cuántas ediciones mensuales anteriores del pronóstico carga la primera ejecución o una reconstrucción. Las ejecuciones posteriores solo añaden ediciones nuevas.",
+        "mg": "Isan’ny famoahana vinavina isam-bolana taloha alain’ny fandefasana voalohany na ny fanamboarana indray. Ny fandefasana manaraka dia manampy famoahana vaovao ihany.",
+        "sw": "Idadi ya matoleo ya zamani ya kila mwezi ya utabiri ambayo uendeshaji wa kwanza au ujenzi upya hupakia. Uendeshaji unaofuata huongeza matoleo mapya tu."
+      },
+      "type": "integer",
+      "default": 12,
+      "min": 1,
+      "max": 120,
+      "appliesOn": "rebuild"
+    }
+  },
+  "validation": {
+    "expectedCadence": "P1M"
+  }
+}
