@@ -11,7 +11,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "VITE_DEV_URL=http://127.0.0.1:5173 tsx watch src/cli.ts serve",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "eval:designer": "node --env-file-if-exists=../../.env --import tsx eval/designerEval.ts",
+    "typecheck:eval": "tsc -p eval/tsconfig.json"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.33",
