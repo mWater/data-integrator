@@ -14,7 +14,7 @@
     "@data-integrator/kit": "workspace:*",
     "cronstrue": "^3.24.0",
     "dompurify": "^3.4.13",
-    "ez-localize": "^2.15.2",
+    "ez-localize": "^2.16.0",
     "maplibre-gl": "^6.2.0",
     "marked": "^18.0.9",
     "react": "^19.1.0",

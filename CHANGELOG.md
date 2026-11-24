@@ -17,6 +17,12 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
   change (the session making it stays signed in), an admin reset, renewal of an
   expired password at sign-in, and `cli.js user passwd`. Personal access tokens
   are separate credentials and are not revoked.
+- Copyright is held by UNICEF: `NOTICE` and the README name the United Nations
+  Children's Fund as copyright holder and state that all code was written for
+  this project, with none taken from mWater's private codebase.
+- `ez-localize` updated to 2.16.0, which is licensed Apache 2.0 (earlier
+  versions were LGPL-3.0). No production dependency is now under the GPL or
+  LGPL.
 
 ## 1.0.0 (2026-10-30)
 

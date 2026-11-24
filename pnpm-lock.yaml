@@ -184,18 +184,18 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.39
         version: 3.0.39(zod@4.4.3)
-      '@mwater/integration-runner':
-        specifier: workspace:*
-        version: link:../../packages/runner
-      '@openrouter/ai-sdk-provider':
-        specifier: ^3.0.0
-        version: 3.0.0(ai@7.0.55(zod@4.4.3))(zod@4.4.3)
       '@data-integrator/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
       '@data-integrator/kit':
         specifier: workspace:*
         version: link:../../packages/kit
+      '@mwater/integration-runner':
+        specifier: workspace:*
+        version: link:../../packages/runner
+      '@openrouter/ai-sdk-provider':
+        specifier: ^3.0.0
+        version: 3.0.0(ai@7.0.55(zod@4.4.3))(zod@4.4.3)
       '@tailwindcss/cli':
         specifier: ^4.3.3
         version: 4.3.3
@@ -209,8 +209,8 @@ importers:
         specifier: ^0.25.12
         version: 0.25.12
       ez-localize:
-        specifier: ^2.15.2
-        version: 2.15.2
+        specifier: ^2.16.0
+        version: 2.16.0
       pg:
         specifier: ^8.13.0
         version: 8.22.0
@@ -249,8 +249,8 @@ importers:
         specifier: ^3.4.13
         version: 3.4.13
       ez-localize:
-        specifier: ^2.15.2
-        version: 2.15.2
+        specifier: ^2.16.0
+        version: 2.16.0
       maplibre-gl:
         specifier: ^6.2.0
         version: 6.2.0
@@ -1474,7 +1474,6 @@ packages:
 
   concat-stream@1.6.2:
     resolution: {integrity: sha512-27HBghJxjiZtIk3Ycvn/4kbJk/1uZuJFfuPEns6LaEvpvG1f0hTea8lilrouyo9mVc2GWdcEZ8OLoGmSADlrCw==}
-    engines: {'0': node >= 0.8}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -1740,8 +1739,8 @@ packages:
     resolution: {integrity: sha512-h2z5mrROTxce56S+pnvAV890uu7ls7f1kEvVGJbw1OlFH3/mlJ5bkXu0KRyW94v37zzHPiUd55iLn3DA7TjWpw==}
     engines: {node: '>=0.8'}
 
-  ez-localize@2.15.2:
-    resolution: {integrity: sha512-R0WggDDFB56CaiJ5v8OTQYGq9rzgy/xnu+jZ3+1mgXRyb6bM1UKhU4rbz3I5rICH94YH9B94/GWUkv9j1QKZyA==}
+  ez-localize@2.16.0:
+    resolution: {integrity: sha512-SwmVIW9A3nf4VtGQhbS0PGYHRvU3t5n4WTMVlA1Z8deO2K1/R0p76LUWSh+Lo8ikdvpjPJ7ED2UkE+c4io26eA==}
 
   fastdom@1.0.12:
     resolution: {integrity: sha512-LB+xjSTEbjHE1cWsxu+tN2Xqr1kpi+V9aADI7sVM5ZMaXyYGPHULQMzpJMYqOTULK/73pUkWVzzObFRBkPr+hg==}
@@ -1866,7 +1865,6 @@ packages:
 
   jsonparse@1.3.1:
     resolution: {integrity: sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg==}
-    engines: {'0': node >= 0.2.0}
 
   katex@0.16.47:
     resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
@@ -3592,7 +3590,7 @@ snapshots:
 
   exit-on-epipe@1.0.1: {}
 
-  ez-localize@2.15.2:
+  ez-localize@2.16.0:
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5

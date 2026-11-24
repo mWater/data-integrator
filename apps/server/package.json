@@ -24,7 +24,7 @@
     "@types/react": "^19.2.18",
     "ai": "^7.0.55",
     "esbuild": "^0.25.12",
-    "ez-localize": "^2.15.2",
+    "ez-localize": "^2.16.0",
     "pg": "^8.13.0",
     "tailwindcss": "^4.3.3",
     "zod": "^4.4.3"

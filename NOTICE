@@ -1,8 +1,15 @@
 mWater Data Integrator
-Copyright 2026 mWater
+Copyright 2026 United Nations Children's Fund (UNICEF)
 
 This product includes software developed by mWater (https://www.mwater.co)
-for the UNICEF WASH Innovation Hub.
+for the UNICEF WASH Innovation Hub, under contract to UNICEF.
+
+All source code in this repository was written for this project. Development
+started from an empty repository on 4 August 2026, and the commit history from
+that first commit is public. The repository contains no code from mWater's
+private codebase: nothing from its existing platform or its earlier data
+integrator. No part of it is pre-existing (background) code that needs to be
+listed or licensed separately.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -18,6 +25,16 @@ the License.
 This repository vendors no third-party source. Third-party dependencies are
 resolved at build time and retain their own licenses; see pnpm-lock.yaml for
 the JavaScript tree and runtimes/*/Dockerfile for the container images.
+
+One of those dependencies is published by mWater: ez-localize
+(https://github.com/mWater/ez-localize), a public open-source localization
+library under Apache 2.0. It is installed from npm at build time like every
+other dependency, and its source is not in this repository.
+
+The @mwater/integration-runner npm package and the
+ghcr.io/mwater/integration-runtime-* container images are built from
+packages/runner and runtimes/ in this repository. Their names say where they
+are published, not that they contain other code.
 
 apps/server/static/boundaries/ contains country boundaries derived from
 Natural Earth (https://www.naturalearthdata.com), which is in the public
