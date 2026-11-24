@@ -28,6 +28,17 @@ const AVAILABLE = PODMAN && RUNSC
 const HAS_GDAL_IMG = AVAILABLE && (await ok("podman", ["image", "exists", GDAL_IMG]))
 const NET_TESTS = AVAILABLE && !process.env.SKIP_NET_TESTS
 
+/**
+ * Shell that fetches a public page, exiting 0 at the first success. It tries
+ * three sites on unrelated infrastructure, twice, because the public internet
+ * occasionally drops a lookup or stalls a download and one site being down
+ * says nothing about the sandbox. A job left with no network fails every
+ * attempt.
+ */
+const FETCH_PUBLIC =
+  "for i in 1 2; do for url in https://example.com https://www.kernel.org/ https://www.gnu.org/; do " +
+  "wget -q -T 10 -O /dev/null $url && exit 0; done; sleep 2; done; exit 1"
+
 function lanIp(): string | null {
   for (const addrs of Object.values(networkInterfaces())) {
     for (const a of addrs ?? []) {
@@ -234,9 +245,9 @@ test("egress: private blocked, public allowed", { skip: !NET_TESTS }, async t =>
     const pub = await runner.run({
       image: ALPINE,
       payload: null,
-      command: ["wget", "-q", "-T", "15", "-O", "/dev/null", "https://example.com"]
+      command: ["sh", "-c", FETCH_PUBLIC]
     })
-    assert.equal(pub.status, "succeeded", "public egress must work")
+    assert.equal(pub.status, "succeeded", `public egress must work: ${pub.stderrTail}`)
   } finally {
     server.close()
   }
@@ -276,9 +287,8 @@ test("egress meter: traffic is counted per job, including concurrent jobs", { sk
       runner.run({
         image: ALPINE,
         payload: null,
-        // Reads stdin first, as the harness does, so it starts only once metered. Retries
-        // because the public internet occasionally drops a lookup or stalls a download.
-        command: ["sh", "-c", "cat > /dev/null; for i in 1 2 3; do wget -q -T 15 -O /dev/null https://example.com && exit 0; sleep 2; done; exit 1"]
+        // Reads stdin first, as the harness does, so it starts only once metered
+        command: ["sh", "-c", `cat > /dev/null; ${FETCH_PUBLIC}`]
       })
     )
   )
@@ -311,7 +321,7 @@ test("egress meter: ensureReady sweeps meters of vanished jobs only", { skip: !N
   const live = runner.run({
     image: ALPINE,
     payload: null,
-    command: ["sh", "-c", "cat > /dev/null; sleep 4; wget -q -T 15 -O /dev/null https://example.com"]
+    command: ["sh", "-c", `cat > /dev/null; sleep 4; ${FETCH_PUBLIC}`]
   })
   await new Promise(resolve => setTimeout(resolve, 2500))
   await runner.ensureReady()
@@ -363,8 +373,7 @@ test("overlapping networked jobs all get a network, and every job container is r
           image: ALPINE,
           payload: null,
           labels: { "integrator-test": label },
-          // Retries ride out a flaky remote; a job left with no network fails every attempt
-          command: ["sh", "-c", "cat > /dev/null; for i in 1 2 3; do wget -q -T 10 -O /dev/null https://example.com && exit 0; sleep 2; done; exit 1"]
+          command: ["sh", "-c", `cat > /dev/null; ${FETCH_PUBLIC}`]
         })
       )
     )
