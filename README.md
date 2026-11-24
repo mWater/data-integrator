@@ -118,8 +118,9 @@ developed the software for the UNICEF WASH Innovation Hub under contract.
 
 Everything in this repository was written for this project. Development
 started from an empty repository on 4 August 2026, and the commit history
-shows it from the first commit. No code was taken from mWater's existing
-platform or from its earlier data integrator, so there is no pre-existing
-(background) code to list or license separately. [NOTICE](NOTICE) names the
-one mWater-authored dependency (`ez-localize`, an open-source library
-installed from npm) and the third-party data the repository includes.
+shows it from the first commit. No code was taken from mWater's private
+codebase (its existing platform or its earlier data integrator), so there is
+no pre-existing (background) code to list or license separately. Like any
+project it has public npm dependencies; [NOTICE](NOTICE) names the one that
+mWater publishes (`ez-localize`, Apache 2.0) and the third-party data the
+repository includes.
