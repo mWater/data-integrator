@@ -68,8 +68,10 @@ test("parseAccountPolicy: days or null, rejects junk", () => {
 })
 
 test("password expiry: off by default, enforced at sign-in when set", async () => {
-  await createUser(pool, "old@example.org", "original-pass", "viewer")
+  const user = await createUser(pool, "old@example.org", "original-pass", "viewer")
   await age("old@example.org", "password_changed_at", 400)
+  // A session opened before the password aged out
+  const earlier = await createAuthSession(pool, user.id)
 
   // Off by default: an old password still signs in
   assert.ok((await authenticate(pool, "old@example.org", "original-pass")).ok)
@@ -93,8 +95,12 @@ test("password expiry: off by default, enforced at sign-in when set", async () =
 
   const renewed = await login({ email: "old@example.org", password: "original-pass", newPassword: "replacement-1" })
   assert.equal(renewed.status, 200)
-  assert.match(renewed.headers.get("set-cookie") ?? "", /di_session=/)
+  const cookie = renewed.headers.get("set-cookie") ?? ""
+  assert.match(cookie, /di_session=/)
   assert.ok((await authenticate(pool, "old@example.org", "replacement-1")).ok)
+  // Renewal ends the sessions the old password opened; the new sign-in has its own
+  assert.equal(await getSessionUser(pool, earlier), null)
+  assert.equal((await fetch(`${base}/api/me`, { headers: { cookie: cookie.split(";")[0] } })).status, 200)
 })
 
 test("inactivity: off by default; disables stale accounts and revokes sessions", async () => {

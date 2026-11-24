@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import pg from "pg"
-import { AuthUser, hashPassword } from "./auth.js"
+import { AuthUser, hashPassword, setPasswordById } from "./auth.js"
 
 /** One user as the admin management UI sees it. */
 export interface ManagedUser {
@@ -146,15 +146,11 @@ export async function setDisabled(pool: pg.Pool, id: string, disabled: boolean):
 
 /**
  * Sets a fresh generated password (clearing any lockout) and returns it, or
- * null if no such user.
+ * null if no such user. The user's sessions end with the old password;
+ * `keepToken` is the session of the admin doing the reset, which survives
+ * when they reset their own password.
  */
-export async function resetPassword(pool: pg.Pool, id: string): Promise<string | null> {
+export async function resetPassword(pool: pg.Pool, id: string, keepToken: string | null = null): Promise<string | null> {
   const password = generatePassword()
-  const result = await pool.query(
-    `UPDATE app.users SET password_hash = $2, password_changed_at = now(), failed_logins = 0, locked_until = NULL,
-       updated_at = now()
-     WHERE id = $1`,
-    [id, await hashPassword(password)]
-  )
-  return (result.rowCount ?? 0) > 0 ? password : null
+  return (await setPasswordById(pool, id, password, keepToken)) ? password : null
 }

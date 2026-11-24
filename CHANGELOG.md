@@ -5,6 +5,13 @@ the release's notes on the repository's Releases page, and says when a release
 changes the database (applied by `deploy/update.sh`) or the runtime images
 (rebuilt with `IMAGES=1`).
 
+## Unreleased
+
+- Changing a password ends the user's other sessions. This covers a user's own
+  change (the session making it stays signed in), an admin reset, renewal of an
+  expired password at sign-in, and `cli.js user passwd`. Personal access tokens
+  are separate credentials and are not revoked.
+
 ## 1.0.0 (2026-10-30)
 
 First public release of the mWater Data Integrator, the reference

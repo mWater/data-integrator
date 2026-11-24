@@ -17,7 +17,8 @@ Two interchangeable credentials, both tied to a user and their role:
   account policy has expired the password, sign-in returns 401 with
   `{code: "password_expired"}`; send `newPassword` with the same body to set a
   new password and sign in. A new password shorter than 8 characters or equal
-  to the old one returns 400.
+  to the old one returns 400. Renewing ends the sessions the old password
+  opened.
 - Personal access token: mint with `POST /api/tokens {name, expiresDays?}` (or
   `cli.js user token <email> [name]`), then send `Authorization: Bearer dit_...`.
   The secret is returned once and stored hashed. `GET /api/tokens` lists your
@@ -52,9 +53,11 @@ role. Every route below needs one of the two unless it says otherwise.
 - `GET /api/me` - `{user: {id, email, role}, ai: {provider, model, ackRequired}}`;
   401 when not signed in.
 - `POST /api/me/password {currentPassword, newPassword}` - change your own
-  password (at least 8 characters).
+  password (at least 8 characters). Your other sessions are signed out; the
+  session making the request stays, and so do your personal access tokens.
 - `/api/users` (admin) - list, create (`POST {email, role}`, returns a
-  generated password once), and `POST /api/users/:id/password` (reset),
+  generated password once), and `POST /api/users/:id/password` (reset, which
+  also signs that user out of every session),
   `PUT /api/users/:id/role {role}`, `PUT /api/users/:id/disabled {disabled}`.
   The last active admin cannot be demoted or disabled.
 

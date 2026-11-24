@@ -6,7 +6,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
 import { migrate } from "../src/migrations.js"
-import { createUser } from "../src/auth.js"
+import { createApiToken, createAuthSession, createUser, getSessionUser, setPassword } from "../src/auth.js"
 import { setDisabled } from "../src/users.js"
 import { createApiServer } from "../src/server.js"
 import { TileRenderer } from "../src/tiles.js"
@@ -34,6 +34,11 @@ async function loginCookie(email: string, password: string): Promise<string> {
   })
   assert.equal(res.status, 200)
   return (res.headers.get("set-cookie") ?? "").split(";")[0]
+}
+
+/** Whether a session cookie still authenticates. */
+async function signedIn(cookie: string): Promise<boolean> {
+  return (await fetch(`${base}/api/me`, { headers: { cookie } })).status === 200
 }
 
 /** Fetches the admin user list and returns the row for an email. */
@@ -294,4 +299,82 @@ test("change own password: wrong current rejected without lockout, short rejecte
     body: JSON.stringify({ currentPassword: "x", newPassword: "long-enough-1" })
   })
   assert.equal(noAuth.status, 401)
+})
+
+test("changing your own password ends your other sessions, keeps this one and API tokens", async () => {
+  const user = await createUser(pool, "multi@example.org", "multi-pass-1", "editor")
+  const here = await loginCookie("multi@example.org", "multi-pass-1")
+  const elsewhere = await loginCookie("multi@example.org", "multi-pass-1")
+  const apiToken = await createApiToken(pool, user.id, "script")
+
+  // A wrong current password changes nothing, sessions included
+  const wrong = await fetch(`${base}/api/me/password`, {
+    method: "POST",
+    headers: { cookie: here, "content-type": "application/json" },
+    body: JSON.stringify({ currentPassword: "not-it", newPassword: "multi-pass-2" })
+  })
+  assert.equal(wrong.status, 400)
+  assert.equal(await signedIn(elsewhere), true)
+
+  const ok = await fetch(`${base}/api/me/password`, {
+    method: "POST",
+    headers: { cookie: here, "content-type": "application/json" },
+    body: JSON.stringify({ currentPassword: "multi-pass-1", newPassword: "multi-pass-2" })
+  })
+  assert.equal(ok.status, 200)
+  assert.equal(await signedIn(here), true)
+  assert.equal(await signedIn(elsewhere), false)
+  // Other users are untouched
+  assert.equal(await signedIn(rootCookie), true)
+  const viaToken = await fetch(`${base}/api/me`, { headers: { authorization: `Bearer ${apiToken}` } })
+  assert.equal(viaToken.status, 200)
+})
+
+test("a password change made with an API token ends every session of that user", async () => {
+  const user = await createUser(pool, "script@example.org", "script-pass-1", "editor")
+  const browser = await loginCookie("script@example.org", "script-pass-1")
+  const apiToken = await createApiToken(pool, user.id, "script")
+
+  const ok = await fetch(`${base}/api/me/password`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiToken}`, "content-type": "application/json" },
+    body: JSON.stringify({ currentPassword: "script-pass-1", newPassword: "script-pass-2" })
+  })
+  assert.equal(ok.status, 200)
+  assert.equal(await signedIn(browser), false)
+})
+
+test("an admin reset ends that user's sessions; resetting your own keeps the session doing it", async () => {
+  await createUser(pool, "target@example.org", "target-pass-1", "viewer")
+  const first = await loginCookie("target@example.org", "target-pass-1")
+  const second = await loginCookie("target@example.org", "target-pass-1")
+  const target = await findUser("target@example.org")
+
+  const reset = await fetch(`${base}/api/users/${target.id}/password`, { method: "POST", headers: { cookie: rootCookie } })
+  assert.equal(reset.status, 200)
+  assert.equal(await signedIn(first), false)
+  assert.equal(await signedIn(second), false)
+  assert.equal(await signedIn(rootCookie), true)
+
+  await createUser(pool, "admin2@example.org", "admin2-pass-1", "admin")
+  const acting = await loginCookie("admin2@example.org", "admin2-pass-1")
+  const other = await loginCookie("admin2@example.org", "admin2-pass-1")
+  const self = await findUser("admin2@example.org")
+  const own = await fetch(`${base}/api/users/${self.id}/password`, { method: "POST", headers: { cookie: acting } })
+  assert.equal(own.status, 200)
+  assert.equal(await signedIn(acting), true)
+  assert.equal(await signedIn(other), false)
+})
+
+test("setPassword with no session to keep ends them all, as the CLI does", async () => {
+  const user = await createUser(pool, "cli@example.org", "cli-pass-1", "viewer")
+  const one = await createAuthSession(pool, user.id)
+  const two = await createAuthSession(pool, user.id)
+
+  assert.equal(await setPassword(pool, "nobody@example.org", "whatever-1"), false)
+  assert.ok(await getSessionUser(pool, one))
+
+  assert.equal(await setPassword(pool, "cli@example.org", "cli-pass-2"), true)
+  assert.equal(await getSessionUser(pool, one), null)
+  assert.equal(await getSessionUser(pool, two), null)
 })

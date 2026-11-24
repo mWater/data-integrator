@@ -332,8 +332,9 @@ dashboards and design sessions; viewer reads data and dashboards and uses Explor
 
 ### auth_sessions
 
-Signed-in browser sessions (30 days); revocation is row deletion. Expired rows are
-deleted by housekeeping.
+Signed-in browser sessions (30 days); revocation is row deletion. A user's rows are
+deleted when the account is disabled and when its password changes (all but the
+session making the change). Expired rows are deleted by housekeeping.
 
 | column | type | notes |
 |---|---|---|
