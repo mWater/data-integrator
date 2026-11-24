@@ -17,5 +17,7 @@ Also exported:
 - The job contract types (`RunResult`, `RasterArtifact`, `TableArtifact`, ...),
   re-exported from `@mwater/integration-runner`.
 
-This package holds types only. Structural validation of definitions lives in
-the server (`apps/server/src/install.ts`, `validateDefinition`).
+This package holds types only. The format is also published as a JSON Schema,
+[integration-definition.schema.json](../../docs/spec/integration-definition.schema.json),
+for implementations in other languages. Structural validation of definitions
+lives in the server (`apps/server/src/install.ts`, `validateDefinition`).

@@ -41,7 +41,9 @@ Node server, API, executor, and agent; `apps/ui` is the React operator UI;
 `packages/runner` is the podman + gVisor job executor; `packages/definitions`
 is the integration definition format; `packages/kit` is the dashboard component
 kit; `runtimes/` holds the sandbox images; `library/` holds integration
-definitions and agent skills.
+definitions and agent skills. A change to the definition format changes the
+types, the [specification](docs/spec/Integration%20Library%20Specification.md)
+and its JSON Schema in the same pull request.
 
 [docs/Database.md](docs/Database.md) covers the schema and migrations,
 [docs/Dashboards.md](docs/Dashboards.md) the dashboard pipeline, and

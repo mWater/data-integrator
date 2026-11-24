@@ -7,6 +7,14 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- The integration definition format is published as a JSON Schema (draft
+  2020-12), `docs/spec/integration-definition.schema.json`, so a library
+  publisher or another implementation can check a definition with any
+  standard validator, without running this platform. The specification lists
+  the rules a schema cannot express (section 2.14), and says how a deployment
+  uses a library published by another party (section 1.1). The Deployment
+  guide has the steps ("Using another integration library"). No change to
+  how the platform validates or runs definitions.
 - Webhook senders can send the token in a header instead of the URL:
   `POST /hooks/<integration id>` with `Authorization: Bearer <token>` (or
   `X-Webhook-Token`). This keeps the token out of URLs and proxy logs.
