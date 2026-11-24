@@ -47,7 +47,10 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
   service, an unreachable database, a disabled scheduler, missing swap, a
   disk at 85% or more and a stale run heartbeat were shown in red but the
   script still exited 0, so a cron job watching the exit status missed them.
-  A host that has one of these conditions will start to alert.
+  A host that has one of these conditions will start to alert. The scheduler
+  check no longer reports "unknown" on a long-running service whose
+  start-up log line has rotated out of the journal: it then looks for runs
+  the scheduler has started since the service started.
 
 ## 1.0.0 (2026-10-30)
 

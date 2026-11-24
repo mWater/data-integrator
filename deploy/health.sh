@@ -29,6 +29,8 @@ state() { # label unit → coloured "label state"
   if [ "$s" = "active" ]; then printf '%s ' "$1 $(good active)"; else problem "$1 ${s:-missing}"; printf '%s ' "$1 $(red "${s:-missing}")"; fi
 }
 
+q() { sudo -u postgres psql -qAt -d integrator -c "$1" 2>/dev/null; }
+
 build=$(git -c safe.directory='*' -C "$APP_DIR" log -1 --format=%h 2>/dev/null || echo "?")
 since=$(systemctl show -p ActiveEnterTimestamp --value data-integrator 2>/dev/null)
 printf '  %sbuild %s, service since %s%s\n' "$DIM" "$build" "${since:-never}" "$OFF"
@@ -44,11 +46,28 @@ for unit in caddy ${EXTRA_UNITS:-}; do
 done
 if sudo -u postgres psql -qAt -d integrator -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else problem "db down"; printf 'db %s ' "$(red down)"; fi
 if [ -n "$since" ]; then
+  # The server says at start-up whether its scheduler is running, and that cannot
+  # change until the next restart
   sched=$(journalctl -u data-integrator --since "$since" --no-pager 2>/dev/null | grep -o 'Scheduler running\|No job runner available' | head -1)
+  if [ -z "$sched" ]; then
+    # The journal has rotated past the start-up line on a long-running service,
+    # so ask the database: only this service's scheduler queues cron runs and
+    # starts an integration's runs
+    since_epoch=$(date -d "$since" +%s 2>/dev/null || echo 0)
+    worked=$(q "SELECT count(*) FROM app.runs WHERE integration_id IS NOT NULL AND session_id IS NULL
+      AND greatest(started_at, CASE WHEN trigger = 'cron' THEN scheduled_at END) > to_timestamp($since_epoch)")
+    due=$(q "SELECT count(*) FROM app.integrations WHERE enabled AND status = 'ready' AND definition->'trigger'->>'cron' IS NOT NULL")
+    if [ "${worked:-0}" -gt 0 ]; then sched="Scheduler running"
+    elif [ $(( $(date +%s) - since_epoch )) -lt 300 ]; then sched=starting
+    elif [ "${due:-0}" -eq 0 ]; then sched=idle
+    fi
+  fi
   case "$sched" in
     "Scheduler running") printf 'scheduler %s' "$(good running)" ;;
     "No job runner"*) problem "scheduler disabled"; printf 'scheduler %s' "$(red disabled)" ;;
-    *) problem "scheduler unknown"; printf 'scheduler %s' "$(red unknown)" ;;
+    starting) printf 'scheduler starting' ;;
+    idle) printf 'scheduler idle (nothing scheduled)' ;;
+    *) problem "scheduler has run nothing since the service started"; printf 'scheduler %s' "$(red "no runs since start")" ;;
   esac
 fi
 printf '\n'
@@ -68,7 +87,6 @@ printf '  ram %s MB (%s free) | swap %s | disk %s | up %s | kernel %s\n' \
 [ "${mem_avail:-0}" -lt 1024 ] && problem "only ${mem_avail} MB free"
 
 # Runs
-q() { sudo -u postgres psql -qAt -d integrator -c "$1" 2>/dev/null; }
 read -r queued running ok24 failed24 <<<"$(q "SELECT count(*) FILTER (WHERE status='queued'), count(*) FILTER (WHERE status='running'),
   count(*) FILTER (WHERE status='succeeded' AND scheduled_at > now() - interval '24 hours'),
   count(*) FILTER (WHERE status IN ('failed','timeout') AND scheduled_at > now() - interval '24 hours') FROM app.runs" | tr '|' ' ')"
