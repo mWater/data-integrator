@@ -327,6 +327,7 @@ async function route(
         json(res, 400, { error: "The new password must have at least 8 characters and differ from the old one" })
         return
       }
+      // Ends every session opened under the expired password; this sign-in opens a new one
       await setPassword(pool, email, newPassword)
       logSecurityEvent("auth.password_renewed", { email, ...originFields(req) })
       result = await authenticate(pool, email, newPassword)
@@ -690,7 +691,8 @@ async function route(
       json(res, 400, { error: "Current password is incorrect" })
       return
     }
-    await setPassword(pool, user.email, newPassword)
+    // The user's other sessions end with the old password; the one making this request stays
+    await setPassword(pool, user.email, newPassword, token)
     json(res, 200, { ok: true })
     return
   }
@@ -729,7 +731,7 @@ async function route(
     }
     const [, targetId, action] = userActionMatch!
     if (action === "password" && req.method === "POST") {
-      const password = await resetPassword(pool, targetId)
+      const password = await resetPassword(pool, targetId, token)
       if (password === null) json(res, 404, { error: "no such user" })
       else json(res, 200, { password })
       return

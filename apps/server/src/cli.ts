@@ -284,7 +284,7 @@ async function main(): Promise<number> {
             console.error(`No user ${email}`)
             return 1
           }
-          console.log(`Password updated for ${email}`)
+          console.log(`Password updated for ${email}; their sessions were signed out`)
           return 0
         }
         if (sub === "list") {

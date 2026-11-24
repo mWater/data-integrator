@@ -425,7 +425,8 @@ encodings of it.
 ## Security
 
 - Local accounts with roles (admin, editor, viewer), scrypt password hashes, lockout
-  after repeated failures, no default credentials.
+  after repeated failures, no default credentials. A password change or reset ends
+  the user's other sessions.
 - Optional account policy (Settings, admins): password expiry, enforced at sign-in
   with a forced change, and disabling of accounts inactive for N days, by the daily
   housekeeping sweep. Both are off by default, following NIST SP 800-63B; the sweep

@@ -65,15 +65,57 @@ export async function createUser(pool: pg.Pool, email: string, password: string,
   return result.rows[0]
 }
 
-/** Replaces a user's password, restarting its age, and clears any lockout. */
-export async function setPassword(pool: pg.Pool, email: string, password: string): Promise<boolean> {
+/**
+ * The statement behind every password change: replaces the hash, restarts its
+ * age, clears any lockout, and ends the user's sessions in the same statement,
+ * so no session opened under the old password outlives it. `keepToken` spares
+ * one session, the one the change is being made from.
+ */
+async function replacePassword(
+  pool: pg.Pool,
+  match: "email" | "id",
+  value: string,
+  password: string,
+  keepToken: string | null
+): Promise<boolean> {
   const result = await pool.query(
-    `UPDATE app.users SET password_hash = $2, password_changed_at = now(), failed_logins = 0, locked_until = NULL,
-       updated_at = now()
-     WHERE email = $1`,
-    [email, await hashPassword(password)]
+    `WITH changed AS (
+       UPDATE app.users SET password_hash = $2, password_changed_at = now(), failed_logins = 0, locked_until = NULL,
+         updated_at = now()
+       WHERE ${match} = $1 RETURNING id
+     ), ended AS (
+       DELETE FROM app.auth_sessions s USING changed
+       WHERE s.user_id = changed.id AND s.token_hash IS DISTINCT FROM $3
+     )
+     SELECT id FROM changed`,
+    [value, await hashPassword(password), keepToken === null ? null : tokenHash(keepToken)]
   )
-  return (result.rowCount ?? 0) > 0
+  return result.rows.length > 0
+}
+
+/**
+ * Replaces a user's password, restarting its age, and clears any lockout.
+ * Ends the user's sessions too, except the one `keepToken` names; with no
+ * token, all of them. API tokens are separate credentials and stay valid.
+ * False when no user has that email.
+ */
+export async function setPassword(
+  pool: pg.Pool,
+  email: string,
+  password: string,
+  keepToken: string | null = null
+): Promise<boolean> {
+  return replacePassword(pool, "email", email, password, keepToken)
+}
+
+/** setPassword for a user known by id. */
+export async function setPasswordById(
+  pool: pg.Pool,
+  id: string,
+  password: string,
+  keepToken: string | null = null
+): Promise<boolean> {
+  return replacePassword(pool, "id", id, password, keepToken)
 }
 
 /** Dummy hash verified for unknown emails so both paths cost the same time. */
