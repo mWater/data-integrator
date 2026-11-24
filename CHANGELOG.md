@@ -42,6 +42,12 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 - `ez-localize` updated to 2.16.0, which is licensed Apache 2.0 (earlier
   versions were LGPL-3.0). No production dependency is now under the GPL or
   LGPL.
+- `deploy/health.sh` now exits 1 for every problem it prints. Before, only low
+  memory and a failing integration reached the exit status: a stopped
+  service, an unreachable database, a disabled scheduler, missing swap, a
+  disk at 85% or more and a stale run heartbeat were shown in red but the
+  script still exited 0, so a cron job watching the exit status missed them.
+  A host that has one of these conditions will start to alert.
 
 ## 1.0.0 (2026-10-30)
 
