@@ -44,10 +44,14 @@ state, and derived analytics enter one at a time.
 | 12 | (none) | ten-daily time-series raster on a daily poll | entry `gdo_soil_moisture_anomaly`, no prompt |
 | 13 | (none) | monthly forecast issues, categorical plus continuous bands | entry `gdo_spi3_forecast`, no prompt |
 | 14 | (none) | five-year epoch time-series raster, tiled source, whole-world mode | entry `ghs_population`, no prompt |
-| 15 | (none) | vector tables, versioned release, per-country files | entry `mwater_admin_regions`, no prompt |
 
 FABDEM is not in the library: its CC BY-NC-SA license is non-commercial.
 GLO-30 carries terrain.
+
+Sub-national administrative boundaries are not in the library either: datasets
+derived from GADM carry its license, which allows neither commercial use nor
+redistribution. A deployment that needs them builds an integration from an
+openly licensed source, such as geoBoundaries or OCHA COD-AB.
 
 ## Prompt file format
 

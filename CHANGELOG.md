@@ -7,6 +7,12 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- Removed the `mwater_admin_regions` library entry and its skill. It
+  downloaded administrative boundaries from data.mwater.co, an mWater-hosted
+  service, and the dataset is derived from GADM, whose license allows neither
+  commercial use nor redistribution. The library now has no dependency on an
+  mWater service. A deployment that already installed the entry keeps its
+  integration and data until an admin deletes it.
 - Changing a password ends the user's other sessions. This covers a user's own
   change (the session making it stays signed in), an admin reset, renewal of an
   expired password at sign-in, and `cli.js user passwd`. Personal access tokens
