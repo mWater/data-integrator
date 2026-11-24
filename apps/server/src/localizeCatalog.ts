@@ -250,10 +250,10 @@ export function refreshChangedStrings(definition: IntegrationDefinition, previou
   // Base texts that existed before, with their translation sets
   const known = new Map<string, LocalizedString>()
   for (const value of collectDefinitionStrings(previous)) {
-    known.set(`${value._base} ${value[value._base]}`, value)
+    known.set(`${value._base}\0${value[value._base]}`, value)
   }
   for (const value of collectDefinitionStrings(definition)) {
-    const match = known.get(`${value._base} ${value[value._base]}`)
+    const match = known.get(`${value._base}\0${value[value._base]}`)
     if (match) {
       // Same base text as before: carry the old translations forward
       for (const key of Object.keys(match)) {
