@@ -13,6 +13,12 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
   commercial use nor redistribution. The library now has no dependency on an
   mWater service. A deployment that already installed the entry keeps its
   integration and data until an admin deletes it.
+- New library entry `geoboundaries_admin_boundaries`: administrative
+  boundaries from the open release of geoBoundaries, for the countries of the
+  area of interest or the whole world. Every boundary carries its own source
+  and license. It writes new tables (`admin_boundaries`,
+  `admin_boundary_levels`) with geoBoundaries' ids and no parent ids, so it is
+  not a drop-in replacement for `mwater_admin_regions`.
 - Changing a password ends the user's other sessions. This covers a user's own
   change (the session making it stays signed in), an admin reset, renewal of an
   expired password at sign-in, and `cli.js user passwd`. Personal access tokens

@@ -1,0 +1,437 @@
+{
+  "id": "geoboundaries_admin_boundaries",
+  "code": "",
+  "name": {
+    "_base": "en",
+    "en": "geoBoundaries Administrative Boundaries",
+    "fr": "Limites administratives geoBoundaries",
+    "pt": "Limites administrativos geoBoundaries",
+    "es": "Límites administrativos de geoBoundaries",
+    "mg": "Sisintany ara-pitantanana geoBoundaries",
+    "sw": "Mipaka ya kiutawala ya geoBoundaries"
+  },
+  "description": {
+    "_base": "en",
+    "en": "Administrative boundaries from the country outline down to the finest level each country publishes, from the open release of geoBoundaries. Loads the countries of the deployment's area of interest, or every country when the integration has no area of interest. Every boundary carries its own source and license.",
+    "fr": "Limites administratives, du contour du pays jusqu’au niveau le plus fin publié pour chaque pays, issues de la version ouverte de geoBoundaries. Charge les pays de la zone d’intérêt du déploiement, ou tous les pays lorsque l’intégration n’a pas de zone d’intérêt. Chaque limite porte sa propre source et sa propre licence.",
+    "pt": "Limites administrativos, desde o contorno do país até ao nível mais detalhado publicado para cada país, provenientes da versão aberta do geoBoundaries. Carrega os países da área de interesse da implantação, ou todos os países quando a integração não tem área de interesse. Cada limite tem a sua própria fonte e licença.",
+    "es": "Límites administrativos, desde el contorno del país hasta el nivel más detallado publicado para cada país, procedentes de la versión abierta de geoBoundaries. Carga los países del área de interés del despliegue, o todos los países cuando la integración no tiene área de interés. Cada límite lleva su propia fuente y licencia.",
+    "mg": "Sisintany ara-pitantanana, manomboka amin’ny sisin’ny firenena ka hatrany amin’ny ambaratonga farany ambany navoaka ho an’ny firenena tsirairay, avy amin’ny famoahana malalaka an’ny geoBoundaries. Mampiditra ireo firenena ao amin’ny faritra mahaliana an’ny fametrahana, na ny firenena rehetra raha tsy manana faritra mahaliana ny fampidirana. Samy manana ny loharanony sy ny fahazoan-dalany ny sisintany tsirairay.",
+    "sw": "Mipaka ya kiutawala, kuanzia mpaka wa nchi hadi kiwango cha chini kabisa kilichochapishwa kwa kila nchi, kutoka toleo huria la geoBoundaries. Hupakia nchi zilizo katika eneo la matumizi la usakinishaji, au nchi zote ikiwa muunganisho hauna eneo la matumizi. Kila mpaka una chanzo chake na leseni yake."
+  },
+  "limits": {
+    "cpus": 2,
+    "memoryMb": 4096,
+    "timeoutMs": 3600000
+  },
+  "source": {
+    "url": "https://www.geoboundaries.org",
+    "name": {
+      "_base": "en",
+      "en": "geoBoundaries Global Database of Political Administrative Boundaries (open release)",
+      "fr": "geoBoundaries Global Database of Political Administrative Boundaries (version ouverte)",
+      "pt": "geoBoundaries Global Database of Political Administrative Boundaries (versão aberta)",
+      "es": "geoBoundaries Global Database of Political Administrative Boundaries (versión abierta)",
+      "mg": "geoBoundaries Global Database of Political Administrative Boundaries (famoahana malalaka)",
+      "sw": "geoBoundaries Global Database of Political Administrative Boundaries (toleo huria)"
+    },
+    "license": "Open licenses that differ by boundary (ODbL, CC BY, CC BY-SA, public domain and others); see the license column",
+    "provider": "William & Mary geoLab",
+    "limitations": {
+      "_base": "en",
+      "en": "Each country level is a separate dataset with its own source, year and license, recorded on every row and in the levels table. A few carry terms other than a standard open license, so check the license before redistributing the data. Levels need not nest exactly and rows carry no parent ids. Some boundaries are years old and predate later administrative reforms. Boundaries are for practical monitoring use and imply no position on the legal status of any territory. Levels available differ by country. A whole-world load at full detail is large and takes some time on first run; files are cached between runs.",
+      "fr": "Chaque niveau d’un pays est un jeu de données distinct, avec sa propre source, son année et sa licence, indiquées sur chaque ligne et dans la table des niveaux. Quelques-uns sont soumis à des conditions autres qu’une licence ouverte standard ; vérifiez donc la licence avant de redistribuer les données. Les niveaux ne s’emboîtent pas forcément exactement et les lignes ne portent pas d’identifiant parent. Certaines limites datent de plusieurs années et sont antérieures à des réformes administratives ultérieures. Ces limites sont destinées à un usage pratique de suivi et n’impliquent aucune position sur le statut juridique d’un territoire. Les niveaux disponibles varient selon le pays. Un chargement mondial en géométrie complète est volumineux et prend du temps lors de la première exécution ; les fichiers sont mis en cache entre les exécutions.",
+      "pt": "Cada nível de um país é um conjunto de dados distinto, com a sua própria fonte, ano e licença, registados em cada linha e na tabela de níveis. Alguns estão sujeitos a condições diferentes de uma licença aberta padrão; verifique por isso a licença antes de redistribuir os dados. Os níveis não se encaixam necessariamente de forma exata e as linhas não têm identificador do nível superior. Alguns limites têm vários anos e são anteriores a reformas administrativas posteriores. Os limites destinam-se ao uso prático em monitorização e não implicam qualquer posição sobre o estatuto jurídico de nenhum território. Os níveis disponíveis variam por país. Um carregamento mundial com geometria completa é volumoso e demora algum tempo na primeira execução; os ficheiros são mantidos em cache entre execuções.",
+      "es": "Cada nivel de un país es un conjunto de datos distinto, con su propia fuente, año y licencia, registrados en cada fila y en la tabla de niveles. Algunos están sujetos a condiciones distintas de una licencia abierta estándar; compruebe por ello la licencia antes de redistribuir los datos. Los niveles no encajan necesariamente de forma exacta y las filas no llevan identificador del nivel superior. Algunos límites tienen varios años y son anteriores a reformas administrativas posteriores. Los límites están destinados al seguimiento práctico y no implican posición alguna sobre la situación jurídica de ningún territorio. Los niveles disponibles varían según el país. Una carga mundial con geometría completa es voluminosa y tarda cierto tiempo en la primera ejecución; los archivos se almacenan en caché entre ejecuciones.",
+      "mg": "Angona misaraka ny ambaratonga tsirairay isaky ny firenena, samy manana ny loharanony, ny taonany ary ny fahazoan-dalany, izay voarakitra isaky ny andalana sy ao amin’ny tabilaon’ny ambaratonga. Misy vitsivitsy manana fepetra hafa noho ny fahazoan-dalana malalaka mahazatra, koa hamarino ny fahazoan-dalana alohan’ny hizarana indray ny angona. Mety tsy mifanaraka tanteraka ny ambaratonga, ary tsy misy famantarana ny ambaratonga ambony ao amin’ny andalana. Efa taona maro ny sisintany sasany ary talohan’ny fanavaozana ara-pitantanana taty aoriana. Natao ho an’ny fanaraha-maso azo ampiharina ireo sisintany ireo ary tsy maneho hevitra momba ny sata ara-dalànan’ny faritany rehetra. Miovaova arakaraka ny firenena ny ambaratonga misy. Lehibe ny fampidirana an’izao tontolo izao amin’ny endrika feno ary maharitra amin’ny fampandehanana voalohany; tehirizina anaty cache ny rakitra eo anelanelan’ny fampandehanana.",
+      "sw": "Kila kiwango cha nchi ni seti ya data inayojitegemea, yenye chanzo chake, mwaka wake na leseni yake, vinavyorekodiwa katika kila mstari na katika jedwali la viwango. Chache zina masharti tofauti na leseni huria ya kawaida, kwa hiyo kagua leseni kabla ya kusambaza data tena. Viwango huenda visiingiliane kikamilifu, na mistari haina kitambulisho cha kiwango cha juu. Baadhi ya mipaka ni ya miaka mingi iliyopita na ilitangulia mageuzi ya kiutawala ya baadaye. Mipaka hii ni ya matumizi ya ufuatiliaji wa kiutendaji na haimaanishi msimamo wowote kuhusu hadhi ya kisheria ya eneo lolote. Viwango vinavyopatikana hutofautiana kwa nchi. Upakiaji wa dunia nzima kwa jiometri kamili ni mkubwa na huchukua muda katika uendeshaji wa kwanza; faili huhifadhiwa kwenye cache kati ya uendeshaji."
+    },
+    "documentation": "https://www.geoboundaries.org/api.html"
+  },
+  "runtime": "python",
+  "trigger": {
+    "cron": "0 5 3 * *"
+  },
+  "contract": 2,
+  "destinations": [
+    {
+      "kind": "table",
+      "tableId": "admin_boundaries",
+      "name": {
+        "_base": "en",
+        "en": "Administrative boundaries",
+        "fr": "Limites administratives",
+        "pt": "Limites administrativos",
+        "es": "Límites administrativos",
+        "mg": "Sisintany ara-pitantanana",
+        "sw": "Mipaka ya kiutawala"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "shape_id",
+          "name": {
+            "_base": "en",
+            "en": "Boundary id",
+            "fr": "Identifiant de la limite",
+            "pt": "Identificador do limite",
+            "es": "Identificador del límite",
+            "mg": "Famantarana ny sisintany",
+            "sw": "Kitambulisho cha mpaka"
+          },
+          "type": "text"
+        },
+        {
+          "id": "iso3",
+          "name": {
+            "_base": "en",
+            "en": "Country code (ISO3)",
+            "fr": "Code pays (ISO3)",
+            "pt": "Código do país (ISO3)",
+            "es": "Código de país (ISO3)",
+            "mg": "Kaodin’ny firenena (ISO3)",
+            "sw": "Msimbo wa nchi (ISO3)"
+          },
+          "type": "text"
+        },
+        {
+          "id": "level",
+          "name": {
+            "_base": "en",
+            "en": "Administrative level",
+            "fr": "Niveau administratif",
+            "pt": "Nível administrativo",
+            "es": "Nivel administrativo",
+            "mg": "Ambaratonga ara-pitantanana",
+            "sw": "Kiwango cha kiutawala"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "name",
+          "name": {
+            "_base": "en",
+            "en": "Name",
+            "fr": "Nom",
+            "pt": "Nome",
+            "es": "Nombre",
+            "mg": "Anarana",
+            "sw": "Jina"
+          },
+          "type": "text"
+        },
+        {
+          "id": "subdivision_code",
+          "name": {
+            "_base": "en",
+            "en": "Subdivision code (ISO 3166-2)",
+            "fr": "Code de subdivision (ISO 3166-2)",
+            "pt": "Código da subdivisão (ISO 3166-2)",
+            "es": "Código de subdivisión (ISO 3166-2)",
+            "mg": "Kaodin’ny fizarana (ISO 3166-2)",
+            "sw": "Msimbo wa mgawanyo (ISO 3166-2)"
+          },
+          "type": "text"
+        },
+        {
+          "id": "level_name",
+          "name": {
+            "_base": "en",
+            "en": "Level name",
+            "fr": "Nom du niveau",
+            "pt": "Nome do nível",
+            "es": "Nombre del nivel",
+            "mg": "Anaran’ny ambaratonga",
+            "sw": "Jina la kiwango"
+          },
+          "type": "text"
+        },
+        {
+          "id": "year",
+          "name": {
+            "_base": "en",
+            "en": "Year represented",
+            "fr": "Année représentée",
+            "pt": "Ano representado",
+            "es": "Año representado",
+            "mg": "Taona asehony",
+            "sw": "Mwaka unaowakilishwa"
+          },
+          "type": "text"
+        },
+        {
+          "id": "source",
+          "name": {
+            "_base": "en",
+            "en": "Boundary source",
+            "fr": "Source des limites",
+            "pt": "Origem dos limites",
+            "es": "Origen de los límites",
+            "mg": "Loharanon’ny sisintany",
+            "sw": "Chanzo cha mipaka"
+          },
+          "type": "text"
+        },
+        {
+          "id": "license",
+          "name": {
+            "_base": "en",
+            "en": "License",
+            "fr": "Licence",
+            "pt": "Licença",
+            "es": "Licencia",
+            "mg": "Fahazoan-dalana",
+            "sw": "Leseni"
+          },
+          "type": "text"
+        },
+        {
+          "id": "boundary_id",
+          "name": {
+            "_base": "en",
+            "en": "Dataset id",
+            "fr": "Identifiant du jeu de données",
+            "pt": "Identificador do conjunto de dados",
+            "es": "Identificador del conjunto de datos",
+            "mg": "Famantarana ny angona",
+            "sw": "Kitambulisho cha seti ya data"
+          },
+          "type": "text"
+        },
+        {
+          "id": "geometry",
+          "name": {
+            "_base": "en",
+            "en": "Boundary geometry",
+            "fr": "Géométrie des limites",
+            "pt": "Geometria dos limites",
+            "es": "Geometría de los límites",
+            "mg": "Jeometrian’ny sisintany",
+            "sw": "Jiometri ya mipaka"
+          },
+          "type": "geometry"
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "tableId": "admin_boundary_levels",
+      "name": {
+        "_base": "en",
+        "en": "Administrative boundary levels",
+        "fr": "Niveaux des limites administratives",
+        "pt": "Níveis dos limites administrativos",
+        "es": "Niveles de los límites administrativos",
+        "mg": "Ambaratongan’ny sisintany ara-pitantanana",
+        "sw": "Viwango vya mipaka ya kiutawala"
+      },
+      "action": "replace",
+      "columns": [
+        {
+          "id": "iso3",
+          "name": {
+            "_base": "en",
+            "en": "Country code (ISO3)",
+            "fr": "Code pays (ISO3)",
+            "pt": "Código do país (ISO3)",
+            "es": "Código de país (ISO3)",
+            "mg": "Kaodin’ny firenena (ISO3)",
+            "sw": "Msimbo wa nchi (ISO3)"
+          },
+          "type": "text"
+        },
+        {
+          "id": "country",
+          "name": {
+            "_base": "en",
+            "en": "Country",
+            "fr": "Pays",
+            "pt": "País",
+            "es": "País",
+            "mg": "Firenena",
+            "sw": "Nchi"
+          },
+          "type": "text"
+        },
+        {
+          "id": "level",
+          "name": {
+            "_base": "en",
+            "en": "Administrative level",
+            "fr": "Niveau administratif",
+            "pt": "Nível administrativo",
+            "es": "Nivel administrativo",
+            "mg": "Ambaratonga ara-pitantanana",
+            "sw": "Kiwango cha kiutawala"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "level_name",
+          "name": {
+            "_base": "en",
+            "en": "Level name",
+            "fr": "Nom du niveau",
+            "pt": "Nome do nível",
+            "es": "Nombre del nivel",
+            "mg": "Anaran’ny ambaratonga",
+            "sw": "Jina la kiwango"
+          },
+          "type": "text"
+        },
+        {
+          "id": "units",
+          "name": {
+            "_base": "en",
+            "en": "Number of boundaries",
+            "fr": "Nombre de limites",
+            "pt": "Número de limites",
+            "es": "Número de límites",
+            "mg": "Isan’ny sisintany",
+            "sw": "Idadi ya mipaka"
+          },
+          "type": "integer"
+        },
+        {
+          "id": "year",
+          "name": {
+            "_base": "en",
+            "en": "Year represented",
+            "fr": "Année représentée",
+            "pt": "Ano representado",
+            "es": "Año representado",
+            "mg": "Taona asehony",
+            "sw": "Mwaka unaowakilishwa"
+          },
+          "type": "text"
+        },
+        {
+          "id": "source",
+          "name": {
+            "_base": "en",
+            "en": "Boundary source",
+            "fr": "Source des limites",
+            "pt": "Origem dos limites",
+            "es": "Origen de los límites",
+            "mg": "Loharanon’ny sisintany",
+            "sw": "Chanzo cha mipaka"
+          },
+          "type": "text"
+        },
+        {
+          "id": "license",
+          "name": {
+            "_base": "en",
+            "en": "License",
+            "fr": "Licence",
+            "pt": "Licença",
+            "es": "Licencia",
+            "mg": "Fahazoan-dalana",
+            "sw": "Leseni"
+          },
+          "type": "text"
+        },
+        {
+          "id": "license_url",
+          "name": {
+            "_base": "en",
+            "en": "License link",
+            "fr": "Lien vers la licence",
+            "pt": "Ligação para a licença",
+            "es": "Enlace a la licencia",
+            "mg": "Rohy mankany amin’ny fahazoan-dalana",
+            "sw": "Kiungo cha leseni"
+          },
+          "type": "text"
+        },
+        {
+          "id": "source_url",
+          "name": {
+            "_base": "en",
+            "en": "Source link",
+            "fr": "Lien vers la source",
+            "pt": "Ligação para a fonte",
+            "es": "Enlace a la fuente",
+            "mg": "Rohy mankany amin’ny loharano",
+            "sw": "Kiungo cha chanzo"
+          },
+          "type": "text"
+        },
+        {
+          "id": "boundary_id",
+          "name": {
+            "_base": "en",
+            "en": "Dataset id",
+            "fr": "Identifiant du jeu de données",
+            "pt": "Identificador do conjunto de dados",
+            "es": "Identificador del conjunto de datos",
+            "mg": "Famantarana ny angona",
+            "sw": "Kitambulisho cha seti ya data"
+          },
+          "type": "text"
+        },
+        {
+          "id": "build_date",
+          "name": {
+            "_base": "en",
+            "en": "geoBoundaries build date",
+            "fr": "Date de génération geoBoundaries",
+            "pt": "Data de geração do geoBoundaries",
+            "es": "Fecha de generación de geoBoundaries",
+            "mg": "Daty namoronan’ny geoBoundaries",
+            "sw": "Tarehe ya ujenzi ya geoBoundaries"
+          },
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "simplified": {
+      "label": {
+        "_base": "en",
+        "en": "Simplified boundaries",
+        "fr": "Limites simplifiées",
+        "pt": "Limites simplificados",
+        "es": "Límites simplificados",
+        "mg": "Fetra notsorina",
+        "sw": "Mipaka iliyorahisishwa"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Load geoBoundaries' simplified geometries: much smaller and faster to draw, less exact along borders and coasts.",
+        "fr": "Charger les géométries simplifiées de geoBoundaries : bien plus légères et rapides à afficher, moins exactes le long des frontières et des côtes.",
+        "pt": "Carregar as geometrias simplificadas do geoBoundaries: muito mais leves e rápidas de desenhar, menos exatas ao longo de fronteiras e costas.",
+        "es": "Cargar las geometrías simplificadas de geoBoundaries: mucho más ligeras y rápidas de dibujar, menos exactas a lo largo de fronteras y costas.",
+        "mg": "Halaina ireo endrika notsorina an’ny geoBoundaries: maivana sy haingana kokoa aseho, saingy tsy dia marina loatra eny amin’ny sisintany sy morontsiraka.",
+        "sw": "Pakia jiometri zilizorahisishwa za geoBoundaries: ndogo zaidi na huchorwa haraka, lakini si sahihi sana kando ya mipaka na pwani."
+      },
+      "type": "boolean",
+      "default": false
+    },
+    "max_level": {
+      "label": {
+        "_base": "en",
+        "en": "Finest level",
+        "fr": "Niveau le plus fin",
+        "pt": "Nível mais detalhado",
+        "es": "Nivel más detallado",
+        "mg": "Ambaratonga farany ambany",
+        "sw": "Kiwango cha chini kabisa"
+      },
+      "description": {
+        "_base": "en",
+        "en": "Load levels from the country outline (0) down to this one. Lower it to leave out the smallest units, which are the largest files.",
+        "fr": "Charger les niveaux depuis le contour du pays (0) jusqu’à celui-ci. Réduisez-le pour exclure les plus petites unités, qui sont les fichiers les plus volumineux.",
+        "pt": "Carregar os níveis desde o contorno do país (0) até este. Reduza-o para excluir as unidades mais pequenas, que são os ficheiros maiores.",
+        "es": "Cargar los niveles desde el contorno del país (0) hasta este. Redúzcalo para excluir las unidades más pequeñas, que son los archivos más grandes.",
+        "mg": "Halaina ny ambaratonga manomboka amin’ny sisin’ny firenena (0) ka hatramin’ity. Ahenao izy mba tsy hampidirana ireo vondrona kely indrindra, izay rakitra lehibe indrindra.",
+        "sw": "Pakia viwango kuanzia mpaka wa nchi (0) hadi hiki. Kipunguze ili kuacha vitengo vidogo zaidi, ambavyo ndivyo faili kubwa zaidi."
+      },
+      "type": "integer",
+      "default": 5,
+      "min": 0,
+      "max": 5
+    }
+  }
+}
