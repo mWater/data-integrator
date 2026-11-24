@@ -28,6 +28,7 @@ without sharing any code with the reference implementation.
 | Query API | HTTP/1.1 over TLS; REST described by OpenAPI 3.1 | Programmatic access contract |
 | API authentication | Bearer tokens in the HTTP Authorization header | Token-based programmatic access |
 | Push ingestion | HTTP POST of JSON to capability URLs | Sensor and event feeds into the platform |
+| Integration definitions | JSON (RFC 8259) described by a JSON Schema (draft 2020-12) | Pipelines portable between deployments and implementations |
 | Analytical SQL | ISO/IEC 9075 SQL with OGC Simple Features functions (SQL/MM spatial) | Zonal statistics, dashboards, assistant queries |
 | Geometry interchange | GeoJSON on the way in and out; WKB in the tabular plane | Vector data harmonization |
 | Integration definitions | JSON documents per a published specification | Portable pipeline specifications |
@@ -217,8 +218,9 @@ logs and errors (encodings of a value are not recognized).
 ## 6. Portability formats
 
 - **Integration definitions** are single JSON documents per a published
-  specification (the *Integration Library Specification*). A definition
-  exported from one deployment imports into another, arriving paused for
+  specification (the *Integration Library Specification*) and its JSON
+  Schema, which any standard validator checks a definition against. A
+  definition exported from one deployment imports into another, arriving paused for
   review. Export drops a concrete area of interest, so the importer's
   default applies, but keeps an explicit `null` (full source extent). This is the unit of
   pipeline-level interoperability between deployments and between

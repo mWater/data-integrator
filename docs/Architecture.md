@@ -186,7 +186,9 @@ Raster plane:
 ## Integration library
 
 The durable deliverable: machine-readable definitions, independent of this application
-(format: [Integration Library Specification](spec/Integration%20Library%20Specification.md)).
+(format: [Integration Library Specification](spec/Integration%20Library%20Specification.md),
+with a [JSON Schema](spec/integration-definition.schema.json) any validator can check a
+definition against).
 
 Each integration: `{ id, name, description?, source?, trigger, secrets? (names only),
 aoi?, inputs?, files?, runtime, limits?, destinations, validation?, code, contract }`.
@@ -463,6 +465,9 @@ encodings of it.
   job contract inside the built images.
 - Refusals are tested alongside successes: role checks, lockout, sandbox limits,
   blocked egress, invalid definitions.
+- The definition format's JSON Schema is tested with an off-the-shelf validator: every
+  bundled library entry and the specification's example must pass it, and the same
+  invalid definitions must be rejected by the schema and by the server.
 - The compliance job checks dependency licenses and produces the SBOM on the same
   triggers.
 

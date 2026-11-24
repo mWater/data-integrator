@@ -13,7 +13,9 @@
  * integration versions on install.
  *
  * Types only: the server validates definitions (apps/server/src/install.ts).
- * The format is specified in docs/spec/Integration Library Specification.md.
+ * The format is specified in docs/spec/Integration Library Specification.md,
+ * with a JSON Schema beside it (integration-definition.schema.json) that must
+ * change together with these types.
  */
 
 // ============================================================================

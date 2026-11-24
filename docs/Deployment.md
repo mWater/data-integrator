@@ -118,6 +118,45 @@ service after changing them:
 - `FILE_UPLOAD_MAX_MB`: the largest upload. `setup.sh` sizes Caddy's request
   limit from it, so re-run `setup.sh` after changing it.
 
+### Using another integration library
+
+The Library page and the AI designer's skills are read from one directory,
+`LIBRARY_PATH`. When it is not set, that is `library/` in the application
+checkout (`/opt/data-integrator/library`), which `update.sh` updates with
+each release.
+
+Any party can publish a library in the same format
+([Integration Library Specification](spec/Integration%20Library%20Specification.md)).
+To use one, check it out on the host, point `LIBRARY_PATH` at it in
+`/etc/data-integrator/env`, and restart the service:
+
+```sh
+git clone --branch v1.0.0 https://example.org/their-library.git /srv/integration-library
+git -C /srv/integration-library tag -v v1.0.0   # when the publisher signs its tags
+echo 'LIBRARY_PATH=/srv/integration-library' >> /etc/data-integrator/env
+systemctl restart data-integrator
+```
+
+- The path is absolute, holds `integrations/` and `skills/` directly, and is
+  readable by the `integrator` user. A path without an `integrations/`
+  directory gives an empty Library page, not an error.
+- Integrations already installed keep running with their data; changing the
+  library changes only what the Library page offers. An installed
+  integration whose id is also in the new library is offered that entry as
+  an update when the two differ.
+- The AI designer reads its skills from `skills/` in the same directory. A
+  library without the skills of the bundled one leaves the designer without
+  that know-how, so copy across the ones you want to keep.
+- `update.sh` does not touch a library outside the application checkout.
+  Update it with git as its publisher releases, checking out a tag.
+- One directory is read. To offer entries from several libraries, combine
+  them in a directory of your own by copying each `integrations/<id>` and
+  `skills/<id>` directory into it; ids must not collide.
+
+A single integration from another deployment needs no library: export it
+there and use Import on the Integrations page. It arrives paused, so its
+code can be read and run by hand before it is scheduled.
+
 ## Another reverse proxy
 
 To put the app behind a proxy or load balancer of your own instead of Caddy,

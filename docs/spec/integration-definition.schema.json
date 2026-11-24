@@ -1,0 +1,461 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mWater/data-integrator/main/docs/spec/integration-definition.schema.json",
+  "title": "Integration definition",
+  "description": "One integration of an integration library: the definition.json of a library entry, and the document exported from one deployment and imported into another. Contract version 2. Specified in the Integration Library Specification, section 2; the rules this schema cannot express are listed in section 2.14 of that document.",
+  "type": "object",
+  "required": ["id", "name", "trigger", "runtime", "destinations", "code", "contract"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/identifier",
+      "description": "Published identifier of the integration. Permanent: renaming is creating a new integration."
+    },
+    "name": {
+      "$ref": "#/$defs/localizedString",
+      "description": "Display name."
+    },
+    "description": {
+      "$ref": "#/$defs/localizedString",
+      "description": "What the integration does and any caveats."
+    },
+    "source": { "$ref": "#/$defs/source" },
+    "trigger": { "$ref": "#/$defs/trigger" },
+    "secrets": {
+      "description": "Names of the credentials the code reads. Values are never in the definition.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$" },
+      "uniqueItems": true
+    },
+    "aoi": {
+      "description": "Area of interest, tri-state: an object clips ingestion and input extracts to the box, null means the source's full extent, and an absent field inherits the deployment's default.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/aoi" }]
+    },
+    "inputs": {
+      "description": "Platform data the run consumes, keyed by input id.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": {
+        "oneOf": [{ "$ref": "#/$defs/rasterInput" }, { "$ref": "#/$defs/tableInput" }]
+      }
+    },
+    "files": {
+      "description": "Uploaded files the run reads, keyed by slot id. The deployment holds the contents.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "$ref": "#/$defs/fileSlot" }
+    },
+    "runtime": {
+      "description": "Runtime image the code executes in.",
+      "enum": ["node", "python"]
+    },
+    "limits": { "$ref": "#/$defs/limits" },
+    "destinations": {
+      "description": "Tables and raster layers the integration writes.",
+      "type": "array",
+      "items": {
+        "oneOf": [{ "$ref": "#/$defs/tableDestination" }, { "$ref": "#/$defs/rasterDestination" }]
+      }
+    },
+    "validation": { "$ref": "#/$defs/validation" },
+    "settings": {
+      "description": "Options an operator may change without editing code, keyed by setting id.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "$ref": "#/$defs/setting" }
+    },
+    "settingValues": {
+      "description": "The deployment's values for declared settings, keyed by setting id. Absent ids take the declared default.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "type": ["integer", "boolean", "string"] }
+    },
+    "code": {
+      "description": "The single self-contained code file. Empty in a library entry, whose code is the file beside definition.json.",
+      "type": "string"
+    },
+    "contract": {
+      "description": "Job contract version.",
+      "const": 2
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "description": "Identifier grammar shared by every id in a definition.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,62}$"
+    },
+    "localizedString": {
+      "description": "Human-facing text: _base names the locale the text was authored in, and every other key is a locale code (a BCP 47 language tag) mapping to text. The base locale must be one of the keys.",
+      "type": "object",
+      "required": ["_base"],
+      "minProperties": 2,
+      "propertyNames": { "pattern": "^(_base|[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*)$" },
+      "properties": {
+        "_base": { "type": "string", "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$" }
+      },
+      "additionalProperties": { "type": "string" }
+    },
+    "source": {
+      "description": "Provenance of the external source. Documentation and lineage only; absent for derived integrations.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/localizedString", "description": "Name of the dataset or service." },
+        "url": { "type": "string", "description": "Primary URL of the source or its API." },
+        "provider": { "type": "string", "description": "Organization publishing the data." },
+        "license": { "type": "string", "description": "License of the source data, as an SPDX identifier where one exists." },
+        "documentation": { "type": "string", "description": "Link to source documentation." },
+        "limitations": {
+          "$ref": "#/$defs/localizedString",
+          "description": "Caveats a data consumer should see: accuracy, coverage, timeliness, interpretation."
+        }
+      }
+    },
+    "trigger": {
+      "description": "When runs happen. With neither cron nor webhook, the integration only runs manually.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cron": {
+          "description": "Five-field POSIX cron expression, evaluated in UTC.",
+          "type": "string",
+          "pattern": "^\\s*[0-9*,/-]+(\\s+[0-9*,/-]+){4}\\s*$"
+        },
+        "webhook": { "type": "boolean", "description": "Accept pushed events." },
+        "webhookDelaySeconds": {
+          "description": "Batch window: the first event schedules a run this far in the future and later events join it.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "aoi": {
+      "type": "object",
+      "required": ["bbox"],
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "description": "[west, south, east, north] in WGS 84 decimal degrees. West greater than east crosses the antimeridian.",
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "#/$defs/longitude" },
+            { "$ref": "#/$defs/latitude" },
+            { "$ref": "#/$defs/longitude" },
+            { "$ref": "#/$defs/latitude" }
+          ],
+          "items": false,
+          "minItems": 4
+        },
+        "countries": {
+          "description": "ISO 3166-1 alpha-3 codes covered by the box.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]{3}$" }
+        }
+      }
+    },
+    "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+    "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+    "rasterInput": {
+      "description": "Catalog raster snapshots delivered to the job as files.",
+      "type": "object",
+      "required": ["kind", "layerId", "select"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "raster" },
+        "layerId": { "$ref": "#/$defs/identifier", "description": "Catalog layer to read." },
+        "select": {
+          "description": "Which snapshots to materialize: the current one, the latest n, or a time range.",
+          "oneOf": [
+            { "const": "current" },
+            {
+              "type": "object",
+              "required": ["latest"],
+              "additionalProperties": false,
+              "properties": { "latest": { "type": "integer" } }
+            },
+            {
+              "type": "object",
+              "required": ["from"],
+              "additionalProperties": false,
+              "properties": {
+                "from": { "type": "string", "description": "Start of the range, ISO 8601." },
+                "to": { "type": "string", "description": "End of the range, ISO 8601." }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "tableInput": {
+      "description": "A table extract delivered to the job as a file: select, filter and clip only.",
+      "type": "object",
+      "required": ["kind", "tableId"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "table" },
+        "tableId": { "$ref": "#/$defs/identifier", "description": "Table to extract from." },
+        "columns": {
+          "description": "Columns to include; absent means all.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "where": {
+          "description": "Row filter: clauses combined with AND.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/filterClause" }
+        },
+        "format": {
+          "description": "Extract file format. Defaults to gpkg for python and json for node.",
+          "enum": ["gpkg", "json", "csv"]
+        }
+      }
+    },
+    "filterClause": {
+      "type": "object",
+      "required": ["column", "op", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "column": { "$ref": "#/$defs/identifier" },
+        "op": { "enum": ["=", "!=", ">", ">=", "<", "<=", "in"] },
+        "value": { "description": "Comparison value; an array for the in operator." }
+      },
+      "if": { "properties": { "op": { "const": "in" } }, "required": ["op"] },
+      "then": { "properties": { "value": { "type": "array" } } }
+    },
+    "fileSlot": {
+      "description": "A file users upload for the code to read.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "$ref": "#/$defs/localizedString",
+          "description": "What the file is and what it must contain."
+        },
+        "accept": {
+          "description": "Accepted extensions, lowercase with the leading dot; absent accepts any.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^\\.[a-z0-9]{1,10}$" }
+        }
+      }
+    },
+    "limits": {
+      "description": "Per-run resource requests. A deployment may lower each to its configured maximum.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpus": { "type": "number", "description": "CPU cores." },
+        "memoryMb": { "type": "integer", "description": "Memory ceiling in megabytes." },
+        "timeoutMs": { "type": "integer", "description": "Wall-clock timeout in milliseconds." },
+        "workDiskMb": { "type": "integer", "description": "Quota for the persistent /work workspace in megabytes." },
+        "tmpDiskMb": { "type": "integer", "description": "Quota for the run's /tmp in megabytes." }
+      }
+    },
+    "tableDestination": {
+      "type": "object",
+      "required": ["kind", "tableId", "action", "columns"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "table" },
+        "tableId": { "$ref": "#/$defs/identifier", "description": "Table name in the data schema." },
+        "name": { "$ref": "#/$defs/localizedString", "description": "Display name." },
+        "description": { "$ref": "#/$defs/localizedString", "description": "One-sentence summary shown in the data catalog." },
+        "action": {
+          "description": "How each run's rows are applied: replace truncates and loads, append adds, merge upserts on mergeColumns.",
+          "enum": ["replace", "append", "merge"]
+        },
+        "mergeColumns": {
+          "description": "Key columns identifying a row. Each must be a declared column.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "columns": {
+          "description": "Schema of the table.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/column" }
+        }
+      },
+      "if": { "properties": { "action": { "const": "merge" } }, "required": ["action"] },
+      "then": { "required": ["mergeColumns"] }
+    },
+    "column": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "$ref": "#/$defs/localizedString", "description": "Display name." },
+        "type": {
+          "enum": ["text", "number", "integer", "boolean", "date", "datetime", "geometry", "enum", "json"]
+        },
+        "enumValues": {
+          "description": "Permitted codes of an enum column.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "$ref": "#/$defs/localizedString" }
+            }
+          }
+        },
+        "units": { "type": "string", "description": "Measurement units, free text." }
+      }
+    },
+    "rasterDestination": {
+      "type": "object",
+      "required": ["kind", "layerId", "temporality", "bands"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "raster" },
+        "layerId": { "$ref": "#/$defs/identifier", "description": "Catalog layer; appears in tile and API URLs." },
+        "name": { "$ref": "#/$defs/localizedString", "description": "Display name." },
+        "description": { "$ref": "#/$defs/localizedString", "description": "One-sentence summary shown in the data catalog." },
+        "temporality": {
+          "description": "Whether promoted snapshots are retained as history or superseded.",
+          "enum": ["time-series", "current-only"]
+        },
+        "retention": {
+          "description": "Time-series only: snapshots whose observation ended more than this many days ago are deleted.",
+          "type": "object",
+          "required": ["days"],
+          "additionalProperties": false,
+          "properties": { "days": { "type": "integer", "minimum": 1 } }
+        },
+        "bands": {
+          "description": "Bands in file band order.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/band" }
+        }
+      },
+      "dependentSchemas": {
+        "retention": { "properties": { "temporality": { "const": "time-series" } } }
+      }
+    },
+    "band": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "$ref": "#/$defs/localizedString", "description": "Display name." },
+        "units": { "type": "string", "description": "Measurement units, free text." },
+        "nodata": { "type": "number", "description": "Sentinel value written in the files." },
+        "rendering": {
+          "description": "How the band renders as map tiles.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "colorMap": {
+              "description": "Value-to-color stops, interpolated between stops.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["value", "color"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": { "type": "number" },
+                  "color": { "type": "string", "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$" }
+                }
+              }
+            },
+            "resampling": {
+              "description": "Overview resampling.",
+              "enum": ["nearest", "average"]
+            }
+          }
+        }
+      }
+    },
+    "validation": {
+      "description": "Data quality rules evaluated on each run. Findings flag the run; they never reject data.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expectedCadence": {
+          "description": "Expected data cadence as an ISO 8601 duration, for example P1D or PT6H.",
+          "type": "string",
+          "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?!$)(\\d+H)?(\\d+M)?(\\d+S)?)?$"
+        },
+        "ranges": {
+          "description": "Allowed value ranges for numeric columns and bands.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["destinationId", "field"],
+            "additionalProperties": false,
+            "properties": {
+              "destinationId": { "$ref": "#/$defs/identifier", "description": "A tableId or layerId of this definition." },
+              "field": { "$ref": "#/$defs/identifier", "description": "A number or integer column of the table, or a band of the layer." },
+              "min": { "type": "number" },
+              "max": { "type": "number" }
+            },
+            "anyOf": [{ "required": ["min"] }, { "required": ["max"] }]
+          }
+        }
+      }
+    },
+    "setting": {
+      "description": "An option the code offers and the deployment chooses.",
+      "type": "object",
+      "required": ["label", "type", "default"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/localizedString", "description": "Short label for the control." },
+        "description": { "$ref": "#/$defs/localizedString", "description": "What the setting changes and when." },
+        "type": { "enum": ["integer", "boolean", "choice", "text"] },
+        "default": {
+          "description": "Value when the deployment sets none; must itself be valid.",
+          "type": ["integer", "boolean", "string"]
+        },
+        "min": { "type": "number", "description": "Smallest allowed value of an integer setting." },
+        "max": { "type": "number", "description": "Largest allowed value of an integer setting." },
+        "choices": {
+          "description": "Allowed values of a choice setting, in display order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "value": { "type": "string" },
+              "label": { "$ref": "#/$defs/localizedString" }
+            }
+          }
+        },
+        "pattern": { "type": "string", "description": "Regular expression a text value must match in full." },
+        "appliesOn": {
+          "description": "rebuild when the code reads the setting only when it starts from no previous state; every-run otherwise.",
+          "enum": ["every-run", "rebuild"]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "integer" } }, "required": ["type"] },
+          "then": { "properties": { "default": { "type": "integer" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "boolean" } }, "required": ["type"] },
+          "then": { "properties": { "default": { "type": "boolean" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "choice" } }, "required": ["type"] },
+          "then": {
+            "required": ["choices"],
+            "properties": { "default": { "type": "string" }, "choices": { "type": "array", "minItems": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] },
+          "then": { "properties": { "default": { "type": "string", "maxLength": 1000 } } }
+        }
+      ]
+    }
+  }
+}

@@ -52,20 +52,35 @@ repository, and that repository is its provenance record:
 - **Curation** is the publisher's review process for changes to its
   repository.
 
-A deployment installs from the library at its configured location (in the
-reference implementation, `LIBRARY_PATH`, a checkout of the chosen
-repository at a chosen tag). Entries from several libraries are combined by
-the deployer in a checkout of their own. Each installed integration then
-carries its own version history in the deployment (section 4), and single
-integrations move between deployments by export and import without any
-library.
+A publisher checks its own library against this specification without
+running any platform: every `definition.json` validates against the
+published JSON Schema (section 2.14) with any standard validator.
+
+A deployment uses a library published by another party in either of two
+ways:
+
+- **As its library.** The deployment installs from the library at its
+  configured location (in the reference implementation, `LIBRARY_PATH`, a
+  checkout of the chosen repository at a chosen tag). Entries from several
+  libraries are combined by the deployer in a checkout of their own.
+- **One integration at a time.** A definition document exported by another
+  deployment is imported (section 4) without any library. A library entry
+  becomes such a document when the contents of its code file are placed in
+  `code`. An imported integration is installed paused, so an operator reads
+  its code and runs it by hand before it is ever scheduled.
+
+Each installed integration then carries its own version history in the
+deployment (section 4), and single integrations move between deployments by
+export and import.
 
 ## 2. Integration definition
 
 A definition is one JSON document (RFC 8259, UTF-8) describing everything
 about an integration except secret values. It is the unit of portability:
 the same document is installed from a library, exported from one deployment,
-and imported into another.
+and imported into another. Its structure is also published as a JSON Schema,
+[integration-definition.schema.json](integration-definition.schema.json)
+(section 2.14).
 
 ```json
 {
@@ -156,9 +171,11 @@ two-letter ISO 639-1 codes).
 | `code` | string | yes | The single self-contained code file |
 | `contract` | `2` | yes | Job contract version |
 
-Field names not listed here are reserved. Validators SHOULD reject unknown
-top-level fields so that a definition means the same thing to every
-implementation; the reference implementation ignores them.
+Field names not listed in this section are reserved, at the top level and
+inside every object the section defines. Validators SHOULD reject unknown
+fields so that a definition means the same thing to every implementation;
+the JSON Schema (2.14) rejects them, and the reference implementation
+ignores them on install.
 
 ### 2.4 Source
 
@@ -325,7 +342,7 @@ NaN. `rendering` is `{ colorMap?, resampling? }`:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `colorMap` | `[{ value, color }]` | Value-to-color stops (CSS hex colors), interpolated between stops |
+| `colorMap` | `[{ value, color }]` | Value-to-color stops, interpolated between stops; `color` is hex, `#rrggbb` or `#rrggbbaa` |
 | `resampling` | `"nearest"` or `"average"` | Overview resampling; `nearest` avoids inflating sparse data |
 
 ### 2.11 Validation
@@ -373,7 +390,8 @@ the deployment chooses its value without touching the code.
 
 `settingValues` holds the deployment's value per declared setting id;
 absent ids take the default. A value for an undeclared setting, or one that
-fails its setting's type, bounds, choices, or pattern, is invalid. The run
+fails its setting's type, bounds, choices, or pattern, is invalid, as is a
+`text` value longer than 1000 characters. The run
 payload's `params` (3.1) carries every declared setting resolved this way and
 nothing else, so code reads settings only from `params`.
 
@@ -410,6 +428,34 @@ A validator MUST reject a definition when:
   value; or `settingValues` names an undeclared setting or holds an invalid
   value (2.12);
 - `contract` is not `2`, or `runtime` is not `"node"` or `"python"`.
+
+### 2.14 JSON Schema
+
+[integration-definition.schema.json](integration-definition.schema.json),
+beside this document, is the definition format as a JSON Schema (draft
+2020-12). Any standard validator, in any language, checks a definition
+against it. It covers the fields and their types, the identifier and other
+grammars, the vocabularies, which fields are required, and unknown fields
+(2.3). The copy in a tagged release describes the format as of that release.
+
+Passing the schema is necessary but not sufficient. A JSON Schema cannot
+compare one part of a document with another, so these rules of 2.13 are
+checked by the implementation and not by the schema:
+
+- the base locale of a localized string is one of its keys (2.2);
+- a `bbox` has south below north, and each entry of `countries` is an
+  assigned ISO 3166-1 code (the schema checks only the three-letter form);
+- each field of a `cron` expression is within its range (the schema checks
+  only that there are five fields);
+- every merge column is a declared column;
+- no input reads one of the definition's own destinations;
+- a range rule names an existing destination, and a numeric column or a
+  band of it;
+- a setting's choice values are distinct, its `pattern` is a regular
+  expression, and its `default` satisfies its own bounds, choices, and
+  pattern;
+- `settingValues` names only declared settings, with a valid value for
+  each.
 
 ## 3. Job contract
 
@@ -641,7 +687,9 @@ source. Skills are documents to read, never code to execute.
 ## 6. Conformance
 
 A **library** conforms when every definition validates under section 2, the
-code file matches the declared runtime, and no secret value appears.
+code file matches the declared runtime, and no secret value appears. The
+JSON Schema (2.14) is the part of that check a publisher can run with a
+standard validator; the rules listed in 2.14 are checked on install.
 
 A **platform implementation** conforms when it:
 

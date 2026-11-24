@@ -20,7 +20,7 @@ Companion documents:
 - *Interoperability and Standards Mapping*: the standards each interface
   conforms to and the integration paths for national systems.
 - *Integration Library Specification*: the machine-readable definition format
-  for data sources, independently reusable.
+  for data sources, independently reusable, with its JSON Schema.
 
 ## 1. Design principles
 
