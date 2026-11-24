@@ -632,19 +632,19 @@
     },
     "/api/integrations/{id}/webhook-token": {
       "get": {
-        "summary": "The webhook capability URL (editor or admin)",
+        "summary": "The webhook token and the two paths a sender can use it at (editor or admin)",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
-          "200": { "description": "{ token, path: /hooks/{token} }" },
+          "200": { "description": "{ token, path: /hooks/{token}, headerPath: /hooks/{integrationId} }" },
           "403": { "description": "Viewer" },
           "404": { "description": "Unknown integration" }
         }
       },
       "post": {
-        "summary": "Rotate the webhook token (admin); the old URL stops working immediately",
+        "summary": "Rotate the webhook token (admin); the old token stops working immediately, in the URL and in a header",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
-          "200": { "description": "{ token, path }" },
+          "200": { "description": "{ token, path, headerPath }" },
           "403": { "description": "Not an admin" },
           "404": { "description": "Unknown integration" }
         }
@@ -678,9 +678,9 @@
     },
     "/hooks/{token}": {
       "post": {
-        "summary": "Webhook receiver. The token is the credential (no session or bearer). The body is stored verbatim as one event; the next run receives pending events oldest-first. A run is enqueued at once, or after trigger.webhookDelaySeconds with later events joining it; paused or draft integrations buffer events",
+        "summary": "Webhook receiver. The integration's webhook token is the credential (no session or personal access token). Send it in the path, or put the integration id in the path and send the token as Authorization: Bearer <token> (or X-Webhook-Token: <token>), which keeps it out of URLs and proxy logs. The body is stored verbatim as one event; the next run receives pending events oldest-first. A run is enqueued at once, or after trigger.webhookDelaySeconds with later events joining it; paused or draft integrations buffer events",
         "security": [],
-        "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "parameters": [{ "name": "token", "in": "path", "required": true, "description": "The webhook token, or the integration id when the token is sent in a header", "schema": { "type": "string" } }],
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "description": "Any JSON value, at most 1 MB" } } }
@@ -688,7 +688,8 @@
         "responses": {
           "202": { "description": "{ eventId }" },
           "400": { "description": "Malformed JSON" },
-          "404": { "description": "Unknown token, or the integration does not accept webhooks" },
+          "401": { "description": "Token in a header: missing or wrong token, unknown integration id, or the integration does not accept webhooks" },
+          "404": { "description": "Token in the path: unknown token, or the integration does not accept webhooks" },
           "405": { "description": "Not POST" },
           "413": { "description": "Body over 1 MB" },
           "415": { "description": "Content-Type is not application/json" }

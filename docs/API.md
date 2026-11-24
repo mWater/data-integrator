@@ -274,7 +274,18 @@ Every version is kept. An admin purges one uploaded by mistake with
 ## Webhooks
 
 - `POST /hooks/:token` - public webhook receiver. The random per-integration
-  token in the URL is the credential; no session or bearer token applies.
+  token is the credential; no session or personal access token applies. A
+  sender presents it in whichever way it can:
+  - in the URL, `POST /hooks/:token`, for senders that can only post to a
+    fixed address. Unknown tokens and integrations whose trigger does not
+    accept webhooks 404 alike.
+  - in a header, `POST /hooks/:integrationId` with `Authorization: Bearer
+    <token>` (or `X-Webhook-Token: <token>` when the sender's Authorization
+    header is taken). This keeps the token out of URLs and proxy logs. A
+    missing or wrong token, an unknown id and an integration that does not
+    accept webhooks all answer 401.
+
+  Both forms use the same token and behave the same otherwise.
   `Content-Type: application/json` only (415 otherwise), 1 MB cap (413).
   Each request body is stored verbatim as one opaque event; the next run
   receives every pending event oldest-first in `ctx.webhookData`
@@ -284,11 +295,13 @@ Every version is kept. An admin purges one uploaded by mistake with
   when the trigger sets `webhookDelaySeconds` (the first event anchors the
   window and later events join its run; suits high-frequency sensor feeds). Events for a paused or draft integration, or
   one with an empty file slot, buffer until it runs again. Returns
-  `202 {eventId}`. Unknown tokens and integrations whose trigger does not
-  accept webhooks 404 alike.
-- `GET /api/integrations/:id/webhook-token` - `{token, path}` (editor/admin).
+  `202 {eventId}`.
+- `GET /api/integrations/:id/webhook-token` - `{token, path, headerPath}`
+  (editor/admin): the token, the URL path that contains it, and the path to
+  use when the token is sent in a header.
 - `POST /api/integrations/:id/webhook-token` - rotate the token (admin);
-  returns the new `{token, path}`. The old URL stops working immediately.
+  returns the new `{token, path, headerPath}`. The old token stops working
+  immediately, in the URL and in a header.
 
 A reading for the `insitu_sensor_webhook` library entry:
 
@@ -296,6 +309,15 @@ A reading for the `insitu_sensor_webhook` library entry:
 curl -X POST -H "Content-Type: application/json" \
   -d '{"station_id":"KE-001","variable":"water_level","timestamp":"2026-03-01T06:00:00Z","value":1.42,"unit":"m"}' \
   "$BASE/hooks/$WEBHOOK_TOKEN"
+```
+
+The same reading with the token in a header:
+
+```sh
+curl -X POST -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $WEBHOOK_TOKEN" \
+  -d '{"station_id":"KE-001","variable":"water_level","timestamp":"2026-03-01T06:00:00Z","value":1.42,"unit":"m"}' \
+  "$BASE/hooks/insitu_sensor_webhook"
 ```
 
 ## Library

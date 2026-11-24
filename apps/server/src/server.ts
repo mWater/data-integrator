@@ -12,7 +12,15 @@ import { snapshotSources } from "./catalog.js"
 import { AgentService, MessageRejectedError, SessionAttachment, SessionDeleteRefusedError } from "./agent/service.js"
 import { saveDashboardSession } from "./agent/dashboard.js"
 import { getIntegration, getTableRows, listIntegrations, listIntegrationVersions } from "./integrations.js"
-import { getWebhookToken, receiveWebhook, rotateWebhookToken, WEBHOOK_TOKEN_PATTERN } from "./webhooks.js"
+import {
+  getWebhookToken,
+  receiveWebhook,
+  receiveWebhookFor,
+  rotateWebhookToken,
+  webhookHeaderToken,
+  WEBHOOK_INTEGRATION_ID_PATTERN,
+  WEBHOOK_TOKEN_PATTERN
+} from "./webhooks.js"
 import { deleteIntegration, installIntegration, integrationUsage, validateDefinition } from "./install.js"
 import { getHomeSummary } from "./home.js"
 import { installLibraryEntry, listLibrary, loadLibraryEntry } from "./library.js"
@@ -279,16 +287,26 @@ async function route(
     return
   }
 
-  // Webhook receiver: the random token in the URL is the credential, so no
-  // session applies; unknown and non-webhook integrations 404 alike
+  // Webhook receiver: the integration's random token is the credential, so
+  // no session applies. /hooks/<token> carries it in the URL, for senders
+  // that can only post to a fixed address, and unknown and non-webhook
+  // integrations 404 alike. /hooks/<integration id> takes it from a header
+  // instead, and answers 401 for anything but that integration's token
   if (pathname.startsWith("/hooks/")) {
     if (req.method !== "POST") {
       json(res, 405, { error: "POST only" })
       return
     }
-    const hookToken = pathname.slice("/hooks/".length)
-    if (!WEBHOOK_TOKEN_PATTERN.test(hookToken)) {
+    const segment = pathname.slice("/hooks/".length)
+    const tokenInUrl = WEBHOOK_TOKEN_PATTERN.test(segment)
+    if (!tokenInUrl && !WEBHOOK_INTEGRATION_ID_PATTERN.test(segment)) {
       json(res, 404, { error: "unknown webhook" })
+      return
+    }
+    const headerToken = tokenInUrl ? null : webhookHeaderToken(req)
+    if (!tokenInUrl && !headerToken) {
+      res.setHeader("www-authenticate", "Bearer")
+      json(res, 401, { error: "unauthorized" })
       return
     }
     const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
@@ -304,9 +322,14 @@ async function route(
       json(res, message === "Request body too large" ? 413 : 400, { error: message })
       return
     }
-    const receipt = await receiveWebhook(pool, hookToken, payload)
-    if (!receipt) json(res, 404, { error: "unknown webhook" })
-    else json(res, 202, { eventId: receipt.eventId })
+    const receipt = headerToken
+      ? await receiveWebhookFor(pool, segment, headerToken, payload)
+      : await receiveWebhook(pool, segment, payload)
+    if (receipt) json(res, 202, { eventId: receipt.eventId })
+    else if (headerToken) {
+      res.setHeader("www-authenticate", "Bearer")
+      json(res, 401, { error: "unauthorized" })
+    } else json(res, 404, { error: "unknown webhook" })
     return
   }
 
@@ -1218,7 +1241,13 @@ async function route(
         ? await rotateWebhookToken(pool, webhookTokenMatch[1])
         : await getWebhookToken(pool, webhookTokenMatch[1])
     if (!webhookToken) json(res, 404, { error: "unknown integration" })
-    else json(res, 200, { token: webhookToken, path: `/hooks/${webhookToken}` })
+    else {
+      json(res, 200, {
+        token: webhookToken,
+        path: `/hooks/${webhookToken}`,
+        headerPath: `/hooks/${webhookTokenMatch[1]}`
+      })
+    }
     return
   }
 

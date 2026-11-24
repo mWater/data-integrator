@@ -85,6 +85,16 @@ function post(token: string, body: string, contentType = "application/json"): Pr
   return fetch(`${base}/hooks/${token}`, { method: "POST", headers: { "content-type": contentType }, body })
 }
 
+/** Posts to the header form of the receiver: the integration id in the URL, the token in a header. */
+function postTo(id: string, headers: Record<string, string>, body = "{}", contentType = "application/json"): Promise<Response> {
+  return fetch(`${base}/hooks/${id}`, { method: "POST", headers: { "content-type": contentType, ...headers }, body })
+}
+
+/** Number of webhook events stored for an integration. */
+async function eventCount(id: string): Promise<number> {
+  return (await pool.query("SELECT count(*)::int AS n FROM app.webhook_events WHERE integration_id = $1", [id])).rows[0].n
+}
+
 async function token(id: string): Promise<string> {
   const res = await call(`/api/integrations/${id}/webhook-token`, editorBearer)
   assert.equal(res.status, 200)
@@ -172,10 +182,72 @@ test("token endpoint gates by role; rotation invalidates the old URL", async () 
   const before = await token("hooked")
   const rotated = await call("/api/integrations/hooked/webhook-token", adminBearer, { method: "POST" })
   assert.equal(rotated.status, 200)
-  const { token: after, path: hookPath } = await rotated.json()
+  const { token: after, path: hookPath, headerPath } = await rotated.json()
   assert.notEqual(after, before)
   assert.equal(hookPath, `/hooks/${after}`)
+  assert.equal(headerPath, "/hooks/hooked")
 
   assert.equal((await post(before, "{}")).status, 404)
   assert.equal((await post(after, "{}")).status, 202)
+  // The header form uses the same token, so rotation invalidates it there too
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${before}` })).status, 401)
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${after}` })).status, 202)
+})
+
+test("the token is accepted in a header at /hooks/<integration id>", async () => {
+  const hookToken = await token("hooked")
+  const before = await eventCount("hooked")
+
+  const bearer = await postTo("hooked", { authorization: `Bearer ${hookToken}` }, JSON.stringify({ via: "bearer" }))
+  assert.equal(bearer.status, 202)
+  assert.ok((await bearer.json()).eventId)
+  // The scheme name is case-insensitive, and so is the token's hex
+  assert.equal((await postTo("hooked", { authorization: `bearer ${hookToken.toUpperCase()}` }, JSON.stringify({ via: "lower" }))).status, 202)
+  // For senders whose Authorization header is not theirs to set
+  assert.equal((await postTo("hooked", { "x-webhook-token": hookToken }, JSON.stringify({ via: "custom" }))).status, 202)
+  // A usable custom header is not shadowed by an Authorization header meant for something else
+  assert.equal(
+    (await postTo("hooked", { authorization: "Basic dXNlcjpwYXNz", "x-webhook-token": hookToken }, JSON.stringify({ via: "both" }))).status,
+    202
+  )
+
+  assert.equal(await eventCount("hooked"), before + 4)
+  const stored = await pool.query(
+    "SELECT payload FROM app.webhook_events WHERE integration_id = 'hooked' ORDER BY received_at DESC LIMIT 4"
+  )
+  assert.deepEqual(stored.rows.map(r => r.payload.via).sort(), ["bearer", "both", "custom", "lower"])
+})
+
+test("the header form answers 401 to anything but that integration's own token", async () => {
+  const hookToken = await token("hooked")
+  const otherToken = await token("delayed")
+  const cronToken = await token("cron_only")
+  const before = { hooked: await eventCount("hooked"), delayed: await eventCount("delayed"), cron: await eventCount("cron_only") }
+
+  const missing = await postTo("hooked", {})
+  assert.equal(missing.status, 401)
+  assert.equal(missing.headers.get("www-authenticate"), "Bearer")
+  assert.deepEqual(await missing.json(), { error: "unauthorized" })
+
+  // Not a token; another integration's token; a well-formed token nobody has
+  assert.equal((await postTo("hooked", { authorization: "Bearer not-a-token" })).status, 401)
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${otherToken}` })).status, 401)
+  assert.equal((await postTo("hooked", { authorization: "Bearer 11111111-2222-3333-4444-555555555555" })).status, 401)
+  // A personal access token is a different credential
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${editorBearer}` })).status, 401)
+  // An unknown id, and an integration that does not accept webhooks, look the same
+  assert.equal((await postTo("no_such_integration", { authorization: `Bearer ${hookToken}` })).status, 401)
+  assert.equal((await postTo("cron_only", { authorization: `Bearer ${cronToken}` })).status, 401)
+
+  assert.deepEqual(
+    { hooked: await eventCount("hooked"), delayed: await eventCount("delayed"), cron: await eventCount("cron_only") },
+    before
+  )
+
+  // With a valid token the payload rules are those of the URL form
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${hookToken}` }, "a,b,c", "text/csv")).status, 415)
+  assert.equal((await postTo("hooked", { authorization: `Bearer ${hookToken}` }, "{not json")).status, 400)
+  // A path that is neither a token nor an integration id is not a webhook at all
+  assert.equal((await postTo("Not-An-Id", { authorization: `Bearer ${hookToken}` })).status, 404)
+  assert.equal((await fetch(`${base}/hooks/hooked`)).status, 405)
 })

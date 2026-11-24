@@ -493,7 +493,7 @@ the data and the host against untrusted inputs, misbehaving integration code
 | Integration code | Rootless containers plus a syscall-isolation layer, read-only rootfs, no capabilities, resource limits |
 | Network egress | Public internet only from jobs; private, link-local, and metadata ranges blocked in the job's network namespace |
 | Secrets | Stored per integration and encrypted at rest with a deployment key; injected via stdin only into the owning integration's runs, so an imported definition cannot receive another integration's credential; never in images, environment, or definitions; literal values masked in stored logs, run errors, and live log streams |
-| Webhooks | Unguessable per-integration capability URLs, JSON-only with size caps, admin-rotatable |
+| Webhooks | Unguessable per-integration token, sent in a header or as a capability URL; JSON-only with size caps, admin-rotatable |
 | Uploaded files | Never parsed on the host; size-capped streaming upload; served back only as attachments under a sandbox CSP; uploaders and original filenames hidden from viewers |
 | Public dashboards | Opt-in per dashboard by an administrator, recorded with who and when; anonymous access limited to the view surface |
 | Analytical SQL | Frozen at design time where applicable, always executed under a read-only role scoped to destination data |
@@ -577,10 +577,17 @@ between institutions is by separate deployments.
 
 ### 5.4 Webhooks
 
-Each webhook integration has its own capability URL ending in a random
-122-bit token; possession of the URL is the sender's credential, so it is
-shown only to editors and admins. An admin revokes a URL by rotating it,
-after which the old one answers as unknown. Requests must be JSON and at most
+Each webhook integration has a random 122-bit token, and possession of it is
+the sender's credential, so it is shown only to editors and admins. Senders
+are third-party systems the deployment does not control, so the token can be
+presented in whichever way the sender is able to: in a request header, with
+the integration's id in the URL, or as a capability URL that ends in the
+token, for senders that can only post to a fixed address. The header form
+keeps the token out of URLs and out of reverse-proxy logs and is preferred
+when the sender supports it. Where a sender offers more, such as client
+certificates or fixed source addresses, those are enforced at the reverse
+proxy in addition. An admin revokes a token by rotating it, after which the
+old one is refused in either form. Requests must be JSON and at most
 1 MB; malformed ones are rejected individually and never reach a run. Events
 are stored, then consumed by the integration's next run, which validates
 them like any other source data. Every received request is written to the

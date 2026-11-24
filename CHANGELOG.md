@@ -7,6 +7,11 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- Webhook senders can send the token in a header instead of the URL:
+  `POST /hooks/<integration id>` with `Authorization: Bearer <token>` (or
+  `X-Webhook-Token`). This keeps the token out of URLs and proxy logs.
+  `POST /hooks/<token>` works as before, for senders that can only post to a
+  fixed address. The integration page shows both.
 - Removed the `mwater_admin_regions` library entry and its skill. It
   downloaded administrative boundaries from data.mwater.co, an mWater-hosted
   service, and the dataset is derived from GADM, whose license allows neither
