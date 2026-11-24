@@ -36,10 +36,6 @@ ghcr.io/mwater/integration-runtime-* container images are built from
 packages/runner and runtimes/ in this repository. Their names say where they
 are published, not that they contain other code.
 
-The integration library includes an optional entry, mwater_admin_regions,
-that downloads mWater's administrative regions dataset (CC BY 4.0) when it
-runs. The dataset is not in this repository.
-
 apps/server/static/boundaries/ contains country boundaries derived from
 Natural Earth (https://www.naturalearthdata.com), which is in the public
 domain.
