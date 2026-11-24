@@ -9,6 +9,8 @@ meant to be run and extended by others.
 The project is Apache 2.0 (see [LICENSE](LICENSE)). By submitting a pull
 request you agree that your contribution is licensed under the same terms, per
 section 5 of the license. Inbound equals outbound; there is no separate CLA.
+Copyright in the original work is held by UNICEF (see [NOTICE](NOTICE));
+you keep the copyright in what you contribute.
 
 Do not paste code from another project unless its license permits it and you
 say so in the pull request. If a contribution carries a third-party notice that

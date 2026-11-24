@@ -261,7 +261,7 @@ Public Goods Standard. The mapping onto the DPG Standard's indicators:
 |---|---|
 | Relevance to SDGs | Directly supports SDG 6 (water and sanitation) and SDG 13 (climate) monitoring and early warning |
 | Open licensing | Apache 2.0 for all platform code; OSI-approved throughout |
-| Clear ownership | Repository and license state ownership and provenance |
+| Clear ownership | Copyright is held by UNICEF and stated in `NOTICE`; all code is Apache 2.0. The code was written for this project from an empty repository, and the public commit history shows its provenance from the first commit |
 | Platform independence | Self-hosted on commodity Linux; no mandatory vendor account or hosted service; the AI model is a replaceable, optional dependency with a documented capability profile, satisfiable by open-weights models |
 | Documentation | Architecture, standards mapping, deployment and API documentation ship in the repository; the API self-describes via OpenAPI and the raster catalog via STAC |
 | Mechanism for data extraction | Complete data egress through standard formats (CSV, GeoJSON, COG, SQL); no lock-in formats exist |
