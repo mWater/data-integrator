@@ -18,12 +18,18 @@ problems=()
 
 # Colour only when the caller's stdout is a terminal (passed through as HEALTH_COLOR=1)
 if [ "${HEALTH_COLOR:-0}" = "1" ]; then RED=$'\e[31m'; GREEN=$'\e[32m'; DIM=$'\e[2m'; OFF=$'\e[0m'; else RED=; GREEN=; DIM=; OFF=; fi
-bad() { problems+=("$1"); printf '%s' "$RED$1$OFF"; }
+# problem records what needs attention and decides the exit status. Call it as
+# a plain command, never inside $( ): a command substitution runs in a subshell,
+# where the record would be lost. red and good only colour text.
+problem() { problems+=("$1"); }
+red() { printf '%s' "$RED$1$OFF"; }
 good() { printf '%s' "$GREEN$1$OFF"; }
 state() { # label unit → coloured "label state"
   local s; s=$(systemctl is-active "$2" 2>/dev/null || true)
-  if [ "$s" = "active" ]; then printf '%s ' "$1 $(good active)"; else printf '%s ' "$1 $(bad "${s:-missing}")"; fi
+  if [ "$s" = "active" ]; then printf '%s ' "$1 $(good active)"; else problem "$1 ${s:-missing}"; printf '%s ' "$1 $(red "${s:-missing}")"; fi
 }
+
+q() { sudo -u postgres psql -qAt -d integrator -c "$1" 2>/dev/null; }
 
 build=$(git -c safe.directory='*' -C "$APP_DIR" log -1 --format=%h 2>/dev/null || echo "?")
 since=$(systemctl show -p ActiveEnterTimestamp --value data-integrator 2>/dev/null)
@@ -38,13 +44,30 @@ for unit in caddy ${EXTRA_UNITS:-}; do
   unit=${unit%.service}
   if systemctl list-unit-files "$unit.service" >/dev/null 2>&1; then state "$unit" "$unit.service"; fi
 done
-if sudo -u postgres psql -qAt -d integrator -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else printf 'db %s ' "$(bad down)"; fi
+if sudo -u postgres psql -qAt -d integrator -c 'SELECT 1' >/dev/null 2>&1; then printf 'db %s ' "$(good ok)"; else problem "db down"; printf 'db %s ' "$(red down)"; fi
 if [ -n "$since" ]; then
+  # The server says at start-up whether its scheduler is running, and that cannot
+  # change until the next restart
   sched=$(journalctl -u data-integrator --since "$since" --no-pager 2>/dev/null | grep -o 'Scheduler running\|No job runner available' | head -1)
+  if [ -z "$sched" ]; then
+    # The journal has rotated past the start-up line on a long-running service,
+    # so ask the database: only this service's scheduler queues cron runs and
+    # starts an integration's runs
+    since_epoch=$(date -d "$since" +%s 2>/dev/null || echo 0)
+    worked=$(q "SELECT count(*) FROM app.runs WHERE integration_id IS NOT NULL AND session_id IS NULL
+      AND greatest(started_at, CASE WHEN trigger = 'cron' THEN scheduled_at END) > to_timestamp($since_epoch)")
+    due=$(q "SELECT count(*) FROM app.integrations WHERE enabled AND status = 'ready' AND definition->'trigger'->>'cron' IS NOT NULL")
+    if [ "${worked:-0}" -gt 0 ]; then sched="Scheduler running"
+    elif [ $(( $(date +%s) - since_epoch )) -lt 300 ]; then sched=starting
+    elif [ "${due:-0}" -eq 0 ]; then sched=idle
+    fi
+  fi
   case "$sched" in
     "Scheduler running") printf 'scheduler %s' "$(good running)" ;;
-    "No job runner"*) printf 'scheduler %s' "$(bad disabled)" ;;
-    *) printf 'scheduler %s' "$(bad unknown)" ;;
+    "No job runner"*) problem "scheduler disabled"; printf 'scheduler %s' "$(red disabled)" ;;
+    starting) printf 'scheduler starting' ;;
+    idle) printf 'scheduler idle (nothing scheduled)' ;;
+    *) problem "scheduler has run nothing since the service started"; printf 'scheduler %s' "$(red "no runs since start")" ;;
   esac
 fi
 printf '\n'
@@ -55,29 +78,29 @@ swap=$(swapon --show --noheadings 2>/dev/null | awk '{print $3}' | head -1)
 disk=$(df -h /var/lib/data-integrator 2>/dev/null | awk 'NR==2{print $5}')
 disk_pct=${disk%\%}
 newest=$(ls /boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 | sed 's#.*vmlinuz-##')
+if [ -n "$swap" ]; then swap_text=$swap; else problem "no swap"; swap_text=$(red none); fi
+if [ "${disk_pct:-0}" -ge 85 ]; then problem "disk $disk full"; disk_text=$(red "$disk"); else disk_text=$disk; fi
 printf '  ram %s MB (%s free) | swap %s | disk %s | up %s | kernel %s\n' \
-  "$mem_total" "$mem_avail" \
-  "$( [ -n "$swap" ] && echo "$swap" || bad none )" \
-  "$( [ "${disk_pct:-0}" -ge 85 ] && bad "$disk" || echo "$disk" )" \
+  "$mem_total" "$mem_avail" "$swap_text" "$disk_text" \
   "$(uptime -p | sed 's/up //')" \
   "$( [ "$(uname -r)" = "$newest" ] && echo current || echo "$DIM$(uname -r), $newest pending reboot$OFF" )"
-[ "${mem_avail:-0}" -lt 1024 ] && bad "only ${mem_avail} MB free" >/dev/null
+[ "${mem_avail:-0}" -lt 1024 ] && problem "only ${mem_avail} MB free"
 
 # Runs
-q() { sudo -u postgres psql -qAt -d integrator -c "$1" 2>/dev/null; }
 read -r queued running ok24 failed24 <<<"$(q "SELECT count(*) FILTER (WHERE status='queued'), count(*) FILTER (WHERE status='running'),
   count(*) FILTER (WHERE status='succeeded' AND scheduled_at > now() - interval '24 hours'),
   count(*) FILTER (WHERE status IN ('failed','timeout') AND scheduled_at > now() - interval '24 hours') FROM app.runs" | tr '|' ' ')"
 stale=$(q "SELECT count(*) FROM app.runs WHERE status='running' AND heartbeat_at < now() - interval '2 minutes'")
+stale_text=
+if [ "${stale:-0}" -gt 0 ]; then problem "$stale stale heartbeat"; stale_text=" ($(red "$stale stale heartbeat"))"; fi
 printf '  runs: %s queued, %s running%s, last 24h %s ok / %s failed\n' \
-  "${queued:-?}" "${running:-?}" \
-  "$( [ "${stale:-0}" -gt 0 ] && printf ' (%s)' "$(bad "$stale stale heartbeat")" )" \
+  "${queued:-?}" "${running:-?}" "$stale_text" \
   "${ok24:-?}" "$( [ "${failed24:-0}" -gt 0 ] && echo "$RED${failed24}$OFF" || echo "${failed24:-?}" )"
 
 # Enabled integrations whose latest run failed, oldest first
 while IFS='|' read -r id age err; do
   [ -n "$id" ] || continue
-  bad "FAILING" >/dev/null
+  problem "$id failing"
   printf '  %sFAILING%s %-28s %-8s %s\n' "$RED" "$OFF" "$id" "$age" "$err"
 done <<<"$(q "SELECT r.integration_id,
     CASE WHEN age < interval '1 hour' THEN extract(minute from age)::int || 'm ago'
