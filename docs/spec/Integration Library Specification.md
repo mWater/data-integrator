@@ -399,6 +399,8 @@ nothing else, so code reads settings only from `params`.
 
 A validator MUST reject a definition when:
 
+- a required field of 2.3 (`id`, `name`, `trigger`, `runtime`,
+  `destinations`, `code`, `contract`) is missing;
 - any identifier violates the grammar of 2.1;
 - a human-facing text field is a plain string where a localized string is
   required, or a required one (`name`, `source.name`, enum value names) is
