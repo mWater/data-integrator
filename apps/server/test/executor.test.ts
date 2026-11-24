@@ -106,7 +106,7 @@ before(async () => {
   pool = new pg.Pool({
     connectionString: db.url,
     max: 5,
-    options: "-c postgis.enable_outdb_rasters=on -c postgis.gdal_enabled_drivers=ENABLE_ALL"
+    options: "-c postgis.enable_outdb_rasters=on -c postgis.gdal_enabled_drivers=GTiff"
   })
   await migrate(pool, MIGRATIONS_DIR)
   await runner.ensureReady()

@@ -58,6 +58,9 @@ fi
 # serve does not migrate at boot, so a schema change lands here or not at all
 echo "==> Migrate"
 as_app "set -a; . $ENV_FILE; set +a; node apps/server/dist/cli.js migrate"
+# A superuser setting the migration cannot change as the app role: PostGIS may
+# open rasters as GeoTIFF only (takes effect for the sessions the restart opens)
+sudo -u postgres psql -qc "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'GTiff'" || true
 
 echo "==> Host guards"
 APP_USER="$APP_USER" bash "$APP_DIR/deploy/harden.sh"

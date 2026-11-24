@@ -65,9 +65,14 @@ function polygonBbox(polygon: object): Bbox {
   return bbox
 }
 
-/** Reads a file's description via gdalinfo. */
+/**
+ * Reads a file's description via gdalinfo. The file comes from job code, so
+ * GDAL may open it as a GeoTIFF and nothing else: left to detect the format,
+ * it would follow a VRT or another container format to any file or URL the
+ * server can reach.
+ */
 async function gdalInfo(file: string): Promise<GdalInfo> {
-  const { stdout } = await execFileP("gdalinfo", ["-json", file], { maxBuffer: 16 * 1024 * 1024 })
+  const { stdout } = await execFileP("gdalinfo", ["-json", "-if", "GTiff", file], { maxBuffer: 16 * 1024 * 1024 })
   return JSON.parse(stdout) as GdalInfo
 }
 

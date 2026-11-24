@@ -63,6 +63,26 @@ test("storeArtifact: records the cell size in metres from the file's grid", asyn
   assert.equal(empty.cellSizeM, null)
 })
 
+test("storeArtifact: a file that is not a GeoTIFF is refused, whatever its name", async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), "catalog-out-"))
+  const store = new RasterStore(await mkdtemp(path.join(tmpdir(), "catalog-store-")))
+  await execFileP("gdal_create", [
+    "-q", "-of", "GTiff", "-outsize", "20", "20", "-bands", "1", "-burn", "7",
+    "-a_srs", "EPSG:4326", "-a_ullr", "10", "10", "30", "0", path.join(outDir, "real.tif")
+  ])
+  // A VRT is a small XML file that points GDAL at other files; named .tif, format detection would follow it
+  await execFileP("gdalbuildvrt", ["-q", path.join(outDir, "pointer.vrt"), path.join(outDir, "real.tif")])
+  await execFileP("cp", [path.join(outDir, "pointer.vrt"), path.join(outDir, "disguised.tif")])
+  const { stdout } = await execFileP("gdalinfo", ["-json", path.join(outDir, "disguised.tif")])
+  assert.equal(JSON.parse(stdout).driverShortName, "VRT", "GDAL's own detection follows the pointer")
+
+  await assert.rejects(() =>
+    storeArtifact(store, outDir, { layerId: "l", path: "disguised.tif", timestamp: "2026-01-01T00:00:00Z" }, ["b"])
+  )
+  const stored = await storeArtifact(store, outDir, { layerId: "l", path: "real.tif", timestamp: "2026-01-01T00:00:00Z" }, ["b"])
+  assert.equal(stored.cellSizeM, 111320)
+})
+
 test("cellSizeFromInfo: geographic degrees convert, projected units pass through, no grid is null", () => {
   assert.equal(cellSizeFromInfo({ geoTransform: [0, 0.25, 0, 0, 0, -0.25], coordinateSystem: { wkt: 'GEOGCRS["WGS 84"]' } }), 27830)
   assert.equal(cellSizeFromInfo({ geoTransform: [0, 30, 0, 0, 0, -30], coordinateSystem: { wkt: 'PROJCRS["UTM"]' } }), 30)
