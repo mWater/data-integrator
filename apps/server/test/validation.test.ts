@@ -44,6 +44,19 @@ test("validateDefinition: validation rules must name real numeric fields and a k
   rejects({ readings: { requiredColumns: ["site"] } }, /Unknown validation field/)
 })
 
+test("validateDefinition: trigger, code and destinations are required", () => {
+  const without = (field: "trigger" | "code" | "destinations") => {
+    const definition: Partial<IntegrationDefinition> = withValidation(undefined)
+    delete definition[field]
+    return definition as IntegrationDefinition
+  }
+  validateDefinition(withValidation(undefined))
+  assert.throws(() => validateDefinition(without("trigger")), /trigger is required/)
+  assert.throws(() => validateDefinition({ ...withValidation(undefined), trigger: "daily" as unknown as IntegrationDefinition["trigger"] }), /trigger is required/)
+  assert.throws(() => validateDefinition(without("code")), /code is required/)
+  assert.throws(() => validateDefinition(without("destinations")), /destinations is required/)
+})
+
 test("library entries never share a destination id, so any two can be installed together", async () => {
   const { readdir, readFile } = await import("node:fs/promises")
   const root = new URL("../../../library/integrations/", import.meta.url)

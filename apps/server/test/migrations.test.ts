@@ -2,6 +2,7 @@ import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import pg from "pg"
@@ -104,6 +105,24 @@ test("insert round-trip: integration, run, layer, snapshot, promotion", { skip: 
   }
   const layer = await pool.query(`SELECT current_snapshot_id FROM app.raster_layers WHERE id = 'test-layer'`)
   assert.equal(layer.rows[0].current_snapshot_id, snapshot.rows[0].id)
+})
+
+test("0004 gives stored definitions without a trigger an empty one, and leaves the others alone", { skip: !AVAILABLE }, async () => {
+  // insertIntegration stores '{}', a definition saved before trigger was checked
+  await insertIntegration("no-trigger")
+  await insertIntegration("has-trigger")
+  const scheduled = JSON.stringify({ trigger: { cron: "0 6 * * *" } })
+  await pool.query(`UPDATE app.integrations SET definition = $1 WHERE id = 'has-trigger'`, [scheduled])
+  await pool.query(`UPDATE app.integration_versions SET definition = $1 WHERE integration_id = 'has-trigger'`, [scheduled])
+
+  await pool.query(await readFile(path.join(MIGRATIONS_DIR, "0004_definition_trigger.sql"), "utf8"))
+
+  for (const table of ["app.integrations", "app.integration_versions"]) {
+    const key = table === "app.integrations" ? "id" : "integration_id"
+    const rows = await pool.query(`SELECT ${key} AS id, definition->'trigger' AS trigger FROM ${table} WHERE ${key} IN ('no-trigger', 'has-trigger')`)
+    const byId = Object.fromEntries(rows.rows.map(r => [r.id, r.trigger]))
+    assert.deepEqual(byId, { "no-trigger": {}, "has-trigger": { cron: "0 6 * * *" } }, table)
+  }
 })
 
 test("check constraints reject invalid enum values", { skip: !AVAILABLE }, async () => {

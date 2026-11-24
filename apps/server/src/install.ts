@@ -62,6 +62,14 @@ export function validateDefinition(definition: IntegrationDefinition): void {
   if (stringProblems.length > 0) throw new Error(`Localized text problems: ${stringProblems.join("; ")}`)
   if (definition.contract !== 2) throw new Error("contract must be 2, the entrypoint contract this platform runs")
   if (definition.runtime !== "python" && definition.runtime !== "node") throw new Error('runtime must be "python" or "node"')
+  // The three fields the format requires that nothing below would otherwise miss
+  if (!definition.trigger || typeof definition.trigger !== "object" || Array.isArray(definition.trigger)) {
+    throw new Error("trigger is required: an object, {} for an integration that is only run by hand")
+  }
+  if (typeof definition.code !== "string") throw new Error("code is required: the text of the code file")
+  if (!Array.isArray(definition.destinations)) {
+    throw new Error("destinations is required: the tables and raster layers the integration writes")
+  }
   // Tri-state AOI: explicit boxes must be well-formed (null and absent are meaningful)
   if (definition.aoi != null) parseAoi(definition.aoi)
   const settingProblems = settingsProblems(definition)
@@ -78,8 +86,8 @@ export function validateDefinition(definition: IntegrationDefinition): void {
     }
   }
   // The scheduler evaluates trigger.cron every minute; reject bad expressions here
-  if (definition.trigger?.cron !== undefined) parseCron(definition.trigger.cron)
-  const delay = definition.trigger?.webhookDelaySeconds
+  if (definition.trigger.cron !== undefined) parseCron(definition.trigger.cron)
+  const delay = definition.trigger.webhookDelaySeconds
   if (delay !== undefined && (!Number.isInteger(delay) || delay < 0 || delay > 86400)) {
     throw new Error("webhookDelaySeconds must be an integer between 0 and 86400")
   }

@@ -7,6 +7,12 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- The server now rejects a definition that lacks `trigger`, `code` or
+  `destinations`, which the definition format has always required. Before, a
+  definition without `trigger` was accepted and run by hand only. **Database
+  change:** a migration gives stored definitions that lack `trigger` an
+  empty one (`{}`, which means the same thing), so integrations already
+  installed are unaffected.
 - The integration definition format is published as a JSON Schema (draft
   2020-12), `docs/spec/integration-definition.schema.json`, so a library
   publisher or another implementation can check a definition with any
