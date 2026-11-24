@@ -74,7 +74,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: License allowlist (OSI-approved SPDX identifiers only)
-        run: pnpm licenses list --prod --json | node scripts/check-licenses.mjs
+        # -r: the root package has no production dependencies; they belong to the workspace packages
+        run: pnpm -r licenses list --prod --json | node scripts/check-licenses.mjs
 
       - name: Software bill of materials (CycloneDX)
         # 12.x reads pnpm 12's two-document lockfile; 11 cannot

@@ -2,8 +2,10 @@
 /**
  * License compliance gate: every production dependency must carry an
  * OSI-approved license, recorded by SPDX identifier. Input is the JSON from
- * `pnpm licenses list --prod --json` on stdin. Exits nonzero listing any
- * package whose license is not on the allowlist.
+ * `pnpm -r licenses list --prod --json` on stdin (`-r` because the
+ * dependencies belong to the workspace packages, not the root). Exits nonzero
+ * listing any package whose license is not on the allowlist, and also when
+ * the input lists no packages, so a command that finds nothing cannot pass.
  */
 const ALLOWED = new Set([
   "Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD",
@@ -34,4 +36,11 @@ if (violations.length > 0) {
   for (const line of violations) console.error(`  ${line}`)
   process.exit(1)
 }
-console.log(`All production dependency licenses are OSI-approved (${Object.keys(byLicense).length} distinct licenses).`)
+const packageCount = Object.values(byLicense).reduce((n, packages) => n + packages.length, 0)
+if (packageCount === 0) {
+  console.error("No production dependencies were listed, so nothing was checked. Run with `pnpm -r licenses list --prod --json`.")
+  process.exit(1)
+}
+console.log(
+  `All ${packageCount} production dependencies carry OSI-approved licenses (${Object.keys(byLicense).length} distinct licenses).`
+)
