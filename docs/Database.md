@@ -437,9 +437,14 @@ snapshots cascade. `cli.js register-rasters` registers promoted snapshots missin
 the mirror; `--all` re-registers every one (after a store move or a tile size change).
 
 Requires the `postgis_raster` extension, `postgis.enable_outdb_rasters = on` and
-`postgis.gdal_enabled_drivers` set (database-level settings the migration attempts and
-`deploy/setup.sh` sets as superuser), and a Postgres server process that can read the
-raster store path. Store files are written world-readable for that reason.
+`postgis.gdal_enabled_drivers = 'GTiff'` (database-level settings the migrations attempt
+and `deploy/setup.sh` and `deploy/update.sh` set as superuser), and a Postgres server
+process that can read the raster store path. Store files are written world-readable for
+that reason. Only the GeoTIFF driver is enabled because the store holds nothing else and
+GDAL's other drivers can read arbitrary files or fetch URLs; both settings are
+superuser-only, so the read-only role that runs dashboard and assistant SQL cannot change
+them. Raster functions that compute work as before; `ST_AsPNG`, `ST_AsJPEG` and
+`ST_AsGDALRaster` to a format other than GeoTIFF are unavailable.
 
 | column | type | notes |
 |---|---|---|

@@ -141,7 +141,7 @@ chmod 755 "$DATA_DIR" "$DATA_DIR"/raster-store
 setfacl -R -d -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
 setfacl -R -m u:postgres:rX "$DATA_DIR"/raster-store 2>/dev/null || true
 sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.enable_outdb_rasters = on" || true
-sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'" || true
+sudo -u postgres psql -c "ALTER DATABASE integrator SET postgis.gdal_enabled_drivers = 'GTiff'" || true
 # Written with builtins only and created 0640 before any secret goes in, so
 # neither the DB password nor the secret key is ever world-readable or in argv
 if [ ! -f "$ENV_FILE" ]; then

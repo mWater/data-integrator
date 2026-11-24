@@ -106,7 +106,7 @@ export async function evaluateTableRules(
 async function bandRanges(file: string): Promise<({ min: number; max: number } | null)[]> {
   try {
     // PAM off: the store is immutable, so no .aux.xml may land beside the file
-    const { stdout } = await execFileP("gdalinfo", ["-json", "-approx_stats", file], {
+    const { stdout } = await execFileP("gdalinfo", ["-json", "-approx_stats", "-if", "GTiff", file], {
       maxBuffer: 16 * 1024 * 1024,
       env: { ...process.env, GDAL_PAM_ENABLED: "NO" }
     })

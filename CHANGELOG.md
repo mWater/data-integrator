@@ -7,6 +7,16 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- GDAL opens files as GeoTIFF only. PostGIS was configured with every GDAL
+  driver enabled, and the server let GDAL detect the format of raster files
+  written by integration code, so a file named `.tif` could be a VRT that
+  points at another file or a URL. Now PostGIS has only the GeoTIFF driver
+  enabled, and raster and table files from a run are opened in their declared
+  format, so anything else is refused. **Database change:** the setting
+  `postgis.gdal_enabled_drivers` becomes `GTiff`; it is a superuser setting,
+  so `deploy/update.sh` applies it. Dashboard SQL that calls `ST_AsPNG`,
+  `ST_AsJPEG` or `ST_AsGDALRaster` for another format stops working; raster
+  statistics, clipping, resampling and map algebra are unaffected.
 - The server now rejects a definition that lacks `trigger`, `code` or
   `destinations`, which the definition format has always required. Before, a
   definition without `trigger` was accepted and run by hand only. **Database

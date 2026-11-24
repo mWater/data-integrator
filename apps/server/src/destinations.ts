@@ -292,7 +292,7 @@ export async function stageTableFile(
   format: TableArtifactFormat,
   runId: string
 ): Promise<StagedTable> {
-  const layer = await singleLayer(file, spec.tableId)
+  const layer = await singleLayer(file, spec.tableId, format)
   const table = `stg_${runId.replace(/-/g, "").slice(0, 8)}_${spec.tableId}`.slice(0, 63)
   await pool.query(`CREATE SCHEMA IF NOT EXISTS ${ident(STAGE_SCHEMA)}`).catch((err: { code?: string }) => {
     // IF NOT EXISTS still races two workers creating it at once
@@ -423,11 +423,15 @@ function stagedValueExpr(column: ColumnSpec, source: string, sourceUdt: string):
   return `${fromText ? trimmed : source}::${target}`
 }
 
-/** The single layer of a table file; multi-layer files are ambiguous, not supported. */
-async function singleLayer(file: string, tableId: string): Promise<string> {
-  const { stdout } = await execFileP("ogrinfo", ["-q", file]).catch(err => {
+/**
+ * The single layer of a table file; multi-layer files are ambiguous, not
+ * supported. The file comes from job code, so it is opened in its declared
+ * format only, never by detection.
+ */
+async function singleLayer(file: string, tableId: string, format: TableArtifactFormat): Promise<string> {
+  const { stdout } = await execFileP("ogrinfo", ["-q", "-if", DRIVER_BY_FORMAT[format], file]).catch(err => {
     const detail = (err as { stderr?: string }).stderr?.trim() || (err as Error).message
-    throw new Error(`Table ${tableId}: cannot read table file: ${detail.slice(-500)}`)
+    throw new Error(`Table ${tableId}: cannot read table file as ${format}: ${detail.slice(-500)}`)
   })
   // "1: layer_name (Polygon)", geometry type absent for non-spatial layers
   const names = stdout

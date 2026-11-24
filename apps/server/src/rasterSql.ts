@@ -44,12 +44,14 @@ export interface SnapshotRef {
 
 /**
  * Enables out-db raster access for the session when permitted; otherwise the
- * database-level settings from the migration/deploy step carry it. Call
- * outside a transaction so a permissions failure cannot poison it.
+ * database-level settings from the migration/deploy step carry it. Only the
+ * GeoTIFF driver is enabled: the store holds nothing else, and GDAL's other
+ * drivers can read arbitrary files or fetch URLs. Call outside a transaction
+ * so a permissions failure cannot poison it.
  */
 export async function enableOutDbSession(client: pg.ClientBase): Promise<void> {
   await client.query("SET postgis.enable_outdb_rasters = on").catch(() => {})
-  await client.query("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'").catch(() => {})
+  await client.query("SET postgis.gdal_enabled_drivers = 'GTiff'").catch(() => {})
 }
 
 /**
@@ -73,7 +75,7 @@ export async function resolveSrid(client: pg.ClientBase, snapshotId: string, crs
 
 /** gdalinfo facts registration needs; throws when the file cannot be described. */
 async function describeRaster(snapshotId: string, absolutePath: string) {
-  const { stdout } = await execFileP("gdalinfo", ["-json", absolutePath], { maxBuffer: 16 * 1024 * 1024 })
+  const { stdout } = await execFileP("gdalinfo", ["-json", "-if", "GTiff", absolutePath], { maxBuffer: 16 * 1024 * 1024 })
   const info = JSON.parse(stdout) as {
     size: [number, number]
     geoTransform?: number[]

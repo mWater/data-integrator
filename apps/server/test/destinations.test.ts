@@ -244,7 +244,7 @@ test("file load: CSV geometry column as GeoJSON text, and a mislabelled format f
   // Declaring the wrong format is an error, not a silent success
   await assert.rejects(
     stageTableFile(pool, db.url, REGIONS_SPEC, file, "gpkg", RUN_B),
-    /loading gpkg file failed/
+    /cannot read table file as gpkg/
   )
 })
 

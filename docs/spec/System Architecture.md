@@ -494,6 +494,7 @@ the data and the host against untrusted inputs, misbehaving integration code
 | Network egress | Public internet only from jobs; private, link-local, and metadata ranges blocked in the job's network namespace |
 | Secrets | Stored per integration and encrypted at rest with a deployment key; injected via stdin only into the owning integration's runs, so an imported definition cannot receive another integration's credential; never in images, environment, or definitions; literal values masked in stored logs, run errors, and live log streams |
 | Webhooks | Unguessable per-integration token, sent in a header or as a capability URL; JSON-only with size caps, admin-rotatable |
+| Job output files | Opened by the application and the database in their declared format only (rasters as GeoTIFF, tables as the declared tabular format), never by format detection, so a file cannot point a read at another file or a URL |
 | Uploaded files | Never parsed on the host; size-capped streaming upload; served back only as attachments under a sandbox CSP; uploaders and original filenames hidden from viewers |
 | Public dashboards | Opt-in per dashboard by an administrator, recorded with who and when; anonymous access limited to the view surface |
 | Analytical SQL | Frozen at design time where applicable, always executed under a read-only role scoped to destination data |
