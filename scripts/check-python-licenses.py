@@ -15,8 +15,7 @@ ALLOWED = {
     "Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD",
     "BlueOak-1.0.0", "CC0-1.0", "Unlicense", "Zlib", "Python-2.0",
     "MPL-2.0", "PostgreSQL", "CC-BY-4.0", "CC-BY-3.0", "WTFPL", "MIT-0",
-    "Artistic-2.0", "LGPL-3.0", "LGPL-3.0-only", "LGPL-3.0-or-later", "LGPL-2.1", "LGPL-2.1-only",
-    "LGPL-2.1-or-later", "PSF-2.0", "HPND",
+    "Artistic-2.0", "PSF-2.0", "HPND",
 }
 
 # Common non-SPDX spellings in License fields, mapped to their SPDX identifier

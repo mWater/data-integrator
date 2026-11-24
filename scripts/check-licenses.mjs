@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * License compliance gate: every production dependency must carry an
- * OSI-approved license, recorded by SPDX identifier. Input is the JSON from
+ * OSI-approved license, recorded by SPDX identifier. The GPL and LGPL families
+ * are OSI-approved but deliberately absent from the list: the project states
+ * that no production dependency is under either. Input is the JSON from
  * `pnpm -r licenses list --prod --json` on stdin (`-r` because the
  * dependencies belong to the workspace packages, not the root). Exits nonzero
  * listing any package whose license is not on the allowlist, and also when
@@ -11,7 +13,7 @@ const ALLOWED = new Set([
   "Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD",
   "BlueOak-1.0.0", "CC0-1.0", "Unlicense", "Zlib", "Python-2.0",
   "MPL-2.0", "PostgreSQL", "CC-BY-4.0", "CC-BY-3.0", "WTFPL", "MIT-0",
-  "Artistic-2.0", "LGPL-3.0", "LGPL-3.0-only", "LGPL-3.0-or-later", "LGPL-2.1", "LGPL-2.1-only", "LGPL-2.1-or-later"
+  "Artistic-2.0"
 ])
 
 /** Splits SPDX expressions like "(MIT OR CC0-1.0)" into candidate ids. */
