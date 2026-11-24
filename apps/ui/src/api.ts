@@ -1607,13 +1607,23 @@ export function importIntegration(definition: unknown): Promise<{ id: string; ve
   })
 }
 
-/** Reads the webhook capability URL parts (editor or admin). */
-export function getWebhookToken(id: string): Promise<{ token: string; path: string }> {
+/** An integration's webhook token and the two addresses a sender can use it at. */
+export interface WebhookAddress {
+  /** The token: the sender's credential */
+  token: string
+  /** Capability URL path with the token in it, for senders that can only post to a fixed address */
+  path: string
+  /** Path without the token, for senders that send it in a header */
+  headerPath: string
+}
+
+/** Reads the webhook token and addresses (editor or admin). */
+export function getWebhookToken(id: string): Promise<WebhookAddress> {
   return request(`/api/integrations/${id}/webhook-token`)
 }
 
 /** Rotates the webhook token, invalidating the old URL (admin only). */
-export function rotateWebhookToken(id: string): Promise<{ token: string; path: string }> {
+export function rotateWebhookToken(id: string): Promise<WebhookAddress> {
   return request(`/api/integrations/${id}/webhook-token`, { method: "POST" })
 }
 

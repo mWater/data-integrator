@@ -37,7 +37,7 @@ library entry only provides its starting values.
 | version | int | current version; composite FK into integration_versions (deferred) keeps it from dangling |
 | enabled | boolean | false pauses scheduling and webhook-triggered runs |
 | status | text | `draft` (a design session's uncertified draft) or `ready` (certified by a cold run, or a library/import install) |
-| webhook_token | uuid unique | capability secret of the webhook URL `/hooks/<token>`; rotatable |
+| webhook_token | uuid unique | the webhook sender's credential: in the URL `/hooks/<token>`, or in a header on `/hooks/<id>`; rotatable |
 | created_at, updated_at | timestamptz | |
 
 A design session's draft row is updated in place as the agent edits it; `finish`

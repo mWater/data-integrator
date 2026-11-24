@@ -7351,6 +7351,15 @@
       "es": "Restaurando…",
       "mg": "Mamerina…",
       "sw": "Inarejesha…"
+    },
+    {
+      "_base": "en",
+      "en": "A sender that can set a header can keep the token out of the URL by posting to this address with this header:",
+      "fr": "Un expéditeur capable de définir un en-tête peut éviter de placer le jeton dans l’URL en envoyant ses requêtes à cette adresse avec cet en-tête :",
+      "pt": "Um remetente que consiga definir um cabeçalho pode manter o token fora do URL, enviando os pedidos para este endereço com este cabeçalho:",
+      "es": "Un remitente que pueda definir una cabecera puede mantener el token fuera de la URL enviando las solicitudes a esta dirección con esta cabecera:",
+      "mg": "Ny mpandefa afaka mametraka lohateny (header) dia afaka tsy mampiditra ny token ao amin’ny URL, amin’ny fandefasana any amin’ity adiresy ity miaraka amin’ity lohateny ity:",
+      "sw": "Mtumaji anayeweza kuweka kichwa (header) anaweza kuepuka kuweka tokeni ndani ya URL kwa kutuma kwenye anwani hii pamoja na kichwa hiki:"
     }
   ],
   "unused": []

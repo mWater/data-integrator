@@ -483,6 +483,8 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [hookPath, setHookPath] = useState<string | null>(null)
+  // The other way to present the token: this address, with the token in a header
+  const [hookHeader, setHookHeader] = useState<{ path: string; token: string } | null>(null)
 
   const dirty = fromCronDraft(cronDraft) !== (trigger.cron ?? null) ||
     webhook !== (trigger.webhook === true) ||
@@ -491,8 +493,20 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
   // The capability URL is only fetched when the integration accepts webhooks
   useEffect(() => {
     if (trigger.webhook === true && canDesign) {
-      getWebhookToken(detail.id).then(r => setHookPath(r.path), () => setHookPath(null))
-    } else setHookPath(null)
+      getWebhookToken(detail.id).then(
+        r => {
+          setHookPath(r.path)
+          setHookHeader({ path: r.headerPath, token: r.token })
+        },
+        () => {
+          setHookPath(null)
+          setHookHeader(null)
+        }
+      )
+    } else {
+      setHookPath(null)
+      setHookHeader(null)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail.id, trigger.webhook, canDesign])
 
@@ -501,6 +515,7 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
     try {
       const r = await rotateWebhookToken(detail.id)
       setHookPath(r.path)
+      setHookHeader({ path: r.headerPath, token: r.token })
       setNotice(T`Webhook URL regenerated; the old URL no longer works.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -554,6 +569,13 @@ function ScheduleSection({ detail, canDesign, isAdmin, onChanged }: ScheduleSect
               {T`Webhook URL:`} <code>{`${location.origin}${hookPath}`}</code>{" "}
               <button onClick={() => navigator.clipboard.writeText(`${location.origin}${hookPath}`)}>{T`Copy`}</button>{" "}
               {isAdmin && <button onClick={rotate}>{T`Regenerate`}</button>}
+            </p>
+          )}
+          {hookPath && hookHeader && (
+            <p className="dim">
+              {T`A sender that can set a header can keep the token out of the URL by posting to this address with this header:`}{" "}
+              <code>{`${location.origin}${hookHeader.path}`}</code>{" "}
+              <code>{`Authorization: Bearer ${hookHeader.token}`}</code>
             </p>
           )}
           <div className="aoi-actions">
