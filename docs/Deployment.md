@@ -31,20 +31,100 @@ number of jobs that should run at once.
 The design scales in these ways:
 
 - **Jobs.** Runs queue in the database and are claimed under a lease, so any
-  number of server processes can drain one queue. Capacity grows by running
-  more server processes, on this host or on others pointed at the same
-  database and the same raster and file stores. `SANDBOX_MEMORY_MB` and the
-  `JOB_MAX_*` ceilings bound what one host commits.
+  number of server processes can drain one queue. A server process runs two
+  scheduled runs at a time. Capacity grows by adding hosts, each running one
+  server process pointed at the same database and the same raster and file
+  stores. `SANDBOX_MEMORY_MB` and the `JOB_MAX_*` ceilings bound what one
+  host commits.
 - **Storage.** The raster store is a directory, so it can be a larger disk, a
   network filesystem or an object-storage mount, provided Postgres can read
   the same path.
-- **Database.** Standard Postgres: vertical scaling, read replicas and managed
-  high-availability offerings apply unchanged.
-- **Requests.** The web process holds no session state of its own (sessions
-  live in the database), so several can sit behind one load balancer.
+- **Database.** Standard Postgres, so vertical scaling and replication apply
+  as usual. The one constraint is that the database server reads raster files
+  to answer SQL, so it needs the raster store at the same path. A managed
+  PostgreSQL service that cannot mount a filesystem does not fit.
+- **Requests.** Sign-in sessions live in the database, so several server
+  processes can sit behind one load balancer.
 
 Performance targets and sizing criteria for procurement are set in UNICEF's
 technical specifications (Deliverable 2), not here.
+
+### Deployment profiles
+
+Three layouts run the same software with the same configuration variables.
+The scripts in `deploy/` install the first. It is what the proof of concept
+runs and the only one exercised so far; the other two follow from the design,
+are assembled by hand from the first, and have not been load-tested.
+
+| Profile | For | Layout |
+|---|---|---|
+| Single host | One country or organization: the library's integrations and a handful of operators | Everything on one host, as `setup.sh` installs it |
+| Separate database | The same, when jobs and the database compete for memory or disk, or the database has to sit on infrastructure of its own | One application host, and Postgres on a second host that mounts the raster store |
+| Several application hosts | More scheduled runs at once, or many simultaneous viewers | Two or more application hosts behind a load balancer, one database host, and shared raster and file stores |
+
+What moves a deployment from one profile to the next:
+
+- **Concurrent jobs.** A host runs two scheduled runs at a time, plus runs
+  started by hand and the AI designer's test runs, all within
+  `SANDBOX_MEMORY_MB`. When runs regularly wait behind others, add memory if
+  they are waiting for the memory budget, and add a host if more than two must
+  run at once.
+- **Raster volume.** Disk grows with the layers installed and the history
+  they keep. A larger volume or a network filesystem under `RASTER_STORE_PATH`
+  handles this in any profile.
+- **Viewers.** Raster map tiles render in GDAL subprocesses,
+  `TILE_RENDER_CONCURRENCY` at a time (default 3), and are cached after the
+  first render. Table queries and vector tiles run in Postgres. On a single
+  host both compete with jobs. A separate database host takes the queries
+  away from the jobs, and more application hosts spread the rendering.
+
+[Performance tests](Architecture.md#performance-tests) gives timings for each
+of these operations on a machine close to the reference profile.
+
+**Separate database.** Install the application host with `setup.sh`, then
+point `DATABASE_URL` in `/etc/data-integrator/env` at the database host; the
+Postgres that `setup.sh` installed locally is then unused and can be stopped.
+The database host needs:
+
+- Postgres 16 with the PostGIS and PostGIS raster extensions, the
+  `integrator` and `sql_engine` roles, and the two PostGIS settings
+  (`postgis.enable_outdb_rasters`, `postgis.gdal_enabled_drivers`), created
+  as the database steps of `setup.sh` create them. `update.sh` applies
+  superuser settings through the local `postgres` account, so when a
+  release's notes name one, apply it on the database host by hand.
+- The raster store mounted at the same absolute path as on the application
+  host, readable by the `postgres` user. A run that writes a raster layer
+  fails when the database cannot read the new files.
+- Connections accepted only from the application hosts.
+
+**Several application hosts.** Each host is installed like the single host and
+runs one server process, which both serves requests and claims queued runs. A
+host that fails loses only the runs it was executing: they are marked failed
+after five minutes without a heartbeat and run again at their next scheduled
+time.
+
+- Shared by every host: the database, `INTEGRATOR_SECRET_KEY`, the same
+  release and library, and the raster and file stores on a network filesystem
+  mounted at the same paths (the raster store on the database host as well).
+- Local to each host: `WORK_ROOT` and `TILE_CACHE_PATH`. `/work` is a cache
+  that jobs must not depend on, so an integration whose next run lands on
+  another host starts there with an empty one. The capacity limits
+  (`SANDBOX_MEMORY_MB`, `JOB_MAX_*`) apply per host.
+- One server process per host. At start a process removes the job containers
+  left on its host, which would include those of a second process.
+- The load balancer is configured as in
+  [Another reverse proxy](#another-reverse-proxy), with session affinity so
+  that a user's requests reach one host: the AI designer and Explore stream a
+  session's progress from the process that runs it. A host left out of the
+  load balancer still drains the queue.
+- Update every host to the same release together: stop the service on each,
+  run `update.sh` on one, which applies the migrations, then on the others.
+
+With several application hosts the service keeps running when one of them
+fails. It still stops when the database host or the shared filesystem fails,
+because there is one of each. Protecting those, with a standby database and
+storage that survives a failure, is the deploying organization's work and is
+not something the platform sets up.
 
 ## Install
 
