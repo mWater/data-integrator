@@ -263,7 +263,8 @@ must:
 - serve the application at the root of its hostname (the interface uses
   absolute paths such as `/api` and `/tiles`);
 - let `/hooks/*` through without sign-in: webhook senders cannot complete
-  an interactive login, and the secret token in the URL is their credential;
+  an interactive login, and the token they present is their credential
+  (see [Controls for webhook senders](#controls-for-webhook-senders));
 - let `/kit/*` through without sign-in: dashboards run in a sandboxed frame
   that loads these public runtime files without cookies;
 - let API requests carrying `Authorization: Bearer dit_...` through, or route
@@ -274,6 +275,72 @@ must:
 Public dashboards reach only people who pass the proxy. The session cookie
 (`di_session`, host-only, `HttpOnly`, `SameSite=Lax`) does not clash with the
 proxy's own cookie.
+
+### Controls for webhook senders
+
+A webhook sender presents its integration's token, in a header
+(`POST /hooks/<integration id>`) or in the URL (`POST /hooks/<token>`); see
+[API](API.md#webhooks). Prefer the header where the sender supports it, since
+it keeps the token out of URLs and proxy logs. The application checks the
+token and nothing else about the sender, so controls on who may send belong
+in the reverse proxy, for the senders that support them. The examples are for
+Caddy, as `setup.sh` installs it.
+
+**Source addresses.** For senders with fixed addresses, refuse `/hooks/*`
+from anywhere else by adding a matcher to the site block. The rule sees the
+address that connects to Caddy, so behind another load balancer apply it
+there instead:
+
+```
+integrator.example.org {
+	@hooks_elsewhere {
+		path /hooks/*
+		not remote_ip 203.0.113.0/24 198.51.100.7
+	}
+	respond @hooks_elsewhere 403
+	...
+}
+```
+
+**Client certificates (mutual TLS).** Give senders a hostname of their own
+that requires a certificate issued by your certificate authority and forwards
+only `/hooks/*`, and refuse `/hooks/*` on the main hostname:
+
+```
+hooks.example.org {
+	tls {
+		client_auth {
+			mode require_and_verify
+			trusted_ca_cert_file /etc/caddy/webhook-senders-ca.pem
+		}
+	}
+	@hooks path /hooks/*
+	handle @hooks {
+		reverse_proxy 127.0.0.1:8080 {
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	respond 404
+}
+
+integrator.example.org {
+	respond /hooks/* 404
+	...
+}
+```
+
+The proxy decides whether the certificate is acceptable; the application
+does not see it, and the token still selects the integration. Caddy 2.8 and
+later name the certificate authority with `trust_pool file` instead of
+`trusted_ca_cert_file`, which they still accept.
+
+**Rate limits.** Caddy as packaged has no rate limiter. Where one is
+required, use a proxy or gateway that has one, such as nginx (`limit_req`)
+or a cloud load balancer. The application itself caps each request at 1 MB.
+
+`setup.sh` writes `/etc/caddy/Caddyfile` and overwrites it when re-run, so
+keep a copy of what you add and put it back after re-running `setup.sh`.
+Reload with `systemctl reload caddy`.
 
 ## Updates
 
