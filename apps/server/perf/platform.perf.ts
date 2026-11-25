@@ -4,9 +4,9 @@
  * Madagascar's extent).
  *
  * These are regression guards, not capacity tests. Each measurement has a
- * budget of roughly ten times its usual time on a developer machine, so a
- * shared CI machine does not fail it at random and a real regression still
- * does. PERF_BUDGET_FACTOR scales
+ * budget of roughly ten times or more its time in CI (the baseline in
+ * docs/Architecture.md), so a shared CI machine does not fail it at random
+ * and a real regression still does. PERF_BUDGET_FACTOR scales
  * every budget (2 doubles them). Run with `pnpm perf`.
  */
 import { test, before, after } from "node:test"
@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto"
 import { access, appendFile, chmod, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { Server } from "node:http"
 import { AddressInfo } from "node:net"
-import { tmpdir } from "node:os"
+import { cpus, tmpdir, totalmem } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
@@ -230,9 +230,10 @@ after(async () => {
     "|---|---|---:|---:|---|",
     ...measurements.map(m => `| ${m.name} | ${m.basis} | ${m.ms.toFixed(0)} ms | ${m.budgetMs} ms | ${m.note ?? ""} |`)
   ]
-  console.log(`\nPerformance baseline (${ROWS.toLocaleString("en")} rows, ${RASTER_SIZE} x ${RASTER_SIZE} raster)\n${lines.join("\n")}\n`)
+  const setting = `${ROWS.toLocaleString("en")} rows, ${RASTER_SIZE} x ${RASTER_SIZE} raster, on ${cpus().length} CPUs and ${Math.round(totalmem() / 2 ** 30)} GB`
+  console.log(`\nPerformance baseline (${setting})\n${lines.join("\n")}\n`)
   if (process.env.GITHUB_STEP_SUMMARY) {
-    await appendFile(process.env.GITHUB_STEP_SUMMARY, `### Performance baseline\n\n${lines.join("\n")}\n`)
+    await appendFile(process.env.GITHUB_STEP_SUMMARY, `### Performance baseline\n\n${setting}\n\n${lines.join("\n")}\n`)
   }
 })
 

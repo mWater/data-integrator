@@ -476,20 +476,27 @@ synthetic dataset: 100,000 point rows and one 2048 x 2048 raster over a country-
 extent. It runs in CI after the test suites, on every push and pull request, and writes
 its table of timings to the job summary.
 
-| Operation | What is timed |
-|---|---|
-| Tabular load | A job's table file of 100,000 rows staged and applied to its destination table |
-| Query API, one page | A filtered, ordered page of 100 rows over HTTP: median and 95th percentile of 50 |
-| Query API, 20 at once | 20 such requests made together, until all are answered |
-| Vector tile | One map tile of the table over HTTP: median of 20 |
-| Raster load | A job's raster stored, cataloged and registered for SQL |
-| Raster tile | One map tile over HTTP, first render and then the cached copy: median of 9 each |
-| Zonal statistics | The raster averaged over 100 polygons in one SQL query: median of 5 |
-| Sandbox job | A job that does nothing, from launch to result, under gVisor: median of 5 |
+| Operation | What is timed | Baseline | Budget |
+|---|---|---:|---:|
+| Tabular load | A job's table file of 100,000 rows staged and applied to its destination table | 1.6 s | 30 s |
+| Query API, one page | A filtered, ordered page of 100 rows over HTTP: median of 50 | 32 ms | 500 ms |
+| | The same: 95th percentile of 50 | 40 ms | 1 s |
+| Query API, 20 at once | 20 such requests made together, until all are answered | 252 ms | 5 s |
+| Vector tile | One map tile of the table over HTTP: median of 20 | 71 ms | 1.5 s |
+| Raster load | A job's raster stored, cataloged and registered for SQL | 142 ms | 10 s |
+| Raster tile, first render | One map tile over HTTP: median of 9 | 127 ms | 3 s |
+| Raster tile, cached | The same tiles again: median of 9 | 2 ms | 250 ms |
+| Zonal statistics | The raster averaged over 100 polygons in one SQL query: median of 5 | 1.5 s | 20 s |
+| Sandbox job | A job that does nothing, from launch to result, under gVisor: median of 5 | 562 ms | 15 s |
+
+The baseline is one CI run on a GitHub-hosted `ubuntu-24.04` runner on 25 November 2026;
+the tabular load is about 63,000 rows per second. Every CI run publishes its own figures,
+with the machine's CPU count and memory, so the current ones are in the latest run's
+summary. A test fails when its measurement is over the budget.
 
 These are regression guards and a baseline for the proof of concept, not capacity or
-load tests. Each measurement has a budget of roughly ten times its usual time, so a
-busy CI machine does not fail it at random and a real regression still does;
+load tests. Each budget is roughly ten times or more the baseline, so a busy CI machine
+does not fail it at random and a real regression still does;
 `PERF_BUDGET_FACTOR` scales every budget on a slower machine. Not measured: many
 simultaneous users, the speed of external data sources, and AI model response times,
 which depend on the deployment and the providers rather than on this code.
