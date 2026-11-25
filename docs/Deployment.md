@@ -120,9 +120,11 @@ time.
 - Update every host to the same release together: stop the service on each,
   run `update.sh` on one, which applies the migrations, then on the others.
 
-This profile removes the application host as a single point of failure. The
-database and the shared filesystem remain single points of failure unless the
-deploying organization makes them redundant.
+With several application hosts the service keeps running when one of them
+fails. It still stops when the database host or the shared filesystem fails,
+because there is one of each. Protecting those, with a standby database and
+storage that survives a failure, is the deploying organization's work and is
+not something the platform sets up.
 
 ## Install
 
