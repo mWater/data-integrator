@@ -7,6 +7,14 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- Deployment guide: "Deployment profiles" describes three layouts (a single
+  host, a separate database host, several application hosts behind a load
+  balancer), what moves a deployment from one to the next, and what each
+  needs. Only the single host is installed by the scripts and exercised by
+  the proof of concept. "Reference profile and scaling" is corrected in two
+  places: a host runs one server process, and the database server must be
+  able to read the raster store, so a managed PostgreSQL service that cannot
+  mount a filesystem does not fit. Documentation only.
 - Basic performance tests: `pnpm perf` times tabular and raster loads, the
   query API, vector and raster map tiles, zonal statistics in SQL and sandbox
   job start-up against a fixed synthetic dataset. It runs in CI on every
