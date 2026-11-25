@@ -4,7 +4,7 @@
  * Madagascar's extent).
  *
  * These are regression guards, not capacity tests. Each measurement has a
- * budget of roughly ten times or more its time in CI (the baseline in
+ * budget of at least eight times its time in CI (the baseline in
  * docs/Architecture.md), so a shared CI machine does not fail it at random
  * and a real regression still does. PERF_BUDGET_FACTOR scales
  * every budget (2 doubles them). Run with `pnpm perf`.
