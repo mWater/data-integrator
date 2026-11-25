@@ -11,6 +11,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
+    "perf": "pnpm --filter @data-integrator/server perf",
     "docs:pdf": "node docs/build-pdf.mjs"
   },
   "devDependencies": {

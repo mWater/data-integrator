@@ -58,6 +58,11 @@ jobs:
 
       - run: pnpm test
 
+      # Times fixed operations on synthetic data and fails only on a gross
+      # regression; the table of timings is in the job summary
+      - name: Performance baseline
+        run: pnpm perf
+
   compliance:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
