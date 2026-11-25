@@ -57,12 +57,11 @@ applied by `deploy/update.sh`. The runtime images are unchanged.
   `X-Webhook-Token`). This keeps the token out of URLs and proxy logs.
   `POST /hooks/<token>` works as before, for senders that can only post to a
   fixed address. The integration page shows both.
-- Removed the `mwater_admin_regions` library entry and its skill. It
+- Removed the `mwater_admin_regions` library entry and its skill, which
   downloaded administrative boundaries from data.mwater.co, an mWater-hosted
-  service, and the dataset is derived from GADM, whose license allows neither
-  commercial use nor redistribution. The library now has no dependency on an
-  mWater service. A deployment that already installed the entry keeps its
-  integration and data until an admin deletes it.
+  service. The library now has no dependency on an mWater service. A
+  deployment that already installed the entry keeps its integration and data
+  until an admin deletes it.
 - New library entry `geoboundaries_admin_boundaries`: administrative
   boundaries from the open release of geoBoundaries, for the countries of the
   area of interest or the whole world. Every boundary carries its own source
