@@ -7,6 +7,11 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- Basic performance tests: `pnpm perf` times tabular and raster loads, the
+  query API, vector and raster map tiles, zonal statistics in SQL and sandbox
+  job start-up against a fixed synthetic dataset. It runs in CI on every
+  change, publishes its timings in the job summary, and fails only on a
+  gross regression. See "Performance tests" in `docs/Architecture.md`.
 - GDAL opens files as GeoTIFF only. PostGIS was configured with every GDAL
   driver enabled, and the server let GDAL detect the format of raster files
   written by integration code, so a file named `.tif` could be a VRT that

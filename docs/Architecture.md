@@ -468,6 +468,31 @@ encodings of it.
 - The definition format's JSON Schema is tested with an off-the-shelf validator: every
   bundled library entry and the specification's example must pass it, and the same
   invalid definitions must be rejected by the schema and by the server.
+
+### Performance tests
+
+`pnpm perf` (`apps/server/perf`) times the operations a user waits on, against a fixed
+synthetic dataset: 100,000 point rows and one 2048 x 2048 raster over a country-sized
+extent. It runs in CI after the test suites, on every push and pull request, and writes
+its table of timings to the job summary.
+
+| Operation | What is timed |
+|---|---|
+| Tabular load | A job's table file of 100,000 rows staged and applied to its destination table |
+| Query API, one page | A filtered, ordered page of 100 rows over HTTP: median and 95th percentile of 50 |
+| Query API, 20 at once | 20 such requests made together, until all are answered |
+| Vector tile | One map tile of the table over HTTP: median of 20 |
+| Raster load | A job's raster stored, cataloged and registered for SQL |
+| Raster tile | One map tile over HTTP, first render and then the cached copy: median of 9 each |
+| Zonal statistics | The raster averaged over 100 polygons in one SQL query: median of 5 |
+| Sandbox job | A job that does nothing, from launch to result, under gVisor: median of 5 |
+
+These are regression guards and a baseline for the proof of concept, not capacity or
+load tests. Each measurement has a budget of roughly ten times its usual time, so a
+busy CI machine does not fail it at random and a real regression still does;
+`PERF_BUDGET_FACTOR` scales every budget on a slower machine. Not measured: many
+simultaneous users, the speed of external data sources, and AI model response times,
+which depend on the deployment and the providers rather than on this code.
 - The compliance job checks dependency licenses and produces the SBOM on the same
   triggers.
 
