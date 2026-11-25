@@ -5,7 +5,11 @@ the release's notes on the repository's Releases page, and says when a release
 changes the database (applied by `deploy/update.sh`) or the runtime images
 (rebuilt with `IMAGES=1`).
 
-## Unreleased
+## 1.1.0 (2026-11-25)
+
+Corrections and additions made in response to UNICEF's review of release
+1.0.0. **Database changes:** two migrations and one superuser setting, all
+applied by `deploy/update.sh`. The runtime images are unchanged.
 
 - Deployment guide: "Controls for webhook senders" shows how to restrict
   who may send webhooks at the reverse proxy, by source address and by

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "mWater Data Integrator API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Programmatic interface to the harmonized dataset: tabular destinations, the raster catalog (with a read-only STAC API), webhooks, integration files, and integration export/import. Authenticate with a session cookie (POST /api/login) or a personal access token (Authorization: Bearer dit_...). Routes not listed here serve the web UI and are not a stable interface. Data access works with no AI configured."
   },
   "components": {
