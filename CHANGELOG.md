@@ -7,6 +7,10 @@ changes the database (applied by `deploy/update.sh`) or the runtime images
 
 ## Unreleased
 
+- Deployment guide: "Controls for webhook senders" shows how to restrict
+  who may send webhooks at the reverse proxy, by source address and by
+  client certificate (mutual TLS), with Caddy configuration for both, and
+  says where rate limiting belongs. Documentation only.
 - Deployment guide: "Deployment profiles" describes three layouts (a single
   host, a separate database host, several application hosts behind a load
   balancer), what moves a deployment from one to the next, and what each
